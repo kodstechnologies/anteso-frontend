@@ -381,14 +381,16 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
       <div id="report-content" className="fixed-report-pdf">
         {/* PAGE 1 - MAIN REPORT */}
         <div
-          className="bg-white px-8 py-2 report-pdf-page-shell"
+          className="bg-white report-pdf-page-shell"
           style={{
             pageBreakAfter: 'always',
             display: 'flex',
             flexDirection: 'column',
-            width: '100%',
+            width: '210mm',
             boxSizing: 'border-box',
-            minHeight: '282mm',
+            minHeight: '297mm',
+            margin: '0 auto',
+            padding: '15mm 20mm',
           }}
         >
           <ReportPdfPageHeader report={report} formatDate={formatDate} />
@@ -522,14 +524,16 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
 
         {/* PAGE 2 - SUMMARY TABLE */}
         <div
-          className="bg-white px-8 py-2 test-section report-pdf-page-shell"
+          className="bg-white test-section report-pdf-page-shell"
           style={{
             pageBreakAfter: 'always',
             display: 'flex',
             flexDirection: 'column',
-            width: '100%',
+            width: '210mm',
             boxSizing: 'border-box',
-            minHeight: '282mm',
+            minHeight: '297mm',
+            margin: '0 auto',
+            padding: '15mm 20mm',
           }}
         >
           <ReportPdfPageHeader report={report} formatDate={formatDate} />
@@ -541,13 +545,15 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
 
         {/* PAGE 3+ - DETAILED TEST RESULTS (footer pinned to bottom of last page in PDF via clone styles) */}
         <div
-          className="bg-white px-8 py-2 test-section report-pdf-last-page-shell"
+          className="bg-white test-section report-pdf-last-page-shell"
           style={{
             display: 'flex',
             flexDirection: 'column',
-            width: '100%',
+            width: '210mm',
             boxSizing: 'border-box',
-            minHeight: '282mm',
+            minHeight: '297mm',
+            margin: '0 auto',
+            padding: '15mm 20mm',
           }}
         >
           <ReportPdfPageHeader report={report} formatDate={formatDate} />

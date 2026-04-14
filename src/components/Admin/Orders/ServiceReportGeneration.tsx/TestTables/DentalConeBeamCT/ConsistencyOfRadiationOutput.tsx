@@ -58,6 +58,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
   ]);
 
   const [tolerance, setTolerance] = useState<string>('0.05');
+  const [toleranceOperator, setToleranceOperator] = useState<string>('<=');
 
   // Auto-calculate Mean, COV, and Remarks using useMemo
   // This creates a computed version without modifying state, avoiding circular dependency
@@ -82,12 +83,27 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
         cov = Math.sqrt(variance) / mean;
       }
 
-      // Calculate remarks based on COV <= tolerance
+      // Calculate remarks based on dynamic COV operator
       let remarks: 'Pass' | 'Fail' | '' = '';
       if (tolerance) {
         const tol = parseFloat(tolerance);
         if (!isNaN(tol) && !isNaN(cov)) {
-          remarks = cov <= tol ? 'Pass' : 'Fail';
+          switch (toleranceOperator) {
+            case '<':
+              remarks = cov < tol ? 'Pass' : 'Fail';
+              break;
+            case '>':
+              remarks = cov > tol ? 'Pass' : 'Fail';
+              break;
+            case '>=':
+              remarks = cov >= tol ? 'Pass' : 'Fail';
+              break;
+            case '=':
+              remarks = Math.abs(cov - tol) < 1e-6 ? 'Pass' : 'Fail';
+              break;
+            default:
+              remarks = cov <= tol ? 'Pass' : 'Fail';
+          }
         }
       }
 
@@ -98,7 +114,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
         remarks,
       };
     });
-  }, [outputRows, tolerance]);
+  }, [outputRows, tolerance, toleranceOperator]);
 
   // Final Remark
   const remark = useMemo(() => {
@@ -108,11 +124,24 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
 
     const allPass = processedRows.every((row) => {
       if (!row.cov) return true;
-      return parseFloat(row.cov) <= tol;
+      const cov = parseFloat(row.cov);
+      if (isNaN(cov)) return true;
+      switch (toleranceOperator) {
+        case '<':
+          return cov < tol;
+        case '>':
+          return cov > tol;
+        case '>=':
+          return cov >= tol;
+        case '=':
+          return Math.abs(cov - tol) < 1e-6;
+        default:
+          return cov <= tol;
+      }
     });
 
     return allPass ? 'Pass' : 'Fail';
-  }, [processedRows, tolerance, isSaved]);
+  }, [processedRows, tolerance, toleranceOperator, isSaved]);
 
   // Load test data
   useEffect(() => {
@@ -136,9 +165,25 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
             data.outputRows?.map((row: any, i: number) => {
               const covVal = row.cov ? parseFloat(row.cov) : 0;
               const tolVal = data.tolerance ? parseFloat(data.tolerance) : 0.05;
+              const op = data.toleranceOperator || '<=';
               let remarks: 'Pass' | 'Fail' | '' = '';
               if (!isNaN(covVal) && !isNaN(tolVal)) {
-                remarks = covVal <= tolVal ? 'Pass' : 'Fail';
+                switch (op) {
+                  case '<':
+                    remarks = covVal < tolVal ? 'Pass' : 'Fail';
+                    break;
+                  case '>':
+                    remarks = covVal > tolVal ? 'Pass' : 'Fail';
+                    break;
+                  case '>=':
+                    remarks = covVal >= tolVal ? 'Pass' : 'Fail';
+                    break;
+                  case '=':
+                    remarks = Math.abs(covVal - tolVal) < 1e-6 ? 'Pass' : 'Fail';
+                    break;
+                  default:
+                    remarks = covVal <= tolVal ? 'Pass' : 'Fail';
+                }
               }
               return {
                 id: String(i + 1),
@@ -153,6 +198,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
           );
           setHeaders(data.measurementHeaders || headers);
           setTolerance(data.tolerance || '0.05');
+          setToleranceOperator(data.toleranceOperator || '<=');
           setIsSaved(true);
         } else {
           setIsSaved(false);
@@ -244,6 +290,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
       })),
       measurementHeaders: headers,
       tolerance: tolerance.trim(),
+      toleranceOperator,
     };
 
     try {
@@ -533,7 +580,19 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
           Tolerance
         </label>
         <div className="flex items-center gap-2 mb-4">
-          <span className="text-sm text-gray-600">CoV &lt;</span>
+          <span className="text-sm text-gray-600">CoV</span>
+          <select
+            value={toleranceOperator}
+            onChange={(e) => setToleranceOperator(e.target.value)}
+            disabled={isViewMode}
+            className={`px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+          >
+            <option value="<=">&le;</option>
+            <option value="<">&lt;</option>
+            <option value=">=">&ge;</option>
+            <option value=">">&gt;</option>
+            <option value="=">=</option>
+          </select>
           <input
             type="text"
             value={tolerance}

@@ -164,7 +164,7 @@ export const createRadiographyPortableUploadableExcel = (data: RadiographyPortab
         if (rows.length === 0 && (settings.fcd || settings.kv)) {
             rows.push([settings.fcd || '', settings.kv || '', '', '', '', '', '', '', data.linearityOfMasLoadingStations.tolerance || '0.1', '']);
         }
-        addSection('LINEARITY OF mAs LOADING STATIONS', ['FCD (cm)', 'kV', 'mAs Range', 'Meas 1', 'Meas 2', 'Meas 3', 'Average', 'X (mGy/mAs)', 'Tolerance (%)', 'Remarks'], rows);
+        addSection('LINEARITY OF mAs LOADING STATIONS', ['FCD (cm)', 'kV', 'mAs', 'Meas 1', 'Meas 2', 'Meas 3', 'Average', 'X (mGy/mAs)', 'Tolerance (%)', 'Remarks'], rows);
     }
 
     // 7. CONSISTENCY OF RADIATION OUTPUT

@@ -177,6 +177,13 @@ const MainTestTableForDentalConeBeamCT: React.FC<MainTestTableProps> = ({ testDa
   if (linearityMaRows && Array.isArray(linearityMaRows)) {
     const validRows = linearityMaRows.filter((row: any) => row.ma || row.mA || row.col || row.measuredOutputs?.length);
     if (validRows.length > 0) {
+      const table1 = Array.isArray(linearityMaLoading?.table1) ? linearityMaLoading?.table1?.[0] : linearityMaLoading?.table1;
+      const hasTime = table1?.time !== undefined && table1?.time !== null && String(table1?.time).trim() !== "";
+      const hasMasShape = validRows.some((row: any) => row.mAsRange || row.mAsApplied);
+      const linearityHeading = (!hasTime || hasMasShape)
+        ? "Linearity of mAs Loading (Coefficient of Linearity)"
+        : "Linearity of mA Loading (Coefficient of Linearity)";
+
       const tolerance = linearityMaLoading.tolerance || "0.1";
       const toleranceOperator = linearityMaLoading.toleranceOperator || "<=";
 
@@ -238,7 +245,7 @@ const MainTestTableForDentalConeBeamCT: React.FC<MainTestTableProps> = ({ testDa
         tolerance: `${toleranceOperator} ${tolerance}`,
         remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
       }];
-      addRowsForTest("Linearity of mA Loading (Coefficient of Linearity)", testRows);
+      addRowsForTest(linearityHeading, testRows);
     }
   }
   // 3. Consistency of Radiation Output (CoV) - aligned with Radiography Fixed
@@ -321,53 +328,55 @@ const MainTestTableForDentalConeBeamCT: React.FC<MainTestTableProps> = ({ testDa
     }
   }
 
-  // 4. Linearity of mA Loading
+  // 4. Linearity of mAs Loading
 
 
-  // 5. Maximum Radiation Leakage from Tube Housing (aligned with Radiography Fixed)
+  // 5. Radiation leakage level at 1m from tube housing (aligned with Radiography Fixed)
   if (testData.radiationLeakage?.leakageRows && Array.isArray(testData.radiationLeakage.leakageRows)) {
     const validRows = testData.radiationLeakage.leakageRows.filter((row: any) => row.location && (row.max || row.result || row.front || row.back));
     if (validRows.length > 0) {
       const toleranceValue = testData.radiationLeakage.toleranceValue || "1";
-      const toleranceUnit = validRows[0]?.unit || "mGy in one hour";
+      const sourceUnit = testData.radiationLeakage.leakageRows[0]?.unit || "mGy in one hour";
+      const toleranceUnit = "mGy in one hour";
 
       const testRows = validRows.map((row: any) => {
         let measuredValue = "-";
         let isPass = false;
 
+        // Use result if available, otherwise use max, otherwise compute max from directions
         if (row.result) {
           const resultValue = parseFloat(row.result);
           if (!isNaN(resultValue)) {
-            if (toleranceUnit === "mGy/h" || toleranceUnit === "mGy in one hour") {
+            if (sourceUnit === "mGy/h") {
               measuredValue = `${(resultValue / 114).toFixed(4)} mGy in one hour`;
               isPass = (resultValue / 114) < parseFloat(toleranceValue);
             } else {
-              measuredValue = `${resultValue.toFixed(4)} ${toleranceUnit}`;
+              measuredValue = `${resultValue.toFixed(4)} ${sourceUnit}`;
               isPass = resultValue < parseFloat(toleranceValue);
             }
           }
         } else if (row.max) {
           const maxValue = parseFloat(row.max);
           if (!isNaN(maxValue) && maxValue > 0) {
-            if (toleranceUnit === "mGy/h" || toleranceUnit === "mGy in one hour") {
+            if (sourceUnit === "mGy/h") {
               measuredValue = `${(maxValue / 114).toFixed(4)} mGy in one hour`;
               isPass = (maxValue / 114) < parseFloat(toleranceValue);
             } else {
-              measuredValue = `${maxValue.toFixed(2)} ${toleranceUnit}`;
+              measuredValue = `${maxValue.toFixed(2)} ${sourceUnit}`;
               isPass = maxValue < parseFloat(toleranceValue);
             }
           }
         } else {
-          const values = [row.front, row.back, row.left, row.right, row.top, row.up, row.down]
+          const values = [row.front, row.back, row.left, row.right, row.top]
             .map((v: any) => parseFloat(v) || 0)
             .filter((v: number) => v > 0);
           if (values.length > 0) {
             const max = Math.max(...values);
-            if (toleranceUnit === "mGy/h" || toleranceUnit === "mGy in one hour") {
+            if (sourceUnit === "mGy/h") {
               measuredValue = `${(max / 114).toFixed(4)} mGy in one hour`;
               isPass = (max / 114) < parseFloat(toleranceValue);
             } else {
-              measuredValue = `${max.toFixed(2)} ${toleranceUnit}`;
+              measuredValue = `${max.toFixed(2)} ${sourceUnit}`;
               isPass = max < parseFloat(toleranceValue);
             }
           }
@@ -382,7 +391,7 @@ const MainTestTableForDentalConeBeamCT: React.FC<MainTestTableProps> = ({ testDa
         return {
           specified: row.location || "-",
           measured: measuredValue,
-          tolerance: `<= ${toleranceValue} ${toleranceUnit}`,
+          tolerance: `≤ ${toleranceValue} ${toleranceUnit}`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });

@@ -23,6 +23,7 @@ interface SavedData {
   measurementHeaders: string[];
   measurements: { mAsRange: string; measuredOutputs: (number | null)[] }[];
   tolerance: string;
+  toleranceOperator?: string;
 }
 
 const LinearityOfMasLLoading: React.FC<{ 
@@ -33,6 +34,7 @@ const LinearityOfMasLLoading: React.FC<{
     measurementHeaders?: string[];
     measurements?: Array<{ mAsRange: string; measuredOutputs: (string | null)[] }>;
     tolerance?: string;
+    toleranceOperator?: string;
   };
 }> = ({ serviceId, refreshKey, initialData }) => {
   const [exposureCondition, setExposureCondition] = useState<ExposureCondition>({
@@ -50,6 +52,7 @@ const LinearityOfMasLLoading: React.FC<{
   ]);
 
   const [tolerance, setTolerance] = useState<string>('0.1');
+  const [toleranceOperator, setToleranceOperator] = useState<string>('<=');
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -105,6 +108,9 @@ const LinearityOfMasLLoading: React.FC<{
       if (initialData.tolerance) {
         setTolerance(initialData.tolerance);
       }
+      if (initialData.toleranceOperator) {
+        setToleranceOperator(initialData.toleranceOperator);
+      }
       setIsEditing(true);
       setIsLoading(false);
       console.log('LinearityOfMasLLoading: CSV data loaded into form', {
@@ -140,6 +146,7 @@ const LinearityOfMasLLoading: React.FC<{
             }))
           );
           setTolerance(data.tolerance || '0.1');
+          setToleranceOperator(data.toleranceOperator || '<=');
           setHasSaved(true);
           setIsEditing(false); // View mode after loading saved data
         } else {
@@ -168,6 +175,7 @@ const LinearityOfMasLLoading: React.FC<{
           measuredOutputs: r.measuredOutputs.map(v => (v.trim() === '' ? null : parseFloat(v))),
         })),
         tolerance,
+        toleranceOperator,
       };
       await addLinearityOfMasLLoadingForMammography(serviceId, payload);
       toast.success('Saved successfully');
@@ -253,7 +261,30 @@ const LinearityOfMasLLoading: React.FC<{
       ? Math.abs(parseFloat(xMax) - parseFloat(xMin)) / (parseFloat(xMax) + parseFloat(xMin))
       : 0;
     const col = hasData ? colNum.toFixed(3) : '—';
-    const pass = hasData && colNum <= tol;
+
+    let pass = false;
+    if (hasData && col !== '—') {
+      const colVal = colNum;
+      switch (toleranceOperator) {
+        case '<':
+          pass = colVal < tol;
+          break;
+        case '>':
+          pass = colVal > tol;
+          break;
+        case '<=':
+          pass = colVal <= tol;
+          break;
+        case '>=':
+          pass = colVal >= tol;
+          break;
+        case '=':
+          pass = Math.abs(colVal - tol) < 0.0001;
+          break;
+        default:
+          pass = colVal <= tol;
+      }
+    }
 
     return rowsWithX.map(row => ({
       ...row,
@@ -262,7 +293,7 @@ const LinearityOfMasLLoading: React.FC<{
       col,
       remarks: hasData ? (pass ? 'Pass' : 'Fail') : '—',
     }));
-  }, [table2Rows, tolerance]);
+  }, [table2Rows, tolerance, toleranceOperator]);
 
   if (isLoading) {
     return (
@@ -313,7 +344,7 @@ const LinearityOfMasLLoading: React.FC<{
         <table className="w-full">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase border-r">FCD (cm)</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase border-r">FDD (cm)</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">kV</th>
             </tr>
           </thead>
@@ -353,7 +384,7 @@ const LinearityOfMasLLoading: React.FC<{
             <thead className="bg-blue-50">
               <tr>
                 <th rowSpan={2} className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase border-r">mAs Range</th>
-                <th colSpan={measHeaders.length} className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase border-r">
+                <th colSpan={measHeaders.length} className="px-6 py-3 text-center text-xs font-medium text-gray-700  border-r">
                   <div className="flex items-center justify-between px-4">
                     <span>Radiation Output (mGy)</span>
                     {isEditing && (
@@ -363,12 +394,12 @@ const LinearityOfMasLLoading: React.FC<{
                     )}
                   </div>
                 </th>
-                <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase border-r">Avg Output</th>
-                <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase border-r">X (mGy/mAs)</th>
-                <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase border-r">X Max</th>
-                <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase border-r">X Min</th>
-                <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase border-r">CoL</th>
-                <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase">Remarks</th>
+                <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700  border-r">Avg Output</th>
+                <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700  border-r">X (mGy/mAs)</th>
+                <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700  border-r">X Max</th>
+                <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700  border-r">X Min</th>
+                <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700  border-r">CoL</th>
+                <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700 ">Remarks</th>
                 <th rowSpan={2} className="w-12"></th>
               </tr>
               <tr>
@@ -469,8 +500,22 @@ const LinearityOfMasLLoading: React.FC<{
               <Plus className="w-5 h-5" /> Add mAs Range
             </button>
           )}
-          <div className="flex items-center gap-3">
-            <span className="text-sm font-medium text-gray-700">Tolerance (CoL) ≤</span>
+          <div className="flex items-center gap-3 ml-auto flex-wrap justify-end">
+            <span className="text-sm font-medium text-gray-700">Tolerance (CoL)</span>
+            <select
+              value={toleranceOperator}
+              onChange={e => setToleranceOperator(e.target.value)}
+              disabled={!isEditing}
+              className={`px-3 py-2.5 text-center font-bold border-2 border-blue-400 rounded-lg focus:ring-4 focus:ring-blue-200 ${
+                isEditing ? '' : 'bg-gray-100 text-gray-500 cursor-not-allowed border-gray-300'
+              }`}
+            >
+              <option value="<">&lt;</option>
+              <option value=">">&gt;</option>
+              <option value="<=">&lt;=</option>
+              <option value=">=">&gt;=</option>
+              <option value="=">=</option>
+            </select>
             <input
               type="number"
               step="0.001"

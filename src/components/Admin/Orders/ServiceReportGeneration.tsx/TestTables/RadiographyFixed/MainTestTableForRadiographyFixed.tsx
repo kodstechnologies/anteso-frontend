@@ -616,7 +616,7 @@ const MainTestTableForRadiographyFixed: React.FC<MainTestTableProps> = ({ testDa
       <div className="overflow-x-auto print:overflow-visible print:max-w-none flex justify-center">
         <table
           className="border border-black text-xs print:text-[9px] print:min-w-full"
-          style={{ width: 'auto', textAlign: 'center', borderCollapse: 'collapse', borderWidth: 1, borderStyle: 'solid', borderColor: '#000' }}
+          style={{ width: '100', textAlign: 'center', borderCollapse: 'collapse', borderWidth: 1, borderStyle: 'solid', borderColor: '#000' }}
         >
           <thead className="bg-gray-200">
             <tr>

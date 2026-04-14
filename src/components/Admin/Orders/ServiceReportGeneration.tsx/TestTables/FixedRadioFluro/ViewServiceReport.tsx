@@ -90,6 +90,29 @@ const defaultNotes: Note[] = [
   { slNo: "5.7", text: "Name, Address & Contact detail is provided by Customer." },
 ];
 
+/** Backend / forms use several shapes for the same value. */
+const pickUlrFromObject = (obj: any): string | undefined => {
+  if (!obj || typeof obj !== "object") return undefined;
+  const raw =
+    obj.reportULRNumber ??
+    obj.reportUlrNumber ??
+    obj.reportULRNo ??
+    obj.ulrNumber;
+  if (raw == null || raw === "") return undefined;
+  const s = String(raw).trim();
+  if (!s || s === "N/A") return undefined;
+  return s;
+};
+
+const pickUlrFromQaTests = (tests: any[] | undefined): string | undefined => {
+  if (!Array.isArray(tests)) return undefined;
+  for (const t of tests) {
+    const u = pickUlrFromObject(t);
+    if (u) return u;
+  }
+  return undefined;
+};
+
 const ViewServiceReportFixedRadioFluro: React.FC = () => {
   const [searchParams] = useSearchParams();
   const serviceId = searchParams.get("serviceId");
@@ -111,15 +134,25 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
 
       try {
         setLoading(true);
-        const response = await getReportHeader(serviceId);
+        const [response, detailsRes] = await Promise.all([
+          getReportHeader(serviceId),
+          getDetails(serviceId),
+        ]);
+        const detailsData = detailsRes?.data || {};
 
         if (response.exists && response.data) {
           const data = response.data;
+          const resolvedUlr =
+            pickUlrFromObject(data) ||
+            pickUlrFromQaTests(detailsData.qaTests) ||
+            undefined;
           setReport({
             ...data,
+            reportULRNumber: resolvedUlr ?? "",
             toolsUsed: data.toolsUsed || [],
             notes: data.notes || defaultNotes,
           });
+          if (resolvedUlr) setUlrNumber(resolvedUlr);
 
           const fromReport = {
             accuracyOfOperatingPotential: data.accuracyOfOperatingPotentialFixedRadioFluoro || data.accuracyOfOperatingPotentialRadigraphyFixed || null,
@@ -223,12 +256,10 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
       try {
         // First, try to get from service details (qaTests)
         const serviceDetails = await getDetails(serviceId);
-        if (serviceDetails?.data?.qaTests && serviceDetails.data.qaTests.length > 0) {
-          const ulr = serviceDetails.data.qaTests[0]?.reportULRNumber;
-          if (ulr && ulr !== "N/A") {
-            setUlrNumber(ulr);
-            return;
-          }
+        const fromQa = pickUlrFromQaTests(serviceDetails?.data?.qaTests);
+        if (fromQa) {
+          setUlrNumber(fromQa);
+          return;
         }
 
         // Second, try to get from localStorage reportNumbers (matching ServiceDetails2 pattern)
@@ -238,8 +269,11 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
             try {
               const reportNumbers = JSON.parse(localStorage.getItem(key) || '{}');
               const serviceReport = reportNumbers[serviceId];
-              if (serviceReport?.qatest?.reportULRNumber && serviceReport.qatest.reportULRNumber !== "N/A") {
-                setUlrNumber(serviceReport.qatest.reportULRNumber);
+              const fromStore =
+                pickUlrFromObject(serviceReport) ||
+                pickUlrFromObject(serviceReport?.qatest);
+              if (fromStore) {
+                setUlrNumber(fromStore);
                 return;
               }
             } catch (e) {

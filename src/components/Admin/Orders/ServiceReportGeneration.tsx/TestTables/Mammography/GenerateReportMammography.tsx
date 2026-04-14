@@ -31,7 +31,7 @@ import { createMammographySavedExcel, MammographySavedExportData } from "./expor
 
 // Mammography Test Components
 import AccuracyOfOperatingPotential from "../Mammography/AccuracyOfOperatingPotential";
-import LinearityOfMasLLoading from "../Mammography/LinearityOfMasLLoading";
+import LinearityOfMasLoadingAcrossRanges from "../Mammography/LinearityOfMasLoadingAcrossRanges";
 import TotalFiltrationAndAluminium from "../Mammography/TotalFilterationAndAlluminium";
 import ReproducibilityOfOutput from "../Mammography/ReproducibilityOfOutput";
 import RadiationLeakageLevel from "../Mammography/RadiationLeakageLevel";
@@ -68,6 +68,16 @@ interface DetailsResponse {
 }
 
 const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: string | null; qaTestDate?: string | null }> = ({ serviceId, csvFileUrl, qaTestDate }) => {
+    const firstNonEmptyString = (...values: any[]): string => {
+        for (const value of values) {
+            if (value === null || value === undefined) continue;
+            const s = String(value).trim();
+            if (!s || s.toLowerCase() === "n/a") continue;
+            return s;
+        }
+        return "";
+    };
+
     const navigate = useNavigate();
 
     const [loading, setLoading] = useState(true);
@@ -87,7 +97,7 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
         srfDate: "",
         testReportNumber: "",
         issueDate: "",
-        nomenclature: "Mammography Unit",
+        nomenclature: "Mammography",
         make: "",
         model: "",
         slNumber: "",
@@ -96,7 +106,7 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
         pages: "",
         testDate: "",
         testDueDate: "",
-        location: "",
+        location: "At Site",
         temperature: "",
         humidity: "",
         engineerNameRPId: "",
@@ -166,7 +176,8 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
         const sectionToTestName: { [key: string]: string } = {
             '========== ACCURACY OF OPERATING POTENTIAL (kVp) ==========': 'Accuracy of Operating Potential',
             '========== ACCURACY OF IRRADIATION TIME ==========': 'Accuracy of Irradiation Time',
-            '========== LINEARITY OF mAs LOADING (ACROSS mAs RANGES) ==========': 'Linearity of mAs Loading',
+            '========== LINEARITY OF mAs LOADING (ACROSS mAs RANGES) ==========': 'Linearity of mAs Loading Stations',
+            '========== LINEARITY OF mAs LOADING STATIONS ==========': 'Linearity of mAs Loading Stations',
             '========== LINEARITY OF mA LOADING STATIONS ==========': 'Linearity of mA Loading Stations',
             '========== TOTAL FILTRATION & ALUMINIUM EQUIVALENCE ==========': 'Total Filtration & Aluminium',
             '========== REPRODUCIBILITY OF RADIATION OUTPUT ==========': 'Reproducibility of Output',
@@ -231,7 +242,8 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
         const testMarkerToInternalName: Record<string, string> = {
             'ACCURACY OF OPERATING POTENTIAL': 'Accuracy of Operating Potential',
             'ACCURACY OF IRRADIATION TIME': 'Accuracy of Irradiation Time',
-            'LINEARITY OF MAS LOADING': 'Linearity of mAs Loading',
+            'LINEARITY OF MAS LOADING': 'Linearity of mAs Loading Stations',
+            'LINEARITY OF MAS LOADING STATIONS': 'Linearity of mAs Loading Stations',
             'LINEARITY OF MA LOADING STATIONS': 'Linearity of mA Loading Stations',
             'TOTAL FILTRATION & ALUMINIUM': 'Total Filtration & Aluminium',
             'TOTAL FILTRATION AND ALUMINIUM': 'Total Filtration & Aluminium',
@@ -260,9 +272,14 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
                 'Set Time (ms)': 'IrradiationTime_SetTime', 'Measured Time (ms)': 'IrradiationTime_MeasuredTime',
                 'Tol Operator': 'Tolerance_Operator', 'Tol Value': 'Tolerance_Value',
             },
-            'Linearity of mAs Loading': {
-                'FCD': 'ExposureCondition_FCD', 'kV': 'ExposureCondition_kV', 'mAs Range': 'Measurement_mAsRange',
-                'Meas 1': 'Measurement_Meas1', 'Meas 2': 'Measurement_Meas2', 'Meas 3': 'Measurement_Meas3', 'Result': 'Measurement_Meas1',
+            'Linearity of mAs Loading Stations': {
+                'FCD': 'Table1_FCD',
+                'kV': 'Table1_kV',
+                'mAs Applied': 'Table2_mAsApplied',
+                'Meas 1': 'Table2_Meas1',
+                'Meas 2': 'Table2_Meas2',
+                'Meas 3': 'Table2_Meas3',
+                'Tolerance Operator': 'ToleranceOperator',
                 'Tolerance': 'Tolerance',
             },
             'Linearity of mA Loading Stations': {
@@ -278,6 +295,7 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
             'Reproducibility of Output': {
                 'kV': 'OutputRow_kV', 'mAs': 'OutputRow_mAs', 'Meas 1': 'OutputRow_Meas1', 'Meas 2': 'OutputRow_Meas2', 'Meas 3': 'OutputRow_Meas3',
                 'Tolerance': 'Tolerance',
+                'Tolerance Operator': 'ToleranceOperator',
             },
             'Radiation Leakage Level': {
                 'FCD': 'Settings_FCD', 'kV': 'Settings_kV', 'ma': 'Settings_ma', 'Time': 'Settings_time',
@@ -502,7 +520,8 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
             const testNameMap: { [key: string]: string } = {
                 'Accuracy of Operating Potential': 'Accuracy of Operating Potential',
                 'Accuracy of Irradiation Time': 'Accuracy of Irradiation Time',
-                'Linearity of mAs Loading': 'Linearity of mAs Loading',
+                'Linearity of mAs Loading': 'Linearity of mAs Loading Stations',
+                'Linearity of mAs Loading Stations': 'Linearity of mAs Loading Stations',
                 'Linearity of mA Loading Stations': 'Linearity of mA Loading Stations',
                 'Total Filtration & Aluminium': 'Total Filtration & Aluminium',
                 'Reproducibility of Output': 'Reproducibility of Output',
@@ -673,59 +692,104 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
                 }
             }
 
-            // Process Linearity of mAs Loading
-            if (groupedData['Linearity of mAs Loading'] && groupedData['Linearity of mAs Loading'].length > 0) {
+            // Process Linearity of mAs Loading (Across mAs Ranges) — same field layout as Radiography Mobile "Linearity of mAs Loading Stations"
+            const linearityRows =
+                groupedData['Linearity of mAs Loading Stations']?.length
+                    ? groupedData['Linearity of mAs Loading Stations']
+                    : groupedData['Linearity of mAs Loading']?.length
+                      ? groupedData['Linearity of mAs Loading']
+                      : null;
+            if (linearityRows && linearityRows.length > 0) {
                 try {
-                    const data = groupedData['Linearity of mAs Loading'];
-                    const exposureCondition = { fcd: '100', kv: '80' };
-                    const measurementHeaders: string[] = [];
-                    const measurements: any[] = [];
+                    const data = linearityRows;
+                    const table1: any[] = [];
+                    const measHeaderList: string[] = [];
                     let tolerance = '0.1';
+                    let toleranceOperator = '<=';
+                    const table2: any[] = [];
 
-                    data.forEach(row => {
-                        const field = row['Field Name'] || '';
-                        const value = row['Value'] || '';
-                        const rowIndex = parseInt(row['Row Index'] || '0');
-
-                        if (field === 'ExposureCondition_FCD') exposureCondition.fcd = value;
-                        if (field === 'ExposureCondition_kV') exposureCondition.kv = value;
-                        if (field === 'MeasurementHeader') {
-                            if (!measurementHeaders.includes(value)) {
-                                measurementHeaders.push(value);
-                            }
+                    data.forEach((row: any) => {
+                        const field = (row['Field Name'] || '').trim();
+                        const value = (row['Value'] || '').trim();
+                        const idx = parseInt(row['Row Index'] || '0', 10);
+                        if (field.startsWith('Table1_')) {
+                            while (table1.length <= idx) table1.push({ fcd: '100', kv: '80' });
+                            const fn = field.replace('Table1_', '');
+                            if (fn === 'FCD') table1[idx].fcd = value;
+                            if (fn === 'kV') table1[idx].kv = value;
                         }
                         if (field === 'Tolerance') tolerance = value;
-
-                        if (field.startsWith('Measurement_')) {
-                            while (measurements.length <= rowIndex) {
-                                measurements.push({ mAsRange: '', measuredOutputs: [] });
+                        if (field === 'ToleranceOperator') toleranceOperator = value;
+                        if (field === 'MeasHeader' && value && !measHeaderList.includes(value)) measHeaderList.push(value);
+                        if (field.startsWith('Table2_')) {
+                            while (table2.length <= idx) {
+                                table2.push({ mAsRange: '', measuredOutputs: [] as string[] });
                             }
-                            const fieldName = field.replace('Measurement_', '');
-                            if (fieldName === 'mAsRange') {
-                                measurements[rowIndex].mAsRange = value;
-                            } else if (fieldName.startsWith('Meas')) {
-                                const colIndex = parseInt(fieldName.replace('Meas', '')) - 1;
-                                while (measurements[rowIndex].measuredOutputs.length <= colIndex) {
-                                    measurements[rowIndex].measuredOutputs.push(null);
-                                }
-                                // Store as string to match component's expected format
-                                measurements[rowIndex].measuredOutputs[colIndex] = value.trim() === '' ? null : value;
+                            const fn = field.replace('Table2_', '');
+                            if (fn === 'mAsApplied' || fn === 'mAsRange') table2[idx].mAsRange = value;
+                            if (fn.startsWith('Meas')) {
+                                const colIdx = parseInt(fn.replace('Meas', ''), 10) - 1;
+                                while (table2[idx].measuredOutputs.length <= colIdx) table2[idx].measuredOutputs.push('');
+                                table2[idx].measuredOutputs[colIdx] = value;
                             }
                         }
                     });
 
-                    if (measurements.length > 0) {
-                        // Store data for component instead of saving
+                    // Legacy mammography CSV (ExposureCondition_ / Measurement_*)
+                    if (table2.length === 0) {
+                        const exposureCondition = { fcd: '100', kv: '80' };
+                        const measurementHeaders: string[] = [];
+                        const measurements: any[] = [];
+                        data.forEach((row: any) => {
+                            const field = (row['Field Name'] || '').trim();
+                            const value = (row['Value'] || '').trim();
+                            const rowIndex = parseInt(row['Row Index'] || '0', 10);
+                            if (field === 'ExposureCondition_FCD') exposureCondition.fcd = value;
+                            if (field === 'ExposureCondition_kV') exposureCondition.kv = value;
+                            if (field === 'MeasurementHeader' && value && !measurementHeaders.includes(value)) {
+                                measurementHeaders.push(value);
+                            }
+                            if (field === 'Tolerance') tolerance = value;
+                            if (field.startsWith('Measurement_')) {
+                                while (measurements.length <= rowIndex) measurements.push({ mAsRange: '', measuredOutputs: [] });
+                                const fieldName = field.replace('Measurement_', '');
+                                if (fieldName === 'mAsRange') measurements[rowIndex].mAsRange = value;
+                                else if (fieldName.startsWith('Meas')) {
+                                    const colIndex = parseInt(fieldName.replace('Meas', ''), 10) - 1;
+                                    while (measurements[rowIndex].measuredOutputs.length <= colIndex) {
+                                        measurements[rowIndex].measuredOutputs.push(null);
+                                    }
+                                    measurements[rowIndex].measuredOutputs[colIndex] = value.trim() === '' ? null : value;
+                                }
+                            }
+                        });
+                        if (measurements.length > 0) {
+                            setCsvDataForComponents(prev => ({
+                                ...prev,
+                                linearityOfMasLoading: {
+                                    exposureCondition,
+                                    measurementHeaders: measurementHeaders.length > 0 ? measurementHeaders : ['Meas 1', 'Meas 2', 'Meas 3'],
+                                    measurements,
+                                    tolerance,
+                                    toleranceOperator,
+                                },
+                            }));
+                            console.log('✓ Linearity of mAs Loading (legacy CSV) data prepared for form');
+                        } else {
+                            console.log('⚠ Linearity of mAs Loading: No data found');
+                        }
+                    } else if (table2.length > 0) {
                         setCsvDataForComponents(prev => ({
                             ...prev,
                             linearityOfMasLoading: {
-                                exposureCondition,
-                                measurementHeaders: measurementHeaders.length > 0 ? measurementHeaders : ['Meas 1', 'Meas 2', 'Meas 3'],
-                                measurements: measurements,
+                                table1,
+                                measHeaders: measHeaderList.length > 0 ? measHeaderList : ['Meas 1', 'Meas 2', 'Meas 3'],
                                 tolerance,
-                            }
+                                toleranceOperator,
+                                table2,
+                            },
                         }));
-                        console.log('✓ Linearity of mAs Loading data prepared for form');
+                        console.log('✓ Linearity of mAs Loading Stations data prepared for form');
                     } else {
                         console.log('⚠ Linearity of mAs Loading: No data found');
                     }
@@ -889,7 +953,8 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
                 try {
                     const data = groupedData['Reproducibility of Output'];
                     const outputRows: any[] = [];
-                    let tolerance = '5.0';
+                    let tolerance = '0.05';
+                    let toleranceOperator = '<=';
 
                     data.forEach(row => {
                         const field = row['Field Name'] || '';
@@ -897,6 +962,7 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
                         const rowIndex = parseInt(row['Row Index'] || '0');
 
                         if (field === 'Tolerance') tolerance = value;
+                        if (field === 'ToleranceOperator') toleranceOperator = value;
 
                         if (field.startsWith('OutputRow_')) {
                             while (outputRows.length <= rowIndex) {
@@ -922,6 +988,7 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
                             reproducibilityOfOutput: {
                                 outputRows: outputRows,
                                 tolerance,
+                                toleranceOperator,
                             }
                         }));
                         console.log('✓ Reproducibility of Output data prepared for form');
@@ -1277,7 +1344,30 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
                 ]);
 
                 const data = detailsRes.data;
-                const firstTest = data.qaTests[0];
+                const firstTest = Array.isArray(data.qaTests) && data.qaTests.length > 0 ? data.qaTests[0] : null;
+                let cachedReportNumber = "";
+                try {
+                    const cached = localStorage.getItem(`reportNumbers_${serviceId}`);
+                    if (cached) {
+                        const parsed = JSON.parse(cached);
+                        cachedReportNumber = firstNonEmptyString(
+                            parsed?.qaTestReportNumber,
+                            parsed?.testReportNumber,
+                            parsed?.reportNumber,
+                            parsed?.testReportNo
+                        );
+                    }
+                } catch {
+                    cachedReportNumber = "";
+                }
+
+                const resolvedTestReportNumber = firstNonEmptyString(
+                    (firstTest as any)?.qaTestReportNumber,
+                    (firstTest as any)?.testReportNumber,
+                    (firstTest as any)?.reportNumber,
+                    (firstTest as any)?.testReportNo,
+                    cachedReportNumber
+                );
 
                 setDetails(data);
 
@@ -1298,9 +1388,9 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
                     srfNumber: data.srfNumber,
                     srfDate: srfDateStr,
                     reportULRNumber: firstTest?.reportULRNumber || "",
-                    testReportNumber: firstTest?.qaTestReportNumber || "",
+                    testReportNumber: resolvedTestReportNumber,
                     issueDate: new Date().toISOString().split("T")[0],
-                    nomenclature: "Mammography Unit",
+                    nomenclature: "Mammography",
                     make: "",
                     model: data.machineModel,
                     slNumber: data.serialNumber,
@@ -1309,11 +1399,11 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
                     pages: "",
                     testDate: testDateStr,
                     testDueDate: testDueDateStr,
-                    location: data.hospitalAddress,
+                    location: "At Site",
                     temperature: "",
                     humidity: "",
                     engineerNameRPId: data.engineerAssigned?.name || "",
-          rpId: data.rpId || "",
+                    rpId: firstNonEmptyString(data.rpId),
                     category: data.category || "",
                 });
 
@@ -1345,9 +1435,14 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
                             srfNumber: reportData.srfNumber || prev.srfNumber,
                             srfDate: reportData.srfDate || prev.srfDate,
                             reportULRNumber: reportData.reportULRNumber || prev.reportULRNumber,
-                            testReportNumber: reportData.testReportNumber || prev.testReportNumber,
+                            testReportNumber: firstNonEmptyString(
+                                reportData.testReportNumber,
+                                (reportData as any).testReportNo,
+                                (reportData as any).qaTestReportNumber,
+                                prev.testReportNumber
+                            ),
                             issueDate: reportData.issueDate || prev.issueDate,
-                            nomenclature: reportData.nomenclature || prev.nomenclature,
+                            nomenclature: reportData.nomenclature || prev.nomenclature || "Mammography",
                             make: reportData.make || prev.make,
                             model: reportData.model || prev.model,
                             slNumber: reportData.slNumber || prev.slNumber,
@@ -1357,10 +1452,17 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
                             pages: reportData.pages || prev.pages,
                             testDate: reportData.testDate || prev.testDate,
                             testDueDate: reportData.testDueDate || prev.testDueDate,
-                            location: reportData.location || prev.location,
+                            location: "At Site",
                             temperature: reportData.temperature || prev.temperature,
                             humidity: reportData.humidity || prev.humidity,
                             engineerNameRPId: reportData.engineerNameRPId || prev.engineerNameRPId,
+                            rpId: firstNonEmptyString(
+                                reportData.rpId,
+                                (reportData as any).rpid,
+                                (reportData as any).rpID,
+                                (reportData as any).RPId,
+                                prev.rpId
+                            ),
                         }));
 
                         // Load existing notes, or use default if none exist
@@ -1651,9 +1753,16 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
                         <label className="block font-medium mb-1">SRF Date</label>
                         <input type="date" name="srfDate" value={formData.srfDate} onChange={handleInputChange} className="w-full border rounded-md px-3 py-2" />
                     </div>
-                    <div>
+                    <div className="md:col-span-2">
                         <label className="block font-medium mb-1">2.2 Test Report Number</label>
-                        <input type="text" name="testReportNumber" value={formData.testReportNumber} onChange={handleInputChange} className="w-full border rounded-md px-3 py-2" />
+                        <input
+                            type="text"
+                            name="testReportNumber"
+                            value={formData.testReportNumber}
+                            onChange={handleInputChange}
+                            className="w-full border rounded-md px-3 py-2 bg-white"
+                            placeholder="Enter test report number"
+                        />
                     </div>
                     <div>
                         <label className="block font-medium mb-1">Issue Date</label>
@@ -1780,8 +1889,15 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
                         : hasTimer === false
                             ? [
                                 {
-                                    title: "Linearity Of mAs Loading",
-                                    component: <LinearityOfMasLLoading key={refreshKey} serviceId={serviceId} refreshKey={refreshKey} initialData={csvDataForComponents.linearityOfMasLoading} />,
+                                    title: "Linearity Of mAs Loading (Across mAs Ranges)",
+                                    component: (
+                                        <LinearityOfMasLoadingAcrossRanges
+                                            key={refreshKey}
+                                            serviceId={serviceId}
+                                            refreshKey={refreshKey}
+                                            initialData={csvDataForComponents.linearityOfMasLoading}
+                                        />
+                                    ),
                                 },
                             ]
                             : []),

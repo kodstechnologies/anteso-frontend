@@ -1,7 +1,7 @@
 // src/components/reports/ViewServiceReportOPG.tsx
 import React, { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { getReportHeaderForOPG } from "../../../../../../api";
+import { getDetails, getReportHeaderForOPG } from "../../../../../../api";
 import logo from "../../../../../../assets/logo/anteso-logo2.png";
 import logoA from "../../../../../../assets/quotationImg/NABLlogo.png";
 import AntesoQRCode from "../../../../../../assets/quotationImg/qrcode.png";
@@ -78,6 +78,39 @@ const ViewServiceReportOPG: React.FC = () => {
   const [notFound, setNotFound] = useState(false);
   const [testData, setTestData] = useState<any>({});
 
+  const firstNonEmptyString = (...values: any[]): string | undefined => {
+    for (const value of values) {
+      if (value === undefined || value === null) continue;
+      const text = String(value).trim();
+      if (text && text.toLowerCase() !== "n/a" && text.toLowerCase() !== "na") return text;
+    }
+    return undefined;
+  };
+
+  const pickUlrFromObject = (obj: any): string | undefined => {
+    if (!obj || typeof obj !== "object") return undefined;
+    return firstNonEmptyString(
+      obj.reportULRNumber,
+      obj.reportUlrNumber,
+      obj.ulrNumber,
+      obj.ULRNumber,
+      obj.ulrNo,
+      obj.ULRNo,
+      obj.ulr,
+      obj.ULR,
+      obj.qaTestReportULRNo
+    );
+  };
+
+  const pickUlrFromQaTests = (qaTests: any): string | undefined => {
+    if (!Array.isArray(qaTests)) return undefined;
+    for (const test of qaTests) {
+      const ulr = pickUlrFromObject(test);
+      if (ulr) return ulr;
+    }
+    return undefined;
+  };
+
   useEffect(() => {
     const fetchReport = async () => {
       if (!serviceId) {
@@ -88,17 +121,27 @@ const ViewServiceReportOPG: React.FC = () => {
 
       try {
         setLoading(true);
-        const response = await getReportHeaderForOPG(serviceId);
+        const [response, detailsResponse] = await Promise.all([
+          getReportHeaderForOPG(serviceId),
+          getDetails(serviceId).catch(() => null),
+        ]);
 
         if (response?.exists && response.data) {
           const data = response.data;
+          const detailsData = detailsResponse?.data;
+          const resolvedUlr = firstNonEmptyString(
+            pickUlrFromObject(data),
+            pickUlrFromObject(detailsData),
+            pickUlrFromQaTests(detailsData?.qaTests),
+            "N/A"
+          );
 
           setReport({
             customerName: data.customerName || "N/A",
             address: data.address || "N/A",
             srfNumber: data.srfNumber || "N/A",
             srfDate: data.srfDate || "",
-            reportULRNumber: data.reportULRNumber || "N/A",
+            reportULRNumber: resolvedUlr || "N/A",
             testReportNumber: data.testReportNumber || "N/A",
             issueDate: data.issueDate || "",
             nomenclature: data.nomenclature || "OPG",
@@ -171,16 +214,20 @@ const ViewServiceReportOPG: React.FC = () => {
             const outputRows = Array.isArray(ocData.outputRows) ? ocData.outputRows :
               (Array.isArray(ocData.measurements) ? ocData.measurements : []);
             if (outputRows.length === 0) return null;
+            const toleranceOperator = ocData.toleranceOperator || "<=";
+            const toleranceValue = parseFloat(ocData.tolerance || "0.05");
             return {
               ...ocData,
               outputRows: outputRows.map((r: any) => ({
                 ...r,
                 kv: r.kv ?? r.kvp ?? "-",
                 mas: r.mas ?? r.mAs ?? "-",
-                remark: r.remark ?? r.remarks ?? "-",
+                remark: r.remark ?? r.remarks ?? "",
               })),
               measurementHeaders: Array.isArray(ocData.measurementHeaders) ? ocData.measurementHeaders : [],
               ffd: ocData.ffd || "",
+              toleranceOperator,
+              toleranceValue,
             };
           };
 
@@ -538,6 +585,10 @@ const ViewServiceReportOPG: React.FC = () => {
   };
 
   const radiationProtectionSurveyView = testData.radiationProtectionSurvey || testData.radiationSurvey;
+  const nextDetailedSectionNumber = (() => {
+    let sectionNumber = 1;
+    return () => sectionNumber++;
+  })();
 
   return (
     <>
@@ -648,8 +699,9 @@ const ViewServiceReportOPG: React.FC = () => {
                   <tr>
                     <th className="border border-black p-1.5 print:p-0.5 text-center" style={{ width: '6%', padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Sl No.</th>
                     <th className="border border-black p-1.5 print:p-0.5 text-center" style={{ width: '16%', padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Nomenclature</th>
-                    <th className="border border-black p-1.5 print:p-0.5 text-center" style={{ width: '14%', padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Make / Model</th>
-                    <th className="border border-black p-1.5 print:p-0.5 text-center" style={{ width: '14%', padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Sr. No.</th>
+                    <th className="border border-black p-1.5 print:p-0.5 text-center" style={{ width: '10%', padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Make</th>
+                    <th className="border border-black p-1.5 print:p-0.5 text-center" style={{ width: '10%', padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Model</th>
+                    <th className="border border-black p-1.5 print:p-0.5 text-center" style={{ width: '12%', padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Sr. No.</th>
                     <th className="border border-black p-1.5 print:p-0.5 text-center" style={{ width: '14%', padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Range</th>
                     <th className="border border-black p-1.5 print:p-0.5 text-center" style={{ width: '18%', padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Certificate No.</th>
                     <th className="border border-black p-1.5 print:p-0.5 text-center" style={{ width: '18%', padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Valid Till</th>
@@ -660,14 +712,15 @@ const ViewServiceReportOPG: React.FC = () => {
                     <tr key={i} style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
                       <td className="border border-black p-1.5 print:p-0.5 text-center" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{i + 1}</td>
                       <td className="border border-black p-1.5 print:p-0.5 text-center" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{tool.nomenclature}</td>
-                      <td className="border border-black p-1.5 print:p-0.5 text-center" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{tool.make} / {tool.model}</td>
+                      <td className="border border-black p-1.5 print:p-0.5 text-center" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{tool.make || "-"}</td>
+                      <td className="border border-black p-1.5 print:p-0.5 text-center" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{tool.model || "-"}</td>
                       <td className="border border-black p-1.5 print:p-0.5 text-center" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{tool.SrNo}</td>
                       <td className="border border-black p-1.5 print:p-0.5 text-center" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{tool.range}</td>
                       <td className="border border-black p-1.5 print:p-0.5 text-center" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{tool.calibrationCertificateNo}</td>
                       <td className="border border-black p-1.5 print:p-0.5 text-center" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{formatDate(tool.calibrationValidTill)}</td>
                     </tr>
                   )) : (
-                    <tr><td colSpan={7} className="text-center py-2 print:py-1" style={{ padding: '0px 1px', fontSize: '11px' }}>No tools recorded</td></tr>
+                    <tr><td colSpan={8} className="text-center py-2 print:py-1" style={{ padding: '0px 1px', fontSize: '11px' }}>No tools recorded</td></tr>
                   )}
                 </tbody>
               </table>
@@ -714,7 +767,7 @@ const ViewServiceReportOPG: React.FC = () => {
             {/* 1. Accuracy of Irradiation Time */}
             {testData.irradiationTime?.irradiationTimes?.length > 0 && (
               <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
-                <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>1. Accuracy of Irradiation Time</h3>
+                <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>{nextDetailedSectionNumber()}. Accuracy of Irradiation Time</h3>
                 {testData.irradiationTime.testConditions && (
                   <div className="mb-6 print:mb-1 bg-gray-50 p-4 print:p-1 rounded border overflow-x-auto" style={{ marginBottom: '4px', padding: '2px 4px' }}>
                     <p className="font-semibold mb-2 print:mb-0.5 print:text-xs" style={{ marginBottom: '2px', fontSize: '8px' }}>Test Conditions:</p>
@@ -795,7 +848,7 @@ const ViewServiceReportOPG: React.FC = () => {
             {/* 2. Accuracy of Operating Potential and Total Filtration */}
             {(testData.operatingPotential?.rows?.length > 0 || testData.operatingPotential?.totalFiltration) && (
               <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
-                <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>2. Accuracy of Operating Potential</h3>
+                <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>{nextDetailedSectionNumber()}. Accuracy of Operating Potential</h3>
 
                 {testData.operatingPotential?.rows?.length > 0 && (
                   <div className="mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
@@ -911,10 +964,21 @@ const ViewServiceReportOPG: React.FC = () => {
             )}
 
            
-            {/* 4. Linearity of mA Loading */}
-            {testData.linearityOfMaLoading?.table2Rows?.length > 0 && (
+            {/* 4. Linearity of mA / mAs Loading */}
+            {testData.linearityOfMaLoading?.table2Rows?.length > 0 && (() => {
+              const linearityRows = testData.linearityOfMaLoading.table2Rows || [];
+              const table1 = Array.isArray(testData.linearityOfMaLoading.table1)
+                ? testData.linearityOfMaLoading.table1?.[0]
+                : testData.linearityOfMaLoading.table1;
+              const hasTime = table1?.time !== undefined && table1?.time !== null && String(table1?.time).trim() !== "";
+              const hasMasShape = linearityRows.some((row: any) => row.mAsRange || row.mAsApplied);
+              const linearityHeading = (!hasTime || hasMasShape)
+                ? "Linearity of mAs Loading (Coefficient of Linearity)"
+                : "Linearity of mA Loading (Coefficient of Linearity)";
+
+              return (
               <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
-                <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>4. Linearity of mA Loading</h3>
+                <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>{nextDetailedSectionNumber()}. {linearityHeading}</h3>
                 {(testData.linearityOfMaLoading.table1?.fcd != null || testData.linearityOfMaLoading.table1?.kv != null || testData.linearityOfMaLoading.table1?.time != null) && (
                   <div className="mb-6 print:mb-1 bg-gray-50 p-4 print:p-1 rounded border overflow-x-auto" style={{ marginBottom: '4px', padding: '2px 4px' }}>
                     <p className="font-semibold mb-2 print:mb-0.5 print:text-xs" style={{ marginBottom: '2px', fontSize: '8px' }}>Test Conditions:</p>
@@ -970,12 +1034,12 @@ const ViewServiceReportOPG: React.FC = () => {
                   </p>
                 </div>
               </div>
-            )}
+            )})()}
 
  {/* 3. Output Consistency */}
             {testData.outputConsistency?.outputRows?.length > 0 && (
               <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
-                <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>5. Output Consistency</h3>
+                <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>{nextDetailedSectionNumber()}. Output Consistency</h3>
                 {testData.outputConsistency.ffd != null && testData.outputConsistency.ffd !== "" && (
                   <div className="mb-6 print:mb-1 bg-gray-50 p-4 print:p-1 rounded border overflow-x-auto" style={{ marginBottom: '4px', padding: '2px 4px' }}>
                     <p className="font-semibold mb-2 print:mb-0.5 print:text-xs" style={{ marginBottom: '2px', fontSize: '8px' }}>Test Conditions:</p>
@@ -1045,7 +1109,40 @@ const ViewServiceReportOPG: React.FC = () => {
                                 return Number.isFinite(computedCov) ? computedCov.toFixed(4) : "-";
                               })()}
                             </td>
-                            <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}><span className={row.remark === "Pass" || row.remark === "PASS" ? "text-green-600 font-semibold" : row.remark === "Fail" || row.remark === "FAIL" ? "text-red-600 font-semibold" : ""}>{row.remark}</span></td>
+                            <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>
+                              {(() => {
+                                const covRaw = row.cov ?? row.cv;
+                                const covNum = covRaw != null && covRaw !== "" ? parseFloat(String(covRaw)) : NaN;
+                                const tolNum = parseFloat(String(testData.outputConsistency.toleranceValue ?? testData.outputConsistency.tolerance ?? "0.05"));
+                                const op = testData.outputConsistency.toleranceOperator || "<=";
+                                let computedRemark = row.remark;
+                                if ((!computedRemark || computedRemark === "-") && !Number.isNaN(covNum) && !Number.isNaN(tolNum)) {
+                                  switch (op) {
+                                    case "<":
+                                      computedRemark = covNum < tolNum ? "Pass" : "Fail";
+                                      break;
+                                    case ">":
+                                      computedRemark = covNum > tolNum ? "Pass" : "Fail";
+                                      break;
+                                    case ">=":
+                                      computedRemark = covNum >= tolNum ? "Pass" : "Fail";
+                                      break;
+                                    case "=":
+                                      computedRemark = Math.abs(covNum - tolNum) < 0.0001 ? "Pass" : "Fail";
+                                      break;
+                                    case "<=":
+                                    default:
+                                      computedRemark = covNum <= tolNum ? "Pass" : "Fail";
+                                  }
+                                }
+
+                                return (
+                                  <span className={computedRemark === "Pass" || computedRemark === "PASS" ? "text-green-600 font-semibold" : computedRemark === "Fail" || computedRemark === "FAIL" ? "text-red-600 font-semibold" : ""}>
+                                    {computedRemark || "-"}
+                                  </span>
+                                );
+                              })()}
+                            </td>
                           </tr>
                         );
                       })}
@@ -1054,7 +1151,7 @@ const ViewServiceReportOPG: React.FC = () => {
                 </div>
                 <div className="bg-gray-50 p-4 print:p-1 rounded border" style={{ padding: '2px 4px', marginTop: '4px' }}>
                   <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
-                    <strong>Acceptance Criteria:</strong> CoV &lt; {typeof testData.outputConsistency.tolerance === 'object' ? (testData.outputConsistency.tolerance?.value ?? "0.05") : (testData.outputConsistency.tolerance || "0.05")}
+                    <strong>Acceptance Criteria:</strong> CoV {testData.outputConsistency.toleranceOperator || "<="} {typeof testData.outputConsistency.tolerance === 'object' ? (testData.outputConsistency.tolerance?.value ?? "0.05") : (testData.outputConsistency.tolerance || "0.05")}
                   </p>
                 </div>
               </div>
@@ -1064,7 +1161,7 @@ const ViewServiceReportOPG: React.FC = () => {
             {/* 6. Tube Housing Leakage — layout aligned with RadiographyFixed ViewServiceReport */}
             {testData.radiationLeakage && (testData.radiationLeakage.leakageMeasurements?.length > 0 || testData.radiationLeakage.fcd) && (
               <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: "8px" }}>
-                <h3 className="text-xl font-bold mb-2 print:text-sm" style={{ fontSize: "12px" }}>6. Tube Housing Leakage</h3>
+                <h3 className="text-xl font-bold mb-2 print:text-sm" style={{ fontSize: "12px" }}>{nextDetailedSectionNumber()}. Tube Housing Leakage</h3>
                 <div style={{ marginBottom: "4px" }}>
                   <table style={{ ...tableStyle, width: "100%" }} className="compact-table">
                     <thead>
@@ -1232,7 +1329,7 @@ const ViewServiceReportOPG: React.FC = () => {
             {radiationProtectionSurveyView && (
               <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: "8px" }}>
                 <h3 className="text-xl font-bold mb-2 print:text-sm" style={{ fontSize: "12px" }}>
-                  7. Details of Radiation Protection Survey
+                  {nextDetailedSectionNumber()}. Details of Radiation Protection Survey
                 </h3>
                 {(radiationProtectionSurveyView.surveyDate || radiationProtectionSurveyView.hasValidCalibration) && (
                   <div style={{ marginBottom: "4px" }}>

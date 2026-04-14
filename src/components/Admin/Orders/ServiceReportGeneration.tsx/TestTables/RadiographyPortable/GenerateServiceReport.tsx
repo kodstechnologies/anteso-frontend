@@ -97,7 +97,7 @@ const RadiographyPortable: React.FC<{ serviceId: string; qaTestDate?: string | n
     pages: "",
     testDate: "",
     testDueDate: "",
-    location: "",
+    location: "At Site",
     temperature: "",
     humidity: "",
     engineerNameRPId: "",
@@ -175,7 +175,7 @@ const RadiographyPortable: React.FC<{ serviceId: string; qaTestDate?: string | n
           pages: "",
           testDate: firstTest?.createdAt ? firstTest.createdAt.split("T")[0] : "",
           testDueDate: "",
-          location: data.hospitalAddress,
+          location: "At Site",
           temperature: "",
           humidity: "",
           engineerNameRPId: data.engineerAssigned?.name || "",
@@ -281,7 +281,7 @@ const RadiographyPortable: React.FC<{ serviceId: string; qaTestDate?: string | n
       { name: "Central Beam Alignment", check: async () => { try { return isSaved(await getCentralBeamAlignmentByServiceIdForRadiographyPortable(serviceId)); } catch { return false; } } },
       { name: "Effective Focal Spot Measurement", check: async () => { try { return isSaved(await getEffectiveFocalSpotByServiceIdForRadiographyPortable(serviceId)); } catch { return false; } } },
       { name: "Accuracy Of Operating Potential & Total Filtration", check: async () => { try { return isSaved(await getAccuracyOfOperatingPotentialByServiceIdForRadiographyPortable(serviceId)); } catch { return false; } } },
-      { name: "Linearity Of mAs Loading Stations", check: async () => { try { return isSaved(await getLinearityOfMasLoadingStationsByServiceIdForRadiographyPortable(serviceId)); } catch { return false; } } },
+      { name: "Linearity (mA/mAs Loading)", check: async () => { try { return isSaved(await getLinearityOfMasLoadingStationsByServiceIdForRadiographyPortable(serviceId)); } catch { return false; } } },
       { name: "Output Consistency", check: async () => { try { return isSaved(await getConsistencyOfRadiationOutputByServiceIdForRadiographyPortable(serviceId)); } catch { return false; } } },
       { name: "Tube Housing Leakage", check: async () => { try { return isSaved(await getRadiationLeakageLevelByServiceIdForRadiographyPortable(serviceId)); } catch { return false; } } },
     ];
@@ -371,7 +371,9 @@ const RadiographyPortable: React.FC<{ serviceId: string; qaTestDate?: string | n
       'EFFECTIVE FOCAL SPOT MEASUREMENT': 'Effective Focal Spot',
       'ACCURACY OF IRRADIATION TIME': 'Accuracy of Irradiation Time',
       'ACCURACY OF OPERATING POTENTIAL': 'Accuracy of Operating Potential',
-      'LINEARITY OF mAs LOADING STATIONS': 'Linearity of mAs Loading Stations',
+      'LINEARITY OF mAs LOADING STATIONS': 'Linearity Of mAs Loading',
+      'LINEARITY OF mAs LOADING': 'Linearity Of mAs Loading',
+      'LINEARITY OF mA LOADING': 'Linearity Of mA Loading',
       'CONSISTENCY OF RADIATION OUTPUT': 'Consistency of Radiation Output',
       'REPRODUCIBILITY OF RADIATION OUTPUT (CONSISTENCY TEST)': 'Consistency of Radiation Output',
       'TUBE HOUSING LEAKAGE LEVEL': 'Radiation Leakage Level',
@@ -410,11 +412,21 @@ const RadiographyPortable: React.FC<{ serviceId: string; qaTestDate?: string | n
         'Set kVp': 'Table2_setKV', '@ mA 10': 'Table2_ma10', '@ mA 100': 'Table2_ma100', '@ mA 200': 'Table2_ma200', 'Measured kVp': 'Table2_avgKvp',
         'Tolerance (%)': 'Tolerance_Value', 'Remarks': 'Table2_remarks'
       },
-      'Linearity of mAs Loading Stations': {
+      // mAs linearity: exposure = FCD + kV only (no time). Table: mAs, X (mGy/mAs).
+      'Linearity Of mAs Loading': {
         'FCD (cm)': 'Table1_fcd', 'kV': 'Table1_kv',
-        'mAs Range': 'Table2_mAsRange', 'Meas 1': 'Table2_meas1', 'Meas 2': 'Table2_meas2', 'Meas 3': 'Table2_meas3',
+        'mAs': 'Table2_mAsRange', 'mAs Range': 'Table2_mAsRange',
+        'Meas 1': 'Table2_meas1', 'Meas 2': 'Table2_meas2', 'Meas 3': 'Table2_meas3',
         'Average': 'Table2_average', 'X (mGy/mAs)': 'Table2_x',
-        'Tolerance (%)': 'Tolerance_Value', 'Remarks': 'Table2_remarks'
+        'Tolerance (%)': 'Tolerance_Value', 'Tolerance Operator': 'Tolerance_operator', 'Remarks': 'Table2_remarks'
+      },
+      // mA linearity: exposure includes Time (sec). Table: mA, X (mGy/mA*s).
+      'Linearity Of mA Loading': {
+        'FCD (cm)': 'Table1_fcd', 'kV': 'Table1_kv', 'Time (sec)': 'Table1_time',
+        'mA': 'Table2_ma', 'Meas 1': 'Table2_meas1', 'Meas 2': 'Table2_meas2', 'Meas 3': 'Table2_meas3',
+        'Meas 4': 'Table2_meas4', 'Meas 5': 'Table2_meas5',
+        'Average': 'Table2_average', 'X (mGy/mA*s)': 'Table2_x', 'X (mGy/mA)': 'Table2_x',
+        'Tolerance (%)': 'Tolerance_Value', 'Tolerance Operator': 'Tolerance_operator', 'Remarks': 'Table2_remarks'
       },
       'Consistency of Radiation Output': {
         'FCD (cm)': 'Table1_value', 'kVp': 'Table2_kv', 'kV': 'Table2_kv', 'mAs': 'Table2_mas',
@@ -623,6 +635,94 @@ const RadiographyPortable: React.FC<{ serviceId: string; qaTestDate?: string | n
           testConditions: cond,
           irradiationTimes,
           tolerance: { operator: tolOperator, value: tolValue },
+        };
+      }
+
+      // Linearity Of mAs Loading — structured initialData (Radiography Fixed: table1 is FCD + kV only; no time)
+      const linearityMasRows = groupedData['Linearity Of mAs Loading'];
+      if (linearityMasRows && Array.isArray(linearityMasRows) && linearityMasRows.length > 0) {
+        let t1Fcd = '';
+        let t1Kv = '';
+        linearityMasRows.forEach((row: any) => {
+          const fn = String(row['Field Name'] || '');
+          const val = String(row['Value'] ?? '').trim();
+          if (fn === 'Table1_fcd') t1Fcd = val;
+          if (fn === 'Table1_kv') t1Kv = val;
+        });
+        const t2Grouped: Record<number, Record<string, string>> = {};
+        linearityMasRows
+          .filter((row: any) => String(row['Field Name'] || '').startsWith('Table2_'))
+          .forEach((row: any) => {
+            const fieldName = String(row['Field Name']).replace('Table2_', '');
+            const rowIndex = Number(row['Row Index']) || 0;
+            if (!t2Grouped[rowIndex]) t2Grouped[rowIndex] = {};
+            t2Grouped[rowIndex][fieldName] = String(row['Value'] ?? '').trim();
+          });
+        const rowIndices = Object.keys(t2Grouped).sort((a, b) => Number(a) - Number(b));
+        let maxMeas = 3;
+        rowIndices.forEach((idx) => {
+          const r = t2Grouped[Number(idx)];
+          for (let j = 1; j <= 10; j++) {
+            if (r[`meas${j}`]) maxMeas = Math.max(maxMeas, j);
+          }
+        });
+        const table2 = rowIndices.map((idx) => {
+          const r = t2Grouped[Number(idx)];
+          const measuredOutputs: string[] = [];
+          for (let j = 1; j <= maxMeas; j++) measuredOutputs.push(r[`meas${j}`] || '');
+          return { mAsRange: r.mAsRange || '', measuredOutputs };
+        });
+        const tolVal = linearityMasRows.find((row: any) => row['Field Name'] === 'Tolerance_Value');
+        const tolOp = linearityMasRows.find((row: any) => row['Field Name'] === 'Tolerance_operator');
+        (groupedData as any).linearityOfMasLoading = {
+          table1: { fcd: t1Fcd, kv: t1Kv },
+          table2,
+          tolerance: tolVal ? String(tolVal['Value'] ?? '').trim() || '0.1' : '0.1',
+          toleranceOperator: tolOp ? String(tolOp['Value'] ?? '').trim() || '<=' : '<=',
+        };
+      }
+
+      // Linearity Of mA Loading — structured initialData (Radiography Fixed–style)
+      const linearityMaRows = groupedData['Linearity Of mA Loading'];
+      if (linearityMaRows && Array.isArray(linearityMaRows) && linearityMaRows.length > 0) {
+        const table1 = { fcd: '', kv: '', time: '' };
+        linearityMaRows.forEach((row: any) => {
+          const f = String(row['Field Name'] || '');
+          const v = String(row['Value'] ?? '').trim();
+          if (f === 'Table1_fcd') table1.fcd = v;
+          if (f === 'Table1_kv') table1.kv = v;
+          if (f === 'Table1_time') table1.time = v;
+        });
+        const t2Grouped: Record<number, Record<string, string>> = {};
+        linearityMaRows
+          .filter((row: any) => String(row['Field Name'] || '').startsWith('Table2_'))
+          .forEach((row: any) => {
+            const fieldName = String(row['Field Name']).replace('Table2_', '');
+            const rowIndex = Number(row['Row Index']) || 0;
+            if (!t2Grouped[rowIndex]) t2Grouped[rowIndex] = {};
+            t2Grouped[rowIndex][fieldName] = String(row['Value'] ?? '').trim();
+          });
+        const rowIndices = Object.keys(t2Grouped).sort((a, b) => Number(a) - Number(b));
+        let maxMeas = 3;
+        rowIndices.forEach((idx) => {
+          const r = t2Grouped[Number(idx)];
+          for (let j = 1; j <= 10; j++) {
+            if (r[`meas${j}`]) maxMeas = Math.max(maxMeas, j);
+          }
+        });
+        const table2 = rowIndices.map((idx) => {
+          const r = t2Grouped[Number(idx)];
+          const measuredOutputs: string[] = [];
+          for (let j = 1; j <= maxMeas; j++) measuredOutputs.push(r[`meas${j}`] || '');
+          return { mAApplied: r.ma || '', measuredOutputs };
+        });
+        const tolVal = linearityMaRows.find((row: any) => row['Field Name'] === 'Tolerance_Value');
+        const tolOp = linearityMaRows.find((row: any) => row['Field Name'] === 'Tolerance_operator');
+        (groupedData as any).linearityOfMaLoading = {
+          table1,
+          table2,
+          tolerance: tolVal ? String(tolVal['Value'] ?? '').trim() || '0.1' : '0.1',
+          toleranceOperator: tolOp ? String(tolOp['Value'] ?? '').trim() || '<=' : '<=',
         };
       }
 
@@ -1082,19 +1182,31 @@ const RadiographyPortable: React.FC<{ serviceId: string; qaTestDate?: string | n
             : []),
 
           { title: "Accuracy Of Operating Potential & Total Filtration", component: <TotalFilteration serviceId={serviceId} initialData={csvDataForComponents.totalFiltration} csvDataVersion={csvDataVersion} /> },
-          // Linearity Test — Conditional on timer choice
+          // Linearity Test — Conditional (same titles / props pattern as Radiography Fixed)
           ...(hasTimer === true
             ? [
               {
                 title: "Linearity Of mA Loading",
-                component: <LinearityOfMaLoadingStations serviceId={serviceId} />,
+                component: (
+                  <LinearityOfMaLoadingStations
+                    serviceId={serviceId}
+                    initialData={csvDataForComponents.linearityOfMaLoading}
+                    csvDataVersion={csvDataVersion}
+                  />
+                ),
               },
             ]
             : hasTimer === false
               ? [
                 {
-                  title: "Linearity Of mAs Loading Stations",
-                  component: <LinearityOfMasLoadingStations serviceId={serviceId} csvData={csvDataForComponents['Linearity of mAs Loading Stations']} refreshKey={refreshKey} />,
+                  title: "Linearity Of mAs Loading",
+                  component: (
+                    <LinearityOfMasLoadingStations
+                      serviceId={serviceId}
+                      initialData={csvDataForComponents.linearityOfMasLoading}
+                      csvDataVersion={csvDataVersion}
+                    />
+                  ),
                 },
               ]
               : []),

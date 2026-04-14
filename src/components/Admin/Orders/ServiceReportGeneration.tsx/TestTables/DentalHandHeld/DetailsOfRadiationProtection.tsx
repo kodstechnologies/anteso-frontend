@@ -9,6 +9,7 @@ import {
   getRadiationProtectionSurveyByServiceIdForDentalHandHeld,
   getRadiationProtectionSurveyByTestIdForDentalHandHeld,
   updateRadiationProtectionSurveyForDentalHandHeld,
+  getDetails,
   getTools,
 } from "../../../../../../api";
 
@@ -55,6 +56,12 @@ const DetailsOfRadiationProtection: React.FC<Props> = ({ serviceId, testId: prop
     { id: "8", location: "Outside Patient Entrance Door", mRPerHr: "", mRPerWeek: "", result: "", calculatedResult: "", category: "public" },
     { id: "9", location: "Patient Waiting Area", mRPerHr: "", mRPerWeek: "", result: "", calculatedResult: "", category: "public" },
   ]);
+
+  const toInputDate = (value: any): string => {
+    if (!value) return '';
+    const asString = String(value);
+    return asString.includes('T') ? asString.split('T')[0] : asString;
+  };
 
   const calculateMRPerWeek = (mRPerHr: string) => {
     const hr = parseFloat(mRPerHr) || 0;
@@ -128,6 +135,21 @@ const DetailsOfRadiationProtection: React.FC<Props> = ({ serviceId, testId: prop
     const formatted = initialSurveyDate ? (typeof initialSurveyDate === 'string' ? initialSurveyDate.split('T')[0] : '') : '';
     if (formatted) setSurveyDate(prev => prev || formatted);
   }, [initialSurveyDate]);
+
+  useEffect(() => {
+    const prefillSurveyDateFromSrf = async () => {
+      if (!serviceId) return;
+      try {
+        const detailsRes = await getDetails(serviceId);
+        const details = detailsRes?.data;
+        const srfDate = toInputDate(details?.srfDate || details?.orderCreatedAt);
+        if (srfDate) setSurveyDate(prev => prev || srfDate);
+      } catch {
+        // Ignore SRF prefill failures; survey flow should continue.
+      }
+    };
+    prefillSurveyDateFromSrf();
+  }, [serviceId]);
 
   useEffect(() => {
     const load = async () => {

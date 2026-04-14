@@ -51,6 +51,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
   ]);
 
   const [tolerance, setTolerance] = useState<string>('0.1');
+  const [toleranceOperator, setToleranceOperator] = useState<string>('<=');
 
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -161,7 +162,27 @@ const processedTable2 = useMemo(() => {
   const colVal = xMax !== '—' && xMin !== '—' && (parseFloat(xMax) + parseFloat(xMin)) > 0
     ? ((parseFloat(xMax) - parseFloat(xMin)) / (parseFloat(xMax) + parseFloat(xMin))).toFixed(3)
     : '—';
-  const pass = colVal !== '—' && parseFloat(colVal) <= tol;
+  let pass = false;
+  if (colVal !== '—') {
+    const colNum = parseFloat(colVal);
+    switch (toleranceOperator) {
+      case '<':
+        pass = colNum < tol;
+        break;
+      case '>':
+        pass = colNum > tol;
+        break;
+      case '>=':
+        pass = colNum >= tol;
+        break;
+      case '=':
+        pass = Math.abs(colNum - tol) < 0.0001;
+        break;
+      case '<=':
+      default:
+        pass = colNum <= tol;
+    }
+  }
 
   return rowsWithX.map(row => ({
     ...row,
@@ -170,7 +191,7 @@ const processedTable2 = useMemo(() => {
     col: colVal,
     remarks: pass ? 'Pass' : colVal === '—' ? '' : 'Fail',
   }));
-}, [table2Rows, tolerance, table1Row.time]); // Add table1Row.time to dependencies
+}, [table2Rows, tolerance, toleranceOperator, table1Row.time]); // Add table1Row.time to dependencies
   // === Form Valid ===
   const isFormValid = useMemo(() => {
     return (
@@ -222,6 +243,7 @@ const processedTable2 = useMemo(() => {
             }
           }
           setTolerance(data.tolerance || '0.1');
+          setToleranceOperator(data.toleranceOperator || '<=');
           setHasSaved(true);
           setIsEditing(false);
         } else {
@@ -383,6 +405,7 @@ const processedTable2 = useMemo(() => {
           remarks: r.remarks || '',
         })),
         tolerance,
+        toleranceOperator,
       };
 
       let result;
@@ -653,7 +676,19 @@ const processedTable2 = useMemo(() => {
             </button>
           )}
           <div className="flex items-center gap-2 ml-auto">
-            <span className="text-sm font-medium text-gray-700">Tolerance (CoL) less than</span>
+            <span className="text-sm font-medium text-gray-700">Tolerance (CoL)</span>
+            <select
+              value={toleranceOperator}
+              onChange={e => setToleranceOperator(e.target.value)}
+              disabled={isViewMode}
+              className={`px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'}`}
+            >
+              <option value="<=">{'<='}</option>
+              <option value="<">{'<'}</option>
+              <option value=">=">{'>='}</option>
+              <option value=">">{'>'}</option>
+              <option value="=">{'='}</option>
+            </select>
             <input
               type="number"
               step="0.001"

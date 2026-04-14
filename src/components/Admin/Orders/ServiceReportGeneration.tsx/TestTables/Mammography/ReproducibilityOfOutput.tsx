@@ -10,6 +10,31 @@ import {
   updateReproducibilityOfOutputForMammography,
 } from '../../../../../../api';
 
+/** Max CoV as decimal (e.g. 0.05). Values >1 treated as percent (5 → 0.05). Matches mammography API. */
+const parseToleranceToDecimal = (tolerance: string): number => {
+  const t = parseFloat(tolerance);
+  if (isNaN(t) || t < 0) return 0.05;
+  if (t <= 1) return t;
+  return t / 100;
+};
+
+const compareCoVToTolerance = (cov: number, tolDecimal: number, operator: string): boolean => {
+  switch (operator) {
+    case '<':
+      return cov < tolDecimal;
+    case '>':
+      return cov > tolDecimal;
+    case '<=':
+      return cov <= tolDecimal;
+    case '>=':
+      return cov >= tolDecimal;
+    case '=':
+      return Math.abs(cov - tolDecimal) < 1e-6;
+    default:
+      return cov <= tolDecimal;
+  }
+};
+
 // ---------- Radiation Output ----------
 interface OutputRow {
   id: string;
@@ -31,6 +56,7 @@ interface SavedData {
     remark: string;
   }[];
   tolerance?: string;
+  toleranceOperator?: string;
   _id?: string;
 }
 
@@ -41,6 +67,7 @@ const ReproducibilityOfOutput: React.FC<{
     fdd?: string;
     outputRows?: Array<{ kv: string; mas: string; outputs: string[] }>;
     tolerance?: string;
+    toleranceOperator?: string;
   };
 }> = ({ serviceId, refreshKey, initialData }) => {
   const [testId, setTestId] = useState<string | null>(null);
@@ -74,6 +101,7 @@ const ReproducibilityOfOutput: React.FC<{
 
   // ---- Tolerance ------------------------------------------------------
   const [tolerance, setTolerance] = useState<string>('0.05');
+  const [toleranceOperator, setToleranceOperator] = useState<string>('<=');
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -82,8 +110,7 @@ const ReproducibilityOfOutput: React.FC<{
 
   // Auto-calculate Avg, CV, and Remark for each row
   const rowsWithCalc = useMemo(() => {
-    // Tolerance value is a decimal (e.g., 0.05 for 5%) to match Radiography Fixed
-    const tolValueDecimal = parseFloat(tolerance) || 0.05;
+    const tolValueDecimal = parseToleranceToDecimal(tolerance);
 
     return outputRows.map((row): OutputRow & { remark: 'Pass' | 'Fail' | '' } => {
       const nums = row.outputs
@@ -106,8 +133,7 @@ const ReproducibilityOfOutput: React.FC<{
         cov = mean > 0 ? stdDev / mean : 0; // CoV as decimal
       }
 
-      // Compare CoV (decimal) with tolerance (decimal)
-      const passes = cov <= tolValueDecimal;
+      const passes = compareCoVToTolerance(cov, tolValueDecimal, toleranceOperator);
 
       return {
         ...row,
@@ -116,7 +142,7 @@ const ReproducibilityOfOutput: React.FC<{
         remark: passes ? 'Pass' : 'Fail',
       };
     });
-  }, [outputRows, tolerance]);
+  }, [outputRows, tolerance, toleranceOperator]);
 
   // ---- Column handling ------------------------------------------------
   const addOutputColumn = () => {
@@ -177,6 +203,9 @@ const ReproducibilityOfOutput: React.FC<{
       if (initialData.tolerance) {
         setTolerance(initialData.tolerance);
       }
+      if (initialData.toleranceOperator) {
+        setToleranceOperator(initialData.toleranceOperator);
+      }
       setIsEditing(true);
       setIsLoading(false);
       console.log('ReproducibilityOfOutput: CSV data loaded into form');
@@ -204,6 +233,7 @@ const ReproducibilityOfOutput: React.FC<{
       }]);
       setOutputHeaders(['Meas 1', 'Meas 2', 'Meas 3', 'Meas 4', 'Meas 5']);
       setTolerance('0.05');
+      setToleranceOperator('<=');
       setHasSaved(false);
       setIsEditing(true);
     }
@@ -243,6 +273,7 @@ const ReproducibilityOfOutput: React.FC<{
           }
 
           if (data.tolerance) setTolerance(String(data.tolerance));
+          setToleranceOperator(data.toleranceOperator || '<=');
 
           setHasSaved(true);
           setIsEditing(false);
@@ -277,6 +308,7 @@ const ReproducibilityOfOutput: React.FC<{
         remark: r.remark || '',
       })),
       tolerance,
+      toleranceOperator,
     };
 
     try {
@@ -618,22 +650,36 @@ const ReproducibilityOfOutput: React.FC<{
 
       <div className="bg-white shadow-md rounded-lg p-6">
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          Acceptance Criteria (CV ≤ {tolerance || '5.0'}%)
+          Acceptance criteria (CoV vs limit)
         </label>
-        <div className="flex items-center gap-2 max-w-xs">
-          <span className="text-sm text-gray-600">CV ≤</span>
+        <div className="flex flex-wrap items-center gap-2 max-w-2xl">
+          <span className="text-sm text-gray-600">CoV</span>
+          <select
+            value={toleranceOperator}
+            onChange={(e) => setToleranceOperator(e.target.value)}
+            disabled={isViewMode}
+            className={`px-3 py-2 border-2 border-blue-400 rounded-md text-sm font-bold text-center ${isViewMode ? 'bg-gray-50 cursor-not-allowed border-gray-300' : ''}`}
+          >
+            <option value="<">&lt;</option>
+            <option value=">">&gt;</option>
+            <option value="<=">&lt;=</option>
+            <option value=">=">&gt;=</option>
+            <option value="=">=</option>
+          </select>
           <input
             type="text"
             value={tolerance}
             onChange={(e) => setTolerance(e.target.value)}
             disabled={isViewMode}
-            className={`w-24 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm text-center font-medium ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
-            placeholder="5.0"
+            className={`w-28 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm text-center font-medium ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+            placeholder="0.05"
           />
-          <span className="text-sm text-gray-600">%</span>
+          <span className="text-xs text-gray-500">
+            Limit as decimal (e.g. 0.05) or percent (e.g. 5 → 5%)
+          </span>
         </div>
         <p className="text-xs text-gray-600 mt-2">
-          IEC 61223-3-1 & AERB: Coefficient of Variation should be ≤ {tolerance || '5.0'}%
+          CoV is std/mean (decimal). Compare using the operator above to the limit (0.05 = 5%, or enter 5 for 5%).
         </p>
       </div>
 

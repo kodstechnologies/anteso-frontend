@@ -126,7 +126,7 @@ const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId, qaTestDate,
         pages: "",
         testDate: "",
         testDueDate: "",
-        location: "",
+        location: "At site",
         temperature: "",
         humidity: "",
         engineerNameRPId: "",
@@ -181,7 +181,7 @@ const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId, qaTestDate,
                     pages: "",
                     testDate: baseTestDate,
                     testDueDate: dueDate,
-                    location: data.hospitalAddress,
+                    location: "At site",
                     temperature: "",
                     humidity: "",
                     engineerNameRPId: data.engineerAssigned?.name || "",
@@ -251,7 +251,7 @@ const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId, qaTestDate,
                         testingProcedureNumber: res.data.testingProcedureNumber || prev.testingProcedureNumber,
                         testDate: res.data.testDate || prev.testDate,
                         testDueDate: res.data.testDueDate || prev.testDueDate,
-                        location: res.data.location || prev.location,
+                        location: res.data.location || prev.location || "At site",
                         temperature: res.data.temperature || prev.temperature,
                         humidity: res.data.humidity || prev.humidity,
                         engineerNameRPId: res.data.engineerNameRPId || prev.engineerNameRPId,
@@ -272,14 +272,26 @@ const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId, qaTestDate,
                         TubeHousingLeakageDentalIntra: res.data.TubeHousingLeakageDentalIntra?._id || res.data.TubeHousingLeakageDentalIntra,
                     });
 
-                    // If AccuracyOfIrradiationTimeDentalIntra exists, set hasTimer to true
-                    if (res.data.AccuracyOfIrradiationTimeDentalIntra) {
-                        setHasTimer(true);
+                    // Resolve timer mode:
+                    // 1) honor explicitly saved local choice first
+                    // 2) fallback to existing saved tests only when no local choice exists
+                    const savedChoice = localStorage.getItem(`dental_intra_timer_choice_${serviceId}`);
+                    if (savedChoice !== null) {
+                        setHasTimer(JSON.parse(savedChoice));
                         setShowTimerModal(false);
                     } else {
-                        const savedChoice = localStorage.getItem(`dental_intra_timer_choice_${serviceId}`);
-                        if (savedChoice !== null) {
-                            setHasTimer(JSON.parse(savedChoice));
+                        const hasIrradiation = !!res.data.AccuracyOfIrradiationTimeDentalIntra;
+                        const hasMaLinearity = !!res.data.LinearityOfMaLoadingDentalIntra;
+                        const hasMasLinearity = !!res.data.LinearityOfmAsLoadingDentalIntra;
+
+                        if (hasMasLinearity && !hasIrradiation && !hasMaLinearity) {
+                            setHasTimer(false);
+                            setShowTimerModal(false);
+                        } else if (hasIrradiation || hasMaLinearity) {
+                            setHasTimer(true);
+                            setShowTimerModal(false);
+                        } else if (hasMasLinearity) {
+                            setHasTimer(false);
                             setShowTimerModal(false);
                         } else {
                             setShowTimerModal(true);

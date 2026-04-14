@@ -569,6 +569,26 @@ const AddQuotation: React.FC = () => {
         fetchData();
     }, []);
 
+    useEffect(() => {
+        if (!enquiryData?.leadOwner || !Array.isArray(people) || people.length === 0) return;
+
+        const leadOwnerId = String(enquiryData.leadOwner?.id || "").trim();
+        const leadOwnerName = String(enquiryData.leadOwner?.name || "").trim().toLowerCase();
+
+        const matchedIndex = people.findIndex((person) => {
+            const personId = String(person?._id || "").trim();
+            const personName = String(person?.name || "").trim().toLowerCase();
+
+            if (leadOwnerId && personId && personId === leadOwnerId) return true;
+            if (!leadOwnerId && leadOwnerName && personName === leadOwnerName) return true;
+            return false;
+        });
+
+        if (matchedIndex >= 0) {
+            setSelectedIndex(matchedIndex);
+        }
+    }, [enquiryData, people]);
+
 
     // Handlers
     // const handleItemChange = (

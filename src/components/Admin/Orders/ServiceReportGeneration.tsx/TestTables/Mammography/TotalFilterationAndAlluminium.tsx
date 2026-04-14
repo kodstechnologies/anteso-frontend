@@ -85,6 +85,11 @@ const TotalFiltrationAndAluminium: React.FC<{
     return Number.isFinite(n) ? n : null;
   };
 
+  const kvpsMatch = (rowKvp: number, recommendedKvp: number): boolean => {
+    if (isNaN(rowKvp) || isNaN(recommendedKvp)) return false;
+    return Math.abs(rowKvp - recommendedKvp) < 0.01;
+  };
+
   /** Min / max / kVp must be valid numbers, ≥ 0, and min ≤ max */
   const recommendedValuesValidation = useMemo(() => {
     const rowIssues: Record<string, string> = {};
@@ -130,8 +135,12 @@ const TotalFiltrationAndAluminium: React.FC<{
       const recommendedKvpNum = parseFloat(row.recommendedValue.kvp);
       const rowKvp = parseFloat(row.kvp);
 
-      // Only calculate remark if this row's kVp matches the recommended kVp
-      if (isNaN(rowKvp) || isNaN(recommendedKvpNum) || rowKvp !== recommendedKvpNum) {
+      // Limits apply at the stated recommended kVp — must match this row's kVp (tolerant float compare)
+      const recKvpStr = String(row.recommendedValue.kvp ?? '').trim();
+      if (recKvpStr !== '' && !kvpsMatch(rowKvp, recommendedKvpNum)) {
+        return { ...row, remarks: '' as const };
+      }
+      if (recKvpStr === '' && isNaN(rowKvp)) {
         return { ...row, remarks: '' as const };
       }
 
@@ -342,7 +351,20 @@ const TotalFiltrationAndAluminium: React.FC<{
   };
 
   const updateRow = (id: string, field: keyof TableRow, value: string) => {
-    setRows(prev => prev.map(r => r.id === id ? { ...r, [field]: value } : r));
+    setRows(prev =>
+      prev.map(r => {
+        if (r.id !== id) return r;
+        const next: TableRow = { ...r, [field]: value };
+        // Keep "at … kVp" in sync with the measurement kVp so Pass/Fail updates without re-editing Recommended Value
+        if (field === 'kvp' && next.recommendedValue) {
+          next.recommendedValue = {
+            ...next.recommendedValue,
+            kvp: value.trim(),
+          };
+        }
+        return next;
+      })
+    );
   };
 
   const updateRecommendedValue = (id: string, field: 'minValue' | 'maxValue' | 'kvp', value: string) => {

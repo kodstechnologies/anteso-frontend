@@ -1,7 +1,7 @@
 // src/components/reports/ViewServiceReportCBCT.tsx
 import React, { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { getReportHeaderForCBCT, getRadiationProtectionSurveyByServiceIdForCBCT } from "../../../../../../api";
+import { getDetails, getReportHeaderForCBCT, getRadiationProtectionSurveyByServiceIdForCBCT } from "../../../../../../api";
 import logo from "../../../../../../assets/logo/anteso-logo2.png";
 import logoA from "../../../../../../assets/quotationImg/NABLlogo.png";
 import AntesoQRCode from "../../../../../../assets/quotationImg/qrcode.png";
@@ -70,6 +70,33 @@ const defaultNotes: Note[] = [
   { slNo: "5.7", text: "Name, Address & Contact detail is provided by Customer." },
 ];
 
+const pickUlrFromObject = (obj: any): string => {
+  if (!obj || typeof obj !== "object") return "";
+  const candidates = [
+    obj.reportULRNumber,
+    obj.reportUlrNumber,
+    obj.reportULRNo,
+    obj.ulrNumber,
+    obj.ulrNo,
+  ];
+  for (const value of candidates) {
+    if (value === null || value === undefined) continue;
+    const s = String(value).trim();
+    if (!s || s.toLowerCase() === "n/a") continue;
+    return s;
+  }
+  return "";
+};
+
+const pickUlrFromQaTests = (qaTests: any): string => {
+  if (!Array.isArray(qaTests)) return "";
+  for (const test of qaTests) {
+    const ulr = pickUlrFromObject(test);
+    if (ulr) return ulr;
+  }
+  return "";
+};
+
 const ViewServiceReportCBCT: React.FC = () => {
   const [searchParams] = useSearchParams();
   const serviceId = searchParams.get("serviceId");
@@ -90,10 +117,17 @@ const ViewServiceReportCBCT: React.FC = () => {
 
       try {
         setLoading(true);
-        const response = await getReportHeaderForCBCT(serviceId);
+        const [response, detailsRes] = await Promise.all([
+          getReportHeaderForCBCT(serviceId),
+          getDetails(serviceId).catch(() => null),
+        ]);
 
         if (response?.exists && response.data) {
           const data = response.data;
+          const resolvedUlr =
+            pickUlrFromObject(data) ||
+            pickUlrFromQaTests((detailsRes as any)?.data?.qaTests) ||
+            "N/A";
           const toNumber = (v: any): number => {
             if (v == null || v === "") return NaN;
             if (typeof v === "number") return v;
@@ -114,7 +148,7 @@ const ViewServiceReportCBCT: React.FC = () => {
             address: data.address || "N/A",
             srfNumber: data.srfNumber || "N/A",
             srfDate: data.srfDate || "",
-            reportULRNumber: data.reportULRNumber || "N/A",
+            reportULRNumber: resolvedUlr,
             testReportNumber: data.testReportNumber || "N/A",
             issueDate: data.issueDate || "",
             nomenclature: data.nomenclature || "Dental Cone Beam CT (CBCT)",
@@ -374,6 +408,10 @@ const ViewServiceReportCBCT: React.FC = () => {
 
   const toolsArray = report.toolsUsed || [];
   const notesArray = report.notes && report.notes.length > 0 ? report.notes : defaultNotes;
+  const nextDetailedSectionNumber = (() => {
+    let index = 1;
+    return () => index++;
+  })();
 
   return (
     <>
@@ -421,8 +459,8 @@ const ViewServiceReportCBCT: React.FC = () => {
           <h1 className="text-center text-2xl font-bold underline mb-4 print:mb-2 print:text-base" style={{ fontSize: '15px' }}>
             QA TEST REPORT FOR DENTAL CONE BEAM CT (CBCT)
           </h1>
-          <p className="text-center italic text-sm mb-6 print:mb-2 print:text-[9px]">
-            (Periodic Quality Assurance as per AERB Guidelines)
+          <p className="text-center italic mb-4" style={{ fontSize: '9px' }}>
+            (Periodic Quality Assurance shall be carried out at least once in five years as per AERB guidelines)
           </p>
 
           {/* Customer Details */}
@@ -491,7 +529,8 @@ const ViewServiceReportCBCT: React.FC = () => {
                   <tr>
                     <th className="border border-black p-1.5 print:p-0.5 text-center" style={{ width: '6%', padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Sl No.</th>
                     <th className="border border-black p-1.5 print:p-0.5 text-center" style={{ width: '16%', padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Nomenclature</th>
-                    <th className="border border-black p-1.5 print:p-0.5 text-center" style={{ width: '14%', padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Make / Model</th>
+                    <th className="border border-black p-1.5 print:p-0.5 text-center" style={{ width: '10%', padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Make</th>
+                    <th className="border border-black p-1.5 print:p-0.5 text-center" style={{ width: '10%', padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Model</th>
                     <th className="border border-black p-1.5 print:p-0.5 text-center" style={{ width: '14%', padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Sr. No.</th>
                     <th className="border border-black p-1.5 print:p-0.5 text-center" style={{ width: '14%', padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Range</th>
                     <th className="border border-black p-1.5 print:p-0.5 text-center" style={{ width: '18%', padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Certificate No.</th>
@@ -503,14 +542,15 @@ const ViewServiceReportCBCT: React.FC = () => {
                     <tr key={i} style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
                       <td className="border border-black p-1.5 print:p-0.5 text-center" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{i + 1}</td>
                       <td className="border border-black p-1.5 print:p-0.5 text-center" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{tool.nomenclature}</td>
-                      <td className="border border-black p-1.5 print:p-0.5 text-center" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{tool.make} / {tool.model}</td>
+                      <td className="border border-black p-1.5 print:p-0.5 text-center" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{tool.make || "-"}</td>
+                      <td className="border border-black p-1.5 print:p-0.5 text-center" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{tool.model || "-"}</td>
                       <td className="border border-black p-1.5 print:p-0.5 text-center" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{tool.SrNo}</td>
                       <td className="border border-black p-1.5 print:p-0.5 text-center" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{tool.range}</td>
                       <td className="border border-black p-1.5 print:p-0.5 text-center" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{tool.calibrationCertificateNo}</td>
                       <td className="border border-black p-1.5 print:p-0.5 text-center" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{formatDate(tool.calibrationValidTill)}</td>
                     </tr>
                   )) : (
-                    <tr><td colSpan={7} className="text-center py-2 print:py-1" style={{ padding: '0px 1px', fontSize: '11px' }}>No tools recorded</td></tr>
+                    <tr><td colSpan={8} className="text-center py-2 print:py-1" style={{ padding: '0px 1px', fontSize: '11px' }}>No tools recorded</td></tr>
                   )}
                 </tbody>
               </table>
@@ -560,7 +600,7 @@ const ViewServiceReportCBCT: React.FC = () => {
             {/* 1. Accuracy of Irradiation Time */}
             {testData.irradiationTime?.irradiationTimes?.length > 0 && (
               <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
-                <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>1. Accuracy of Irradiation Time</h3>
+                <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>{nextDetailedSectionNumber()}. Accuracy of Irradiation Time</h3>
                 {testData.irradiationTime.testConditions && (
                   <div className="mb-6 print:mb-1 bg-gray-50 p-4 print:p-1 rounded border overflow-x-auto" style={{ marginBottom: '4px', padding: '2px 4px' }}>
                     <p className="font-semibold mb-2 print:mb-0.5 print:text-xs" style={{ marginBottom: '2px', fontSize: '8px' }}>Test Conditions:</p>
@@ -629,7 +669,7 @@ const ViewServiceReportCBCT: React.FC = () => {
             {/* 2. Accuracy of Operating Potential */}
             {testData.operatingPotential?.rows?.length > 0 && (
               <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
-                <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>2. Accuracy of Operating Potential (kVp)</h3>
+                <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>{nextDetailedSectionNumber()}. Accuracy of Operating Potential (kVp)</h3>
                 <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
                   <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
                     <thead className="bg-gray-100">
@@ -718,7 +758,7 @@ const ViewServiceReportCBCT: React.FC = () => {
 
               return (
                 <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
-                  <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>3. Total Filtration</h3>
+                  <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>{nextDetailedSectionNumber()}. Total Filtration</h3>
                   <div className="border-2 border-black rounded overflow-hidden" style={{ marginTop: '4px' }}>
                     <table className="w-full border-collapse text-sm compact-table" style={{ fontSize: '11px' }}>
                       <tbody>
@@ -782,12 +822,20 @@ const ViewServiceReportCBCT: React.FC = () => {
               </div>
             )} */}
 
-  {/* 4. Linearity of mA Loading */}
+  {/* 4. Linearity of mAs Loading */}
             {testData.linearityOfMaLoading?.table2Rows?.length > 0 && (() => {
               const rows = testData.linearityOfMaLoading.table2Rows;
               const measHeaders = testData.linearityOfMaLoading.measurementHeaders || ["Meas 1", "Meas 2", "Meas 3"];
               const measCount = measHeaders.length;
               const tolerance = testData.linearityOfMaLoading.tolerance || "0.1";
+              const table1 = Array.isArray(testData.linearityOfMaLoading.table1)
+                ? testData.linearityOfMaLoading.table1?.[0]
+                : testData.linearityOfMaLoading.table1;
+              const hasTime = table1?.time !== undefined && table1?.time !== null && String(table1?.time).trim() !== "";
+              const hasMasShape = rows.some((row: any) => row.mAsRange || row.mAsApplied);
+              const linearityHeading = (!hasTime || hasMasShape)
+                ? "Linearity of mAs Loading (Coefficient of Linearity)"
+                : "Linearity of mA Loading (Coefficient of Linearity)";
 
               // Calculate overall Xmax, Xmin, CoL if not already pre-calculated
               const xResults = rows.map((row: any) => {
@@ -809,7 +857,7 @@ const ViewServiceReportCBCT: React.FC = () => {
 
               return (
                 <div className="mb-16 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
-                  <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>4. Linearity of mA Loading</h3>
+                  <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>{nextDetailedSectionNumber()}. {linearityHeading}</h3>
 
                   {/* Test Conditions Table */}
                   <div className="mb-4 print:mb-1">
@@ -903,7 +951,7 @@ const ViewServiceReportCBCT: React.FC = () => {
             {/* 3. Output Consistency */}
             {testData.outputConsistency?.outputRows?.length > 0 && (
               <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
-                <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>5. Output Consistency</h3>
+                <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>{nextDetailedSectionNumber()}. Output Consistency</h3>
                 {testData.outputConsistency.ffd != null && (
                   <div className="mb-6 print:mb-1 bg-gray-50 p-4 print:p-1 rounded border overflow-x-auto" style={{ marginBottom: '4px', padding: '2px 4px' }}>
                     <p className="font-semibold mb-2 print:mb-0.5 print:text-xs" style={{ marginBottom: '2px', fontSize: '8px' }}>Test Conditions:</p>
@@ -1009,7 +1057,7 @@ const ViewServiceReportCBCT: React.FC = () => {
             {/* 6. Radiation Leakage Test */}
             {testData.radiationLeakage?.leakageRows?.length > 0 && (
               <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
-                <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>6. Measurement of Radiation Leakage Level from X-ray Tube House</h3>
+                <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>{nextDetailedSectionNumber()}. Measurement of Radiation Leakage Level from X-ray Tube House</h3>
                 
                 {/* Table Layout */}
                 <div className="overflow-x-auto mb-4 print:mb-1" style={{ marginBottom: '4px' }}>
@@ -1208,7 +1256,7 @@ const ViewServiceReportCBCT: React.FC = () => {
             {/* 6. Radiation Protection Survey */}
             {testData.radiationSurvey?.locations?.length > 0 && (
               <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
-                <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>7. Details of Radiation Protection Survey</h3>
+                <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>{nextDetailedSectionNumber()}. Details of Radiation Protection Survey</h3>
 
                 {/* 1. Survey Details */}
                 <div className="mb-6 print:mb-1" style={{ marginBottom: '4px' }}>

@@ -48,13 +48,14 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
 
   const [measHeaders, setMeasHeaders] = useState<string[]>(['Measured mR 1', 'Measured mR 2', 'Measured mR 3']);
   const [table2Rows, setTable2Rows] = useState<Table2Row[]>([
-    { id: '1', mAsRange: '5 - 10', measuredOutputs: ['', '', ''], average: '', x: '', xMax: '', xMin: '', col: '', remarks: '' },
-    { id: '2', mAsRange: '10 - 20', measuredOutputs: ['', '', ''], average: '', x: '', xMax: '', xMin: '', col: '', remarks: '' },
-    { id: '3', mAsRange: '20 - 50', measuredOutputs: ['', '', ''], average: '', x: '', xMax: '', xMin: '', col: '', remarks: '' },
-    { id: '4', mAsRange: '50 - 100', measuredOutputs: ['', '', ''], average: '', x: '', xMax: '', xMin: '', col: '', remarks: '' },
+    { id: '1', mAsRange: '5', measuredOutputs: ['', '', ''], average: '', x: '', xMax: '', xMin: '', col: '', remarks: '' },
+    { id: '2', mAsRange: '10', measuredOutputs: ['', '', ''], average: '', x: '', xMax: '', xMin: '', col: '', remarks: '' },
+    { id: '3', mAsRange: '20', measuredOutputs: ['', '', ''], average: '', x: '', xMax: '', xMin: '', col: '', remarks: '' },
+    { id: '4', mAsRange: '50', measuredOutputs: ['', '', ''], average: '', x: '', xMax: '', xMin: '', col: '', remarks: '' },
   ]);
 
   const [tolerance, setTolerance] = useState<string>('0.1');
+  const [toleranceOperator, setToleranceOperator] = useState<string>('<=');
 
   // Handlers
   const addMeasColumn = () => {
@@ -137,6 +138,7 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
             );
           }
           setTolerance(data.tolerance || '0.1');
+          setToleranceOperator(data.toleranceOperator || '<');
           setHasSaved(true);
           setIsEditing(false);
           if (data._id && !propTestId) {
@@ -259,6 +261,7 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
           };
         }),
         tolerance,
+        toleranceOperator,
       };
 
       let result;
@@ -336,14 +339,35 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
       ? Math.abs(parseFloat(xMax) - parseFloat(xMin)) / (parseFloat(xMax) + parseFloat(xMin))
       : 0;
     const col = hasData ? colNum.toFixed(3) : '—';
-    const pass = hasData && colNum <= tol;
+    let pass = false;
+    if (hasData) {
+      switch (toleranceOperator) {
+        case '<':
+          pass = colNum < tol;
+          break;
+        case '>':
+          pass = colNum > tol;
+          break;
+        case '<=':
+          pass = colNum <= tol;
+          break;
+        case '>=':
+          pass = colNum >= tol;
+          break;
+        case '=':
+          pass = Math.abs(colNum - tol) < 0.0001;
+          break;
+        default:
+          pass = colNum <= tol;
+      }
+    }
 
     return rowsWithX.map(row => ({
       ...row,
       col,
       remarks: hasData ? (pass ? 'Pass' : 'Fail') : '—',
     }));
-  }, [table2Rows, tolerance]);
+  }, [table2Rows, tolerance, toleranceOperator]);
 
   if (isLoading) {
     return (
@@ -390,7 +414,7 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
         <table className="w-full">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase border-r">FCD (cm)</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase border-r">FDD (cm)</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">kV</th>
             </tr>
           </thead>
@@ -431,8 +455,8 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-blue-50">
               <tr>
-                <th rowSpan={2} className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase border-r">mAs Range</th>
-                <th colSpan={measHeaders.length} className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase border-r">
+                <th rowSpan={2} className="px-6 py-3 text-left text-xs font-medium text-gray-700  border-r">mAs Range</th>
+                <th colSpan={measHeaders.length} className="px-6 py-3 text-center text-xs font-medium text-gray-700  border-r">
                   <div className="flex items-center justify-between px-4">
                     <span>Radiation Output (mGy)</span>
                     {!isViewMode && (
@@ -442,10 +466,10 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
                     )}
                   </div>
                 </th>
-                <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase border-r">Avg Output</th>
-                <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase border-r">X (mGy/mAs)</th>
-                <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase border-r">CoL</th>
-                <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase">Remarks</th>
+                <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700  border-r">Avg Output</th>
+                <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700  border-r">X (mGy/mAs)</th>
+                <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700  border-r">CoL</th>
+                <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700 ">Remarks</th>
                 <th rowSpan={2} className="w-12"></th>
               </tr>
               <tr>
@@ -487,7 +511,7 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
                       disabled={isViewMode}
                       className={`w-full px-3 py-2 text-center text-sm border rounded font-medium focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''
                         }`}
-                      placeholder="10 - 20"
+                      placeholder="10"
                     />
                   </td>
                   {p.measuredOutputs.map((val, idx) => (
@@ -534,7 +558,20 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
             </button>
           )}
           <div className="flex items-center gap-3 ml-auto">
-            <span className="text-sm font-medium text-gray-700">Tolerance (CoL) ≤</span>
+            <span className="text-sm font-medium text-gray-700">Tolerance (CoL)</span>
+            <select
+              value={toleranceOperator}
+              onChange={e => setToleranceOperator(e.target.value)}
+              disabled={isViewMode}
+              className={`px-3 py-2.5 text-center font-bold border-2 border-blue-400 rounded-lg focus:ring-4 focus:ring-blue-200 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''
+                }`}
+            >
+              <option value="<">&lt;</option>
+              <option value=">">&gt;</option>
+              <option value="<=">&lt;=</option>
+              <option value=">=">&gt;=</option>
+              <option value="=">=</option>
+            </select>
             <input
               type="number"
               step="0.001"

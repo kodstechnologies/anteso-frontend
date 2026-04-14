@@ -8,6 +8,7 @@ import {
   addRadiationProtectionSurveyForRadiographyFixed,
   getRadiationProtectionSurveyByServiceIdForRadiographyFixed,
   updateRadiationProtectionSurveyForRadiographyFixed,
+  getDetails,
   getTools,
 } from "../../../../../../api";
 
@@ -56,6 +57,12 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, initialData, cs
     { id: "8", location: "Outside Patient Entrance Door", mRPerHr: "", mRPerWeek: "", result: "", category: "public" },
     { id: "9", location: "Patient Waiting Area", mRPerHr: "", mRPerWeek: "", result: "", category: "public" },
   ]);
+
+  const toInputDate = (value: any): string => {
+    if (!value) return "";
+    const text = String(value);
+    return text.includes("T") ? text.split("T")[0] : text;
+  };
 
   // Formula: mR/week = (Workload × mR/hr) / (60 × mA used)
   const calculateMRPerWeek = (mRPerHr: string) => {
@@ -191,6 +198,22 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, initialData, cs
     };
 
     checkCalibration();
+  }, [serviceId]);
+
+  // Load existing survey
+  useEffect(() => {
+    const prefillSurveyDateFromSrf = async () => {
+      if (!serviceId) return;
+      try {
+        const detailsRes = await getDetails(serviceId);
+        const details = detailsRes?.data;
+        const srfDate = toInputDate(details?.srfDate || details?.orderCreatedAt);
+        if (srfDate) setSurveyDate(prev => prev || srfDate);
+      } catch {
+        // Keep existing behavior if details API fails
+      }
+    };
+    prefillSurveyDateFromSrf();
   }, [serviceId]);
 
   // Load existing survey

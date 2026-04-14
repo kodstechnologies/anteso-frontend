@@ -185,8 +185,17 @@ const MainTestTableForOPG: React.FC<MainTestTableProps> = ({ testData }) => {
   // Backend may return table2 or table2Rows
   const linearityRows = testData.linearityOfMaLoading?.table2Rows || testData.linearityOfMaLoading?.table2;
   if (linearityRows && Array.isArray(linearityRows)) {
-    const validRows = linearityRows.filter((row: any) => row.ma || row.mA || row.col || row.measuredOutputs?.length);
+    const validRows = linearityRows.filter((row: any) => row.ma || row.mA || row.mAsRange || row.mAsApplied || row.col || row.measuredOutputs?.length);
     if (validRows.length > 0) {
+      const table1 = Array.isArray(testData.linearityOfMaLoading?.table1)
+        ? testData.linearityOfMaLoading?.table1?.[0]
+        : testData.linearityOfMaLoading?.table1;
+      const hasTime = table1?.time !== undefined && table1?.time !== null && String(table1?.time).trim() !== "";
+      const hasMasShape = validRows.some((row: any) => row.mAsRange || row.mAsApplied);
+      const linearityHeading = (!hasTime || hasMasShape)
+        ? "Linearity of mAs Loading (Coefficient of Linearity)"
+        : "Linearity of mA Loading (Coefficient of Linearity)";
+
       const tolerance = testData.linearityOfMaLoading.tolerance || "0.1";
       const toleranceOperator = testData.linearityOfMaLoading.toleranceOperator || "<=";
       const getVal = (o: any): number => {
@@ -247,7 +256,7 @@ const MainTestTableForOPG: React.FC<MainTestTableProps> = ({ testData }) => {
         tolerance: `${toleranceOperator} ${tolerance}`,
         remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
       }];
-      addRowsForTest("Linearity of mA Loading (Coefficient of Linearity)", testRows);
+      addRowsForTest(linearityHeading, testRows);
     }
   }
 

@@ -169,7 +169,7 @@ const AccuracyOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: prop
   // Global mA columns configuration (shared across all rows)
   const [globalMAColumns, setGlobalMAColumns] = useState<MAColumn[]>([...defaultMAColumns]);
 
-  const [toleranceValue, setToleranceValue] = useState<string>('1.5');
+  const [toleranceValue, setToleranceValue] = useState<string>('5');
   const [toleranceType, setToleranceType] = useState<'percent' | 'absolute'>('absolute');
   const [toleranceSign, setToleranceSign] = useState<'plus' | 'minus' | 'both'>('both');
 
@@ -527,7 +527,7 @@ const AccuracyOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: prop
       </h2>
 
       {/* Table 1: Single Row */}
-      <div className="bg-white shadow-md rounded-lg overflow-hidden">
+      {/* <div className="bg-white shadow-md rounded-lg overflow-hidden">
         <h3 className="px-6 py-3 text-lg font-semibold bg-blue-50 border-b">
           Exposure Time vs Slice Thickness
         </h3>
@@ -573,7 +573,7 @@ const AccuracyOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: prop
             </tr>
           </tbody>
         </table>
-      </div>
+      </div> */}
 
       {/* Table 2 – header layout like RadiographyFixed TotalFilteration */}
       <div className="bg-white shadow-lg rounded-lg overflow-hidden border border-gray-200">

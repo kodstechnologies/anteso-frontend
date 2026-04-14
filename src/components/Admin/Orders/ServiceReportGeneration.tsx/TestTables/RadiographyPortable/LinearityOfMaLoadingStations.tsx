@@ -32,9 +32,11 @@ interface Props {
   serviceId: string;
   testId?: string;
   onRefresh?: () => void;
+  initialData?: any;
+  csvDataVersion?: number;
 }
 
-const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, onRefresh }) => {
+const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, onRefresh, initialData, csvDataVersion }) => {
   const [testId, setTestId] = useState<string | null>(propTestId || null);
 
   // Table 1: FCD, kV, Time (sec)
@@ -55,6 +57,58 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [hasSaved, setHasSaved] = useState(false);
+
+  // Apply Excel/CSV-derived initial data (same pattern as Radiography Fixed)
+  useEffect(() => {
+    if (!initialData) return;
+    const t1 = initialData.table1;
+    if (t1) {
+      setTable1Row((prev) => ({
+        ...prev,
+        fcd: String(t1.fcd ?? prev.fcd),
+        kv: String(t1.kv ?? prev.kv),
+        time: String(t1.time ?? prev.time),
+      }));
+    }
+    if (initialData.table2?.length > 0) {
+      const maxOutputs = Math.max(...initialData.table2.map((r: any) => (r.measuredOutputs ?? []).length));
+      const headerCount = Math.max(maxOutputs, 1);
+      setMeasHeaders(Array.from({ length: headerCount }, (_, i) => `Meas ${i + 1}`));
+      setTable2Rows(
+        initialData.table2.map((r: any, i: number) => {
+          const outputs = (r.measuredOutputs ?? []).map(String);
+          while (outputs.length < headerCount) outputs.push('');
+          return {
+            id: (i + 1).toString(),
+            ma: String(r.mAApplied ?? r.ma ?? ''),
+            measuredOutputs: outputs,
+            average: '',
+            x: '',
+            xMax: '',
+            xMin: '',
+            col: '',
+            remarks: '',
+          };
+        })
+      );
+    }
+    if (initialData.tolerance !== undefined) setTolerance(String(initialData.tolerance));
+  }, [csvDataVersion, initialData]);
+
+  // Keep each row's measuredOutputs aligned with measHeaders (avoids column shift / hidden mA column)
+  useEffect(() => {
+    const n = measHeaders.length;
+    if (n <= 0) return;
+    setTable2Rows((prev) => {
+      if (!prev.some((row) => row.measuredOutputs.length !== n)) return prev;
+      return prev.map((row) => {
+        const out = [...row.measuredOutputs];
+        while (out.length < n) out.push('');
+        if (out.length > n) out.length = n;
+        return { ...row, measuredOutputs: out };
+      });
+    });
+  }, [measHeaders.length]);
 
   // === Column Handling ===
   const addMeasColumn = () => {
@@ -168,7 +222,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
       col: colVal,
       remarks: pass ? 'Pass' : colVal === '—' ? '' : 'Fail',
     }));
-  }, [table2Rows, tolerance, table1Row.time]);
+  }, [table2Rows, tolerance, table1Row.time, measHeaders.length]);
 
 
   // === Form Valid ===
@@ -199,20 +253,28 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
             kv: data.table1?.[0]?.kv || '',
             time: data.table1?.[0]?.time || '',
           });
-          setMeasHeaders(data.measHeaders && data.measHeaders.length > 0 ? data.measHeaders : ['Meas 1', 'Meas 2', 'Meas 3']);
+          const mh =
+            data.measHeaders && data.measHeaders.length > 0 ? data.measHeaders : ['Meas 1', 'Meas 2', 'Meas 3'];
+          setMeasHeaders(mh);
           if (Array.isArray(data.table2) && data.table2.length > 0) {
+            const colCount = mh.length;
             setTable2Rows(
-              data.table2.map((r: any) => ({
-                id: Date.now().toString() + Math.random(),
-                ma: r.mAsApplied || r.ma || '',
-                measuredOutputs: (r.measuredOutputs || []).map((v: any) => (v != null ? String(v) : '')),
-                average: r.average || '',
-                x: r.x || '',
-                xMax: r.xMax || '',
-                xMin: r.xMin || '',
-                col: r.col || '',
-                remarks: r.remarks || '',
-              }))
+              data.table2.map((r: any) => {
+                const outputs = (r.measuredOutputs || []).map((v: any) => (v != null ? String(v) : ''));
+                while (outputs.length < colCount) outputs.push('');
+                if (outputs.length > colCount) outputs.length = colCount;
+                return {
+                  id: Date.now().toString() + Math.random(),
+                  ma: r.mAsApplied || r.ma || '',
+                  measuredOutputs: outputs,
+                  average: r.average || '',
+                  x: r.x || '',
+                  xMax: r.xMax || '',
+                  xMin: r.xMin || '',
+                  col: r.col || '',
+                  remarks: r.remarks || '',
+                };
+              })
             );
           }
           setTolerance(data.tolerance || '0.1');
@@ -346,16 +408,16 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
 
   return (
     <div className="p-6 max-w-full overflow-x-auto">
-      <h2 className="text-2xl font-bold mb-6">Linearity of mA Loading</h2>
+      <h2 className="text-2xl font-bold mb-6">Linearity Of mA Loading</h2>
 
       {/* Table 1: FCD, kV, Time (sec) */}
-      <div className="bg-white shadow-md rounded-lg overflow-hidden mb-8">
+      <div className="bg-white shadow-md rounded-lg overflow-hidden mb-8 border border-gray-200">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500  tracking-wider border-r">FCD (cm)</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500  tracking-wider border-r">kV</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500  tracking-wider">Time (sec)</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time (sec)</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
@@ -395,15 +457,18 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
         </table>
       </div>
 
-      {/* Table 2: mA + Output (mGy) */}
-      <div className="bg-white shadow-md rounded-lg overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
+      {/* Table 2: mA, output (mGy), X (mGy/mA*s) — scroll wide tables; sticky mA column stays visible */}
+      <div className="bg-white shadow-md rounded-lg border border-gray-200">
+        <div className="px-4 py-3 bg-blue-50 border-b">
+          <h3 className="text-lg font-semibold text-blue-900">Linearity of Radiation Output Across mA Stations</h3>
+        </div>
+        <div className="overflow-x-auto">
+        <table className="min-w-max w-full divide-y divide-gray-200">
           <thead className="bg-blue-50">
             <tr>
-              {/* Header – make mA column wider */}
               <th
                 rowSpan={2}
-                className="px-6 py-3 w-28 text-left text-xs font-medium text-gray-700  tracking-wider border-r whitespace-nowrap"
+                className="sticky left-0 z-20 min-w-[7rem] w-28 px-6 py-3 text-left text-xs font-medium text-gray-700 tracking-wider border-r border-gray-200 whitespace-nowrap bg-blue-50 shadow-[4px_0_8px_-4px_rgba(0,0,0,0.15)]"
               >
                 mA
               </th>
@@ -420,8 +485,8 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
                   )}
                 </div>
               </th>
-              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">Avg Output</th>
-              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">X (mGy/mAs)</th>
+              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">Avg output (mGy)</th>
+              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">X (mGy/mA*s)</th>
               <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">X MAX</th>
               <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">X MIN</th>
               <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">CoL</th>
@@ -452,13 +517,13 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
           <tbody className="bg-white divide-y divide-gray-200">
             {processedTable2.map((p) => (
               <tr key={p.id} className="hover:bg-gray-50">
-                <td className="px-4 py-2 border-r">
+                <td className="sticky left-0 z-10 min-w-[7rem] w-28 px-4 py-2 border-r border-gray-200 bg-white shadow-[4px_0_8px_-4px_rgba(0,0,0,0.08)]">
                   <input
                     type="text"
                     value={p.ma}
                     onChange={e => updateTable2Cell(p.id, 'ma', e.target.value)}
                     disabled={isViewMode}
-                    className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'}`}
+                    className={`w-full min-w-0 px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'}`}
                     placeholder="100"
                   />
                 </td>
@@ -509,6 +574,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
             ))}
           </tbody>
         </table>
+        </div>
 
         <div className="px-4 py-3 bg-gray-50 border-t flex justify-between items-center">
           {!isViewMode && (
