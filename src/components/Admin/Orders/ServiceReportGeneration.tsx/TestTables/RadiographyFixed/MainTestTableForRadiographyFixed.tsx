@@ -274,7 +274,7 @@ export const generateRadiographySummaryRows = (testData: any, hasTimer: boolean 
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });
-      addRowsForTest("Radiation leakage level at 1m from tube housing", testRows);
+      addRowsForTest("Tube Housing Leakage", testRows);
     }
   }
 

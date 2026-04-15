@@ -101,6 +101,7 @@ export const generatePDF = async ({
             const clonedShells = clonedDoc.querySelectorAll('.report-pdf-page-shell, .report-pdf-last-page-shell');
             const clonedShell = clonedShells[i] as HTMLElement;
             if (clonedShell) {
+              clonedShell.classList.add('is-generating-pdf');
               clonedShell.style.margin = '0';
               clonedShell.style.boxShadow = 'none';
               clonedShell.style.width = '210mm';
@@ -138,6 +139,7 @@ export const generatePDF = async ({
         onclone: (clonedDoc: Document) => {
           const clonedElement = clonedDoc.getElementById(elementId);
           if (clonedElement) {
+            clonedElement.classList.add('is-generating-pdf');
             clonedElement.style.width = '210mm';
             clonedElement.style.margin = '0';
             clonedElement.style.padding = '0';

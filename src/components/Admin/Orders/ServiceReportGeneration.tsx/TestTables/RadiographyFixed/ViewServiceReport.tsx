@@ -350,10 +350,10 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
     const padding = extra?.padding ? String(extra.padding) : '4px 6px';
     const parts = padding.trim().split(/\s+/);
     let finalPadding = padding;
-    if (parts.length === 1) finalPadding = `${parts[0]} ${parts[0]} 10px ${parts[0]}`;
-    else if (parts.length === 2) finalPadding = `${parts[0]} ${parts[1]} 10px ${parts[1]}`;
-    else if (parts.length === 3) finalPadding = `${parts[0]} ${parts[1]} 10px ${parts[0]}`;
-    else if (parts.length === 4) finalPadding = `${parts[0]} ${parts[1]} 10px ${parts[3]}`;
+    if (parts.length === 1) finalPadding = `${parts[0]} ${parts[0]} 4px ${parts[0]}`;
+    else if (parts.length === 2) finalPadding = `${parts[0]} ${parts[1]} 4px ${parts[1]}`;
+    else if (parts.length === 3) finalPadding = `${parts[0]} ${parts[1]} 4px ${parts[0]}`;
+    else if (parts.length === 4) finalPadding = `${parts[0]} ${parts[1]} 4px ${parts[3]}`;
 
     return {
       fontSize: '11px',
@@ -1349,7 +1349,8 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
               <div className="mb-4 test-section">
                 <TestSectionTitle num={8} title="Consistency of Radiation Output" />
                 {testData.outputConsistency.ffd?.value && (
-                  <div style={{ marginBottom: "4px" }}>
+                  <div style={{ marginBottom: "20px" }}>
+                    <p style={{ fontSize: "10px", fontWeight: "bold", marginBottom: "10px" }}>1. Operating Parameters</p>
                     <table style={{ ...tableStyle, width: "100%" }}>
                       <thead>
                         <tr>
@@ -1383,6 +1384,7 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
                     };
                     return (
                       <div style={{ marginBottom: "4px" }}>
+                         <p style={{ fontSize: "10px", fontWeight: "bold", marginBottom: "10px" }}>2. Output Measurement</p>
                         <table style={{ ...tableStyle, fontSize: "10px", tableLayout: "auto" }}>
                           <thead>
                             <tr>
@@ -1481,7 +1483,8 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
               (testData.radiationLeakageLevel.leakageMeasurements?.length > 0 || testData.radiationLeakageLevel.fcd) && (
                 <div className="mb-4 test-section">
                   <TestSectionTitle num={9} title="Tube Housing Leakage" />
-                  <div style={{ marginBottom: "4px" }}>
+                  <div style={{ marginBottom: "20px" }}>
+                    <p style={{ fontSize: "10px", fontWeight: "bold", marginBottom: "10px" }}>1. Operating Parameters</p>
                     <table style={{ ...tableStyle, width: "100%" }}>
                       <thead>
                         <tr>
@@ -1513,73 +1516,138 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
                       </tbody>
                     </table>
                   </div>
+
                   <p style={{ fontSize: "10px", marginBottom: "4px" }}>
                     <strong>Workload:</strong> {testData.radiationLeakageLevel.workload || "-"} {testData.radiationLeakageLevel.workloadUnit || "mA·min/week"}
                   </p>
+
                   {testData.radiationLeakageLevel.leakageMeasurements?.length > 0 && (
-                    <table style={{ ...tableStyle, fontSize: "10px" }}>
-                      <thead>
-                        <tr>
-                          <th
-                            rowSpan={2}
-                            style={cellStyle({
-                              fontWeight: 700,
-                              border: "0.1px solid #666",
-                              fontSize: "10px",
-                              width: "15%",
-                              verticalAlign: "middle",
-                            })}
-                          >
-                            Location
-                          </th>
-                          <th colSpan={5} style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px" })}>
-                            Exposure Level (mR/hr)
-                          </th>
-                          <th
-                            rowSpan={2}
-                            style={cellStyle({
-                              fontWeight: 700,
-                              border: "0.1px solid #666",
-                              fontSize: "10px",
-                              verticalAlign: "middle",
-                            })}
-                          >
-                            Result (mR in 1 hr)
-                          </th>
-                          <th
-                            rowSpan={2}
-                            style={cellStyle({
-                              fontWeight: 700,
-                              border: "0.1px solid #666",
-                              fontSize: "10px",
-                              verticalAlign: "middle",
-                            })}
-                          >
-                            Result (mGy in 1 hr)
-                          </th>
-                          <th
-                            rowSpan={2}
-                            style={cellStyle({
-                              fontWeight: 700,
-                              border: "0.1px solid #666",
-                              fontSize: "10px",
-                              verticalAlign: "middle",
-                            })}
-                          >
-                            Remarks
-                          </th>
-                        </tr>
-                        <tr>
-                          {["Left", "Right", "Front", "Back", "Top"].map((h) => (
+                    <div style={{ marginTop: "15px" }}>
+                      <p style={{ fontSize: "10px", fontWeight: "bold", marginBottom: "10px" }}>2. Radiation Leakage Measurements</p>
+                      <table style={{ ...tableStyle, tableLayout: "fixed", width: "100%", fontSize: "9px", borderCollapse: "collapse" }}>
+                        <colgroup>
+                          <col style={{ width: "15%" }} />
+                          <col style={{ width: "8%" }} />
+                          <col style={{ width: "8%" }} />
+                          <col style={{ width: "8%" }} />
+                          <col style={{ width: "8%" }} />
+                          <col style={{ width: "8%" }} />
+                          <col style={{ width: "15%" }} />
+                          <col style={{ width: "15%" }} />
+                          <col style={{ width: "15%" }} />
+                        </colgroup>
+                        <thead>
+                          <tr style={{ height: "20px" }}>
                             <th
-                              key={h}
-                              style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px" })}
+                              style={cellStyle({
+                                border: "0.1px solid #666",
+                                borderBottom: "none",
+                                fontWeight: 700,
+                                backgroundColor: "#f9f9f9",
+                                color: "#000",
+                                padding: "0",
+                              })}
                             >
-                              {h}
+                              <div className="header-cell-simulated" style={{ fontWeight: 700 }}>Location</div>
                             </th>
-                          ))}
-                        </tr>
-                      </thead>
+                            <th
+                              colSpan={5}
+                              style={cellStyle({
+                                border: "0.1px solid #666",
+                                fontWeight: 700,
+                                backgroundColor: "#f9f9f9",
+                                color: "#000",
+                                padding: "0",
+                              })}
+                            >
+                              <div style={{ padding: "4px 2px", fontWeight: 700 }}>Exposure Level (mR/hr)</div>
+                            </th>
+                            <th
+                              style={cellStyle({
+                                border: "0.1px solid #666",
+                                borderBottom: "none",
+                                fontWeight: 700,
+                                backgroundColor: "#f9f9f9",
+                                color: "#000",
+                                padding: "0",
+                              })}
+                            >
+                              <div className="header-cell-simulated" style={{ fontWeight: 700 }}>Result (mR in 1 hr)</div>
+                            </th>
+                            <th
+                              style={cellStyle({
+                                border: "0.1px solid #666",
+                                borderBottom: "none",
+                                fontWeight: 700,
+                                backgroundColor: "#f9f9f9",
+                                color: "#000",
+                                padding: "0",
+                              })}
+                            >
+                              <div className="header-cell-simulated" style={{ fontWeight: 700 }}>Result (mGy in 1 hr)</div>
+                            </th>
+                            <th
+                              style={cellStyle({
+                                border: "0.1px solid #666",
+                                borderBottom: "none",
+                                fontWeight: 700,
+                                backgroundColor: "#f9f9f9",
+                                color: "#000",
+                                padding: "0",
+                              })}
+                            >
+                              <div className="header-cell-simulated" style={{ fontWeight: 700 }}>Remarks</div>
+                            </th>
+                          </tr>
+                          <tr style={{ height: "20px" }}>
+                            <th
+                              style={cellStyle({
+                                border: "0.1px solid #666",
+                                borderTop: "none",
+                                backgroundColor: "#f9f9f9",
+                                padding: "0",
+                              })}
+                            ></th>
+                            {["Left", "Right", "Front", "Back", "Top"].map((h) => (
+                              <th
+                                key={h}
+                                style={cellStyle({
+                                  border: "0.1px solid #666",
+                                  fontWeight: 700,
+                                  backgroundColor: "#f9f9f9",
+                                  color: "#000",
+                                  padding: "0",
+                                })}
+                              >
+                                <div style={{ padding: "4px 2px" }}>{h}</div>
+                              </th>
+                            ))}
+                            <th
+                              style={cellStyle({
+                                border: "0.1px solid #666",
+                                borderTop: "none",
+                                backgroundColor: "#f9f9f9",
+                                padding: "0",
+                              })}
+                            ></th>
+                            <th
+                              style={cellStyle({
+                                border: "0.1px solid #666",
+                                borderTop: "none",
+                                backgroundColor: "#f9f9f9",
+                                padding: "0",
+                              })}
+                            ></th>
+                            <th
+                              style={cellStyle({
+                                border: "0.1px solid #666",
+                                borderTop: "none",
+                                backgroundColor: "#f9f9f9",
+                                padding: "0",
+                              })}
+                            ></th>
+                          </tr>
+                        </thead>
                       <tbody>
                         {testData.radiationLeakageLevel.leakageMeasurements.map((row: any, i: number) => {
                           const maValue = parseFloat(
@@ -1608,23 +1676,24 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
                             <tr key={i}>
                               <th
                                 scope="row"
-                                style={cellStyle({ border: "0.1px solid #666", fontSize: "10px", fontWeight: 700 })}
+                                style={cellStyle({ border: "0.1px solid #666", fontSize: "9px", fontWeight: 700 })}
                               >
                                 {row.location || "-"}
                               </th>
                               {["left", "right", "front", "back", "top"].map((k) => (
-                                <td key={k} style={cellStyle({ border: "0.1px solid #666", fontSize: "10px" })}>
+                                <td key={k} style={cellStyle({ border: "0.1px solid #666", fontSize: "9px" })}>
                                   {(row as any)[k] || "-"}
                                 </td>
                               ))}
-                              <td style={cellStyle({ border: "0.1px solid #666", fontSize: "10px" })}>{calcMR}</td>
-                              <td style={cellStyle({ border: "0.1px solid #666", fontSize: "10px" })}>{calcMGy}</td>
-                              <td style={cellStyle({ border: "0.1px solid #666", fontSize: "10px" })}>{remark}</td>
+                              <td style={cellStyle({ border: "0.1px solid #666", fontSize: "9px" })}>{calcMR}</td>
+                              <td style={cellStyle({ border: "0.1px solid #666", fontSize: "9px" })}>{calcMGy}</td>
+                              <td style={cellStyle({ border: "0.1px solid #666", fontSize: "9px" })}>{remark}</td>
                             </tr>
                           );
                         })}
                       </tbody>
-                    </table>
+                      </table>
+                    </div>
                   )}
                 </div>
               )}
@@ -1933,11 +2002,28 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
           box-sizing: border-box !important;
           vertical-align: middle !important;
           text-align: center !important;
+          padding-top: 8px !important;
+          padding-bottom: 8px !important;
+          padding-left: 2px !important;
+          padding-right: 2px !important;
+          line-height: 1.1 !important;
+          vertical-align: middle !important;
+        }
+
+        /* PDF-ONLY ADJUSTMENTS: html2canvas tends to sink text, so we push it up in the PDF */
+        .is-generating-pdf td,
+        .is-generating-pdf th {
           padding-top: 4px !important;
-          padding-bottom: 10px !important;
-          padding-left: 6px !important;
-          padding-right: 6px !important;
-          line-height: 1.3 !important;
+          padding-bottom: 12px !important;
+        }
+
+        /* Specific fix for simulated merged headers in Section 9 */
+        .header-cell-simulated {
+          padding-top: 5px; /* Centered in UI (20px row height - 10px text / 2) */
+          padding-bottom: 0px;
+        }
+        .is-generating-pdf .header-cell-simulated {
+          padding-top: 0px; /* Pushed up in PDF */
         }
         .fixed-report-pdf .report-pdf-page-shell,
         .fixed-report-pdf .report-pdf-last-page-shell {
