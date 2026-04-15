@@ -359,6 +359,10 @@ const GenerateReportForDentalHandHeld: React.FC<DentalProps> = ({ serviceId, qaT
 
             const payload = {
                 ...formData,
+                rpid: formData.rpId,
+                rpID: formData.rpId,
+                RPId: formData.rpId,
+                RPID: formData.rpId,
                 toolsUsed: tools.map(t => ({
                     toolId: t.certificate || null,
                     SrNo: t.SrNo,

@@ -8,7 +8,7 @@ import * as XLSX from "xlsx";
 import {
   getDetails,
   getTools,
-  saveReportHeader,
+  saveReportHeaderForRadiographyPortable,
   getReportHeaderForRadiographyPortable,
   proxyFile,
   getCongruenceByServiceIdForRadiographyPortable,
@@ -314,6 +314,10 @@ const RadiographyPortable: React.FC<{ serviceId: string; qaTestDate?: string | n
       }
       const payload = {
         ...formData,
+        rpid: formData.rpId,
+        rpID: formData.rpId,
+        RPId: formData.rpId,
+        RPID: formData.rpId,
         toolsUsed: tools.map((t) => ({
           tool: t.certificate || null,
           SrNo: t.SrNo,
@@ -346,7 +350,7 @@ const RadiographyPortable: React.FC<{ serviceId: string; qaTestDate?: string | n
         ],
       };
 
-      await saveReportHeader(serviceId, payload);
+      await saveReportHeaderForRadiographyPortable(serviceId, payload);
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 4000);
     } catch (err: any) {

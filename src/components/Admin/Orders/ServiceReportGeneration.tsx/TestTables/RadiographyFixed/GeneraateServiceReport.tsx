@@ -7,7 +7,7 @@ import toast from "react-hot-toast";
 import {
   getDetails,
   getTools,
-  saveReportHeader,
+  saveReportHeaderForRadiographyFixed,
   getReportHeaderForRadiographyFixed,
   getRadiationProfileWidthByServiceId,
   proxyFile,
@@ -1492,7 +1492,7 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
         ],
       };
 
-      await saveReportHeader(serviceId, payload);
+      await saveReportHeaderForRadiographyFixed(serviceId, payload);
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 4000);
     } catch (err: any) {

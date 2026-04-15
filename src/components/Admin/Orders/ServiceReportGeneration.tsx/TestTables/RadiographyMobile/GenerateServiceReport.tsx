@@ -8,7 +8,7 @@ import * as XLSX from "xlsx";
 import {
   getDetails,
   getTools,
-  saveReportHeader,
+  saveReportHeaderForRadiographyMobile,
   getReportHeaderForRadiographyMobile,
   proxyFile,
   getAccuracyOfIrradiationTimeByServiceIdForRadiographyMobile,
@@ -379,6 +379,7 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
         rpid: formData.rpId,
         rpID: formData.rpId,
         RPId: formData.rpId,
+        RPID: formData.rpId,
         toolsUsed: tools.map(t => ({
           tool: t.certificate || null,
           SrNo: t.SrNo,
@@ -395,7 +396,7 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
           ? notes.map((note, index) => ({ slNo: `5.${index + 1}`, text: note }))
           : defaultNotes.map((text, i) => ({ slNo: `5.${i + 1}`, text })),
       };
-      await saveReportHeader(serviceId, payload);
+      await saveReportHeaderForRadiographyMobile(serviceId, payload);
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 4000);
     } catch (err: any) {

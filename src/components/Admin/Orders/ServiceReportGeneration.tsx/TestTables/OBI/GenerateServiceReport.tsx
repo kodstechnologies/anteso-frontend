@@ -6,7 +6,7 @@ import { ChevronDownIcon, CloudArrowUpIcon } from "@heroicons/react/24/outline";
 import toast from "react-hot-toast";
 import * as XLSX from "xlsx";
 import {
-    saveReportHeader,
+    saveReportHeaderForOBI,
     getReportHeaderForOBI,
     getAlignmentTestByServiceIdForOBI,
     getAccuracyOfOperatingPotentialByServiceIdForOBI,
@@ -1527,6 +1527,10 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null; qaTestDate?
 
             const payload = {
                 ...formData,
+                rpid: formData.rpId,
+                rpID: formData.rpId,
+                RPId: formData.rpId,
+                RPID: formData.rpId,
                 toolsUsed: originalTools.map((t: any) => ({
                     toolId: t._id || t.toolId || null,
                     SrNo: t.SrNo,
@@ -1559,7 +1563,7 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null; qaTestDate?
                 ],
             };
 
-            await saveReportHeader(serviceId, payload);
+            await saveReportHeaderForOBI(serviceId, payload);
             setSaveSuccess(true);
             toast.success("Report header saved successfully!");
             setTimeout(() => setSaveSuccess(false), 4000);

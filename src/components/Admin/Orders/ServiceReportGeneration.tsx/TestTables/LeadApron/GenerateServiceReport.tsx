@@ -80,6 +80,7 @@ const LeadApron: React.FC<{ serviceId: string; qaTestDate?: string | null; creat
         temperature: "",
         humidity: "",
         engineerNameRPId: "",
+        rpId: "",
         ulrNumber: "",
     });
 
@@ -138,6 +139,7 @@ const LeadApron: React.FC<{ serviceId: string; qaTestDate?: string | null; creat
                     temperature: prev.temperature || "",
                     humidity: prev.humidity || "",
                     engineerNameRPId: data.engineerAssigned?.name || prev.engineerNameRPId,
+                    rpId: data.rpId || prev.rpId || "",
                     ulrNumber: firstTest?.reportULRNumber || ulrNumber || prev.ulrNumber || "N/A",
                 }));
 
@@ -188,6 +190,11 @@ const LeadApron: React.FC<{ serviceId: string; qaTestDate?: string | null; creat
         try {
             const payload = {
                 ...formData,
+                reportULRNumber: formData.ulrNumber,
+                rpid: formData.rpId,
+                rpID: formData.rpId,
+                RPId: formData.rpId,
+                RPID: formData.rpId,
                 toolsUsed: tools.map(t => ({
                     tool: t.certificate || null,
                     SrNo: t.SrNo,
@@ -525,7 +532,8 @@ const LeadApron: React.FC<{ serviceId: string; qaTestDate?: string | null; creat
                         temperature: res.data.temperature || prev.temperature,
                         humidity: res.data.humidity || prev.humidity,
                         engineerNameRPId: res.data.engineerNameRPId || prev.engineerNameRPId,
-                        ulrNumber: res.data.ulrNumber || prev.ulrNumber || "N/A",
+                        rpId: res.data.rpId || prev.rpId || "",
+                        ulrNumber: res.data.reportULRNumber || res.data.ulrNumber || prev.ulrNumber || "N/A",
                     }));
                     if (res.data.testDate) setMinIssueDate(res.data.testDate);
 
@@ -619,6 +627,7 @@ const LeadApron: React.FC<{ serviceId: string; qaTestDate?: string | null; creat
                         { label: "Location", name: "location" },
                         { label: "Temperature (°C)", name: "temperature", type: "number" },
                         { label: "Humidity (%)", name: "humidity", type: "number" },
+                        { label: "RP Id", name: "rpId" },
                     ].map(field => (
                         <div key={field.name}>
                             <label className="block font-medium mb-1">{field.label}</label>

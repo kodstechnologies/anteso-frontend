@@ -12,7 +12,7 @@ import Notes from "../../Notes";
 import {
     getDetails,
     getTools,
-    saveReportHeader,
+    saveReportHeaderForBMD,
     getReportHeaderForBMD,
     getAccuracyOfIrradiationTimeByServiceIdForBMD,
     getTotalFiltrationByServiceIdForBMD,
@@ -1245,6 +1245,10 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl, qaTes
 
       const payload = {
         ...formData,
+        rpid: formData.rpId,
+        rpID: formData.rpId,
+        RPId: formData.rpId,
+        RPID: formData.rpId,
         toolsUsed: tools.map(t => ({
           tool: t.certificate || null,
           SrNo: t.SrNo,
@@ -1260,7 +1264,7 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl, qaTes
         notes: notes.map((text, index) => ({ slNo: `5.${index + 1}`, text })),
       };
 
-      await saveReportHeader(serviceId, payload);
+      await saveReportHeaderForBMD(serviceId, payload);
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 4000);
     } catch (err: any) {

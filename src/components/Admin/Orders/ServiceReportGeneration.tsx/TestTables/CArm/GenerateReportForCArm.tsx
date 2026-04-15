@@ -13,7 +13,7 @@ import Notes from "../../Notes";
 import {
   getDetails,
   getTools,
-  saveReportHeader,
+  saveReportHeaderForCArm,
   getReportHeaderForCArm,
   getAccuracyOfIrradiationTimeByServiceIdForCArm,
   getTotalFilterationByServiceIdForCArm,
@@ -378,6 +378,10 @@ const CArm: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
 
       const payload = {
         ...formData,
+        rpid: formData.rpId,
+        rpID: formData.rpId,
+        RPId: formData.rpId,
+        RPID: formData.rpId,
         toolsUsed: tools.map((t) => ({
           tool: t.certificate || null,
           SrNo: t.SrNo,
@@ -407,7 +411,7 @@ const CArm: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
         ],
       };
 
-      await saveReportHeader(serviceId, payload);
+      await saveReportHeaderForCArm(serviceId, payload);
       setSaveSuccess(true);
       toast.success("Report header saved successfully!");
       setTimeout(() => setSaveSuccess(false), 4000);

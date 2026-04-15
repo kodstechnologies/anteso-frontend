@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { Disclosure } from "@headlessui/react";
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
-import { saveReportHeader, getReportHeaderForCBCT, getAccuracyOfOperatingPotentialByServiceIdForCBCT, getAccuracyOfIrradiationTimeByServiceIdForCBCT, getLinearityOfMaLoadingByServiceIdForCBCT, getConsistencyOfRadiationOutputByServiceIdForCBCT, getRadiationLeakageLevelByServiceIdForCBCT, getRadiationProtectionSurveyByServiceIdForCBCT, proxyFile } from "../../../../../../api";
+import { saveReportHeaderForCBCT, getReportHeaderForCBCT, getAccuracyOfOperatingPotentialByServiceIdForCBCT, getAccuracyOfIrradiationTimeByServiceIdForCBCT, getLinearityOfMaLoadingByServiceIdForCBCT, getConsistencyOfRadiationOutputByServiceIdForCBCT, getRadiationLeakageLevelByServiceIdForCBCT, getRadiationProtectionSurveyByServiceIdForCBCT, proxyFile } from "../../../../../../api";
 import { getDetails, getTools } from "../../../../../../api";
 import * as XLSX from 'xlsx';
 import { createCBCTUploadableExcel } from './exportCBCTToExcel';
@@ -517,6 +517,10 @@ const DentalConeBeamCT: React.FC<{ serviceId: string; qaTestDate?: string | null
 
             const payload = {
                 ...formData,
+                rpid: formData.rpId,
+                rpID: formData.rpId,
+                RPId: formData.rpId,
+                RPID: formData.rpId,
                 toolsUsed: tools.map(t => ({
                     tool: t.certificate || null,
                     SrNo: t.SrNo,
@@ -540,7 +544,7 @@ const DentalConeBeamCT: React.FC<{ serviceId: string; qaTestDate?: string | null
                 ],
             };
 
-            await saveReportHeader(serviceId, payload);
+            await saveReportHeaderForCBCT(serviceId, payload);
             setSaveSuccess(true);
             setTimeout(() => setSaveSuccess(false), 4000);
         } catch (err: any) {

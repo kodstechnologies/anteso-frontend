@@ -3742,6 +3742,16 @@ export const getReportHeader = async (serviceId: string) => {
     return res.data;
 };
 
+export const saveReportHeaderForFixedRadioFluro = async (serviceId: string, payload: any) => {
+    const token = Cookies.get('accessToken');
+    const res = await api.put(
+        `/service-report/fixed-radio-fluro/report-header/${serviceId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
 // export const getReportHeaderForCBCT = async (serviceId: string) => {
 //     console.log("i m inside-- getReportHeader")
 //     const token = Cookies.get('accessToken');
@@ -4498,6 +4508,19 @@ export const getReportHeaderForCTScan = async (serviceId: string, tubeId?: strin
         console.error("Error fetching CT Scan report:", error);
         throw error;
     }
+};
+
+export const saveReportHeaderForCTScan = async (serviceId: string, payload: any, tubeId?: string | null) => {
+    const token = Cookies.get("accessToken");
+    const params: Record<string, string> = {};
+    if (tubeId !== undefined) {
+        params.tubeId = tubeId === null ? "null" : tubeId;
+    }
+    const res = await api.put(`/service-report/ct-scan/report-header/${serviceId}`, payload, {
+        params,
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
 };
 
 // High Contrast Resolution for CT Scan
@@ -5892,6 +5915,14 @@ export const getReportHeaderForCArm = async (serviceId: string) => {
     }
 };
 
+export const saveReportHeaderForCArm = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(`/service-report/c-arm/report-header/${serviceId}`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+};
+
 //Interventional Radiology
 export const getReportHeaderForInventionalRadiology = async (serviceId: string, tubeId?: string | null) => {
     const token = Cookies.get("accessToken");
@@ -5910,6 +5941,19 @@ export const getReportHeaderForInventionalRadiology = async (serviceId: string, 
         console.error("Error fetching Interventional Radiology report:", error);
         throw error;
     }
+};
+
+export const saveReportHeaderForInventionalRadiology = async (serviceId: string, payload: any, tubeId?: string | null) => {
+    const token = Cookies.get("accessToken");
+    const params: Record<string, string> = {};
+    if (tubeId !== undefined) {
+        params.tubeId = tubeId === null ? "null" : tubeId;
+    }
+    const res = await api.put(`/service-report/inventional-radiology/report-header/${serviceId}`, payload, {
+        params,
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
 };
 
 // Accuracy of Operating Potential - Inventional Radiology
@@ -7810,6 +7854,14 @@ export const getReportHeaderForCBCT = async (serviceId: string) => {
     }
 };
 
+export const saveReportHeaderForCBCT = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(`/service-report/dental-cone-beam-ct/report-header/${serviceId}`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+};
+
 // ==================== OPG APIs ====================
 
 // Accuracy of Irradiation Time - OPG
@@ -8090,6 +8142,14 @@ export const getReportHeaderForOPG = async (serviceId: string) => {
     }
 };
 
+export const saveReportHeaderForOPG = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(`/service-report/opg/report-header/${serviceId}`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+};
+
 // Get Report Header for Dental Intra
 // src/api/reportHeaders.ts
 // your axios instance
@@ -8106,6 +8166,14 @@ export const getReportHeaderForDentalIntra = async (serviceId: string) => {
         console.error("Error fetching Dental Intra report:", error);
         throw error;
     }
+};
+
+export const saveReportHeaderForDentalIntra = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(`/service-report/dental-intra/report-header/${serviceId}`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
 };
 
 // ==================== Dental Intra APIs ====================
@@ -9053,6 +9121,14 @@ export const getReportHeaderForRadiographyFixed = async (serviceId: string) => {
     }
 };
 
+export const saveReportHeaderForRadiographyFixed = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(`/service-report/radiography-fixed/report-header/${serviceId}`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+};
+
 // Accuracy of Irradiation Time - Radiography Fixed
 export const addAccuracyOfIrradiationTimeForRadiographyFixed = async (serviceId: string, payload: any) => {
     const token = Cookies.get("accessToken");
@@ -9507,6 +9583,14 @@ export const getReportHeaderForRadiographyMobileHT = async (serviceId: string) =
         console.error("Error fetching Radiography Mobile with HT report:", error);
         throw error;
     }
+};
+
+export const saveReportHeaderForRadiographyMobileHT = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(`/service-report/radiography-mobile-ht/report-header/${serviceId}`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
 };
 
 // Accuracy of Irradiation Time - Radiography Mobile with HT
@@ -9965,6 +10049,14 @@ export const getReportHeaderForRadiographyPortable = async (serviceId: string) =
     }
 };
 
+export const saveReportHeaderForRadiographyPortable = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(`/service-report/radiography-portable/report-header/${serviceId}`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+};
+
 // Accuracy of Irradiation Time - Radiography Portable
 export const addAccuracyOfIrradiationTimeForRadiographyPortable = async (serviceId: string, payload: any) => {
     const token = Cookies.get("accessToken");
@@ -10331,6 +10423,14 @@ export const getReportHeaderForRadiographyMobile = async (serviceId: string) => 
         console.error("Error fetching Radiography Mobile report:", error);
         throw error;
     }
+};
+
+export const saveReportHeaderForRadiographyMobile = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(`/service-report/radiography-mobile/report-header/${serviceId}`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
 };
 
 // Accuracy of Irradiation Time - Radiography Mobile
@@ -11356,6 +11456,14 @@ export const getReportHeaderForOBI = async (serviceId: string) => {
     }
 };
 
+export const saveReportHeaderForOBI = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(`/service-report/obi/report-header/${serviceId}`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+};
+
 // Get Report Header for Mammography
 export const getReportHeaderForMammography = async (serviceId: string) => {
     const token = Cookies.get("accessToken");
@@ -11374,6 +11482,14 @@ export const getReportHeaderForMammography = async (serviceId: string) => {
         }
         throw error;
     }
+};
+
+export const saveReportHeaderForMammography = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(`/service-report/mammography/report-header/${serviceId}`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
 };
 
 // ----------------------------------------------------------------------

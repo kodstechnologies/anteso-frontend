@@ -7,7 +7,7 @@ import toast from "react-hot-toast";
 import * as XLSX from "xlsx";
 import {
     getRadiationProfileWidthByServiceIdForCTScan,
-    saveReportHeader,
+    saveReportHeaderForCTScan,
     getReportHeaderForCTScan,
     proxyFile,
     getMeasurementOfOperatingPotentialByServiceId,
@@ -322,6 +322,10 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
 
             const payload = {
                 ...formData,
+                rpid: formData.rpId,
+                rpID: formData.rpId,
+                RPId: formData.rpId,
+                RPID: formData.rpId,
                 toolsUsed: tools.map(t => ({
                     tool: t.certificate || null,
                     SrNo: t.SrNo,
@@ -337,7 +341,8 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
                 notes: notes.map((n, i) => ({ slNo: n.slNo || "5." + (i + 1), text: n.text })),
             };
 
-            await saveReportHeader(serviceId, payload);
+            const headerTubeId = tubeType === "double" ? "A" : null;
+            await saveReportHeaderForCTScan(serviceId, payload, headerTubeId);
             setSaveSuccess(true);
             setTimeout(() => setSaveSuccess(false), 4000);
         } catch (err: any) {

@@ -10,7 +10,7 @@ export interface GeneratePDFOptions {
 
 /**
  * Generate PDF from HTML element with fixed alignment and multi-page support.
- * Captures the element using html2canvas and converts it to a professional PDF.
+ * Captures each A4 page shell individually for perfect alignment, with fallback for standard elements.
  */
 export const generatePDF = async ({
   elementId,
@@ -41,130 +41,133 @@ export const generatePDF = async ({
   try {
     updateButton('Preparing Report...', true);
 
-    // Give a small delay to ensure any dynamic content is settled
-    await new Promise(resolve => setTimeout(resolve, 300));
+    // Detect if the report uses the shell-based pagination system
+    const shells = element.querySelectorAll('.report-pdf-page-shell, .report-pdf-last-page-shell');
 
-    // Capture the element
-    const canvas = await html2canvas(element, {
-      scale: 2, // Higher scale for better quality
-      useCORS: true,
-      logging: false,
-      backgroundColor: '#ffffff',
-      allowTaint: true,
-      onclone: (clonedDoc: Document) => {
-        const clonedElement = clonedDoc.getElementById(elementId);
-        if (clonedElement) {
-          // Force layout for PDF generation
-          clonedElement.style.width = '210mm';
-          clonedElement.style.margin = '0';
-          clonedElement.style.padding = '0';
-          clonedElement.style.backgroundColor = '#ffffff';
+    // COMMON HELPER: Fixes tables and images in cloned elements for better canvas output
+    const prepareClonedElement = (clonedElement: HTMLElement) => {
+      // Fix tables to ensure they don't look broken in canvas
+      const tables = clonedElement.querySelectorAll('table');
+      tables.forEach((table) => {
+        const tableEl = table as HTMLElement;
+        tableEl.style.width = '100%';
+        tableEl.style.borderCollapse = 'collapse';
+        const cells = tableEl.querySelectorAll('th, td');
+        cells.forEach((cell) => {
+          const cellEl = cell as HTMLElement;
+          cellEl.style.border = '0.5px solid #000';
+        });
+      });
 
-          // Ensure all page shells have correct dimensions and spacing
-          const pages = clonedElement.querySelectorAll('.report-pdf-page-shell, .report-pdf-last-page-shell');
-          pages.forEach((page) => {
-            const pageEl = page as HTMLElement;
-            pageEl.style.width = '210mm';
-            pageEl.style.minHeight = '297mm'; // A4 Height
-            pageEl.style.boxSizing = 'border-box';
-            pageEl.style.padding = '15mm'; // Standard margins
-            pageEl.style.margin = '0';
-            pageEl.style.display = 'flex';
-            pageEl.style.flexDirection = 'column';
-          });
+      // Ensure images are fully visible
+      const images = clonedElement.querySelectorAll('img');
+      images.forEach((img) => {
+        (img as HTMLElement).style.maxWidth = '100%';
+      });
 
-          // Fix tables to ensure they don't look broken in canvas
-const tables = clonedElement.querySelectorAll('table');
+      // Hide things that shouldn't be in the PDF
+      const hideElements = clonedElement.querySelectorAll('.print\\:hidden, button');
+      hideElements.forEach((el) => {
+        (el as HTMLElement).style.display = 'none';
+      });
+    };
 
-tables.forEach((table) => {
-  const tableEl = table as HTMLElement;
+    if (shells.length > 0) {
+      /**
+       * SHELL-BASED PAGINATION (NEW / PREFERRED)
+       * Captures each page shell individually to guarantee 1:1 matching with the Web UI.
+       */
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const imgWidth = 210;
+      const pageHeight = 297;
 
-  tableEl.style.width = '100%';
-  tableEl.style.borderCollapse = 'collapse';
+      for (let i = 0; i < shells.length; i++) {
+        const shell = shells[i] as HTMLElement;
+        updateButton(`Generating Page ${i + 1} of ${shells.length}...`, true);
 
-  const cells = tableEl.querySelectorAll('th, td');
+        const canvas = await html2canvas(shell, {
+          scale: 2,
+          useCORS: true,
+          logging: false,
+          backgroundColor: '#ffffff',
+          allowTaint: true,
+          onclone: (clonedDoc: Document) => {
+            // Find the shell in the cloned document
+            // html2canvas clones the WHOLE document, then looks for the element.
+            // But we passed 'shell' (the specific element).
+            // Actually, html2canvas (clonedDoc) logic is slightly tricky when passing an element.
+            // It clones the whole document and finds the element in the clone.
+            // Since we might have multiple shells, we find the one at the same index.
+            const clonedShells = clonedDoc.querySelectorAll('.report-pdf-page-shell, .report-pdf-last-page-shell');
+            const clonedShell = clonedShells[i] as HTMLElement;
+            if (clonedShell) {
+              clonedShell.style.margin = '0';
+              clonedShell.style.boxShadow = 'none';
+              clonedShell.style.width = '210mm';
+              clonedShell.style.height = '297mm';
+              clonedShell.style.minHeight = '297mm';
+              clonedShell.style.maxHeight = '297mm';
+              clonedShell.style.overflow = 'hidden';
+              prepareClonedElement(clonedShell);
+            }
+          }
+        });
 
-  cells.forEach((cell) => {
-    const cellEl = cell as HTMLElement;
+        const imgData = canvas.toDataURL('image/png');
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
-    // ✅ BORDER FIX
-    cellEl.style.border = '0.5px solid #000';
+        if (i > 0) pdf.addPage();
 
-    // ❌ REMOVE THIS
-    // cellEl.style.height = "100px !important";
-
-    // ✅ HEIGHT + ALIGNMENT FIX
-    cellEl.style.height = 'auto';
-    cellEl.style.minHeight = '32px';
-    cellEl.style.verticalAlign = 'middle';
-    cellEl.style.textAlign = 'center';
-
-    // ✅ PADDING
-    cellEl.style.padding = '2px 4px';
-
-    // ✅ WRAP CONTENT WITH FLEX CENTERING
-    const wrapper = document.createElement('div');
-    wrapper.style.display = 'flex';
-    wrapper.style.alignItems = 'center';     // vertical center
-    wrapper.style.justifyContent = 'center'; // horizontal center
-    wrapper.style.textAlign = 'center';
-    wrapper.style.height = '100%';
-    wrapper.style.minHeight = '100%';
-    wrapper.style.lineHeight = '1.2';
-    wrapper.style.padding = '4px 6px';
-
-    // move existing content inside wrapper
-    while (cellEl.firstChild) {
-      wrapper.appendChild(cellEl.firstChild);
-    }
-
-    cellEl.appendChild(wrapper);
-  });
-});
-
-          // Ensure images are fully visible
-          const images = clonedElement.querySelectorAll('img');
-          images.forEach((img) => {
-            (img as HTMLElement).style.maxWidth = '100%';
-          });
-
-          // Hide things that shouldn't be in the PDF
-          const hideElements = clonedElement.querySelectorAll('.print\\:hidden, button');
-          hideElements.forEach((el) => {
-            (el as HTMLElement).style.display = 'none';
-          });
-        }
+        // Add the image. If the shell somehow exceeds one page (e.g. data overflow), 
+        // we center it or let it spill (most shells are exactly A4).
+        pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight, undefined, 'FAST');
       }
-    });
 
-    updateButton('Generating PDF...', true);
+      pdf.save(filename);
+    } else {
+      /**
+       * FALLBACK: CONTINUOUS CAPTURE (OLD)
+       * Captures the entire element and slices it mathematically into A4 pages.
+       */
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+        allowTaint: true,
+        onclone: (clonedDoc: Document) => {
+          const clonedElement = clonedDoc.getElementById(elementId);
+          if (clonedElement) {
+            clonedElement.style.width = '210mm';
+            clonedElement.style.margin = '0';
+            clonedElement.style.padding = '0';
+            prepareClonedElement(clonedElement);
+          }
+        }
+      });
 
-    // Initialize jsPDF
-    const pdf = new jsPDF('p', 'mm', 'a4');
-    const imgData = canvas.toDataURL('image/png'); // Using PNG for better quality (less artifacting on text)
+      updateButton('Generating File...', true);
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const imgData = canvas.toDataURL('image/png');
+      const imgWidth = 210;
+      const pageHeight = 297;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
-    // A4 dimensions in mm
-    const imgWidth = 210;
-    const pageHeight = 297;
-    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      let heightLeft = imgHeight;
+      let position = 0;
 
-    let heightLeft = imgHeight;
-    let position = 0;
-
-    // Add first page
-    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight, undefined, 'FAST');
-    heightLeft -= pageHeight;
-
-    // Add subsequent pages
-    while (heightLeft > 0) {
-      position = heightLeft - imgHeight;
-      pdf.addPage();
       pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight, undefined, 'FAST');
       heightLeft -= pageHeight;
-    }
 
-    // Save the PDF
-    pdf.save(filename);
+      while (heightLeft > 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight, undefined, 'FAST');
+        heightLeft -= pageHeight;
+      }
+
+      pdf.save(filename);
+    }
 
     updateButton(originalButtonText, false);
   } catch (error) {
@@ -176,30 +179,20 @@ tables.forEach((table) => {
 
 /**
  * Estimates the number of A4 pages for a given element.
- * Used by various reports to display total page count in headers.
  */
 export const estimateReportPages = (elementId: string): number => {
   const element = document.getElementById(elementId);
   if (!element) return 1;
-
-  // A4 height at 96 DPI is approximately 1122.5px.
-  // We use 1120px to account for slight browser variations and margins.
   const A4_HEIGHT_PX = 1120;
-
-  // Most reports use fixed-height shells for pages (.report-pdf-page-shell)
   const shells = element.querySelectorAll('.report-pdf-page-shell, .report-pdf-last-page-shell');
-
   if (shells.length > 0) {
     let total = 0;
     shells.forEach(shell => {
       const h = (shell as HTMLElement).offsetHeight;
-      // If a shell is significantly larger than one A4 page, count it as multiple pages
       total += Math.max(1, Math.ceil(h / A4_HEIGHT_PX));
     });
     return total;
   }
-
-  // Fallback for reports without explicit shells: estimate based on total height
   const totalHeight = element.offsetHeight;
   return Math.max(1, Math.ceil(totalHeight / A4_HEIGHT_PX));
 };

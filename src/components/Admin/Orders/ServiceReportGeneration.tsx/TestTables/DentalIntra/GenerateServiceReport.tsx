@@ -9,7 +9,7 @@ import * as XLSX from "xlsx";
 import Standards from "../../Standards";
 import Notes from "../../Notes";
 
-import { getDetails, getTools, saveReportHeader, getReportHeaderForDentalIntra, proxyFile } from "../../../../../../api";
+import { getDetails, getTools, saveReportHeaderForDentalIntra, getReportHeaderForDentalIntra, proxyFile } from "../../../../../../api";
 
 // Test-table imports
 import AccuracyOfOperatingPotential from "./AccuracyOfOperatingPotential";
@@ -383,6 +383,10 @@ const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId, qaTestDate,
 
             const payload = {
                 ...formData,
+                rpid: formData.rpId,
+                rpID: formData.rpId,
+                RPId: formData.rpId,
+                RPID: formData.rpId,
                 toolsUsed: tools.map(t => ({
                     toolId: t.certificate || null,
                     SrNo: t.SrNo,
@@ -406,7 +410,7 @@ const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId, qaTestDate,
                 ],
             };
 
-            await saveReportHeader(serviceId, payload);
+            await saveReportHeaderForDentalIntra(serviceId, payload);
             setSaveSuccess(true);
             setTimeout(() => setSaveSuccess(false), 4000);
         } catch (err: any) {

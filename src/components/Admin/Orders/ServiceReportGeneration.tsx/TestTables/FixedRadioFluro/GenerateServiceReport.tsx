@@ -7,7 +7,7 @@ import toast from "react-hot-toast";
 import * as XLSX from "xlsx";
 import {
     getRadiationProfileWidthByServiceId,
-    saveReportHeader,
+    saveReportHeaderForFixedRadioFluro,
     getAccuracyOfIrradiationTimeByServiceIdForFixedRadioFluro,
     getReportHeader,
     proxyFile,
@@ -1421,6 +1421,10 @@ const RadioFluro: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, qaTestDa
 
             const payload = {
                 ...formData,
+                rpid: formData.rpId,
+                rpID: formData.rpId,
+                RPId: formData.rpId,
+                RPID: formData.rpId,
                 toolsUsed: tools.map((t) => ({
                     tool: t.certificate || null,
                     SrNo: t.SrNo,
@@ -1453,7 +1457,7 @@ const RadioFluro: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, qaTestDa
                 ],
             };
 
-            await saveReportHeader(serviceId, payload);
+            await saveReportHeaderForFixedRadioFluro(serviceId, payload);
             setSaveSuccess(true);
             setTimeout(() => setSaveSuccess(false), 4000);
         } catch (err: any) {

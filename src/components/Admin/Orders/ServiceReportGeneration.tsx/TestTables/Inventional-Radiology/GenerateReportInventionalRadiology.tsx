@@ -12,7 +12,7 @@ import Notes from "../../Notes";
 import {
   getDetails,
   getTools,
-  saveReportHeader,
+  saveReportHeaderForInventionalRadiology,
   getReportHeaderForInventionalRadiology,
   proxyFile,
   getAccuracyOfIrradiationTimeByServiceId,
@@ -853,6 +853,10 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
 
       const payload = {
         ...formData,
+        rpid: formData.rpId,
+        rpID: formData.rpId,
+        RPId: formData.rpId,
+        RPID: formData.rpId,
         toolsUsed: originalTools.map((t: any, idx: number) => ({
           toolId: t._id || t.toolId || null,
           SrNo: t.SrNo,
@@ -879,7 +883,8 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
         ],
       };
 
-      await saveReportHeader(serviceId, payload);
+      const headerTubeId = tubeType === "double" ? "frontal" : null;
+      await saveReportHeaderForInventionalRadiology(serviceId, payload, headerTubeId);
       setSaveSuccess(true);
       toast.success("Report header saved successfully!");
       setTimeout(() => setSaveSuccess(false), 4000);

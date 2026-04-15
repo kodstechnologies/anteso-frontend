@@ -513,6 +513,15 @@ const MainTestTableForCTScan: React.FC<MainTestTableProps> = ({ testData }) => {
     let hasData = false;
     let testRows: any[] = [];
     const hcr = testData.highContrastResolution;
+    const enteredContrastDiff =
+      hcr?.result?.contrastDifference ??
+      hcr?.contrastDifference ??
+      hcr?.operatingParams?.contrastDifference ??
+      "";
+    const highContrastTolerance =
+      enteredContrastDiff !== "" && enteredContrastDiff !== "-" && enteredContrastDiff != null
+        ? `lp/cm at ${enteredContrastDiff} % Contrast Difference`
+        : "As per protocol";
 
     const validTable2Rows = hcr.table2 && Array.isArray(hcr.table2) 
       ? hcr.table2.filter((row: any) => row.size || row.value)
@@ -526,7 +535,7 @@ const MainTestTableForCTScan: React.FC<MainTestTableProps> = ({ testData }) => {
           specified: row.size ? `Size: ${row.size} mm` : "-",
           measured: value,
           criteria: "As per protocol", // Mapped from the View Report layout idea or generator protocol
-          tolerance: "As per protocol",
+          tolerance: highContrastTolerance,
           remarks: "Pass" as "Pass" | "Fail", // Usually marked pass if evaluated
         };
       });
@@ -538,7 +547,7 @@ const MainTestTableForCTScan: React.FC<MainTestTableProps> = ({ testData }) => {
         specified: `Contrast Difference: ${contrastDiff}`,
         measured: `Observed Size: ${observedSize} mm`,
         criteria: "-",
-        tolerance: "As per protocol",
+        tolerance: highContrastTolerance,
         remarks: "Pass" as "Pass" | "Fail",
       }];
     }

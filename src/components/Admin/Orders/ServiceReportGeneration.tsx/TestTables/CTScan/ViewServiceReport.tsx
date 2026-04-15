@@ -292,8 +292,8 @@ const ViewServiceReportCTScan: React.FC = () => {
     // If index is provided (0, 1, 2), use fixed labels from generator
     if (index !== undefined) {
       if (index === 0) return "0.5 mm";
-      if (index === 1) return "Â±50%";
-      if (index === 2) return "Â±1.0 mm";
+      if (index === 1) return "±50%";
+      if (index === 2) return "±1.0 mm";
     }
 
     const appliedNum = typeof applied === 'string' ? parseFloat(applied) : applied;
@@ -302,9 +302,9 @@ const ViewServiceReportCTScan: React.FC = () => {
     if (appliedNum < 1.0) {
       return "0.5 mm";
     } else if (appliedNum >= 1.0 && appliedNum <= 2.0) {
-      return "Â±50%";
+      return "+/-50%";
     } else {
-      return "Â±1.0 mm";
+      return "+/-1.0 mm";
     }
   };
 
@@ -315,7 +315,7 @@ const ViewServiceReportCTScan: React.FC = () => {
     const type = tolerance.type || 'percent';
     const sign = tolerance.sign || 'both';
 
-    const signSymbol = sign === 'both' ? 'Â±' : sign === 'plus' ? '+' : '-';
+    const signSymbol = sign === 'both' ? '±' : sign === 'plus' ? '+' : '-';
     const unit = type === 'percent' ? '%' : ' kVp';
     return `${signSymbol}${value}${unit}`;
   };
@@ -387,15 +387,15 @@ const ViewServiceReportCTScan: React.FC = () => {
 
   // Helper function to format CTDI tolerance
   const formatCtdiTolerance = (tolerance: any): string => {
-    if (!tolerance) return "Â±20%"; // Default AERB tolerance
-    const sign = tolerance.sign === "both" ? "Â±" : tolerance.sign === "plus" ? "+" : "-";
+    if (!tolerance) return "+/-20%"; // Default AERB tolerance
+    const sign = tolerance.sign === "both" ? "+/-" : tolerance.sign === "plus" ? "+" : "-";
     return `${sign}${tolerance.value} mGy/100mAs`;
   };
 
   // Helper function to format Timer Accuracy tolerance
   const formatTimerAccuracyTolerance = (tolerance: string | number): string => {
     if (!tolerance) return "-";
-    return `Â±${tolerance}%`;
+    return `+/-${tolerance}%`;
   };
 
   // Helper to render High Contrast Resolution content (table2 or result/operatingParams)
@@ -507,8 +507,8 @@ const ViewServiceReportCTScan: React.FC = () => {
           notes: d.notes,
           pages: String(pageCount),
         };
-        const { saveReportHeader } = await import("../../../../../../api");
-        await saveReportHeader(serviceId!, payload);
+        const { saveReportHeaderForCTScan } = await import("../../../../../../api");
+        await saveReportHeaderForCTScan(serviceId!, payload, null);
         setReport((prev) => (prev ? { ...prev, pages: String(pageCount) } : null));
       }
     } catch (error) {
@@ -667,7 +667,7 @@ const ViewServiceReportCTScan: React.FC = () => {
                   ["Test Date", formatDate(report.testDate)],
                   ["Due Date", formatDate(report.testDueDate)],
                   ["Location", report.location],
-                  ["Temperature (Â°C)", report.temperature || "-"],
+                  ["Temperature (°C)", report.temperature || "-"],
                   ["Humidity (%)", report.humidity || "-"],
                   ["No. of Pages", report.pages ?? "-"],
                 ].map(([label, value]) => (
@@ -1912,7 +1912,7 @@ const ViewServiceReportCTScan: React.FC = () => {
                         <div className="grid grid-cols-2 gap-4 mb-4 print:mb-1">
                           <div>
                             <p className="text-xs print:text-[8px]" style={{ fontSize: '10px' }}>
-                              <strong>Workload:</strong> {data.workload || "-"} {data.workloadUnit || "mAÂ·min/week"}
+                              <strong>Workload:</strong> {data.workload || "-"} {data.workloadUnit || "mA-min/week"}
                             </p>
                           </div>
                         </div>
@@ -1980,7 +1980,7 @@ const ViewServiceReportCTScan: React.FC = () => {
                               Maximum Leakage (mR in 1 hr) = (Workload Ã— Max Exposure) / (60 Ã— mA)
                             </div>
                             <p className="text-[10px] print:text-[8px] mt-2 text-gray-600 italic">
-                              Where: Workload = {workloadValue} mAÂ·min/week | mA = {maValue} | 1 mGy = 114 mR
+                              Where: Workload = {workloadValue} mA-min/week | mA = {maValue} | 1 mGy = 114 mR
                             </p>
                           </div>
                           <div className="grid grid-cols-2 gap-4 print:gap-1">
@@ -2008,7 +2008,7 @@ const ViewServiceReportCTScan: React.FC = () => {
                           <div className="bg-blue-50 p-4 print:p-1 border-l-4 border-blue-500 rounded-r">
                             <p className="text-[11px] print:text-[8px] leading-relaxed">
                               <strong>Tolerance:</strong> Maximum Leakage Radiation Level at 1 meter from the Focus should be{' '}
-                              {data.toleranceOperator === 'less than or equal to' ? 'â‰¤' : data.toleranceOperator === 'greater than or equal to' ? 'â‰¥' : '='}{' '}
+                              {data.toleranceOperator === 'less than or equal to' ? '<=' : data.toleranceOperator === 'greater than or equal to' ? '>=' : '='}{' '}
                               <strong>{data.toleranceValue || data.tolerance || '1'} mGy ({parseFloat(data.toleranceValue || data.tolerance || '1') * 114} mR) in one hour.</strong>
                             </p>
                           </div>
@@ -2110,7 +2110,7 @@ const ViewServiceReportCTScan: React.FC = () => {
                           <tr key={i} className="text-center" style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
                             <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.actual || "-"}</td>
                             <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.measured || "-"}</td>
-                            <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{testData.gantryTilt.toleranceSign || "Â±"}{testData.gantryTilt.toleranceValue || "2"}Â°</td>
+                            <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{testData.gantryTilt.toleranceSign || "+/-"}{testData.gantryTilt.toleranceValue || "2"}°</td>
                             <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>
                               <span className={row.remark === "Pass" ? "text-green-600 font-bold" : row.remark === "Fail" ? "text-red-600 font-bold" : ""}>
                                 {row.remark || "-"}
@@ -2350,7 +2350,7 @@ const ViewServiceReportCTScan: React.FC = () => {
                     <tbody>
                       <tr className="text-center" style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
                         <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{testData.alignmentOfTableGantry.result || "-"}</td>
-                        <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{testData.alignmentOfTableGantry.toleranceSign || "Â±"}{testData.alignmentOfTableGantry.toleranceValue || "2"}</td>
+                        <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{testData.alignmentOfTableGantry.toleranceSign || "+/-"}{testData.alignmentOfTableGantry.toleranceValue || "2"}</td>
                         <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>
                           <span className={testData.alignmentOfTableGantry.remark === "Pass" ? "text-green-600 font-bold" : testData.alignmentOfTableGantry.remark === "Fail" ? "text-red-600 font-bold" : ""}>
                             {testData.alignmentOfTableGantry.remark || "-"}

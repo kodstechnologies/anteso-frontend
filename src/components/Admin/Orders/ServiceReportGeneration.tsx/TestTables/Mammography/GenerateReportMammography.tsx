@@ -11,7 +11,7 @@ import Notes from "../../Notes";
 import {
     getDetails,
     getTools,
-    saveReportHeader,
+    saveReportHeaderForMammography,
     getReportHeaderForMammography,
     getAccuracyOfOperatingPotentialByServiceIdForMammography,
     getAccuracyOfIrradiationTimeByServiceIdForMammography,
@@ -1555,6 +1555,10 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
 
             const payload = {
                 ...formData,
+                rpid: formData.rpId,
+                rpID: formData.rpId,
+                RPId: formData.rpId,
+                RPID: formData.rpId,
                 toolsUsed: tools.map(t => ({
                     SrNo: t.SrNo,
                     nomenclature: t.nomenclature,
@@ -1577,7 +1581,7 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
                 ],
             };
 
-            await saveReportHeader(serviceId, payload);
+            await saveReportHeaderForMammography(serviceId, payload);
             setSaveSuccess(true);
             setTimeout(() => setSaveSuccess(false), 5000);
         } catch (err: any) {

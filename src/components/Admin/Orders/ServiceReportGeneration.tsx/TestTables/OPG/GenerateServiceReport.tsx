@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { Disclosure } from "@headlessui/react";
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
-import { getRadiationProfileWidthByServiceId, saveReportHeader, getReportHeaderForOPG, getAccuracyOfOperatingPotentialByServiceIdForOPG, getAccuracyOfIrradiationTimeByServiceIdForOPG, getLinearityOfMaLoadingByServiceIdForOPG, getConsistencyOfRadiationOutputByServiceIdForOPG, getRadiationLeakageLevelByServiceIdForOPG, getRadiationProtectionSurveyByServiceIdForOPG, getDetails, getTools, proxyFile } from "../../../../../../api";
+import { getRadiationProfileWidthByServiceId, saveReportHeaderForOPG, getReportHeaderForOPG, getAccuracyOfOperatingPotentialByServiceIdForOPG, getAccuracyOfIrradiationTimeByServiceIdForOPG, getLinearityOfMaLoadingByServiceIdForOPG, getConsistencyOfRadiationOutputByServiceIdForOPG, getRadiationLeakageLevelByServiceIdForOPG, getRadiationProtectionSurveyByServiceIdForOPG, getDetails, getTools, proxyFile } from "../../../../../../api";
 import * as XLSX from 'xlsx';
 import { createOPGUploadableExcel } from './exportOPGToExcel';
 
@@ -350,6 +350,10 @@ const OPG: React.FC<{ serviceId: string; qaTestDate?: string | null; csvFileUrl?
 
             const payload = {
                 ...formData,
+                rpid: formData.rpId,
+                rpID: formData.rpId,
+                RPId: formData.rpId,
+                RPID: formData.rpId,
                 toolsUsed: tools.map(t => ({
                     tool: t.certificate || null,
                     SrNo: t.SrNo,
@@ -373,7 +377,7 @@ const OPG: React.FC<{ serviceId: string; qaTestDate?: string | null; csvFileUrl?
                 ],
             };
 
-            await saveReportHeader(serviceId, payload);
+            await saveReportHeaderForOPG(serviceId, payload);
             setSaveSuccess(true);
             setTimeout(() => setSaveSuccess(false), 4000);
         } catch (err: any) {
