@@ -1,7 +1,7 @@
 // src/components/reports/ViewServiceReportRadiographyPortable.tsx
 import React, { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { getReportHeaderForRadiographyPortable, saveReportHeader, getDetails } from "../../../../../../api";
+import { getReportHeaderForRadiographyPortable, saveReportHeader, getDetails, getTools } from "../../../../../../api";
 import logo from "../../../../../../assets/logo/anteso-logo2.png";
 import logoA from "../../../../../../assets/quotationImg/NABLlogo.png";
 import AntesoQRCode from "../../../../../../assets/quotationImg/qrcode.png";
@@ -122,10 +122,45 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
 
       try {
         setLoading(true);
-        const [response, detailsRes] = await Promise.all([
+        const [response, detailsRes, toolsRes] = await Promise.all([
           getReportHeaderForRadiographyPortable(serviceId),
           getDetails(serviceId),
+          getTools(serviceId).catch(() => null),
         ]);
+        const normalizeTools = (raw: any): Tool[] => {
+          if (!Array.isArray(raw)) return [];
+          return raw.map((tool: any, index: number) => ({
+            slNumber: String(tool?.slNumber || index + 1),
+            nomenclature: tool?.nomenclature || "-",
+            make: tool?.make || tool?.manufacturer || "-",
+            model: tool?.model || "-",
+            SrNo: tool?.SrNo || tool?.srNo || tool?.serialNumber || "-",
+            range: tool?.range || "-",
+            calibrationCertificateNo:
+              tool?.calibrationCertificateNo || tool?.certificateNo || tool?.certificateNumber || "-",
+            calibrationValidTill: tool?.calibrationValidTill || tool?.validTill || "",
+          }));
+        };
+        const mergeTools = (primary: Tool[], secondary: Tool[]): Tool[] => {
+          const seen = new Set<string>();
+          const merged: Tool[] = [];
+          const addUnique = (tool: Tool) => {
+            const key = [
+              String(tool.nomenclature || "").toLowerCase().trim(),
+              String(tool.make || "").toLowerCase().trim(),
+              String(tool.model || "").toLowerCase().trim(),
+              String(tool.SrNo || "").toLowerCase().trim(),
+              String(tool.calibrationCertificateNo || "").toLowerCase().trim(),
+            ].join("|");
+            if (!seen.has(key)) {
+              seen.add(key);
+              merged.push(tool);
+            }
+          };
+          primary.forEach(addUnique);
+          secondary.forEach(addUnique);
+          return merged.map((tool, idx) => ({ ...tool, slNumber: String(idx + 1) }));
+        };
         const detailsData = detailsRes?.data?.data || detailsRes?.data || {};
         const srfKey = response?.data?.srfNumber || detailsData?.srfNumber || "";
         const cachedOrderBySrfRaw = srfKey ? localStorage.getItem(`order-basic-by-srf-${srfKey}`) : null;
@@ -152,6 +187,11 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
 
         if (response?.exists && response?.data) {
           const data = response.data;
+          const headerTools = normalizeTools(
+            data.toolsUsed || data.tools || data.standards || data.toolsAssigned
+          );
+          const assignedTools = normalizeTools(toolsRes?.data?.toolsAssigned || []);
+          const mergedTools = mergeTools(headerTools, assignedTools);
           setReport({
             customerName: data.customerName || "N/A",
             address: data.address || "N/A",
@@ -187,7 +227,7 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
             location: data.location || "At Site",
             temperature: data.temperature || "",
             humidity: data.humidity || "",
-            toolsUsed: data.toolsUsed || [],
+            toolsUsed: mergedTools,
             notes: data.notes || defaultNotes,
             pages: data.pages ?? "",
             category: data.category || "",
@@ -606,33 +646,54 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
                   <p className="text-sm mb-3 text-[11px]" style={{ fontSize: '11px' }}>
                     Observe the images of the two steel balls on the radiograph and evaluate tilt in the central beam
                   </p>
-                  {testData.centralBeamAlignment.observedTilt && (
-                    <div className="overflow-x-auto">
-                      <table className="w-full border-2 border-black text-sm compact-table" style={{ fontSize: '11px' }}>
-                        <tbody>
-                          <tr>
-                            <td className="border border-black p-3 font-medium w-1/2">Observed tilt</td>
-                            <td className="border border-black p-3 text-center">
-                              {testData.centralBeamAlignment.observedTilt.value || "-"}&deg;
-                              {testData.centralBeamAlignment.observedTilt.remark && (
-                                <span className={`ml-2 ${testData.centralBeamAlignment.observedTilt.remark === "Pass" ? "text-green-600 font-semibold" : "text-red-600 font-semibold"}`}>
-                                  {testData.centralBeamAlignment.observedTilt.remark}
-                                </span>
-                              )}
-                            </td>
-                          </tr>
-                          <tr>
-                            <td className="border border-black p-3 font-medium">Tolerance: Central Beam Alignment</td>
-                            <td className="border border-black p-3 text-center">
-                              {testData.centralBeamAlignment.tolerance && typeof testData.centralBeamAlignment.tolerance === 'object'
-                                ? `${testData.centralBeamAlignment.tolerance.operator || "<"} ${testData.centralBeamAlignment.tolerance.value || "1.5"}°`
-                                : (testData.centralBeamAlignment.tolerance || "< 1.5°")}
-                            </td>
-                          </tr>
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
+                  {testData.centralBeamAlignment.observedTilt && (() => {
+                    const observedRaw = testData.centralBeamAlignment?.observedTilt?.value;
+                    const toleranceObj = testData.centralBeamAlignment?.tolerance;
+                    const tolOpRaw = typeof toleranceObj === 'object' ? (toleranceObj.operator || "<") : "<";
+                    const tolValRaw = typeof toleranceObj === 'object' ? (toleranceObj.value || "1.5") : "1.5";
+                    const observed = parseFloat(String(observedRaw ?? ""));
+                    const tolerance = parseFloat(String(tolValRaw ?? ""));
+
+                    let computedRemark = "";
+                    if (!Number.isNaN(observed) && !Number.isNaN(tolerance)) {
+                      // Equality must be FAIL; treat <= as < and >= as >.
+                      if (tolOpRaw === ">" || tolOpRaw === ">=") {
+                        computedRemark = observed > tolerance ? "Pass" : "Fail";
+                      } else if (tolOpRaw === "=") {
+                        computedRemark = "Fail";
+                      } else {
+                        computedRemark = observed < tolerance ? "Pass" : "Fail";
+                      }
+                    }
+
+                    return (
+                      <div className="overflow-x-auto">
+                        <table className="w-full border-2 border-black text-sm compact-table" style={{ fontSize: '11px' }}>
+                          <tbody>
+                            <tr>
+                              <td className="border border-black p-3 font-medium w-1/2">Observed tilt</td>
+                              <td className="border border-black p-3 text-center">
+                                {testData.centralBeamAlignment.observedTilt.value || "-"}&deg;
+                                {computedRemark && (
+                                  <span className={`ml-2 ${computedRemark === "Pass" ? "text-green-600 font-semibold" : "text-red-600 font-semibold"}`}>
+                                    {computedRemark}
+                                  </span>
+                                )}
+                              </td>
+                            </tr>
+                            <tr>
+                              <td className="border border-black p-3 font-medium">Tolerance: Central Beam Alignment</td>
+                              <td className="border border-black p-3 text-center">
+                                {testData.centralBeamAlignment.tolerance && typeof testData.centralBeamAlignment.tolerance === 'object'
+                                  ? `${testData.centralBeamAlignment.tolerance.operator || "<"} ${testData.centralBeamAlignment.tolerance.value || "1.5"}°`
+                                  : (testData.centralBeamAlignment.tolerance || "< 1.5°")}
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
             )}

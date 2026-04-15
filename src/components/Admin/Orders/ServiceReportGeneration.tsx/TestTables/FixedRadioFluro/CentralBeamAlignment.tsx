@@ -64,9 +64,11 @@ const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, 
       return { remark: '' as const, pass: false };
     }
 
-    // Central beam tilt must be <= tolerance to pass
-    // Pass if observed <= tolerance, Fail if observed > tolerance
-    const pass = observed <= tolerance;
+    // Strict operator-based comparison.
+    // Requirement: if observed tilt equals acceptance criteria, it must be FAIL.
+    const pass = toleranceOperator === '<'
+      ? observed < tolerance
+      : observed > tolerance;
 
     return {
       remark: pass ? 'Pass' : 'Fail' as 'Pass' | 'Fail',
@@ -101,7 +103,7 @@ const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, 
             setObservedTilt(String(data.observedTilt.value ?? ''));
           }
           if (data.tolerance) {
-            setToleranceOperator(data.tolerance.operator || '<=');
+            setToleranceOperator(data.tolerance.operator === '>' ? '>' : '<');
             setToleranceValue(String(data.tolerance.value ?? '2'));
           }
           setIsSaved(true);
@@ -167,7 +169,7 @@ const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, 
             setObservedTilt(String(data.observedTilt.value ?? ''));
           }
           if (data.tolerance) {
-            setToleranceOperator(data.tolerance.operator || '<=');
+            setToleranceOperator(data.tolerance.operator === '>' ? '>' : '<');
             setToleranceValue(String(data.tolerance.value ?? '2'));
           }
           setIsSaved(true);

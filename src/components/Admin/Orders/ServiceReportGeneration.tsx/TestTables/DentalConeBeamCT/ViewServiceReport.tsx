@@ -1,7 +1,7 @@
 // src/components/reports/ViewServiceReportCBCT.tsx
 import React, { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { getDetails, getReportHeaderForCBCT, getRadiationProtectionSurveyByServiceIdForCBCT } from "../../../../../../api";
+import { getDetails, getReportHeaderForCBCT, getRadiationProtectionSurveyByServiceIdForCBCT, getTools } from "../../../../../../api";
 import logo from "../../../../../../assets/logo/anteso-logo2.png";
 import logoA from "../../../../../../assets/quotationImg/NABLlogo.png";
 import AntesoQRCode from "../../../../../../assets/quotationImg/qrcode.png";
@@ -125,13 +125,58 @@ const ViewServiceReportCBCT: React.FC = () => {
 
       try {
         setLoading(true);
-        const [response, detailsRes] = await Promise.all([
+        const [response, detailsRes, toolsRes] = await Promise.all([
           getReportHeaderForCBCT(serviceId),
           getDetails(serviceId).catch(() => null),
+          getTools(serviceId).catch(() => null),
         ]);
+        const normalizeTools = (raw: any): Tool[] => {
+          if (!Array.isArray(raw)) return [];
+          return raw.map((tool: any, index: number) => ({
+            slNumber: String(tool?.slNumber || index + 1),
+            nomenclature: tool?.nomenclature || "-",
+            make: tool?.make || tool?.manufacturer || "-",
+            model: tool?.model || "-",
+            SrNo: tool?.SrNo || tool?.srNo || tool?.serialNumber || "-",
+            range: tool?.range || "-",
+            calibrationCertificateNo:
+              tool?.calibrationCertificateNo || tool?.certificateNo || tool?.certificateNumber || "-",
+            calibrationValidTill: tool?.calibrationValidTill || tool?.validTill || "",
+          }));
+        };
+        const mergeTools = (primary: Tool[], secondary: Tool[]): Tool[] => {
+          const seen = new Set<string>();
+          const merged: Tool[] = [];
+          const addUnique = (tool: Tool) => {
+            const key = [
+              String(tool.nomenclature || "").toLowerCase().trim(),
+              String(tool.make || "").toLowerCase().trim(),
+              String(tool.model || "").toLowerCase().trim(),
+              String(tool.SrNo || "").toLowerCase().trim(),
+              String(tool.calibrationCertificateNo || "").toLowerCase().trim(),
+            ].join("|");
+            if (!seen.has(key)) {
+              seen.add(key);
+              merged.push(tool);
+            }
+          };
+          primary.forEach(addUnique);
+          secondary.forEach(addUnique);
+          return merged.map((tool, idx) => ({ ...tool, slNumber: String(idx + 1) }));
+        };
+        const reportData =
+          response?.data?.data ||
+          (response?.exists ? response?.data : null) ||
+          (response?.success && response?.data ? response.data : null) ||
+          (response?.data && typeof response.data === "object" ? response.data : null);
 
-        if (response?.exists && response.data) {
-          const data = response.data;
+        if (reportData) {
+          const data = reportData;
+          const headerTools = normalizeTools(
+            data.toolsUsed || data.tools || data.standards || data.toolsAssigned
+          );
+          const assignedTools = normalizeTools(toolsRes?.data?.toolsAssigned || []);
+          const mergedTools = mergeTools(headerTools, assignedTools);
           const detailsData = (detailsRes as any)?.data?.data || (detailsRes as any)?.data || {};
           const srfKey = data?.srfNumber || detailsData?.srfNumber || "";
           const cachedOrderBySrfRaw = srfKey ? localStorage.getItem(`order-basic-by-srf-${srfKey}`) : null;
@@ -202,7 +247,7 @@ const ViewServiceReportCBCT: React.FC = () => {
             location: data.location || "N/A",
             temperature: data.temperature || "",
             humidity: data.humidity || "",
-            toolsUsed: data.toolsUsed || [],
+            toolsUsed: mergedTools,
             notes: data.notes || defaultNotes,
             qaTestSubmittedAt: data.qaTestSubmittedAt || "",
           });

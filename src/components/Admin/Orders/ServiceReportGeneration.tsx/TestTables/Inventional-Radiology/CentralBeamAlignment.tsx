@@ -59,7 +59,16 @@ const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, 
       return { remark: '' as const, pass: false };
     }
 
-    const pass = observed <= tolerance;
+    // Requirement: equality must be treated as FAIL.
+    // So even for <= / >= we evaluate with strict inequality.
+    let pass = false;
+    if (toleranceOperator === '<' || toleranceOperator === '<=') {
+      pass = observed < tolerance;
+    } else if (toleranceOperator === '>' || toleranceOperator === '>=') {
+      pass = observed > tolerance;
+    } else if (toleranceOperator === '=') {
+      pass = false;
+    }
 
     return {
       remark: pass ? 'Pass' : 'Fail' as 'Pass' | 'Fail',

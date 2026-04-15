@@ -5,7 +5,7 @@ import { getDetails, getReportHeaderForRadiographyFixed } from "../../../../../.
 
 
 import { generatePDF } from "../../../../../../utils/generatePDF";
-import MainTestTableForRadiographyFixed from "./MainTestTableForRadiographyFixed";
+import MainTestTableForRadiographyFixed, { generateRadiographySummaryRows } from "./MainTestTableForRadiographyFixed";
 import { ReportPdfPageHeader } from "./component/Header";
 import { ReportPdfPageFooter } from "./component/Footer";
 import { ReportPdfPageFooterEnd } from "./component/FooterEnd";
@@ -187,27 +187,36 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
           if (savedPages) {
             setCalculatedPages(savedPages);
           } else {
-            let pagesCount = 1;
-            const detailedTestSections = [
-              { data: data.AccuracyOfIrradiationTimeRadiographyFixed, pages: 0.5 },
-              { data: data.accuracyOfOperatingPotentialRadigraphyFixed, pages: 1 },
-              { data: data.TotalFilterationRadiographyFixed, pages: 0.5 },
-              { data: data.CentralBeamAlignmentRadiographyFixed, pages: 0.5 },
-              { data: data.CongruenceOfRadiationRadioGraphyFixed, pages: 0.5 },
-              { data: data.EffectiveFocalSpotRadiographyFixed, pages: 0.5 },
-              { data: data.LinearityOfmAsLoadingRadiographyFixed, pages: 1 },
-              { data: data.ConsistencyOfRadiationOutputFixedRadiography, pages: 1 },
-              { data: data.RadiationLeakageLevelRadiographyFixed, pages: 1.5 },
-              { data: data.RadiationProtectionSurveyRadiographyFixed, pages: 1.5 },
-            ];
+            // Base pages: P1 (Main/Customer)
+            const summaryRows = generateRadiographySummaryRows(data, hasTimer);
+            const summaryPagesCount = Math.ceil(summaryRows.length / 18) || 1;
 
-            let detailedPages = 0;
-            detailedTestSections.forEach(section => {
-              if (section.data && typeof section.data === 'object' && Object.keys(section.data).length > 0) {
-                detailedPages += section.pages;
-              }
-            });
-            pagesCount += Math.ceil(detailedPages);
+            let pagesCount = 1; // Page 1
+            pagesCount += summaryPagesCount; // Dynamic Summary Pages
+
+            // Part 1: Tests 1, 2, 3
+            if (data.CongruenceOfRadiationRadioGraphyFixed || data.CentralBeamAlignmentRadiographyFixed || data.EffectiveFocalSpotRadiographyFixed) {
+              pagesCount += 1;
+            }
+            // Part 2: Test 4
+            if (data.AccuracyOfIrradiationTimeRadiographyFixed) {
+              pagesCount += 1;
+            }
+            // Part 3: Tests 5, 6, 7
+            if (data.accuracyOfOperatingPotentialRadigraphyFixed || data.TotalFilterationRadiographyFixed || data.LinearityOfmAsLoadingRadiographyFixed) {
+              pagesCount += 1;
+            }
+            // Part 4: Tests 8, 9
+            if (data.ConsistencyOfRadiationOutputFixedRadiography || data.RadiationLeakageLevelRadiographyFixed) {
+              pagesCount += 1;
+            }
+            // Part 5: Test 10 - Now split into 2 pages if present
+            if (data.RadiationProtectionSurveyRadiographyFixed) {
+              pagesCount += 2; 
+            } else {
+              pagesCount += 1; // Just for signatures if no survey
+            }
+
             setCalculatedPages(String(pagesCount));
           }
         } else {
@@ -277,24 +286,20 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
         flexDirection: "column",
         width: "210mm",
         boxSizing: "border-box",
-        height: "297mm",
         minHeight: "297mm",
         margin: "20px auto",
         padding: "15mm 20mm",
-        overflow: "hidden",
       }}
     >
       <ReportPdfPageHeader report={report!} formatDate={formatDate} />
-      <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", width: "100%", overflow: "hidden" }}>
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", width: "100%" }}>
         {children}
       </div>
-      <div style={{ flexShrink: 0 }}>
-        {isLast ? (
-          <ReportPdfPageFooterEnd todayDate={todayDate} customerCity={placeValue} />
-        ) : (
-          <ReportPdfPageFooter todayDate={todayDate} customerCity={placeValue} />
-        )}
-      </div>
+      {isLast ? (
+        <ReportPdfPageFooterEnd todayDate={todayDate} customerCity={placeValue} />
+      ) : (
+        <ReportPdfPageFooter todayDate={todayDate} customerCity={placeValue} />
+      )}
     </div>
   );
 
@@ -491,7 +496,7 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
                 {toolsArray.length > 0 ? (
                   toolsArray.map((tool, i) => (
                     <tr key={i}>
-                      <td style={cellStyle({ border: "0.001px solid #666" })}>{i + 1}</td>
+                      <td style={cellStyle({ border: "0.1px solid #666" })}>{i + 1}</td>
                       <td style={cellStyle({ border: "0.1px solid #666" })}>{tool.nomenclature}</td>
                       <td style={cellStyle({ border: "0.1px solid #666" })}>{tool.make || "-"}</td>
                       <td style={cellStyle({ border: "0.1px solid #666" })}>{tool.model || "-"}</td>
@@ -518,14 +523,74 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
           </div>
         </ReportPage>
 
-        {/* PAGE 2 - SUMMARY TABLE */}
-        <ReportPage>
-          <div style={{ width: "100%", flex: 1 }}>
-            <MainTestTableForRadiographyFixed testData={testData} hasTimer={hasTimer} />
-          </div>
-        </ReportPage>
+        {/* PAGE 2+ SUMMARY TABLE (DYNAMIC) */}
+        {(() => {
+          const allRows = generateRadiographySummaryRows(testData, hasTimer);
+          const chunkSize = 18;
+          const chunks = [];
+          for (let i = 0; i < allRows.length; i += chunkSize) {
+            chunks.push(allRows.slice(i, i + chunkSize));
+          }
 
-        {/* PAGE 3 - DETAILED TEST RESULTS (PART 1) */}
+          if (chunks.length === 0) {
+            return (
+              <ReportPage>
+                <div style={{ width: "100%", flex: 1 }}>
+                  <div className="text-center text-gray-500 py-10">No test results available.</div>
+                </div>
+              </ReportPage>
+            );
+          }
+
+          return chunks.map((chunk, pageIdx) => {
+            // Adjust the first row of chunks (except the absolute first) to handle parameter name repetition if split
+            const displayRows = chunk.map((r, rowIdx) => {
+              if (rowIdx === 0 && !r.isFirstRow) {
+                // Find identifying info from previous rows in the original array
+                const originalIdx = pageIdx * chunkSize;
+                let srcIdx = originalIdx;
+                while (srcIdx >= 0 && !allRows[srcIdx].isFirstRow) {
+                  srcIdx--;
+                }
+                const sourceRow = allRows[srcIdx];
+                
+                // Count how many rows of this same parameter group are in this current chunk
+                let groupCountInStore = 0;
+                for (let k = 0; k < chunk.length; k++) {
+                  if (k === 0 || (!chunk[k].isFirstRow)) {
+                    groupCountInStore++;
+                  } else {
+                    break;
+                  }
+                }
+
+                return {
+                  ...r,
+                  isFirstRow: true,
+                  srNo: sourceRow.srNo,
+                  parameter: `${sourceRow.parameter} (Cont.)`,
+                  rowSpan: groupCountInStore
+                };
+              }
+              return r;
+            });
+
+            return (
+              <ReportPage key={`summary-page-${pageIdx}`}>
+                <div style={{ width: "100%", flex: 1 }}>
+                  <MainTestTableForRadiographyFixed 
+                    testData={testData} 
+                    hasTimer={hasTimer} 
+                    rows={displayRows} 
+                    isContinuation={pageIdx > 0}
+                  />
+                </div>
+              </ReportPage>
+            );
+          });
+        })()}
+
+        {/* PAGE 4 - DETAILED TEST RESULTS (PART 1) - Tests 1, 2, 3 */}
         <ReportPage>
           <div className="report-pdf-last-main" style={{ width: "100%", flex: 1 }}>
             <h2 className="font-bold text-center underline mb-4" style={{ fontSize: "16px" }}>
@@ -762,6 +827,12 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
               </div>
             )}
 
+          </div>
+        </ReportPage>
+
+        {/* PAGE 5 - DETAILED TEST RESULTS (PART 2) - Test 4 (Request per user) */}
+        <ReportPage>
+          <div className="report-pdf-last-main" style={{ width: "100%", flex: 1 }}>
             {/* 4. Accuracy of Irradiation Time */}
             {testData.accuracyOfIrradiationTime && (
               <div className="mb-4 test-section">
@@ -868,37 +939,68 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
           </div>
         </ReportPage>
 
-        {/* PAGE 4 - DETAILED TEST RESULTS (PART 2) - Includes tests 5, 6, 7, 8, 9 */}
+        {/* PAGE 6 - DETAILED TEST RESULTS (PART 3) - Tests 5, 6, 7 */}
         <ReportPage>
           <div className="report-pdf-last-main" style={{ width: "100%", flex: 1 }}>
-            {/* 5. Accuracy of Operating Potential */}
             {testData.accuracyOfOperatingPotential && (
               <div className="mb-4 test-section">
                 <TestSectionTitle num={5} title="Accuracy of Operating Potential" />
-                {testData.accuracyOfOperatingPotential.table2?.length > 0 && (
-                  <table style={tableStyle} className="compact-table">
-                    <thead>
-                      <tr>
-                        {["Set kV", "10 mA", "100 mA", "200 mA", "Avg kVp", "Remarks"].map((h) => (
-                          <th key={h} style={cellStyle({ fontWeight: 700, border: "0.1px solid #666" })}>
-                            {h}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {testData.accuracyOfOperatingPotential.table2.map((row: any, i: number) => (
-                        <tr key={i}>
-                          <td style={cellStyle({ border: "0.1px solid #666" })}>{row.setKV || "-"}</td>
-                          <td style={cellStyle({ border: "0.1px solid #666" })}>{row.ma10 || "-"}</td>
-                          <td style={cellStyle({ border: "0.1px solid #666" })}>{row.ma100 || "-"}</td>
-                          <td style={cellStyle({ border: "0.1px solid #666" })}>{row.ma200 || "-"}</td>
-                          <td style={cellStyle({ border: "0.1px solid #666" })}>{row.avgKvp || "-"}</td>
-                          <td style={cellStyle({ border: "0.1px solid #666" })}>{row.remarks || "-"}</td>
+
+                {/* Table 1: Exposure Time vs Slice Thickness */}
+                {testData.accuracyOfOperatingPotential.table1?.[0] && (
+                  <div style={{ marginBottom: "15px" }}>
+                    <p style={{ fontSize: "10px", fontWeight: "bold", marginBottom: "5px" }}>Exposure Time vs Slice Thickness:</p>
+                    <table style={{ ...tableStyle, width: "100%", marginBottom: "10px" }}>
+                      <thead>
+                        <tr>
+                          {["Time (ms)", "Slice Thickness (mm)"].map((h) => (
+                            <th key={h} style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", padding: "1px 8px" })}>
+                              {h}
+                            </th>
+                          ))}
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td style={cellStyle({ border: "0.1px solid #666", padding: "1px 8px" })}>
+                            {testData.accuracyOfOperatingPotential.table1[0].time || "-"}
+                          </td>
+                          <td style={cellStyle({ border: "0.1px solid #666", padding: "1px 8px" })}>
+                            {testData.accuracyOfOperatingPotential.table1[0].sliceThickness || "-"}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                {testData.accuracyOfOperatingPotential.table2?.length > 0 && (
+                  <div style={{ marginBottom: "5px" }}>
+                    <p style={{ fontSize: "10px", fontWeight: "bold", marginBottom: "5px" }}>kV Measurement at Different mA:</p>
+                    <table style={tableStyle} className="compact-table">
+                      <thead>
+                        <tr>
+                          {["Set kV", "10 mA", "100 mA", "200 mA", "Avg kVp", "Remarks"].map((h) => (
+                            <th key={h} style={cellStyle({ fontWeight: 700, border: "0.1px solid #666" })}>
+                              {h}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {testData.accuracyOfOperatingPotential.table2.map((row: any, i: number) => (
+                          <tr key={i}>
+                            <td style={cellStyle({ border: "0.1px solid #666" })}>{row.setKV || "-"}</td>
+                            <td style={cellStyle({ border: "0.1px solid #666" })}>{row.ma10 || "-"}</td>
+                            <td style={cellStyle({ border: "0.1px solid #666" })}>{row.ma100 || "-"}</td>
+                            <td style={cellStyle({ border: "0.1px solid #666" })}>{row.ma200 || "-"}</td>
+                            <td style={cellStyle({ border: "0.1px solid #666" })}>{row.avgKvp || "-"}</td>
+                            <td style={cellStyle({ border: "0.1px solid #666" })}>{row.remarks || "-"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 )}
               </div>
             )}
@@ -906,6 +1008,7 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
             {/* 6. Total Filtration */}
             {testData.totalFilteration && (
               <div className="mb-4 test-section">
+                <TestSectionTitle num={6} title="Total Filtration" />
                 {testData.totalFilteration.measurements?.length > 0 && (
                   <>
                     <table style={tableStyle} className="compact-table">
@@ -962,7 +1065,6 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
                       !isNaN(measured) && !isNaN(reqTol) ? (measured >= reqTol ? "PASS" : "FAIL") : "-";
                     return (
                       <div style={{ marginTop: "6px" }}>
-                        <TestSectionTitle num={6} title="Total Filtration" />
                         <table style={tableStyle} className="compact-table">
                           <tbody>
                             {[
@@ -1236,6 +1338,12 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
               </div>
             )}
 
+          </div>
+        </ReportPage>
+
+        {/* PAGE 7 - DETAILED TEST RESULTS (PART 4) - Tests 8, 9 */}
+        <ReportPage>
+          <div className="report-pdf-last-main" style={{ width: "100%", flex: 1 }}>
             {/* 8. Consistency of Radiation Output (Moved from Page 5) */}
             {testData.outputConsistency && (
               <div className="mb-4 test-section">
@@ -1523,8 +1631,8 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
           </div>
         </ReportPage>
 
-        {/* PAGE 5 - DETAILED TEST RESULTS (PART 3) - Test 10 + Final signature */}
-        <ReportPage isLast>
+        {/* PAGE 8 - DETAILED TEST RESULTS (PART 5) - Test 10 (Part 1 - Survey & Measured Levels) */}
+        <ReportPage>
           <div className="report-pdf-last-main" style={{ width: "100%", flex: 1 }}>
             {/* 10. Radiation Protection Survey */}
             {testData.radiationProtectionSurvey && (
@@ -1633,6 +1741,16 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
                     </table>
                   </div>
                 )}
+              </div>
+            )}
+          </div>
+        </ReportPage>
+
+        {/* PAGE 9 - DETAILED TEST RESULTS (PART 6) - Test 10 (Part 2 - Summary) + Final Signatures */}
+        <ReportPage isLast>
+          <div className="report-pdf-last-main" style={{ width: "100%", flex: 1 }}>
+            {testData.radiationProtectionSurvey && (
+              <div className="mb-4 test-section">
                 <div style={{ marginBottom: "20px" }}>
                   <p style={{ fontSize: "10px", fontWeight: "bold", marginBottom: "10px" }}>4. Calculation Formula</p>
                   <table style={tableStyle} className="compact-table">
