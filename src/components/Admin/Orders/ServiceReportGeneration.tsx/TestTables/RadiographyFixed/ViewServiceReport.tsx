@@ -1,7 +1,7 @@
 // src/components/reports/ViewServiceReportRadiographyFixed.tsx
 import React, { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { getDetails, getReportHeaderForRadiographyFixed } from "../../../../../../api";
+import { getDetails, getReportHeaderForRadiographyFixed, getTools } from "../../../../../../api";
 
 
 import { generatePDF } from "../../../../../../utils/generatePDF";
@@ -10,6 +10,7 @@ import { ReportPdfPageHeader } from "./component/Header";
 import { ReportPdfPageFooter } from "./component/Footer";
 import { ReportPdfPageFooterEnd } from "./component/FooterEnd";
 import { ReportPdfPageNoteQR } from "./component/NoteQR";
+import { ReportPdfPageDeclaration } from "./component/Declaration";
 
 interface Tool {
   slNumber: string;
@@ -84,6 +85,15 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
   const serviceId = searchParams.get("serviceId");
   const pickRpId = (obj: any): string =>
     obj?.rpId || obj?.rpid || obj?.rpID || obj?.RPId || obj?.RPID || obj?.engineerAssigned?.rpId || obj?.engineerAssigned?.RPId || "N/A";
+  const isToolUnexpired = (validTillRaw: string): boolean => {
+    if (!validTillRaw) return false;
+    const parsed = new Date(validTillRaw);
+    if (Number.isNaN(parsed.getTime())) return false;
+    const today = new Date();
+    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const validTillDate = new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
+    return validTillDate >= todayStart;
+  };
 
   const [loading, setLoading] = useState(true);
   const [report, setReport] = useState<ReportData | null>(null);
@@ -104,35 +114,92 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
 
       try {
         setLoading(true);
-        const [response, detailsRes] = await Promise.all([
+        const [response, detailsRes, toolsRes] = await Promise.all([
           getReportHeaderForRadiographyFixed(serviceId),
           getDetails(serviceId),
+          getTools(serviceId).catch(() => null),
         ]);
+        const normalizeTools = (raw: any): Tool[] => {
+          if (!Array.isArray(raw)) return [];
+          return raw.map((tool: any, index: number) => ({
+            slNumber: String(tool?.slNumber || index + 1),
+            nomenclature: tool?.nomenclature || "-",
+            make: tool?.make || tool?.manufacturer || "-",
+            model: tool?.model || "-",
+            SrNo: tool?.SrNo || tool?.srNo || tool?.serialNumber || "-",
+            range: tool?.range || "-",
+            calibrationCertificateNo:
+              tool?.calibrationCertificateNo || tool?.certificateNo || tool?.certificateNumber || "-",
+            calibrationValidTill: tool?.calibrationValidTill || tool?.validTill || "",
+          }));
+        };
+        const mergeTools = (primary: Tool[], secondary: Tool[]): Tool[] => {
+          const seen = new Set<string>();
+          const merged: Tool[] = [];
+          const addUnique = (tool: Tool) => {
+            const key = [
+              String(tool.nomenclature || "").toLowerCase().trim(),
+              String(tool.make || "").toLowerCase().trim(),
+              String(tool.model || "").toLowerCase().trim(),
+              String(tool.SrNo || "").toLowerCase().trim(),
+              String(tool.calibrationCertificateNo || "").toLowerCase().trim(),
+            ].join("|");
+            if (!seen.has(key)) {
+              seen.add(key);
+              merged.push(tool);
+            }
+          };
+          primary.forEach(addUnique);
+          secondary.forEach(addUnique);
+          return merged
+            .filter((tool) => isToolUnexpired(tool.calibrationValidTill))
+            .map((tool, idx) => ({ ...tool, slNumber: String(idx + 1) }));
+        };
         const detailsData = detailsRes?.data || {};
+        const srfForCache =
+          response?.data?.srfNumber ||
+          detailsData?.srfNumber ||
+          detailsData?.srfNo ||
+          "";
+        let cachedOrderBySrf: any = null;
+        if (srfForCache) {
+          try {
+            cachedOrderBySrf = JSON.parse(localStorage.getItem(`order-basic-by-srf-${srfForCache}`) || "null");
+          } catch {
+            cachedOrderBySrf = null;
+          }
+        }
         const detailsFirstQaTest = Array.isArray(detailsData?.qaTests) ? detailsData.qaTests[0] : null;
         const detailsLeadOwner = detailsData?.leadOwner || detailsData?.leadowner || null;
         const detailsLeadOwnerRole = String(
           detailsData?.leadOwnerType ||
           detailsData?.leadOwnerRole ||
+          cachedOrderBySrf?.leadOwner?.role ||
           detailsLeadOwner?.role ||
           ""
         ).trim();
         const detailsLeadOwnerName = String(
           detailsData?.manufacturerName ||
+          cachedOrderBySrf?.manufacturerName ||
           detailsLeadOwner?.name ||
           ""
         ).trim();
 
         if (response?.exists && response?.data) {
           const data = response.data;
+          const headerTools = normalizeTools(
+            data.toolsUsed || data.tools || data.standards || data.toolsAssigned
+          );
+          const assignedTools = normalizeTools(toolsRes?.data?.toolsAssigned || []);
+          const mergedTools = mergeTools(headerTools, assignedTools);
           setReport({
             customerName: data.customerName || "N/A",
             address: data.address || "N/A",
             city: data.city || detailsData?.city || "",
-            hospitalName: data.hospitalName || "",
-            fullAddress: data.fullAddress || "",
-            leadOwner: data.leadOwner || data.leadowner || detailsLeadOwner || "",
-            manufacturerName: data.manufacturerName || detailsData?.manufacturerName || "",
+            hospitalName: data.hospitalName || detailsData?.hospitalName || cachedOrderBySrf?.hospitalName || "",
+            fullAddress: data.fullAddress || detailsData?.fullAddress || cachedOrderBySrf?.fullAddress || "",
+            leadOwner: data.leadOwner || data.leadowner || detailsLeadOwner || cachedOrderBySrf?.leadOwner || "",
+            manufacturerName: data.manufacturerName || detailsData?.manufacturerName || cachedOrderBySrf?.manufacturerName || "",
             leadOwnerType: data.leadOwnerType || data.leadownerType || detailsLeadOwnerRole || "",
             leadOwnerRole: data.leadOwnerRole || data.leadownerRole || detailsLeadOwnerRole || "",
             leadOwnerName: data.leadOwnerName || detailsLeadOwnerName || "",
@@ -165,7 +232,7 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
             location: data.location || "N/A",
             temperature: data.temperature || "",
             humidity: data.humidity || "",
-            toolsUsed: data.toolsUsed || [],
+            toolsUsed: mergedTools,
             // notes: data.notes || defaultNotes,
             category: data.category || "N/A",
           });
@@ -183,42 +250,6 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
             radiationProtectionSurvey: data.RadiationProtectionSurveyRadiographyFixed || null,
           });
 
-          const savedPages = data.pages != null ? String(data.pages).trim() : "";
-          if (savedPages) {
-            setCalculatedPages(savedPages);
-          } else {
-            // Base pages: P1 (Main/Customer)
-            const summaryRows = generateRadiographySummaryRows(data, hasTimer);
-            const summaryPagesCount = Math.ceil(summaryRows.length / 18) || 1;
-
-            let pagesCount = 1; // Page 1
-            pagesCount += summaryPagesCount; // Dynamic Summary Pages
-
-            // Part 1: Tests 1, 2, 3
-            if (data.CongruenceOfRadiationRadioGraphyFixed || data.CentralBeamAlignmentRadiographyFixed || data.EffectiveFocalSpotRadiographyFixed) {
-              pagesCount += 1;
-            }
-            // Part 2: Test 4
-            if (data.AccuracyOfIrradiationTimeRadiographyFixed) {
-              pagesCount += 1;
-            }
-            // Part 3: Tests 5, 6, 7
-            if (data.accuracyOfOperatingPotentialRadigraphyFixed || data.TotalFilterationRadiographyFixed || data.LinearityOfmAsLoadingRadiographyFixed) {
-              pagesCount += 1;
-            }
-            // Part 4: Tests 8, 9
-            if (data.ConsistencyOfRadiationOutputFixedRadiography || data.RadiationLeakageLevelRadiographyFixed) {
-              pagesCount += 1;
-            }
-            // Part 5: Test 10 - Now split into 2 pages if present
-            if (data.RadiationProtectionSurveyRadiographyFixed) {
-              pagesCount += 2; 
-            } else {
-              pagesCount += 1; // Just for signatures if no survey
-            }
-
-            setCalculatedPages(String(pagesCount));
-          }
         } else {
           setNotFound(true);
         }
@@ -232,6 +263,17 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
 
     fetchReport();
   }, [serviceId]);
+
+  // Recompute page count from current in-memory test data so dynamic updates
+  // immediately reflect in "No. of pages" before re-downloading PDF.
+  useEffect(() => {
+    if (loading || notFound) return;
+    const summaryRows = generateRadiographySummaryRows(testData, hasTimer);
+    const summaryPagesCount = Math.ceil(summaryRows.length / 18) || 1;
+    // Rendered pages: 1 main + summary pages + 6 detailed pages + 1 declaration page.
+    const pagesCount = 8 + summaryPagesCount;
+    setCalculatedPages(String(pagesCount));
+  }, [testData, hasTimer, loading, notFound]);
 
   const formatDate = (dateStr: string) => (!dateStr ? "-" : new Date(dateStr).toLocaleDateString("en-GB"));
   const todayDate = new Date().toLocaleDateString("en-GB");
@@ -271,6 +313,8 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
     report?.leadOwner?.fullName ||
     report?.leadOwner?.companyName ||
     "-";
+  const testingSiteName = report?.hospitalName || report?.customerName || "-";
+  const testingSiteAddress = report?.fullAddress || report?.address || "-";
 
   // --- Helper Components ---
 
@@ -342,7 +386,7 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
     );
   }
 
-  const toolsArray = report.toolsUsed || [];
+  const toolsArray = (report.toolsUsed || []).filter((tool) => isToolUnexpired(tool.calibrationValidTill));
 
   // Shared thin-border cell style
   /** Table body / value cells: centered, normal weight (headers use <th> + CSS). */
@@ -402,15 +446,20 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
           {/* Customer Details */}
           <section className="mb-3 text-[10px]">
             <SectionTitle title="1. Customer Details" />
-            <div className="flex">
-              <div className="w-6 text-right pr-1 font-semibold">1.</div>
-              <div className="w-64 font-semibold">Name, Address of the QA testing Site</div>
-              <div className="px-1 font-semibold">:</div>
-              <div className="flex-1">
-                <div className="font-semibold uppercase">{report.customerName}</div>
-                <div className="break-words">{report.address}</div>
+            <div className="space-y-[2px]">
+              {[
+                ...(isManufacturerLeadOwner ? [["Name of the customer", manufacturerDisplayName]] : []),
+                ["Name of the testing site", testingSiteName],
+                ["Address of the testing site", testingSiteAddress],
+              ].map(([label, value], index) => (
+                <div key={label} className="flex">
+                  <div className="w-6 text-right pr-1 font-semibold">1.{index + 1}</div>
+                  <div className="w-64 font-semibold">{label}</div>
+                  <div className="px-1 font-semibold">:</div>
+                  <div className="flex-1 break-words">{value}</div>
+                </div>
+              ))}
               </div>
-            </div>
           </section>
 
           {/* Reference */}
@@ -422,7 +471,7 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
                 <div className="w-64">SRF No.</div>
                 <div className="px-1">:</div>
                 <div className="flex-1">{report.srfNumber}</div>
-                <div className="w-20">Dated</div>
+                <div className="w-20">SRF Date</div>
                 <div className="px-1">:</div>
                 <div className="w-28">{formatDate(report.srfDate)}</div>
               </div>
@@ -450,10 +499,11 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
                 ...(report.category && report.category !== "N/A" ? [["Category", report.category]] : []),
                 ["Condition of Test Item", report.condition],
                 ["Testing Procedure No.", report.testingProcedureNumber || "-"],
-                ["Engineer’s Name & RP ID", `${report.engineerNameRPId || ""}`],
+                ["Engineer’s Name", report.engineerNameRPId || "-"],
+                ["RP ID", report.rpId || "-"],
+                ["No. of pages", calculatedPages || report.pages || "-"],
                 ["QA Test Date", formatDate(report.testDate)],
                 ["QA Test Due Date", formatDate(report.testDueDate)],
-                ["Duration of the test", report.duration || "-"],
                 ["Testing done at Location", report.location],
                 ["Temperature (°C)", report.temperature || "-"],
                 ["Humidity in RH (%)", report.humidity || "-"],
@@ -936,117 +986,79 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
                   })()}
               </div>
             )}
+            {(testData.accuracyOfOperatingPotential || testData.totalFilteration?.measurements?.length > 0) && (
+              <div className="mb-4 test-section">
+                <TestSectionTitle num={5} title="Accuracy of Operating Potential" />
+                {(() => {
+                  const primaryRows = Array.isArray(testData.accuracyOfOperatingPotential?.table2)
+                    ? testData.accuracyOfOperatingPotential.table2
+                    : [];
+                  const fallbackRows = Array.isArray(testData.totalFilteration?.measurements)
+                    ? testData.totalFilteration.measurements.map((row: any) => ({
+                        setKV: row.appliedKvp || row.setKV || "",
+                        measuredValues: Array.isArray(row.measuredValues) ? row.measuredValues : [],
+                        avgKvp: row.averageKvp || "",
+                        remarks: row.remarks || "",
+                      }))
+                    : [];
+                  const rows = primaryRows.length > 0 ? primaryRows : fallbackRows;
+                  const stationLabels =
+                    testData.accuracyOfOperatingPotential?.mAStations ||
+                    testData.totalFilteration?.mAStations ||
+                    ["10 mA", "100 mA"];
+                  if (rows.length === 0) return null;
+                  return (
+                    <div style={{ marginBottom: "5px" }}>
+                      <p style={{ fontSize: "10px", fontWeight: "bold", marginBottom: "5px" }}>
+                        Accuracy of kVp at Different mA Stations:
+                      </p>
+                      <table style={tableStyle} className="compact-table">
+                        <thead>
+                          <tr>
+                            {["Set kV", ...stationLabels, "Avg kVp", "Remarks"].map((h) => (
+                              <th key={h} style={cellStyle({ fontWeight: 700, border: "0.1px solid #666" })}>
+                                {h}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {rows.map((row: any, i: number) => {
+                            const cells = Array.isArray(row.measuredValues)
+                              ? row.measuredValues
+                              : [row.ma10, row.ma100, row.ma200];
+                            const nums = cells.map((v: any) => parseFloat(v)).filter((n: number) => !isNaN(n));
+                            const computedAvg = nums.length ? (nums.reduce((a: number, b: number) => a + b, 0) / nums.length).toFixed(2) : "";
+                            return (
+                              <tr key={i}>
+                                <td style={cellStyle({ border: "0.1px solid #666" })}>{row.setKV || row.appliedKvp || "-"}</td>
+                                {stationLabels.map((_: string, j: number) => (
+                                  <td key={j} style={cellStyle({ border: "0.1px solid #666" })}>
+                                    {cells[j] != null && cells[j] !== "" ? cells[j] : "-"}
+                                  </td>
+                                ))}
+                                <td style={cellStyle({ border: "0.1px solid #666" })}>{row.avgKvp || row.averageKvp || computedAvg || "-"}</td>
+                                <td style={cellStyle({ border: "0.1px solid #666" })}>{row.remarks || "-"}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
           </div>
         </ReportPage>
 
-        {/* PAGE 6 - DETAILED TEST RESULTS (PART 3) - Tests 5, 6, 7 */}
+        {/* PAGE 6 - DETAILED TEST RESULTS (PART 3) - Tests 6, 7 */}
         <ReportPage>
           <div className="report-pdf-last-main" style={{ width: "100%", flex: 1 }}>
-            {testData.accuracyOfOperatingPotential && (
-              <div className="mb-4 test-section">
-                <TestSectionTitle num={5} title="Accuracy of Operating Potential" />
-
-                {/* Table 1: Exposure Time vs Slice Thickness */}
-                {testData.accuracyOfOperatingPotential.table1?.[0] && (
-                  <div style={{ marginBottom: "15px" }}>
-                    <p style={{ fontSize: "10px", fontWeight: "bold", marginBottom: "5px" }}>Exposure Time vs Slice Thickness:</p>
-                    <table style={{ ...tableStyle, width: "100%", marginBottom: "10px" }}>
-                      <thead>
-                        <tr>
-                          {["Time (ms)", "Slice Thickness (mm)"].map((h) => (
-                            <th key={h} style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", padding: "1px 8px" })}>
-                              {h}
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr>
-                          <td style={cellStyle({ border: "0.1px solid #666", padding: "1px 8px" })}>
-                            {testData.accuracyOfOperatingPotential.table1[0].time || "-"}
-                          </td>
-                          <td style={cellStyle({ border: "0.1px solid #666", padding: "1px 8px" })}>
-                            {testData.accuracyOfOperatingPotential.table1[0].sliceThickness || "-"}
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-
-                {testData.accuracyOfOperatingPotential.table2?.length > 0 && (
-                  <div style={{ marginBottom: "5px" }}>
-                    <p style={{ fontSize: "10px", fontWeight: "bold", marginBottom: "5px" }}>kV Measurement at Different mA:</p>
-                    <table style={tableStyle} className="compact-table">
-                      <thead>
-                        <tr>
-                          {["Set kV", "10 mA", "100 mA", "200 mA", "Avg kVp", "Remarks"].map((h) => (
-                            <th key={h} style={cellStyle({ fontWeight: 700, border: "0.1px solid #666" })}>
-                              {h}
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {testData.accuracyOfOperatingPotential.table2.map((row: any, i: number) => (
-                          <tr key={i}>
-                            <td style={cellStyle({ border: "0.1px solid #666" })}>{row.setKV || "-"}</td>
-                            <td style={cellStyle({ border: "0.1px solid #666" })}>{row.ma10 || "-"}</td>
-                            <td style={cellStyle({ border: "0.1px solid #666" })}>{row.ma100 || "-"}</td>
-                            <td style={cellStyle({ border: "0.1px solid #666" })}>{row.ma200 || "-"}</td>
-                            <td style={cellStyle({ border: "0.1px solid #666" })}>{row.avgKvp || "-"}</td>
-                            <td style={cellStyle({ border: "0.1px solid #666" })}>{row.remarks || "-"}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-            )}
-
             {/* 6. Total Filtration */}
             {testData.totalFilteration && (
               <div className="mb-4 test-section">
                 <TestSectionTitle num={6} title="Total Filtration" />
-                {testData.totalFilteration.measurements?.length > 0 && (
-                  <>
-                    <table style={tableStyle} className="compact-table">
-                      <thead>
-                        <tr>
-                          <th style={cellStyle({ fontWeight: 700, border: "0.1px solid #666" })}>Applied kVp</th>
-                          {testData.totalFilteration.mAStations?.map((ma: string, idx: number) => (
-                            <th key={idx} style={cellStyle({ fontWeight: 700, border: "0.1px solid #666" })}>
-                              {ma}
-                            </th>
-                          ))}
-                          <th style={cellStyle({ fontWeight: 700, border: "0.1px solid #666" })}>Average kVp</th>
-                          <th style={cellStyle({ fontWeight: 700, border: "0.1px solid #666" })}>Remarks</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {testData.totalFilteration.measurements.map((row: any, i: number) => (
-                          <tr key={i}>
-                            <td style={cellStyle({ border: "0.1px solid #666" })}>{row.appliedKvp || "-"}</td>
-                            {testData.totalFilteration.mAStations?.map((_: string, idx: number) => (
-                              <td key={idx} style={cellStyle({ border: "0.1px solid #666" })}>
-                                {row.measuredValues?.[idx] || "-"}
-                              </td>
-                            ))}
-                            <td style={cellStyle({ border: "0.1px solid #666" })}>{row.averageKvp || "-"}</td>
-                            <td style={cellStyle({ border: "0.1px solid #666" })}>{row.remarks || "-"}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                    {testData.totalFilteration.tolerance && (
-                      <p style={{ fontSize: "11px", marginTop: "2px" }}>
-                        <strong>Tolerance:</strong> {testData.totalFilteration.tolerance.sign || "±"}{" "}
-                        {testData.totalFilteration.tolerance.value || "-"} kVp
-                      </p>
-                    )}
-                  </>
-                )}
                 {testData.totalFilteration.totalFiltration &&
                   (() => {
                     const tf = testData.totalFilteration.totalFiltration;
@@ -1705,12 +1717,12 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
           <div className="report-pdf-last-main" style={{ width: "100%", flex: 1 }}>
             {/* 10. Radiation Protection Survey */}
             {testData.radiationProtectionSurvey && (
-              <div className="mb-4 test-section">
+              <div className="mb-2 test-section">
                 <TestSectionTitle num={10} title="Details of Radiation Protection Survey" />
                 {(testData.radiationProtectionSurvey.surveyDate ||
                   testData.radiationProtectionSurvey.hasValidCalibration) && (
-                    <div style={{ marginBottom: "20px" }}>
-                      <p style={{ fontSize: "10px", fontWeight: "bold", marginBottom: "10px" }}>1. Survey Details</p>
+                    <div style={{ marginBottom: "8px" }}>
+                      <p style={{ fontSize: "10px", fontWeight: "bold", marginBottom: "4px" }}>1. Survey Details</p>
                       <table style={tableStyle} className="compact-table">
                         <tbody>
                           <tr>
@@ -1747,8 +1759,8 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
                     </div>
                   )}
                 {(testData.radiationProtectionSurvey.appliedCurrent || testData.radiationProtectionSurvey.appliedVoltage) && (
-                  <div style={{ marginBottom: "20px" }}>
-                    <p style={{ fontSize: "10px", fontWeight: "bold", marginBottom: "10px" }}>2. Equipment Setting</p>
+                  <div style={{ marginBottom: "8px" }}>
+                    <p style={{ fontSize: "10px", fontWeight: "bold", marginBottom: "4px" }}>2. Equipment Setting</p>
                     <table style={tableStyle} className="compact-table">
                       <tbody>
                         {[
@@ -1777,7 +1789,7 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
                   </div>
                 )}
                 {testData.radiationProtectionSurvey.locations?.length > 0 && (
-                  <div style={{ marginBottom: "20px" }}>
+                  <div style={{ marginBottom: "6px" }}>
                     <p style={{ fontSize: "10px", fontWeight: "bold", marginBottom: "10px" }}>
                       3. Measured Maximum Radiation Levels (mR/hr) at different Locations
                     </p>
@@ -1815,8 +1827,8 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
           </div>
         </ReportPage>
 
-        {/* PAGE 9 - DETAILED TEST RESULTS (PART 6) - Test 10 (Part 2 - Summary) + Final Signatures */}
-        <ReportPage isLast>
+        {/* PAGE 9 - DETAILED TEST RESULTS (PART 6) - Test 10 (Part 2 - Summary) */}
+        <ReportPage>
           <div className="report-pdf-last-main" style={{ width: "100%", flex: 1 }}>
             {testData.radiationProtectionSurvey && (
               <div className="mb-4 test-section">
@@ -1967,6 +1979,13 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
                 No detailed test results available for this report.
               </p>
             )}
+          </div>
+        </ReportPage>
+
+        {/* PAGE 10 - Declaration + Final Signatures */}
+        <ReportPage isLast>
+          <div className="report-pdf-last-main" style={{ width: "100%", flex: 1 }}>
+            <ReportPdfPageDeclaration todayDate={todayDate} customerCity={placeValue} />
           </div>
         </ReportPage>
 

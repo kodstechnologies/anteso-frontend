@@ -186,6 +186,18 @@ const View = () => {
             // Update UI with server response
             setDetails(response.data);
             setFormData(response.data);
+            const updatedSrfNumber = response?.data?.srfNumber;
+            if (updatedSrfNumber) {
+                localStorage.setItem(
+                    `order-basic-by-srf-${updatedSrfNumber}`,
+                    JSON.stringify({
+                        leadOwner: response?.data?.leadOwner || null,
+                        manufacturerName: response?.data?.manufacturerName || "",
+                        hospitalName: response?.data?.hospitalName || "",
+                        fullAddress: response?.data?.fullAddress || "",
+                    })
+                );
+            }
             setEditMode(false);
             toast.success("Basic details updated successfully!");
         } catch (error: any) {

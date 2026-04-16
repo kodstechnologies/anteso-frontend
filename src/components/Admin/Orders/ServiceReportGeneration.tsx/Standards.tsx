@@ -95,7 +95,10 @@ const Standards: React.FC<StandardsProps> = ({ standards }) => {
                     {tool.calibrationCertificateNo}
                   </td>
                   <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">
-                    {tool.calibrationValidTill}
+                    {tool.calibrationValidTill
+                      ? new Date(tool.calibrationValidTill)
+                        .toLocaleDateString("en-GB") // DD/MM/YYYY
+                      : ""}
                   </td>
 
                   {/* ---------- UNCERTAINTY INPUT ---------- */}

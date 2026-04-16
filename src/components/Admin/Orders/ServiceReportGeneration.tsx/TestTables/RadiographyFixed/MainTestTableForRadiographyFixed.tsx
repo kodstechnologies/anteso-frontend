@@ -17,6 +17,13 @@ export const generateRadiographySummaryRows = (testData: any, hasTimer: boolean 
     const n = typeof value === "number" ? value : parseFloat(String(value));
     return Number.isNaN(n) ? String(value).trim() || null : String(Number(n));
   };
+  const getNumeric = (val: any): number => {
+    if (val == null || val === "") return NaN;
+    if (typeof val === "number") return val;
+    if (typeof val === "string") return parseFloat(val);
+    if (typeof val === "object" && "value" in val) return parseFloat(val.value);
+    return NaN;
+  };
 
   const addRowsForTest = (
     parameter: string,
@@ -163,11 +170,34 @@ export const generateRadiographySummaryRows = (testData: any, hasTimer: boolean 
   }
 
   // 5. Accuracy of Operating Potential
-  if (testData.accuracyOfOperatingPotential?.table2 && Array.isArray(testData.accuracyOfOperatingPotential.table2)) {
-    const validRows = testData.accuracyOfOperatingPotential.table2.filter((row: any) => row.setKV || row.avgKvp);
+  {
+    const primaryRows = Array.isArray(testData.accuracyOfOperatingPotential?.table2)
+      ? testData.accuracyOfOperatingPotential.table2
+      : [];
+    const fallbackRows = Array.isArray(testData.totalFilteration?.measurements)
+      ? testData.totalFilteration.measurements.map((row: any) => {
+          const measuredValues = Array.isArray(row.measuredValues) ? row.measuredValues : [];
+          const nums = measuredValues.map((v: any) => parseFloat(v)).filter((n: number) => !isNaN(n));
+          const computedAvg = nums.length ? (nums.reduce((a: number, b: number) => a + b, 0) / nums.length).toFixed(2) : "";
+          return {
+            setKV: row.appliedKvp || row.setKV || "",
+            avgKvp: row.averageKvp || computedAvg || "",
+            remarks: row.remarks || "",
+          };
+        })
+      : [];
+    const sourceRows = primaryRows.length > 0 ? primaryRows : fallbackRows;
+    const validRows = sourceRows.filter((row: any) => row.setKV || row.appliedKvp || row.avgKvp || row.averageKvp);
     if (validRows.length > 0) {
-      const toleranceSign = testData.accuracyOfOperatingPotential.tolerance?.sign || "±";
-      const toleranceValue = testData.accuracyOfOperatingPotential.tolerance?.value || "2.0";
+      const opPotential = testData.accuracyOfOperatingPotential || {};
+      const toleranceSign =
+        opPotential.tolerance?.sign ||
+        opPotential.toleranceSign ||
+        "±";
+      const toleranceValue =
+        opPotential.tolerance?.value ||
+        opPotential.toleranceValue ||
+        "2.0";
       const testRows = validRows.map((row: any) => {
         let isPass = false;
         if (row.remarks === "PASS" || row.remarks === "Pass") isPass = true;
@@ -181,8 +211,8 @@ export const generateRadiographySummaryRows = (testData: any, hasTimer: boolean 
           }
         }
         return {
-          specified: row.setKV || "-",
-          measured: row.avgKvp || "-",
+          specified: row.setKV || row.appliedKvp || "-",
+          measured: row.avgKvp || row.averageKvp || "-",
           tolerance: `${toleranceSign} ${toleranceValue} kVp`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
@@ -191,65 +221,140 @@ export const generateRadiographySummaryRows = (testData: any, hasTimer: boolean 
     }
   }
 
-  // 6. Total Filtration
-  if (testData.totalFilteration?.totalFiltration) {
-    const measuredStr = testData.totalFilteration.totalFiltration.required || "-";
-    const atKvp = testData.totalFilteration.totalFiltration.atKvp || "-";
-    const kvp = parseFloat(atKvp);
+  // 6. Total Filtration (separate summary parameter row, like Mobile)
+  const fixedTf = testData.totalFilteration?.totalFiltration || null;
+  const mobileLikeTf = testData.accuracyOfOperatingPotential?.totalFiltration || null;
+  const hasFixedTfData = !!(fixedTf && (fixedTf.atKvp || fixedTf.required || fixedTf.measured));
+  const hasMobileLikeTfData = !!(mobileLikeTf && (mobileLikeTf.atKvp || mobileLikeTf.required || mobileLikeTf.measured));
+  const tfSource = hasFixedTfData ? fixedTf : (hasMobileLikeTfData ? mobileLikeTf : null);
+  if (tfSource) {
+    const measuredStr = String(tfSource.required ?? tfSource.measured ?? "-");
+    const atKvp = String(tfSource.atKvp ?? "-");
     const measuredVal = parseFloat(measuredStr);
-    const ft = testData.totalFilteration.filtrationTolerance || {
-      forKvGreaterThan70: "1.5", forKvBetween70And100: "2.0", forKvGreaterThan100: "2.5",
-      kvThreshold1: "70", kvThreshold2: "100",
-    };
-    let isPass = false;
-    if (!isNaN(kvp) && !isNaN(measuredVal)) {
-      let requiredTolerance = 0;
-      if (kvp < parseFloat(ft.kvThreshold1)) requiredTolerance = parseFloat(ft.forKvGreaterThan70);
-      else if (kvp <= parseFloat(ft.kvThreshold2)) requiredTolerance = parseFloat(ft.forKvBetween70And100);
-      else requiredTolerance = parseFloat(ft.forKvGreaterThan100);
-      isPass = measuredVal >= requiredTolerance;
+    const kvp = parseFloat(atKvp);
+    const ft =
+      (hasFixedTfData ? testData.totalFilteration?.filtrationTolerance : testData.accuracyOfOperatingPotential?.filtrationTolerance) || {
+        forKvGreaterThan70: "1.5",
+        forKvBetween70And100: "2.0",
+        forKvGreaterThan100: "2.5",
+        kvThreshold1: "70",
+        kvThreshold2: "100",
+      };
+    const threshold1 = parseFloat(ft.kvThreshold1 ?? "70");
+    const threshold2 = parseFloat(ft.kvThreshold2 ?? "100");
+    let requiredTolerance = NaN;
+    if (!isNaN(kvp)) {
+      requiredTolerance =
+        kvp < threshold1
+          ? parseFloat(ft.forKvGreaterThan70 ?? "1.5")
+          : kvp >= threshold1 && kvp <= threshold2
+            ? parseFloat(ft.forKvBetween70And100 ?? "2.0")
+            : parseFloat(ft.forKvGreaterThan100 ?? "2.5");
     }
-    const toleranceStr = "1.5 mm Al for kV ≤ 70; 2.0 mm Al for 70 ≤ kV ≤ 100; 2.5 mm Al for kV > 100";
+    const isPass = !isNaN(measuredVal) && !isNaN(requiredTolerance) ? measuredVal >= requiredTolerance : false;
     addRowsForTest("Total Filtration", [{
       specified: atKvp !== "-" ? `${atKvp} kVp` : "-",
       measured: measuredStr !== "-" ? `${measuredStr} mm Al` : "-",
-      tolerance: toleranceStr,
+      tolerance: !isNaN(requiredTolerance) ? `≥ ${requiredTolerance} mm Al` : "-",
       remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
-    }]);
+    }], false, false);
   }
 
   // 7. Linearity of mA/mAs Loading
   if (testData.linearityOfMasLoading?.table2 && Array.isArray(testData.linearityOfMasLoading.table2)) {
-    const linearityLabel = hasTimer ? "Linearity of mA Loading (CoV)" : "Linearity of mAs Loading (CoV)";
-    const validRows = testData.linearityOfMasLoading.table2.filter((row: any) => row.mAsApplied);
+    const linearityLabel = hasTimer ? "Linearity of mA Loading" : "Linearity of mAs Loading ";
+    const validRows = testData.linearityOfMasLoading.table2.filter((row: any) => row.mAsApplied || row.col != null || row.x != null);
     if (validRows.length > 0) {
-      const tolerance = testData.linearityOfMasLoading.tolerance || "0.1";
+      const linearityKv = testData.linearityOfMasLoading?.table1?.[0]?.kv || testData.linearityOfMasLoading?.kv || "";
+      const tolerance = parseFloat(testData.linearityOfMasLoading.tolerance ?? "0.1") || 0.1;
       const toleranceOperator = testData.linearityOfMasLoading.toleranceOperator || "<=";
-      let colValue = testData.linearityOfMasLoading.col || testData.linearityOfMasLoading.coefficient || "-";
-      const col = typeof colValue === 'number' ? colValue.toFixed(3) : parseFloat(String(colValue)).toFixed(3);
+      let colValue =
+        testData.linearityOfMasLoading.col ||
+        testData.linearityOfMasLoading.coefficient ||
+        testData.linearityOfMasLoading.colValue;
+      const parsedStoredCol = parseFloat(String(colValue));
+      if (!colValue || isNaN(parsedStoredCol)) {
+        const xValues: number[] = [];
+        validRows.forEach((row: any) => {
+          const outputs = (row.measuredOutputs ?? [])
+            .map(getNumeric)
+            .filter((v: number) => !isNaN(v) && v > 0);
+          const avg = outputs.length > 0 ? outputs.reduce((a: number, b: number) => a + b, 0) / outputs.length : null;
+          const mAsLabel = String(row.mAsApplied ?? row.mAsRange ?? "");
+          const match = mAsLabel.match(/(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)/);
+          const midMas = match ? (parseFloat(match[1]) + parseFloat(match[2])) / 2 : parseFloat(mAsLabel) || 0;
+          if (avg !== null && midMas > 0) {
+            const xVal = avg / midMas;
+            if (isFinite(xVal)) xValues.push(xVal);
+          }
+        });
+        if (xValues.length > 0) {
+          const xMax = Math.max(...xValues);
+          const xMin = Math.min(...xValues);
+          if (xMax + xMin > 0) {
+            colValue = Math.abs(xMax - xMin) / (xMax + xMin);
+          }
+        }
+      }
+      const colRaw = parseFloat(String(colValue));
+      const col = (!isNaN(colRaw) && isFinite(colRaw)) ? colRaw.toFixed(3) : "-";
       let isPass = testData.linearityOfMasLoading.remarks === "Pass" || testData.linearityOfMasLoading.remarks === "PASS";
+      if (!isPass && col !== "-") {
+        const c = parseFloat(col);
+        if (toleranceOperator === "<=") isPass = c <= tolerance;
+        else if (toleranceOperator === "<") isPass = c < tolerance;
+        else if (toleranceOperator === ">=") isPass = c >= tolerance;
+        else if (toleranceOperator === ">") isPass = c > tolerance;
+      }
       const testRows = [{
-        specified: `at ${asDisplayNumber(testData.linearityOfMasLoading.kv || testData.linearityOfMasLoading.setKV)} kV`,
+        specified: linearityKv ? `at ${linearityKv} kV` : "-",
         measured: isNaN(parseFloat(col)) ? "-" : `CoL = ${col}`,
         tolerance: `${toleranceOperator} ${tolerance}`,
         remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
       }];
-      addRowsForTest(linearityLabel, testRows);
+      addRowsForTest(
+        hasTimer
+          ? "Linearity of mA Loading Stations (Coefficient of Linearity)"
+          : "Linearity of mAs Loading Stations (Coefficient of Linearity)",
+        testRows
+      );
     }
   }
 
   // 8. Consistency of Radiation Output
   if (testData.outputConsistency?.outputRows && Array.isArray(testData.outputConsistency.outputRows)) {
-    const validRows = testData.outputConsistency.outputRows.filter((row: any) => row.kv || row.cv);
+    const validRows = testData.outputConsistency.outputRows.filter((row: any) =>
+      row.kv || row.cv || (row.outputs && row.outputs.length > 0) || row.remark
+    );
     if (validRows.length > 0) {
       const toleranceOperator = testData.outputConsistency.tolerance?.operator || "<=";
       const toleranceValue = testData.outputConsistency.tolerance?.value || "0.05";
       const testRows = validRows.map((row: any) => {
-        const cvValue = row.cv || row.cov || "-";
-        const formattedCv = typeof cvValue === 'number' ? cvValue.toFixed(3) : parseFloat(String(cvValue)).toFixed(3);
+        const outputs: number[] = (row.outputs ?? []).map(getNumeric).filter((n: number) => !isNaN(n) && n > 0);
+        const avg = outputs.length > 0 ? outputs.reduce((a: number, b: number) => a + b, 0) / outputs.length : null;
+        let cvValue = row.cv || row.cov;
+        if (!cvValue && avg !== null && avg > 0) {
+          const variance = outputs.reduce((s: number, v: number) => s + Math.pow(v - avg, 2), 0) / outputs.length;
+          const cov = Math.sqrt(variance) / avg;
+          if (isFinite(cov)) cvValue = cov;
+        }
+        const formattedCv =
+          cvValue !== undefined && cvValue !== null && cvValue !== "" && cvValue !== "-"
+            ? (typeof cvValue === "number" ? cvValue.toFixed(3) : parseFloat(String(cvValue)).toFixed(3))
+            : "-";
         let isPass = row.remark === "Pass" || row.remark === "PASS";
+        if (!isPass && formattedCv !== "-") {
+          const cv = parseFloat(formattedCv);
+          const tol = parseFloat(String(toleranceValue));
+          if (toleranceOperator === "<=") isPass = cv <= tol;
+          else if (toleranceOperator === "<") isPass = cv < tol;
+          else if (toleranceOperator === ">=") isPass = cv >= tol;
+          else if (toleranceOperator === ">") isPass = cv > tol;
+        }
         return {
-          specified: row.kv ? `at ${row.kv} kV` : "Varies",
+          specified: (row.kv || row.kvp) && (row.ma || row.mas || row.mAs)
+            ? `at ${row.kv || row.kvp} kV ${row.ma || row.mas || row.mAs} mA`
+            : ((row.kv || row.kvp) ? `${row.kv || row.kvp} kV` : "Varies"),
           measured: isNaN(parseFloat(formattedCv)) ? "-" : "CoV = " + formattedCv,
           tolerance: `${toleranceOperator} ${toleranceValue}`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
@@ -261,16 +366,28 @@ export const generateRadiographySummaryRows = (testData: any, hasTimer: boolean 
 
   // 9. Tube Housing Leakage
   if (testData.radiationLeakageLevel?.leakageMeasurements && Array.isArray(testData.radiationLeakageLevel.leakageMeasurements)) {
-    const validRows = testData.radiationLeakageLevel.leakageMeasurements.filter((row: any) => row.location);
+    const validRows = testData.radiationLeakageLevel.leakageMeasurements.filter(
+      (row: any) => row.location || row.front || row.back || row.left || row.right || row.top || row.result
+    );
     if (validRows.length > 0) {
       const toleranceValue = testData.radiationLeakageLevel.toleranceValue || "1";
-      const toleranceUnit = testData.radiationLeakageLevel.leakageMeasurements[0]?.unit || "mGy in one hour";
       const testRows = validRows.map((row: any) => {
+        const directionalValues = [row.front, row.back, row.left, row.right, row.top]
+          .map((v) => parseFloat(v))
+          .filter((n) => !isNaN(n));
+        const measuredRaw =
+          directionalValues.length > 0
+            ? Math.max(...directionalValues)
+            : (row.result !== undefined && row.result !== null && row.result !== "" ? parseFloat(row.result) : NaN);
+        const measuredValue = !isNaN(measuredRaw) ? measuredRaw.toFixed(4) : "-";
         let isPass = row.remark === "Pass" || row.remark === "PASS";
+        if (!isPass && measuredValue !== "-") {
+          isPass = parseFloat(measuredValue) <= parseFloat(toleranceValue);
+        }
         return {
           specified: row.location || "-",
-          measured: row.result ? `${parseFloat(row.result).toFixed(4)} ${toleranceUnit}` : "-",
-          tolerance: `≤ ${toleranceValue} ${toleranceUnit}`,
+          measured: measuredValue !== "-" ? `${measuredValue} mGy in one hour` : "-",
+          tolerance: `≤ ${toleranceValue} mGy in one hour`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });

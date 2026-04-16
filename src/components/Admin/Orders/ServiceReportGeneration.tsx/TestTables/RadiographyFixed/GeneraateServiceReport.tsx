@@ -74,6 +74,15 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
   const navigate = useNavigate();
   const pickRpId = (obj: any): string =>
     obj?.rpId || obj?.rpid || obj?.rpID || obj?.RPId || obj?.RPID || obj?.engineerAssigned?.rpId || obj?.engineerAssigned?.RPId || "";
+  const isToolUnexpired = (validTillRaw: string): boolean => {
+    if (!validTillRaw) return false;
+    const parsed = new Date(validTillRaw);
+    if (Number.isNaN(parsed.getTime())) return false;
+    const today = new Date();
+    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const validTillDate = new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
+    return validTillDate >= todayStart;
+  };
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -216,18 +225,23 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
         });
 
         // Map tools
-        const mappedTools: Standard[] = toolsRes.data.toolsAssigned.map((t: any, i: number) => ({
-          slNumber: String(i + 1),
-          nomenclature: t.nomenclature,
-          make: t.manufacturer || t.make,
-          model: t.model,
-          SrNo: t.SrNo,
-          range: t.range,
-          certificate: t.certificate || null,
-          calibrationCertificateNo: t.calibrationCertificateNo,
-          calibrationValidTill: t.calibrationValidTill.split("T")[0],
-          uncertainity: "",
-        }));
+        const mappedTools: Standard[] = toolsRes.data.toolsAssigned
+          .map((t: any) => ({
+            nomenclature: t.nomenclature,
+            make: t.manufacturer || t.make,
+            model: t.model,
+            SrNo: t.SrNo,
+            range: t.range,
+            certificate: t.certificate || null,
+            calibrationCertificateNo: t.calibrationCertificateNo,
+            calibrationValidTill: (t.calibrationValidTill || "").split("T")[0],
+            uncertainity: "",
+          }))
+          .filter((t: any) => isToolUnexpired(t.calibrationValidTill))
+          .map((t: any, i: number) => ({
+            ...t,
+            slNumber: String(i + 1),
+          }));
 
         setTools(mappedTools);
 
@@ -1687,7 +1701,7 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
             { label: "Testing Procedure Number", name: "testingProcedureNumber" },
             { label: "Engineer Name", name: "engineerNameRPId" },
             { label: "RP Id", name: "rpId" },
-            { label: "No. of Pages", name: "pages" },
+            // { label: "No. of Pages", name: "pages" },
             { label: "Test Date", name: "testDate", type: "date" },
             { label: "Test Due Date", name: "testDueDate", type: "date" },
             { label: "Location", name: "location" },
