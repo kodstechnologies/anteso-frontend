@@ -141,8 +141,8 @@ export const generateRadiographySummaryRows = (testData: any, hasTimer: boolean 
     }
   }
 
-  // 4. Accuracy of Irradiation Time
-  if (testData.accuracyOfIrradiationTime?.irradiationTimes && Array.isArray(testData.accuracyOfIrradiationTime.irradiationTimes)) {
+  // 4. Accuracy of Irradiation Time (timer units only; matches ViewServiceReport detailed numbering)
+  if (hasTimer && testData.accuracyOfIrradiationTime?.irradiationTimes && Array.isArray(testData.accuracyOfIrradiationTime.irradiationTimes)) {
     const validRows = testData.accuracyOfIrradiationTime.irradiationTimes.filter((row: any) => row.setTime || row.measuredTime);
     if (validRows.length > 0) {
       const toleranceOperator = testData.accuracyOfIrradiationTime.tolerance?.operator || "<=";

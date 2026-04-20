@@ -224,8 +224,9 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
           category: data.category || "",
         });
 
-        // Map tools
-        const mappedTools: Standard[] = toolsRes.data.toolsAssigned
+        // Map tools (supports both API shapes: data.toolsAssigned and data.data.toolsAssigned)
+        const assignedTools = toolsRes?.data?.data?.toolsAssigned || toolsRes?.data?.toolsAssigned || [];
+        const mappedTools: Standard[] = assignedTools
           .map((t: any) => ({
             nomenclature: t.nomenclature,
             make: t.manufacturer || t.make,

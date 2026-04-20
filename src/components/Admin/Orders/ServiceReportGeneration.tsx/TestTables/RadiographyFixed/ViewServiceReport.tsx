@@ -104,6 +104,9 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
     ? localStorage.getItem(`radiography-fixed-timer-${serviceId}`) === 'true'
     : false;
 
+  /** With timer: indices match legacy 4–10 (4=irradiation … 10=survey). Without timer: section 4 is omitted, so subtract 1 from 5–10. */
+  const detailedSeq = (withTimerIndex: number) => (hasTimer ? withTimerIndex : withTimerIndex - 1);
+
   useEffect(() => {
     const fetchReport = async () => {
       if (!serviceId) {
@@ -119,6 +122,8 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
           getDetails(serviceId),
           getTools(serviceId).catch(() => null),
         ]);
+        
+        console.log("toolsRes----->", toolsRes);
         const normalizeTools = (raw: any): Tool[] => {
           if (!Array.isArray(raw)) return [];
           return raw.map((tool: any, index: number) => ({
@@ -190,7 +195,9 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
           const headerTools = normalizeTools(
             data.toolsUsed || data.tools || data.standards || data.toolsAssigned
           );
-          const assignedTools = normalizeTools(toolsRes?.data?.toolsAssigned || []);
+          const assignedTools = normalizeTools(
+            toolsRes?.data?.data?.toolsAssigned || toolsRes?.data?.toolsAssigned || []
+          );
           const mergedTools = mergeTools(headerTools, assignedTools);
           setReport({
             customerName: data.customerName || "N/A",
@@ -276,6 +283,14 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
   }, [testData, hasTimer, loading, notFound]);
 
   const formatDate = (dateStr: string) => (!dateStr ? "-" : new Date(dateStr).toLocaleDateString("en-GB"));
+  /** kVp tolerance sign from Total Filtration / AOP save payload ({ sign, value }). */
+  const normalizeKvToleranceSign = (raw: unknown): string => {
+    const s = String(raw ?? "±").trim().toLowerCase();
+    if (s === "plus" || s === "+") return "+";
+    if (s === "minus" || s === "-") return "-";
+    if (s === "both" || s === "±" || s === "+/-") return "±";
+    return String(raw ?? "±").trim() || "±";
+  };
   const todayDate = new Date().toLocaleDateString("en-GB");
   const extractCity = (raw: string) => {
     if (!raw || raw === "N/A") return "";
@@ -533,6 +548,12 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
                         style={cellStyle({
                           fontWeight: 700,
                           border: "0.1px solid #666",
+                          fontSize: "9px",
+                          lineHeight: "1.2",
+                          whiteSpace: "normal",
+                          wordBreak: "break-word",
+                          overflowWrap: "anywhere",
+                          padding: "3px 4px",
                           width: ["6%", "18%", "12%", "12%", "10%", "10%", "16%", "16%"][i],
                         })}
                       >
@@ -883,8 +904,8 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
         {/* PAGE 5 - DETAILED TEST RESULTS (PART 2) - Test 4 (Request per user) */}
         <ReportPage>
           <div className="report-pdf-last-main" style={{ width: "100%", flex: 1 }}>
-            {/* 4. Accuracy of Irradiation Time */}
-            {testData.accuracyOfIrradiationTime && (
+            {/* 4. Accuracy of Irradiation Time (timer units only) */}
+            {hasTimer && testData.accuracyOfIrradiationTime && (
               <div className="mb-4 test-section">
                 <TestSectionTitle num={4} title="Accuracy of Irradiation Time" />
                 {testData.accuracyOfIrradiationTime.testConditions && (
@@ -988,7 +1009,7 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
             )}
             {(testData.accuracyOfOperatingPotential || testData.totalFilteration?.measurements?.length > 0) && (
               <div className="mb-4 test-section">
-                <TestSectionTitle num={5} title="Accuracy of Operating Potential" />
+                <TestSectionTitle num={detailedSeq(5)} title="Accuracy of Operating Potential" />
                 {(() => {
                   const primaryRows = Array.isArray(testData.accuracyOfOperatingPotential?.table2)
                     ? testData.accuracyOfOperatingPotential.table2
@@ -1006,6 +1027,12 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
                     testData.accuracyOfOperatingPotential?.mAStations ||
                     testData.totalFilteration?.mAStations ||
                     ["10 mA", "100 mA"];
+                  const kvTolerance =
+                    testData.accuracyOfOperatingPotential?.tolerance ||
+                    testData.totalFilteration?.tolerance;
+                  const kvToleranceVal =
+                    kvTolerance &&
+                    (kvTolerance.value ?? kvTolerance.Value ?? kvTolerance.val);
                   if (rows.length === 0) return null;
                   return (
                     <div style={{ marginBottom: "5px" }}>
@@ -1044,6 +1071,14 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
                           })}
                         </tbody>
                       </table>
+                      {kvTolerance &&
+                        kvToleranceVal != null &&
+                        String(kvToleranceVal).trim() !== "" && (
+                          <p style={{ fontSize: "11px", marginTop: "4px" }}>
+                            <strong>Tolerance:</strong> {normalizeKvToleranceSign(kvTolerance.sign ?? kvTolerance.Sign)}{" "}
+                            {String(kvToleranceVal).trim()} kVp
+                          </p>
+                        )}
                     </div>
                   );
                 })()}
@@ -1058,7 +1093,7 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
             {/* 6. Total Filtration */}
             {testData.totalFilteration && (
               <div className="mb-4 test-section">
-                <TestSectionTitle num={6} title="Total Filtration" />
+                <TestSectionTitle num={detailedSeq(6)} title="Total Filtration" />
                 {testData.totalFilteration.totalFiltration &&
                   (() => {
                     const tf = testData.totalFilteration.totalFiltration;
@@ -1119,7 +1154,7 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
             {testData.linearityOfMasLoading && (
               <div className="mb-4 test-section">
                 <TestSectionTitle
-                  num={7}
+                  num={detailedSeq(7)}
                   title={hasTimer ? "Linearity of mA Loading" : "Linearity of mAs Loading"}
                 />
                 {testData.linearityOfMasLoading.table1 &&
@@ -1359,7 +1394,7 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
             {/* 8. Consistency of Radiation Output (Moved from Page 5) */}
             {testData.outputConsistency && (
               <div className="mb-4 test-section">
-                <TestSectionTitle num={8} title="Consistency of Radiation Output" />
+                <TestSectionTitle num={detailedSeq(8)} title="Consistency of Radiation Output" />
                 {testData.outputConsistency.ffd?.value && (
                   <div style={{ marginBottom: "20px" }}>
                     <p style={{ fontSize: "10px", fontWeight: "bold", marginBottom: "10px" }}>1. Operating Parameters</p>
@@ -1494,7 +1529,7 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
             {testData.radiationLeakageLevel &&
               (testData.radiationLeakageLevel.leakageMeasurements?.length > 0 || testData.radiationLeakageLevel.fcd) && (
                 <div className="mb-4 test-section">
-                  <TestSectionTitle num={9} title="Tube Housing Leakage" />
+                  <TestSectionTitle num={detailedSeq(9)} title="Tube Housing Leakage" />
                   <div style={{ marginBottom: "20px" }}>
                     <p style={{ fontSize: "10px", fontWeight: "bold", marginBottom: "10px" }}>1. Operating Parameters</p>
                     <table style={{ ...tableStyle, width: "100%" }}>
@@ -1718,7 +1753,7 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
             {/* 10. Radiation Protection Survey */}
             {testData.radiationProtectionSurvey && (
               <div className="mb-2 test-section">
-                <TestSectionTitle num={10} title="Details of Radiation Protection Survey" />
+                <TestSectionTitle num={detailedSeq(10)} title="Details of Radiation Protection Survey" />
                 {(testData.radiationProtectionSurvey.surveyDate ||
                   testData.radiationProtectionSurvey.hasValidCalibration) && (
                     <div style={{ marginBottom: "8px" }}>
