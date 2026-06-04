@@ -33,6 +33,7 @@ const PendingLeaveApprovals: React.FC = () => {
                 setLoading(true);
                 const response = await getPendingLeaveApprovals();
                 setLeaves(response.data || []);
+                console.log(response.data)
                 setError(null);
             } catch (err: any) {
                 setError(err.message || 'Failed to fetch pending leave approvals');
