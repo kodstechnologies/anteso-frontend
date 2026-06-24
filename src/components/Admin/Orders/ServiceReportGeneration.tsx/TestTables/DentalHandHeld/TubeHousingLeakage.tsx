@@ -75,6 +75,11 @@ export default function TubeHousingLeakage({
 
   const maValue = parseFloat(settings.ma) || 0;
   const workloadValue = parseFloat(workload) || 0;
+  const formatToleranceEquivalentMR = (value: string): string => {
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric)) return '0.000';
+    return (numeric * 114).toFixed(3);
+  };
 
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -568,7 +573,7 @@ export default function TubeHousingLeakage({
             >
               <option value="less than or equal to">&lt;</option>
               <option value="greater than or equal to">&gt;</option>
-              <option value="=">=</option>
+              <option value="=">{'='}</option>
             </select>
             {' '}
             <input
@@ -579,7 +584,9 @@ export default function TubeHousingLeakage({
               className={`w-24 px-2 py-1 border rounded text-sm text-center font-medium ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
               placeholder="1"
             />
-            {' '}mGy ({parseFloat(toleranceValue || '1') * 114} mR) in one hour.
+            {' '}
+            (
+            <span className="tabular-nums font-medium">{formatToleranceEquivalentMR(toleranceValue)}</span> mR) in one hour.
           </p>
         </div>
       </div>

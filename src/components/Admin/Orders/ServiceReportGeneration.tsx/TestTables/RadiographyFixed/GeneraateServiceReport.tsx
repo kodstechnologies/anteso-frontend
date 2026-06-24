@@ -94,6 +94,7 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
   const [radiationProfileTest, setRadiationProfileTest] = useState<any>(null);
   const [hasTimer, setHasTimer] = useState<boolean | null>(null); // null = not answered
   const [showTimerModal, setShowTimerModal] = useState(false); // Will be set based on localStorage
+  const [timerPreferenceResolved, setTimerPreferenceResolved] = useState(false);
 
   // Excel/CSV State
   const [csvDataForComponents, setCsvDataForComponents] = useState<any>({});
@@ -144,14 +145,18 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
     if (!serviceId) return;
     if (csvFileUrl) {
       setShowTimerModal(false);
+      setTimerPreferenceResolved(false);
       return;
     }
     const stored = localStorage.getItem(`radiography-fixed-timer-${serviceId}`);
     if (stored !== null) {
       setHasTimer(stored === 'true');
       setShowTimerModal(false);
+      setTimerPreferenceResolved(true);
     } else {
-      setShowTimerModal(true);
+      // Defer modal until we try to infer from saved backend data.
+      setShowTimerModal(false);
+      setTimerPreferenceResolved(false);
     }
   }, [serviceId, csvFileUrl]);
 
@@ -159,6 +164,7 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
   const handleTimerChoice = (choice: boolean) => {
     setHasTimer(choice);
     setShowTimerModal(false);
+    setTimerPreferenceResolved(true);
     // Store in localStorage so it persists across refreshes
     if (serviceId) {
       localStorage.setItem(`radiography-fixed-timer-${serviceId}`, String(choice));
@@ -249,6 +255,33 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
         // Load existing report header data if available
         try {
           const reportRes = await getReportHeaderForRadiographyFixed(serviceId);
+          const parseTimerChoice = (raw: any): boolean | null => {
+            if (!raw || typeof raw !== "object") return null;
+
+            const boolCandidates = [
+              raw.hasTimer,
+              raw.timerEnabled,
+              raw.timerRequired,
+              raw.isTimer,
+              raw.withTimer,
+            ];
+            for (const c of boolCandidates) {
+              if (typeof c === "boolean") return c;
+              if (c === "true" || c === "false") return c === "true";
+            }
+
+            const modeCandidates = [raw.timerMode, raw.timerType, raw.mode];
+            for (const mode of modeCandidates) {
+              const m = String(mode || "").trim().toLowerCase();
+              if (!m) continue;
+              if (["timer", "withtimer", "with_timer", "with timer", "ma"].includes(m)) return true;
+              if (["notimer", "no_timer", "no timer", "withouttimer", "without_timer", "without timer", "mas"].includes(m)) return false;
+            }
+            return null;
+          };
+
+          let inferredTimerChoice: boolean | null = null;
+
           if (reportRes.exists && reportRes.data) {
             const reportData = reportRes.data;
             // Update formData with existing report data
@@ -288,6 +321,40 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
             } else {
               setNotes(defaultNotes);
             }
+
+            inferredTimerChoice = parseTimerChoice(reportData);
+          }
+
+          // If timer mode is not present in localStorage/header, infer from saved test docs:
+          // - Saved irradiation table => timer mode
+          // - Existing report header with no irradiation table => no-timer mode
+          if (!csvFileUrl && inferredTimerChoice === null && localStorage.getItem(`radiography-fixed-timer-${serviceId}`) === null) {
+            try {
+              const irradiationRes = await getAccuracyOfIrradiationTimeByServiceIdForRadiographyFixed(serviceId);
+              const irradiationData = irradiationRes?.data ?? irradiationRes;
+              const irradiationSaved =
+                !!irradiationData &&
+                (Array.isArray(irradiationData?.irradiationTimes)
+                  ? irradiationData.irradiationTimes.length > 0
+                  : !!irradiationData?._id);
+
+              if (irradiationSaved) {
+                inferredTimerChoice = true;
+              } else if (reportRes.exists && reportRes.data) {
+                inferredTimerChoice = false;
+              }
+            } catch {
+              if (reportRes.exists && reportRes.data) {
+                inferredTimerChoice = false;
+              }
+            }
+          }
+
+          if (!csvFileUrl && inferredTimerChoice !== null) {
+            setHasTimer(inferredTimerChoice);
+            setShowTimerModal(false);
+            setTimerPreferenceResolved(true);
+            localStorage.setItem(`radiography-fixed-timer-${serviceId}`, String(inferredTimerChoice));
           }
         } catch (reportErr) {
           console.error("Failed to load existing report:", reportErr);
@@ -302,6 +369,15 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
 
     fetchInitialData();
   }, [serviceId]);
+
+  useEffect(() => {
+    if (!serviceId || csvFileUrl || loading) return;
+    if (timerPreferenceResolved) return;
+    if (hasTimer === null) {
+      setShowTimerModal(true);
+      setTimerPreferenceResolved(true);
+    }
+  }, [serviceId, csvFileUrl, loading, hasTimer, timerPreferenceResolved]);
 
   // Fetch radiation profile
   useEffect(() => {
@@ -1470,6 +1546,8 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
 
       const payload = {
         ...formData,
+        hasTimer,
+        timerMode: hasTimer === true ? "timer" : hasTimer === false ? "no-timer" : "",
         rpid: formData.rpId,
         rpID: formData.rpId,
         RPId: formData.rpId,

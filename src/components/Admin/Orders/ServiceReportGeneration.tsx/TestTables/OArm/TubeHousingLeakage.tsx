@@ -61,6 +61,11 @@ export default function TubeHousingLeakageForOArm({ serviceId, testId: propTestI
   const [workload, setWorkload] = useState<string>('');
   const [toleranceValue, setToleranceValue] = useState<string>('1');
   const [toleranceOperator, setToleranceOperator] = useState<'less than or equal to' | 'greater than or equal to' | '='>('less than or equal to');
+  const formatToleranceEquivalentMR = (value: string): string => {
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric)) return '0.000';
+    return (numeric * 114).toFixed(3);
+  };
   const [toleranceTime] = useState<string>('1');
 
   // Load data
@@ -577,7 +582,10 @@ export default function TubeHousingLeakageForOArm({ serviceId, testId: propTestI
               }`}
             placeholder="1.000"
           />
-          <span className="font-medium">mGy/h in {toleranceTime} hour</span>
+          <span className="font-medium">
+            (
+            <span className="tabular-nums">{formatToleranceEquivalentMR(toleranceValue)}</span> mR) in {toleranceTime} hour
+          </span>
         </div>
       </div>
 

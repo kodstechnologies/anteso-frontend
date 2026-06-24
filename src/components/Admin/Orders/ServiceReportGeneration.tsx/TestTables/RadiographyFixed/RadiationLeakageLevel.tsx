@@ -37,6 +37,69 @@ interface Props {
   csvDataVersion?: number;
 }
 
+/** Only strict &lt;, &gt;, and = (legacy ≤/≥ from API/CSV map onto these). */
+type LeakageToleranceOperator = 'less than' | 'greater than' | '=';
+
+/** API/CSV symbols/phrases → one of the three operators above. */
+function normalizeLeakageToleranceOperator(raw: unknown): LeakageToleranceOperator {
+  const s = String(raw ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .replace(/≤/g, '<=')
+    .replace(/≥/g, '>=');
+  if (!s) return 'less than';
+  if (s === '=' || s === '==' || s === 'equals' || s === 'equal to') return '=';
+  if (s === '<' || s === 'less than' || s === 'lt') return 'less than';
+  if (s === '>' || s === 'greater than' || s === 'gt') return 'greater than';
+  // Legacy “or equal” forms → closest strict operator for this form
+  if (s === '<=' || s === 'less than or equal to' || s === 'less than or equal' || s === 'lte')
+    return 'less than';
+  if (s === '>=' || s === 'greater than or equal to' || s === 'greater than or equal' || s === 'gte')
+    return 'greater than';
+  return 'less than';
+}
+
+function leakageToleranceSymbol(op: LeakageToleranceOperator): string {
+  switch (op) {
+    case 'less than':
+      return '<';
+    case 'greater than':
+      return '>';
+    case '=':
+      return '=';
+    default:
+      return '<';
+  }
+}
+
+/** Same rounding as Result column: mR in one hour (`calculatedResult.toFixed(3)`). */
+const LEAKAGE_RESULT_MR_DECIMALS = 3;
+
+/** Equivalent mR for prose line — same decimals as Result column. */
+function formatToleranceEquivalentMR(raw: string): string {
+  const n = parseFloat(String(raw).trim());
+  if (Number.isNaN(n)) return '—';
+  return (n * 114).toFixed(LEAKAGE_RESULT_MR_DECIMALS);
+}
+
+/** Pass ⇔ scaled mGy vs tolerance at 4 dp. */
+function compareMgyToTolerance(mgyValue: number, tol: number, op: LeakageToleranceOperator): boolean {
+  const scale = 10_000;
+  const mi = Math.round(mgyValue * scale);
+  const ti = Math.round(tol * scale);
+  switch (op) {
+    case 'less than':
+      return mi < ti;
+    case 'greater than':
+      return mi > ti;
+    case '=':
+      return mi === ti;
+    default:
+      return mi < ti;
+  }
+}
+
 export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRefresh, initialData, csvDataVersion }: Props) {
   const [testId, setTestId] = useState<string | null>(propTestId || null);
 
@@ -55,7 +118,7 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
 
   const [workload, setWorkload] = useState<string>('');
   const [toleranceValue, setToleranceValue] = useState<string>('1');
-  const [toleranceOperator, setToleranceOperator] = useState<'less than or equal to' | 'greater than or equal to' | '='>('less than or equal to');
+  const [toleranceOperator, setToleranceOperator] = useState<LeakageToleranceOperator>('less than');
   const [toleranceTime, setToleranceTime] = useState<string>('1');
 
   // Apply CSV/Excel initial data
@@ -65,7 +128,8 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
     if (s) setSettings(prev => ({ ...prev, fcd: String(s.fcd ?? prev.fcd), kv: String(s.kv ?? prev.kv), ma: String(s.ma ?? prev.ma), time: String(s.time ?? prev.time) }));
     if (initialData.workload !== undefined) setWorkload(String(initialData.workload));
     if (initialData.toleranceValue !== undefined) setToleranceValue(String(initialData.toleranceValue));
-    if (initialData.toleranceOperator) setToleranceOperator(initialData.toleranceOperator as any);
+    if (initialData.toleranceOperator)
+      setToleranceOperator(normalizeLeakageToleranceOperator(initialData.toleranceOperator));
     if (initialData.toleranceTime !== undefined) setToleranceTime(String(initialData.toleranceTime));
     if (initialData.leakageMeasurements?.length > 0) {
       setLeakageRows(initialData.leakageMeasurements.map((r: any) => ({
@@ -87,6 +151,7 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
 
   const maValue = parseFloat(settings.ma) || 0;
   const workloadValue = parseFloat(workload) || 0;
+  const toleranceOpNormalized = normalizeLeakageToleranceOperator(toleranceOperator);
 
   // Process each row: calculate max, result (mR/h), mGy/h
   const processedLeakage = useMemo(() => {
@@ -108,20 +173,16 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
         const mgyValue = calculatedResult / 114;
         mgy = mgyValue.toFixed(4);
 
-        // Calculate Pass/Fail for this row
-        const tol = parseFloat(toleranceValue) || 0;
-        if (tol > 0) {
-          let pass = false;
-          if (toleranceOperator === 'less than or equal to') pass = mgyValue <= tol;
-          if (toleranceOperator === 'greater than or equal to') pass = mgyValue >= tol;
-          if (toleranceOperator === '=') pass = Math.abs(mgyValue - tol) < 0.01;
+        const tol = parseFloat(String(toleranceValue).trim());
+        if (!Number.isNaN(tol) && tol > 0) {
+          const pass = compareMgyToTolerance(mgyValue, tol, toleranceOpNormalized);
           remark = pass ? 'Pass' : 'Fail';
         }
       }
 
       return { ...row, max, result, mgy, remark };
     });
-  }, [leakageRows, workload, settings.ma, toleranceValue, toleranceOperator]);
+  }, [leakageRows, workload, settings.ma, toleranceValue, toleranceOpNormalized]);
 
   // Calculate results per row using the formula: (workload * max) / (60 * mA)
   const calculatedResults = useMemo(() => {
@@ -161,20 +222,18 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
   const globalMaxResultMR = allCalculatedMR.length > 0 ? Math.max(...allCalculatedMR) : 0;
   const globalMaxResultMGy = globalMaxResultMR > 0 ? (globalMaxResultMR / 114).toFixed(4) : '—';
 
-  // Final Pass/Fail
+  // Final Pass/Fail (worst row drives outcome — same mGy scale as per-row remarks)
   const finalRemark = useMemo(() => {
-    const result = parseFloat(globalMaxResultMGy || '0') || 0;
-    const tol = parseFloat(toleranceValue) || 0;
+    const tolStr = String(toleranceValue ?? '').trim();
+    if (!tolStr || globalMaxResultMR <= 0) return '';
 
-    if (!toleranceValue || globalMaxResultMR === 0) return '';
+    const result = parseFloat(String(globalMaxResultMGy).trim());
+    const tol = parseFloat(tolStr);
+    if (Number.isNaN(result) || Number.isNaN(tol) || tol <= 0) return '';
 
-    let pass = false;
-    if (toleranceOperator === 'less than or equal to') pass = result <= tol;
-    if (toleranceOperator === 'greater than or equal to') pass = result >= tol;
-    if (toleranceOperator === '=') pass = Math.abs(result - tol) < 0.01;
-
+    const pass = compareMgyToTolerance(result, tol, toleranceOpNormalized);
     return pass ? 'Pass' : 'Fail';
-  }, [globalMaxResultMGy, toleranceValue, toleranceOperator, globalMaxResultMR]);
+  }, [globalMaxResultMGy, toleranceValue, toleranceOpNormalized, globalMaxResultMR]);
 
   const updateSettings = (field: keyof SettingsRow, value: string) => {
     setSettings(prev => ({ ...prev, [field]: value }));
@@ -250,8 +309,10 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
           setTestId(data._id || null);
           if (data.fcd) setSettings({ fcd: data.fcd, kv: data.kv || '', ma: data.ma || '', time: data.time || '' });
           if (data.workload) setWorkload(data.workload);
-          if (data.toleranceValue) setToleranceValue(data.toleranceValue);
-          if (data.toleranceOperator) setToleranceOperator(data.toleranceOperator);
+          if (data.toleranceValue != null && String(data.toleranceValue).trim() !== '')
+            setToleranceValue(String(data.toleranceValue));
+          if (data.toleranceOperator)
+            setToleranceOperator(normalizeLeakageToleranceOperator(data.toleranceOperator));
           if (data.toleranceTime) setToleranceTime(data.toleranceTime);
           if (Array.isArray(data.leakageMeasurements) && data.leakageMeasurements.length > 0) {
             // Ensure Tube is always first, then Collimator if it exists
@@ -589,28 +650,50 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
         <h3 className="text-lg font-semibold mb-3">Tolerance</h3>
         <div className="text-sm text-gray-700">
           <p>
-            <strong>Tolerance:</strong> Maximum Leakage Radiation Level at 1 meter from the Focus should be{' '}
+            <strong>Tolerance:</strong> Calculated leakage (in one hour) must satisfy{' '}
             <select
               value={toleranceOperator}
-              onChange={(e) => setToleranceOperator(e.target.value as any)}
+              onChange={(e) =>
+                setToleranceOperator(normalizeLeakageToleranceOperator(e.target.value))
+              }
               disabled={isViewMode}
               className={`px-2 py-1 border rounded text-sm font-medium ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
             >
-              <option value="less than or equal to">&lt;</option>
-              <option value="greater than or equal to">&gt;</option>
-              <option value="=">=</option>
-            </select>
-            {' '}
+              <option value="less than">{'<'}</option>
+              <option value="greater than">{">"}</option>
+              <option value="=">{'='}</option>
+            </select>{' '}
             <input
               type="text"
               value={toleranceValue}
               onChange={(e) => setToleranceValue(e.target.value)}
               disabled={isViewMode}
-              className={`w-24 px-2 py-1 border rounded text-sm text-center font-medium ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+              className={`min-w-[6.5rem] max-w-[14rem] w-auto px-2 py-1 border rounded text-sm text-center font-medium ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
               placeholder="1"
             />
-            {' '}mGy ({parseFloat(toleranceValue || '1') * 114} mR) in one hour.
+            {' '}
+            (
+            <span className="tabular-nums font-medium">{formatToleranceEquivalentMR(toleranceValue)}</span> mR) in one hour.
           </p>
+          <p className="mt-2 text-xs text-gray-600">
+            Formula: (workload × max exposure mR/h) ÷ (60 × mA) ÷ 114. Pass when this value{' '}
+            <span className="font-mono">{leakageToleranceSymbol(toleranceOpNormalized)}</span> tolerance (compare at 4 decimal places).
+          </p>
+          {finalRemark ? (
+            <p className="mt-4 text-base font-semibold">
+              Overall result:{' '}
+              <span
+                className={
+                  finalRemark === 'Pass' ? 'text-green-700' : 'text-red-700'
+                }
+              >
+                {finalRemark}
+              </span>
+              <span className="font-normal text-gray-600 text-sm ml-2">
+                (based on highest calculated leakage vs tolerance)
+              </span>
+            </p>
+          ) : null}
         </div>
       </div>
 

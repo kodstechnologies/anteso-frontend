@@ -65,6 +65,11 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [hasSaved, setHasSaved] = useState(false);
+  const formatToleranceEquivalentMR = (value: string): string => {
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric)) return '0.000';
+    return (numeric * 114).toFixed(3);
+  };
 
   // === Auto Max per row ===
   const processedLeakage = useMemo(() => {
@@ -643,9 +648,9 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
       {/* ==================== Tolerance ==================== */}
       <div className="bg-white shadow-md rounded-lg p-6">
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          Tolerance (mGy/h)
+          Tolerance
         </label>
-        <div className="flex items-center gap-2 max-w-md">
+        <div className="flex flex-wrap items-center gap-2 max-w-3xl">
           <input
             type="text"
             value={toleranceValue}
@@ -662,7 +667,7 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
           >
             <option value="less than or equal to">less than or equal to</option>
             <option value="greater than or equal to">greater than or equal to</option>
-            <option value="=">=</option>
+            <option value="=">{'='}</option>
           </select>
           <span className="text-sm text-gray-600">in</span>
           <input
@@ -674,6 +679,10 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
             placeholder="1"
           />
           <span className="text-sm text-gray-600">hr</span>
+          <span className="text-sm text-gray-700">
+            (
+            <span className="tabular-nums font-medium">{formatToleranceEquivalentMR(toleranceValue)}</span> mR) in one hour.
+          </span>
         </div>
       </div>
 

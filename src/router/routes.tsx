@@ -81,6 +81,8 @@ import ViewPayment from '../components/Admin/Accounts/Payments/View'
 
 import Privacy from '../pages/privacy';
 import Terms from '../pages/terms';
+import SignedPage from '../pages/SignedPage';
+import SignedPdfPage from '../pages/SignedPdfPage';
 
 import StaffEnquiries from '../components/Admin/Enquiry/StaffEnquiries';
 import AddStaffEnquiry from '../components/Admin/Enquiry/AddStaffEnquiry';
@@ -1231,6 +1233,16 @@ const routes = [
     {
         path: '/privacy',
         element: <Privacy />,
+        layout: 'blank',
+    },
+    {
+        path: '/signed-page',
+        element: <SignedPage />,
+        layout: 'blank',
+    },
+    {
+        path: '/signed-pdf',
+        element: <SignedPdfPage />,
         layout: 'blank',
     },
     {

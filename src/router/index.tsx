@@ -16,7 +16,7 @@ import { routes } from './routes';
 
 const finalRoutes = routes.map((route) => {
     // Skip layout for specific public routes
-    if (route.path === '/enquiry_form') {
+    if (route.path === '/enquiry_form' || route.path === '/signed-pdf') {
         return route;
     }
 
