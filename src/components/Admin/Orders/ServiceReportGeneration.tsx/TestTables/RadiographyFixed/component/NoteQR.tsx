@@ -1,8 +1,8 @@
 import React from "react";
 import AntesoQRCode from "../../../../../../../assets/quotationImg/qrcode.png";
-import { Note, ReportData } from "../ViewServiceReport";
+import { Note } from "../ViewServiceReport";
 
-export const ReportPdfPageNoteQR: React.FC<{ report: ReportData }> = ({ report }) => {
+export const ReportPdfPageNoteQR: React.FC<{ report?: unknown }> = () => {
 
   const defaultNotesOne: Note[] = [
     { slNo: "5.1", text: "The Test Report relates only to the above item only." },

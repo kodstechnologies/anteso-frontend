@@ -1,10 +1,15 @@
 import React from "react";
 import logo from "../../../../../../../assets/logo/anteso-logo2.png";
 import logoA from "../../../../../../../assets/quotationImg/NABLlogo.png";
-import { ReportData } from "../ViewServiceReport";
+
+export type ReportPdfPageHeaderData = {
+  srfNumber: string;
+  srfDate: string;
+  reportULRNumber?: string;
+};
 
 export const ReportPdfPageHeader: React.FC<{
-  report: ReportData;
+  report: ReportPdfPageHeaderData;
   formatDate: (dateStr: string) => string;
 }> = ({ report, formatDate }) => (
   <div className="report-pdf-page-header flex w-full justify-between items-start m-0 p-0 mb-4 print:mb-2">

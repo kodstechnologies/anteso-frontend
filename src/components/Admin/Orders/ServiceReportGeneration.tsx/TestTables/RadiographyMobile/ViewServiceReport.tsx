@@ -50,6 +50,7 @@ interface ReportData {
   testingProcedureNumber: string;
   engineerNameRPId: string;
   rpId?: string;
+  pages?: string;
   testDate: string;
   testDueDate: string;
   location: string;
