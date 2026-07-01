@@ -56,6 +56,7 @@ interface ReportData {
   temperature: string;
   humidity: string;
   toolsUsed?: Tool[];
+  qrCode?: string;
   notes?: Note[];
   category: string;
   qaTestSubmittedAt?: string;
@@ -209,6 +210,8 @@ const ViewServiceReportRadiographyMobileHT: React.FC = () => {
             humidity: data.humidity || "",
             toolsUsed: mergedTools,
             notes: data.notes || defaultNotes,
+            qrCode: data.qrCode || "",
+
             category: data.category || "",
             qaTestSubmittedAt: data.qaTestSubmittedAt || "",
           });
@@ -1497,7 +1500,12 @@ const ViewServiceReportRadiographyMobileHT: React.FC = () => {
           </div>
         </ReportPage>
         <ReportPage isLast>
-          <ReportPdfPageDeclaration todayDate={todayDate} customerCity={placeValue} />
+          <ReportPdfPageDeclaration
+              todayDate={todayDate}
+              customerCity={placeValue}
+              qrCode={report.qrCode}
+              engineerName={report.engineerNameRPId}
+            />
         </ReportPage>
       </div>
       <style>{`

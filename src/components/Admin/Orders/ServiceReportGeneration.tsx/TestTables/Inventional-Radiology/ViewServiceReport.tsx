@@ -57,6 +57,7 @@ interface ReportData {
   humidity: string;
   category: string;
   toolsUsed?: Tool[];
+  qrCode?: string;
   notes?: Note[];
 
   // Test documents
@@ -219,6 +220,8 @@ const ViewServiceReport: React.FC = () => {
             location: data.location || "N/A",
             temperature: data.temperature || "",
             humidity: data.humidity || "",
+            qrCode: data.qrCode || "",
+
             category: data.category || "",
             toolsUsed: mergedTools,
             notes: data.notes || defaultNotes,
@@ -2658,7 +2661,12 @@ const ViewServiceReport: React.FC = () => {
         </ReportPage>
         <ReportPage isLast>
           <div className="max-w-5xl mx-auto print:max-w-none" style={{ width: '100%', maxWidth: 'none', minHeight: '90vh' }}>
-            <ReportPdfPageDeclaration todayDate={todayDate} customerCity={placeValue} />
+            <ReportPdfPageDeclaration
+              todayDate={todayDate}
+              customerCity={placeValue}
+              qrCode={report.qrCode}
+              engineerName={report.engineerNameRPId}
+            />
           </div>
         </ReportPage>
       </div>

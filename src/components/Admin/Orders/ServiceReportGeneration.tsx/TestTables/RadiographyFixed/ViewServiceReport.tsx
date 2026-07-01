@@ -61,6 +61,7 @@ export interface ReportData {
   humidity: string;
   toolsUsed?: Tool[];
   notes?: Note[];
+  qrCode?: string;
   category: string;
   AccuracyOfIrradiationTimeRadiographyFixed?: any;
   accuracyOfOperatingPotentialRadigraphyFixed?: any;
@@ -241,6 +242,7 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
             humidity: data.humidity || "",
             toolsUsed: mergedTools,
             // notes: data.notes || defaultNotes,
+            qrCode: data.qrCode || "",
             category: data.category || "N/A",
           });
 
@@ -2019,8 +2021,13 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
 
         {/* PAGE 10 - Declaration + Final Signatures */}
         <ReportPage isLast>
-          <div className="report-pdf-last-main" style={{ width: "100%", flex: 1 }}>
-            <ReportPdfPageDeclaration todayDate={todayDate} customerCity={placeValue} />
+          <div className="report-pdf-last-main" style={{ width: "100%", flex: 1, display: "flex", flexDirection: "column" }}>
+            <ReportPdfPageDeclaration
+              todayDate={todayDate}
+              customerCity={placeValue}
+              qrCode={report.qrCode}
+              engineerName={report.engineerNameRPId}
+            />
           </div>
         </ReportPage>
 

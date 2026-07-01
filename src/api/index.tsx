@@ -698,16 +698,24 @@ export const deleteEnquiryById = async (id: any) => {
         throw error;
     }
 }
-export const getAllEnquiry = async () => {
+export const getAllEnquiry = async (filters?: EnquiryListFilters) => {
     try {
         const token = Cookies.get('accessToken')
-        // console.log("🚀 ~ getAllEnquiry ~ token:", token)
+        const params: Record<string, string> = {};
+
+        if (filters?.city?.trim()) params.city = filters.city.trim();
+        if (filters?.district?.trim()) params.district = filters.district.trim();
+        if (filters?.pinCode?.trim()) params.pinCode = filters.pinCode.trim();
+        if (filters?.branch?.trim()) params.branch = filters.branch.trim();
+        if (filters?.emailAddress?.trim()) params.emailAddress = filters.emailAddress.trim();
+        if (filters?.contactNumber?.trim()) params.contactNumber = filters.contactNumber.trim();
+
         const res = await api.get('/enquiry/get-all', {
+            params,
             headers: {
                 Authorization: `Bearer ${token}`,
             },
         })
-        // console.log("🚀 ~ getAllEnquiry ~ res:", res)
         return res.data
     } catch (error: any) {
         console.error("🚀 ~ getClientById ~ error:", error);
@@ -717,6 +725,41 @@ export const getAllEnquiry = async () => {
         );
     }
 }
+
+export type EnquiryListFilters = {
+    city?: string;
+    district?: string;
+    pinCode?: string;
+    branch?: string;
+    emailAddress?: string;
+    contactNumber?: string;
+};
+
+export type EnquiryFilterOptions = {
+    cities: string[];
+    districts: string[];
+    pinCodes: string[];
+    branches: string[];
+    emailAddresses: string[];
+    contactNumbers: string[];
+};
+
+export const getEnquiryFilterOptions = async () => {
+    try {
+        const token = Cookies.get('accessToken');
+        const res = await api.get('/enquiry/filter-options', {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
+        return res.data?.filters as EnquiryFilterOptions;
+    } catch (error: any) {
+        console.error("Failed to fetch enquiry filter options:", error);
+        throw new Error(
+            error?.response?.data?.message || "Failed to fetch enquiry filter options"
+        );
+    }
+};
 
 export const getQuotationByCustomerAndEnquiryId = async (customerId: any, enquiryId: any) => {
     try {
@@ -1325,10 +1368,52 @@ export const deleteToolById = async (id: any) => {
 
 
 //orders
-export const getAllOrders = async () => {
+export type OrderListFilters = {
+    branchName?: string;
+    city?: string;
+    district?: string;
+    emailAddress?: string;
+    contactNumber?: string;
+};
+
+export type OrderFilterOptions = {
+    branchNames: string[];
+    cities: string[];
+    districts: string[];
+    emailAddresses: string[];
+    contactNumbers: string[];
+};
+
+export const getOrderFilterOptions = async () => {
+    try {
+        const token = Cookies.get('accessToken');
+        const res = await api.get(`/orders/filter-options`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
+        return res.data?.filters as OrderFilterOptions;
+    } catch (error: any) {
+        console.error("Failed to fetch order filter options:", error);
+        throw new Error(
+            error?.response?.data?.message || "Failed to fetch order filter options"
+        );
+    }
+};
+
+export const getAllOrders = async (filters?: OrderListFilters) => {
     try {
         const token = Cookies.get('accessToken')
+        const params: Record<string, string> = {};
+
+        if (filters?.branchName?.trim()) params.branchName = filters.branchName.trim();
+        if (filters?.city?.trim()) params.city = filters.city.trim();
+        if (filters?.district?.trim()) params.district = filters.district.trim();
+        if (filters?.emailAddress?.trim()) params.emailAddress = filters.emailAddress.trim();
+        if (filters?.contactNumber?.trim()) params.contactNumber = filters.contactNumber.trim();
+
         const res = await api.get(`/orders/get-all`, {
+            params,
             headers: {
                 Authorization: `Bearer ${token}`,
             },
@@ -2092,10 +2177,16 @@ export const getPaymentsBySrf = async (srfNumber: string) => {
 };
 
 
-export const getAllPayments = async () => {
+export const getAllPayments = async (filters?: { paymentType?: string; paymentMode?: string; branchName?: string }) => {
     try {
         const token = Cookies.get('accessToken')
+        const params: Record<string, string> = {};
+        if (filters?.paymentType?.trim()) params.paymentType = filters.paymentType.trim();
+        if (filters?.paymentMode?.trim()) params.paymentMode = filters.paymentMode.trim();
+        if (filters?.branchName?.trim()) params.branchName = filters.branchName.trim();
+
         const res = await api.get(`/payment/get-all-payments`, {
+            params,
             headers: {
                 Authorization: `Bearer ${token}`,
             },
@@ -2103,7 +2194,7 @@ export const getAllPayments = async () => {
         // console.log("🚀 ~ getAllPayments ~ res:", res)
         return res
     } catch (error: any) {
-        console.error("🚀 ~ getEngineerByTools ~ error:", error);
+        console.error("🚀 ~ getAllPayments ~ error:", error);
         throw new Error(
             error?.response?.data?.message || "Failed to fetch raw data"
         );
@@ -2444,10 +2535,15 @@ export const createInvoice = async (invoiceData: any) => {
     }
 };
 
-export const getAllInvoices = async () => {
+export const getAllInvoices = async (filters?: { state?: string; branchName?: string }) => {
     try {
         const token = Cookies.get("accessToken")
+        const params: Record<string, string> = {};
+        if (filters?.state?.trim()) params.state = filters.state.trim();
+        if (filters?.branchName?.trim()) params.branchName = filters.branchName.trim();
+
         const res = await api.get(`/invoice/get-all-invoices`, {
+            params,
             headers: {
                 Authorization: `Bearer ${token}`,
             },

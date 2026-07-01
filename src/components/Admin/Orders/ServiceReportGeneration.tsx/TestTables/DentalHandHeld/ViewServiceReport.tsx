@@ -68,6 +68,7 @@ interface ReportData {
   temperature: string;
   humidity: string;
   toolsUsed?: Tool[];
+  qrCode?: string;
   notes?: Note[];
 }
 
@@ -342,6 +343,8 @@ const ViewServiceReportDentalHandHeld: React.FC = () => {
             leadOwnerRole: data.leadOwnerRole || data.leadownerRole || detailsLeadOwnerRole || "",
             leadOwnerName: data.leadOwnerName || detailsLeadOwnerName || "",
             toolsUsed: mergedTools,
+            qrCode: data.qrCode || "",
+
             notes: data.notes || defaultNotes,
           });
 
@@ -1640,7 +1643,12 @@ const ViewServiceReportDentalHandHeld: React.FC = () => {
           </div>
         </ReportPage>
         <ReportPage isLast>
-          <ReportPdfPageDeclaration todayDate={todayDate} customerCity={placeValue} />
+          <ReportPdfPageDeclaration
+              todayDate={todayDate}
+              customerCity={placeValue}
+              qrCode={report.qrCode}
+              engineerName={report.engineerNameRPId}
+            />
         </ReportPage>
       </div>
 

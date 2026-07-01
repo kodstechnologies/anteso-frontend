@@ -56,6 +56,7 @@ interface ReportData {
   temperature: string;
   humidity: string;
   toolsUsed?: Tool[];
+  qrCode?: string;
   notes?: Note[];
   LeadApronTest?: any;
   ulrNumber?: string;
@@ -568,7 +569,12 @@ const ViewServiceReportLeadApron: React.FC = () => {
           </ReportPage>
         )}
         <ReportPage isLast>
-          <ReportPdfPageDeclaration todayDate={todayDate} customerCity={placeValue} />
+          <ReportPdfPageDeclaration
+              todayDate={todayDate}
+              customerCity={placeValue}
+              qrCode={report.qrCode}
+              engineerName={report.engineerNameRPId}
+            />
         </ReportPage>
       </div>
 

@@ -59,6 +59,7 @@ interface ReportData {
   temperature?: string;
   humidity?: string;
   toolsUsed?: Tool[];
+  qrCode?: string;
   notes?: Note[];
   pages?: string;
 }
@@ -190,6 +191,8 @@ const ViewServiceReportBMD: React.FC = () => {
             make: data.make || "N/A",
             model: data.model || "N/A",
             slNumber: data.slNumber || "N/A",
+            qrCode: data.qrCode || "",
+
             category: data.category || "-",
             condition: data.condition || "OK",
             testingProcedureNumber: data.testingProcedureNumber || "N/A",
@@ -1759,7 +1762,12 @@ const ViewServiceReportBMD: React.FC = () => {
           </div>
         </ReportPage>
         <ReportPage isLast>
-          <ReportPdfPageDeclaration todayDate={todayDate} customerCity={placeValue} />
+          <ReportPdfPageDeclaration
+              todayDate={todayDate}
+              customerCity={placeValue}
+              qrCode={report.qrCode}
+              engineerName={report.engineerNameRPId}
+            />
         </ReportPage>
       </div>
 

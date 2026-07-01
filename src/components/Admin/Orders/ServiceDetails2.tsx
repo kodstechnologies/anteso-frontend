@@ -69,6 +69,34 @@ const getFilteredStatusOptions = (workTypeName: string) => {
     return statusOptions.filter(status => status !== "generated" && status !== "paid");
 }
 
+const VIEW_GENERATED_REPORT_ROUTES: Record<string, string> = {
+    "C-Arm": "/admin/orders/view-service-report-c-arm",
+    "Mammography": "/admin/orders/view-service-report-mammography",
+    "OBI": "/admin/orders/view-service-report-obi",
+    "KV Imaging (OBI)": "/admin/orders/view-service-report-obi",
+    "Bone Densitometer (BMD)": "/admin/orders/view-service-report-bmd",
+    "BMD": "/admin/orders/view-service-report-bmd",
+    "Radiography and Fluoroscopy": "/admin/orders/view-service-report-fixed-radio-flouro",
+    "Computed Tomography": "/admin/orders/view-service-report-ct-scan",
+    "Dental Cone Beam CT": "/admin/orders/view-service-report-dental-cone-beam-ct",
+    "Dental Intra": "/admin/orders/view-service-report-dental-intra",
+    "Dental (Intra Oral)": "/admin/orders/view-service-report-dental-intra",
+    "Dental Hand-held": "/admin/orders/view-service-report-dental-hand-held",
+    "Dental (Hand-held)": "/admin/orders/view-service-report-dental-hand-held",
+    "Radiography (Mobile)": "/admin/orders/view-service-report-radiography-mobile",
+    "Radiography (Mobile) with HT": "/admin/orders/view-service-report-radiography-mobile-ht",
+    "Radiography (Portable)": "/admin/orders/view-service-report-radiography-portable",
+    "Radiography (Fixed)": "/admin/orders/view-service-report-radiography-fixed",
+    "Interventional Radiology": "/admin/orders/view-service-report-inventional-radiology",
+    "O-Arm": "/admin/orders/view-service-report-o-arm",
+    "Ortho Pantomography (OPG)": "/admin/orders/view-service-report-for-opg",
+    "Lead Apron/Thyroid Shield/Gonad Shield": "/admin/orders/view-service-report-lead-apron",
+};
+
+const getViewGeneratedReportPath = (machineType: string): string | null => {
+    return VIEW_GENERATED_REPORT_ROUTES[machineType] || null;
+};
+
 interface Technician {
     _id: string
     name: string
@@ -982,6 +1010,17 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
         } else {
             showMessage("No report available to view", 'warning')
         }
+    };
+
+    const handleViewGeneratedReport = (service: MachineData) => {
+        const reportPath = getViewGeneratedReportPath(service.machineType);
+        if (!reportPath) {
+            showMessage("View generated report is not available for this machine type", 'warning');
+            return;
+        }
+
+        const cleanId = service.id.replace(/-0$/, "").split("-")[0];
+        navigate(`${reportPath}?serviceId=${cleanId}`);
     };
 
     const handleViewImage = (workTypeId: string) => {
@@ -2328,6 +2367,16 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-2">
+                                    {isQAWorkType(service.workTypeName) && getViewGeneratedReportPath(service.machineType) && (
+                                        <button
+                                            type="button"
+                                            onClick={() => handleViewGeneratedReport(service)}
+                                            className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-md hover:bg-blue-700 transition-colors"
+                                        >
+                                            <FileText className="h-3.5 w-3.5" />
+                                            View Generated Report
+                                        </button>
+                                    )}
                                     <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(service.status)}`}>
                                         {service.status}
                                     </span>
@@ -3032,6 +3081,18 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                                             onClick={() => handleViewReport(service.id, 'qatest')}
                                                                                         />
                                                                                     </div>
+                                                                                </div>
+                                                                            )}
+                                                                            {getViewGeneratedReportPath(service.machineType) && (
+                                                                                <div className="p-2 bg-white rounded border col-span-2">
+                                                                                    <button
+                                                                                        type="button"
+                                                                                        onClick={() => handleViewGeneratedReport(service)}
+                                                                                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 transition-colors"
+                                                                                    >
+                                                                                        <FileText className="h-4 w-4" />
+                                                                                        View Generated Report
+                                                                                    </button>
                                                                                 </div>
                                                                             )}
                                                                         </div>

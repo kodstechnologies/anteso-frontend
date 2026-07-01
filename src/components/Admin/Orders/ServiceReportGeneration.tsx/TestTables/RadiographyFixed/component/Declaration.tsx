@@ -2,8 +2,10 @@ import signature from "../../../../../../../../src/assets/quotationImg/signature
 export const ReportPdfPageDeclaration: React.FC<{
     todayDate: string;
     customerCity: string;
-}> = ({ todayDate, customerCity }) => (
-    <div className="report-pdf-declaration-block" style={{ position: "relative", minHeight: "100%", paddingTop: "8mm" }}>
+    qrCode?: string;
+    engineerName?: string;
+}> = ({ todayDate, customerCity, qrCode, engineerName }) => (
+    <div className="report-pdf-declaration-block" style={{ position: "relative", minHeight: "100%", height: "100%", paddingTop: "8mm", display: "flex", flexDirection: "column" }}>
         <p style={{ fontSize: "11px", lineHeight: "1.4", marginBottom: "26mm" }}>
             I hereby undertake that all the information provided above is correct and in accordance with the detailed Quality Assurance Report enclosed herewith.
         </p>
@@ -35,5 +37,27 @@ export const ReportPdfPageDeclaration: React.FC<{
                 <p>Seal of Service Agency:</p>
             </div>
         </div>
+
+        {qrCode?.trim() ? (
+            <div
+                style={{
+                    marginTop: "auto",
+                    paddingTop: "16mm",
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    gap: "22mm",
+                }}
+            >
+                <div />
+                <div style={{ fontSize: "11px", lineHeight: "1.35" }}>
+                    <p style={{ margin: 0 }}><strong>Engineer Verification QR Code:</strong></p>
+                    <img
+                        src={qrCode}
+                        alt="Engineer Verification QR Code"
+                        style={{ width: "24mm", height: "24mm", objectFit: "contain", marginTop: "4mm", display: "block" }}
+                    />
+                </div>
+            </div>
+        ) : null}
     </div>
 );

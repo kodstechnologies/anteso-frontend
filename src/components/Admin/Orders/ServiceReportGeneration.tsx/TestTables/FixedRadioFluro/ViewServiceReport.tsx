@@ -27,6 +27,9 @@ import logoA from "../../../../../../assets/quotationImg/NABLlogo.png";
 import AntesoQRCode from "../../../../../../assets/quotationImg/qrcode.png";
 import Signature from "../../../../../../assets/quotationImg/signature.png";
 import { generatePDF } from "../../../../../../utils/generatePDF";
+import { ReportPdfPageHeader } from "../RadiographyFixed/component/Header";
+import { ReportPdfPageFooterEnd } from "../RadiographyFixed/component/FooterEnd";
+import { ReportPdfPageDeclaration } from "../RadiographyFixed/component/Declaration";
 
 interface Tool {
   slNumber: string;
@@ -73,6 +76,7 @@ interface ReportData {
   temperature: string;
   humidity: string;
   toolsUsed?: Tool[];
+  qrCode?: string;
   notes?: Note[];
   category: string;
   reportULRNumber?: string;
@@ -234,6 +238,8 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
             leadOwnerName: data.leadOwnerName || detailsLeadOwnerName || "",
             reportULRNumber: resolvedUlr ?? "",
             toolsUsed: mergedTools,
+            qrCode: data.qrCode || "",
+
             notes: data.notes || defaultNotes,
           });
           if (resolvedUlr) setUlrNumber(resolvedUlr);
@@ -438,6 +444,19 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
     "-";
   const testingSiteName = report?.hospitalName || report?.customerName || "-";
   const testingSiteAddress = report?.fullAddress || report?.address || "-";
+  const todayDate = formatDate(new Date().toISOString());
+  const extractCity = (raw: string) => {
+    if (!raw || raw === "N/A") return "";
+    const parts = raw.split(",").map((p) => p.trim()).filter(Boolean);
+    if (parts.length === 0) return "";
+    const alphaParts = parts.filter((p) => /[A-Za-z]/.test(p) && !/^\d{6}$/.test(p.replace(/\s+/g, "")));
+    if (alphaParts.length === 0) return "";
+    const stateOrCountry = /^(india|bharat|uttar pradesh|up|delhi|new delhi|haryana|maharashtra|karnataka|tamil nadu|kerala|gujarat|rajasthan|punjab|bihar|west bengal|telangana|andhra pradesh|odisha|jharkhand|chhattisgarh|madhya pradesh|goa|assam|jammu and kashmir|ladakh|himachal pradesh|uttarakhand|manipur|meghalaya|mizoram|nagaland|sikkim|tripura|arunachal pradesh)$/i;
+    const city = [...alphaParts].reverse().find((p) => !stateOrCountry.test(p));
+    return city || alphaParts[alphaParts.length - 1];
+  };
+  const customerCity = extractCity(report?.location || "") || extractCity(report?.address || "") || "-";
+  const placeValue = report?.city && String(report.city).trim() !== "" ? String(report.city).trim() : customerCity;
 
   const downloadPDF = async () => {
     try {
@@ -1877,6 +1896,32 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
               </p>
             )}
           </div>
+        </div>
+
+        {/* Declaration + Engineer Verification QR */}
+        <div
+          className="bg-white shadow-2xl print:shadow-none report-pdf-last-page-shell"
+          style={{
+            pageBreakBefore: "always",
+            display: "flex",
+            flexDirection: "column",
+            width: "210mm",
+            boxSizing: "border-box",
+            minHeight: "297mm",
+            margin: "20px auto",
+            padding: "15mm 20mm",
+          }}
+        >
+          <ReportPdfPageHeader report={report} formatDate={formatDate} />
+          <div className="report-pdf-last-main" style={{ width: "100%", flex: 1, display: "flex", flexDirection: "column" }}>
+            <ReportPdfPageDeclaration
+              todayDate={todayDate}
+              customerCity={placeValue}
+              qrCode={report.qrCode}
+              engineerName={report.engineerNameRPId}
+            />
+          </div>
+          <ReportPdfPageFooterEnd todayDate={todayDate} customerCity={placeValue} />
         </div>
       </div>
 

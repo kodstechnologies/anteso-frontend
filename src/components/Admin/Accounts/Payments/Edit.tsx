@@ -33,6 +33,18 @@ interface EditPaymentValues {
 const paymentTypes = ["advance", "balance", "complete"];
 const paymentModes = ["Cash", "Bank transfer", "Cheque", "UPI", "Other"];
 
+const normalizePaymentType = (type?: string) => {
+  const normalized = String(type || "").toLowerCase().trim();
+  return paymentTypes.includes(normalized) ? normalized : "";
+};
+
+const normalizePaymentMode = (mode?: string) => {
+  const trimmed = String(mode || "").trim();
+  if (paymentModes.includes(trimmed)) return trimmed;
+  const match = paymentModes.find((m) => m.toLowerCase() === trimmed.toLowerCase());
+  return match || "";
+};
+
 // Validation Schema
 const validationSchema = Yup.object().shape({
   srfClient: Yup.string().required("Please select SRF and Client"),
@@ -62,7 +74,12 @@ const Edit: React.FC = () => {
     const fetchPayment = async () => {
       try {
         const res = await getPaymentById(id!);
-        const payment: PaymentData = res?.data?.data;
+        const payment: PaymentData = res?.data?.data ?? res?.data?.payment ?? res?.data;
+
+        if (!payment) {
+          showMessage("Payment details not found", "error");
+          return;
+        }
 
         // Set SRF dropdown dynamically from the API response
         setSrfOptions([{ value: payment.srfNumber, label: `${payment.srfNumber} - ${payment.hospitalName}` }]);
@@ -71,8 +88,8 @@ const Edit: React.FC = () => {
           srfClient: payment.srfNumber || "",
           totalAmount: payment.totalAmount || 0,
           paymentAmount: payment.paymentAmount || 0,
-          paymentType: payment.paymentType || "",
-          paymentMode: payment.paymentMode || "",
+          paymentType: normalizePaymentType(payment.paymentType),
+          paymentMode: normalizePaymentMode(payment.paymentMode),
           utrNumber: payment.utrNumber || "",
           screenshot: null,
         });
@@ -162,15 +179,7 @@ const Edit: React.FC = () => {
         validationSchema={validationSchema}
         onSubmit={handleSubmit}
       >
-        {({ setFieldValue, values, errors, submitCount, isSubmitting }) => {
-          // Auto-update paymentType if amount equals total
-          useEffect(() => {
-            if (Number(values.paymentAmount) === Number(values.totalAmount)) {
-              setFieldValue("paymentType", "complete");
-            }
-          }, [values.paymentAmount, values.totalAmount, setFieldValue]);
-
-          return (
+        {({ setFieldValue, values, errors, submitCount, isSubmitting }) => (
             <Form className="space-y-5">
               <div className="panel">
                 <h5 className="font-semibold text-lg mb-4">Payment Details</h5>
@@ -316,8 +325,7 @@ const Edit: React.FC = () => {
                 </div>
               </div>
             </Form>
-          );
-        }}
+        )}
       </Formik>
 
       {/* Full Screen Modal for Screenshot */}

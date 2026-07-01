@@ -72,6 +72,7 @@ interface ReportData {
   humidity: string;
   toolsUsed: Tool[];
   notes: Note[];
+  qrCode?: string;
   category: string;
   // Mammography test IDs
   accuracyOfOperatingPotentialId?: string | null;
@@ -364,6 +365,8 @@ const ViewServiceReportMammography: React.FC = () => {
             humidity: data.humidity || "",
             toolsUsed: mergedTools,
             notes: data.notes || defaultNotes,
+            qrCode: data.qrCode || "",
+
             category: data.category || "N/A",
             // Extract test IDs from populated objects
             accuracyOfOperatingPotentialId: data.AccuracyOfOperatingPotentialMammography?._id || null,
@@ -2052,7 +2055,12 @@ const ViewServiceReportMammography: React.FC = () => {
         </ReportPage>
         <ReportPage isLast>
           <div style={{ width: "100%", flex: 1 }}>
-            <ReportPdfPageDeclaration todayDate={todayDate} customerCity={placeValue} />
+            <ReportPdfPageDeclaration
+              todayDate={todayDate}
+              customerCity={placeValue}
+              qrCode={report.qrCode}
+              engineerName={report.engineerNameRPId}
+            />
           </div>
         </ReportPage>
       </div>
