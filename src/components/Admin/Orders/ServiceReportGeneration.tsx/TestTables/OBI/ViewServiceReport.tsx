@@ -2286,7 +2286,14 @@ const ViewServiceReportOBI: React.FC = () => {
             padding: "15mm 20mm",
           }}
         >
-          <ReportPdfPageHeader report={report} formatDate={formatDate} />
+          <ReportPdfPageHeader
+            report={{
+              srfNumber: report.srfNumber ?? "",
+              srfDate: report.srfDate != null ? String(report.srfDate) : "",
+              reportULRNumber: report.reportULRNumber,
+            }}
+            formatDate={formatDate}
+          />
           <div className="report-pdf-last-main" style={{ width: "100%", flex: 1, display: "flex", flexDirection: "column" }}>
             <ReportPdfPageDeclaration
               todayDate={todayDate}
