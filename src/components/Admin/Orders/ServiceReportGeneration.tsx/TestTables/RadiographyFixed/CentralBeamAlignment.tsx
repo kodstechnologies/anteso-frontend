@@ -50,10 +50,10 @@ const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, 
   const [observedTilt, setObservedTilt] = useState<string>('1.5');
 
   // Tolerance (Acceptance Criteria)
-  const [toleranceOperator, setToleranceOperator] = useState<'<' | '>'>('<');
+  const [toleranceOperator, setToleranceOperator] = useState<'<' | '>' | '='>('=');
   const [toleranceValue, setToleranceValue] = useState<string>('1.5');
 
-  const operators = ['<', '>',] as const;
+  const operators = ['=', '<', '>'] as const;
 
   // Apply CSV/Excel initial data
   useEffect(() => {
@@ -67,7 +67,10 @@ const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, 
       }));
     }
     if (initialData.observedTilt?.value !== undefined) setObservedTilt(String(initialData.observedTilt.value));
-    if (initialData.tolerance?.operator) setToleranceOperator(initialData.tolerance.operator as any);
+    if (initialData.tolerance?.operator) {
+      const op = initialData.tolerance.operator;
+      setToleranceOperator(op === '>' ? '>' : op === '<' ? '<' : '=');
+    }
     if (initialData.tolerance?.value !== undefined) setToleranceValue(String(initialData.tolerance.value));
   }, [csvDataVersion]);
 
@@ -80,11 +83,12 @@ const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, 
       return { remark: '' as const, pass: false };
     }
 
-    // Strict operator-based comparison.
-    // Requirement: if observed tilt equals acceptance criteria, it must be FAIL.
+    // Operator-based comparison; '=' passes when observed matches tolerance.
     const pass = toleranceOperator === '<'
       ? observed < tolerance
-      : observed > tolerance;
+      : toleranceOperator === '>'
+        ? observed > tolerance
+        : Math.abs(observed - tolerance) < 0.0001;
 
     return {
       remark: pass ? 'Pass' : 'Fail' as 'Pass' | 'Fail',
@@ -119,51 +123,8 @@ const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, 
             setObservedTilt(String(data.observedTilt.value ?? ''));
           }
           if (data.tolerance) {
-            setToleranceOperator(data.tolerance.operator === '>' ? '>' : '<');
-            setToleranceValue(String(data.tolerance.value ?? '2'));
-          }
-          setIsSaved(true);
-          setIsEditing(false);
-        } else {
-          setIsEditing(true);
-        }
-      } catch (err: any) {
-        if (err.response?.status !== 404) {
-          toast.error('Failed to load Central Beam Alignment data');
-        }
-        setIsEditing(true);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    load();
-  }, [serviceId, propTestId]);
-
-  // Load existing data
-  useEffect(() => {
-    const load = async () => {
-      if (!serviceId) {
-        setIsLoading(false);
-        return;
-      }
-      try {
-        const res = await getCentralBeamAlignmentByServiceIdForRadiographyFixed(serviceId);
-        const data = res?.data;
-        if (data) {
-          setTestId(data._id || null);
-          if (data.techniqueFactors) {
-            setTechniqueRow({
-              id: '1',
-              fcd: String(data.techniqueFactors.fcd ?? ''),
-              kv: String(data.techniqueFactors.kv ?? ''),
-              mas: String(data.techniqueFactors.mas ?? ''),
-            });
-          }
-          if (data.observedTilt) {
-            setObservedTilt(String(data.observedTilt.value ?? ''));
-          }
-          if (data.tolerance) {
-            setToleranceOperator(data.tolerance.operator === '>' ? '>' : '<');
+            const op = data.tolerance.operator;
+            setToleranceOperator(op === '>' ? '>' : op === '<' ? '<' : '=');
             setToleranceValue(String(data.tolerance.value ?? '2'));
           }
           setIsSaved(true);
