@@ -4,6 +4,7 @@ import { useSearchParams } from "react-router-dom";
 import { getDetails, getReportHeaderForOPG, getTools } from "../../../../../../api";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
+import { applyEmbeddedImagesToClone, prepareImagesForPdfCapture } from "../../../../../../utils/generatePDF";
 import MainTestTableForOPG from "./MainTestTableForOPG";
 import { ReportPdfPageHeader } from "../RadiographyFixed/component/Header";
 import { ReportPdfPageFooter } from "../RadiographyFixed/component/Footer";
@@ -537,16 +538,22 @@ const ViewServiceReportOPG: React.FC = () => {
     try {
       await new Promise(resolve => setTimeout(resolve, 100));
 
+      const { imageDataUrlMap, restore: restoreImages } = await prepareImagesForPdfCapture(element);
+
+      try {
       const canvas = await html2canvas(element, {
         scale: 1.5, // Reduced from 3 to 1.5 - still good quality but much smaller file size
         useCORS: true,
         logging: false,
         backgroundColor: '#ffffff',
-        allowTaint: false,
+        allowTaint: true,
+        imageTimeout: 15000,
         removeContainer: true,
         windowWidth: element.scrollWidth,
         windowHeight: element.scrollHeight,
         onclone: (clonedDoc) => {
+          applyEmbeddedImagesToClone(clonedDoc, imageDataUrlMap);
+
           const clonedElement = clonedDoc.getElementById("report-content");
           if (clonedElement) {
             clonedElement.style.width = '210mm';
@@ -616,6 +623,9 @@ const ViewServiceReportOPG: React.FC = () => {
       }
 
       pdf.save(`OPG-Report-${report?.testReportNumber || "report"}.pdf`);
+      } finally {
+        restoreImages();
+      }
     } catch (error) {
       console.error("PDF Error:", error);
       alert("Failed to generate PDF. Please try again.");

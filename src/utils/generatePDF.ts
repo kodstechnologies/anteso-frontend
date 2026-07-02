@@ -8,6 +8,233 @@ export interface GeneratePDFOptions {
   onProgress?: (message: string) => void;
 }
 
+const blobToDataUrl = (blob: Blob): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+
+const waitForImagesToLoad = async (root: HTMLElement): Promise<void> => {
+  const images = Array.from(root.querySelectorAll('img'));
+  await Promise.all(
+    images.map(
+      (img) =>
+        new Promise<void>((resolve) => {
+          if (img.complete && img.naturalHeight > 0) {
+            resolve();
+            return;
+          }
+          const done = () => resolve();
+          img.addEventListener('load', done, { once: true });
+          img.addEventListener('error', done, { once: true });
+        }),
+    ),
+  );
+};
+
+const resolveImageMimeType = (
+  blob: Blob,
+  url: string,
+  responseHeaders?: Record<string, string>,
+): string => {
+  const headerType = responseHeaders?.['content-type']?.split(';')[0]?.trim();
+  if (headerType?.startsWith('image/')) return headerType;
+  if (blob.type?.startsWith('image/')) return blob.type;
+
+  const extension = url.split('?')[0].split('.').pop()?.toLowerCase();
+  if (extension === 'png') return 'image/png';
+  if (extension === 'jpg' || extension === 'jpeg') return 'image/jpeg';
+  if (extension === 'webp') return 'image/webp';
+  if (extension === 'gif') return 'image/gif';
+
+  return 'image/png';
+};
+
+const fetchImageAsDataUrl = async (url: string): Promise<string> => {
+  if (!url || url.startsWith('data:') || url.startsWith('blob:')) {
+    return url;
+  }
+
+  try {
+    const { proxyFile } = await import('../api');
+    const response = await proxyFile(url);
+    const blob = response.data as Blob;
+
+    if (blob.type === 'application/json') {
+      throw new Error('Proxy returned JSON instead of image');
+    }
+
+    const mimeType = resolveImageMimeType(
+      blob,
+      url,
+      response.headers as Record<string, string>,
+    );
+    const imageBlob = blob.type.startsWith('image/')
+      ? blob
+      : new Blob([blob], { type: mimeType });
+
+    return await blobToDataUrl(imageBlob);
+  } catch (proxyError) {
+    console.warn('PDF: proxy fetch failed, trying direct load', url, proxyError);
+  }
+
+  return await new Promise<string>((resolve, reject) => {
+    const image = new Image();
+    image.crossOrigin = 'anonymous';
+    image.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = image.naturalWidth;
+        canvas.height = image.naturalHeight;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          reject(new Error('Canvas context unavailable'));
+          return;
+        }
+        ctx.drawImage(image, 0, 0);
+        resolve(canvas.toDataURL('image/png'));
+      } catch (error) {
+        reject(error);
+      }
+    };
+    image.onerror = () => reject(new Error(`Unable to load image: ${url}`));
+    image.src = url;
+  });
+};
+
+const normalizeImageUrl = (url: string): string => {
+  try {
+    return new URL(url, window.location.origin).href;
+  } catch {
+    return url;
+  }
+};
+
+const storeImageDataUrl = (map: Map<string, string>, url: string, dataUrl: string): void => {
+  map.set(url, dataUrl);
+  const normalized = normalizeImageUrl(url);
+  if (normalized !== url) {
+    map.set(normalized, dataUrl);
+  }
+};
+
+const lookupImageDataUrl = (map: Map<string, string>, img: HTMLImageElement): string | undefined => {
+  const candidates = [
+    img.currentSrc,
+    img.getAttribute('src') || '',
+    img.src,
+  ].filter(Boolean);
+
+  for (const candidate of candidates) {
+    const dataUrl = map.get(candidate);
+    if (dataUrl) return dataUrl;
+    const normalized = normalizeImageUrl(candidate);
+    const normalizedDataUrl = map.get(normalized);
+    if (normalizedDataUrl) return normalizedDataUrl;
+  }
+
+  return undefined;
+};
+
+const collectExternalImageUrls = (root: HTMLElement): string[] => {
+  const urls = new Set<string>();
+  root.querySelectorAll('img').forEach((img) => {
+    const src = img.currentSrc || img.getAttribute('src') || '';
+    if (src && !src.startsWith('data:') && !src.startsWith('blob:')) {
+      urls.add(src);
+    }
+  });
+  return Array.from(urls);
+};
+
+const buildImageDataUrlMap = async (root: HTMLElement): Promise<Map<string, string>> => {
+  const map = new Map<string, string>();
+  const urls = collectExternalImageUrls(root);
+
+  await Promise.all(
+    urls.map(async (url) => {
+      try {
+        storeImageDataUrl(map, url, await fetchImageAsDataUrl(url));
+      } catch (error) {
+        console.warn('PDF: could not fetch image for export', url, error);
+      }
+    }),
+  );
+
+  return map;
+};
+
+const applyImageDataUrlMap = (root: HTMLElement, map: Map<string, string>): Array<() => void> => {
+  const restoreFns: Array<() => void> = [];
+
+  root.querySelectorAll('img').forEach((img) => {
+    const dataUrl = lookupImageDataUrl(map, img);
+    if (!dataUrl) return;
+
+    const previousSrc = img.src;
+    img.src = dataUrl;
+    restoreFns.push(() => {
+      img.src = previousSrc;
+    });
+  });
+
+  return restoreFns;
+};
+
+const applyImageDataUrlMapToDocument = (doc: Document, map: Map<string, string>): void => {
+  doc.querySelectorAll('img').forEach((img) => {
+    const dataUrl = lookupImageDataUrl(map, img);
+    if (dataUrl) {
+      img.src = dataUrl;
+    }
+  });
+};
+
+const waitForImagesToDecode = async (root: HTMLElement): Promise<void> => {
+  const images = Array.from(root.querySelectorAll('img'));
+  await Promise.all(
+    images.map(async (img) => {
+      if (img.decode) {
+        try {
+          await img.decode();
+        } catch {
+          // ignore decode errors; html2canvas may still render
+        }
+      }
+    }),
+  );
+};
+
+export const embedExternalImagesForPdf = async (root: HTMLElement): Promise<() => void> => {
+  const { restore } = await prepareImagesForPdfCapture(root);
+  return restore;
+};
+
+export const prepareImagesForPdfCapture = async (
+  root: HTMLElement,
+): Promise<{ imageDataUrlMap: Map<string, string>; restore: () => void }> => {
+  await waitForImagesToLoad(root);
+  const imageDataUrlMap = await buildImageDataUrlMap(root);
+  const restoreFns = applyImageDataUrlMap(root, imageDataUrlMap);
+  await waitForImagesToDecode(root);
+
+  return {
+    imageDataUrlMap,
+    restore: () => {
+      restoreFns.forEach((restoreFn) => restoreFn());
+    },
+  };
+};
+
+export const applyEmbeddedImagesToClone = (
+  doc: Document,
+  imageDataUrlMap: Map<string, string>,
+): void => {
+  applyImageDataUrlMapToDocument(doc, imageDataUrlMap);
+};
+
 /**
  * Generate PDF from HTML element with fixed alignment and multi-page support.
  * Captures each A4 page shell individually for perfect alignment, with fallback for standard elements.
@@ -59,7 +286,7 @@ export const generatePDF = async ({
         });
       });
 
-      // Ensure images are fully visible
+      // Ensure images are fully visible and embeddable in canvas output
       const images = clonedElement.querySelectorAll('img');
       images.forEach((img) => {
         (img as HTMLElement).style.maxWidth = '100%';
@@ -81,47 +308,70 @@ export const generatePDF = async ({
       const imgWidth = 210;
       const pageHeight = 297;
 
+      updateButton('Preparing images...', true);
+      const imageDataUrlMap = await buildImageDataUrlMap(element);
+
       for (let i = 0; i < shells.length; i++) {
         const shell = shells[i] as HTMLElement;
         updateButton(`Generating Page ${i + 1} of ${shells.length}...`, true);
 
-        const canvas = await html2canvas(shell, {
+        const restoreFns = applyImageDataUrlMap(shell, imageDataUrlMap);
+        await waitForImagesToDecode(shell);
+
+        try {
+          const canvas = await html2canvas(shell, {
           scale: 2,
           useCORS: true,
           logging: false,
           backgroundColor: '#ffffff',
           allowTaint: true,
+          imageTimeout: 15000,
           onclone: (clonedDoc: Document) => {
-            // Find the shell in the cloned document
-            // html2canvas clones the WHOLE document, then looks for the element.
-            // But we passed 'shell' (the specific element).
-            // Actually, html2canvas (clonedDoc) logic is slightly tricky when passing an element.
-            // It clones the whole document and finds the element in the clone.
-            // Since we might have multiple shells, we find the one at the same index.
+            applyImageDataUrlMapToDocument(clonedDoc, imageDataUrlMap);
+
             const clonedShells = clonedDoc.querySelectorAll('.report-pdf-page-shell, .report-pdf-last-page-shell');
             const clonedShell = clonedShells[i] as HTMLElement;
             if (clonedShell) {
+              const isLastPage = clonedShell.classList.contains('report-pdf-last-page-shell');
+
               clonedShell.classList.add('is-generating-pdf');
               clonedShell.style.margin = '0';
               clonedShell.style.boxShadow = 'none';
               clonedShell.style.width = '210mm';
-              clonedShell.style.height = '297mm';
-              clonedShell.style.minHeight = '297mm';
-              clonedShell.style.maxHeight = '297mm';
-              clonedShell.style.overflow = 'hidden';
+
+              if (isLastPage) {
+                clonedShell.style.height = 'auto';
+                clonedShell.style.minHeight = '297mm';
+                clonedShell.style.maxHeight = 'none';
+                clonedShell.style.overflow = 'visible';
+              } else {
+                clonedShell.style.height = '297mm';
+                clonedShell.style.minHeight = '297mm';
+                clonedShell.style.maxHeight = '297mm';
+                clonedShell.style.overflow = 'hidden';
+              }
+
               prepareClonedElement(clonedShell);
             }
           }
         });
 
         const imgData = canvas.toDataURL('image/png');
-        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        let renderWidth = imgWidth;
+        let renderHeight = (canvas.height * imgWidth) / canvas.width;
+
+        if (renderHeight > pageHeight) {
+          const scale = pageHeight / renderHeight;
+          renderWidth = imgWidth * scale;
+          renderHeight = pageHeight;
+        }
 
         if (i > 0) pdf.addPage();
 
-        // Add the image. If the shell somehow exceeds one page (e.g. data overflow), 
-        // we center it or let it spill (most shells are exactly A4).
-        pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight, undefined, 'FAST');
+        pdf.addImage(imgData, 'PNG', 0, 0, renderWidth, renderHeight, undefined, 'FAST');
+        } finally {
+          restoreFns.forEach((restore) => restore());
+        }
       }
 
       pdf.save(filename);
@@ -130,13 +380,22 @@ export const generatePDF = async ({
        * FALLBACK: CONTINUOUS CAPTURE (OLD)
        * Captures the entire element and slices it mathematically into A4 pages.
        */
+      updateButton('Preparing images...', true);
+      const imageDataUrlMap = await buildImageDataUrlMap(element);
+      const restoreFns = applyImageDataUrlMap(element, imageDataUrlMap);
+      await waitForImagesToDecode(element);
+
+      try {
       const canvas = await html2canvas(element, {
         scale: 2,
         useCORS: true,
         logging: false,
         backgroundColor: '#ffffff',
         allowTaint: true,
+        imageTimeout: 15000,
         onclone: (clonedDoc: Document) => {
+          applyImageDataUrlMapToDocument(clonedDoc, imageDataUrlMap);
+
           const clonedElement = clonedDoc.getElementById(elementId);
           if (clonedElement) {
             clonedElement.classList.add('is-generating-pdf');
@@ -169,6 +428,9 @@ export const generatePDF = async ({
       }
 
       pdf.save(filename);
+      } finally {
+        restoreFns.forEach((restore) => restore());
+      }
     }
 
     updateButton(originalButtonText, false);

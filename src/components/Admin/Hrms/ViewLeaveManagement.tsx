@@ -1,32 +1,57 @@
-"use client"
-import { useState, useEffect } from "react"
+import React, { useState, useEffect, useMemo } from "react"
 import Calendar from "react-calendar"
 import "react-calendar/dist/Calendar.css"
-import { isSameDay, startOfMonth, endOfMonth, isSunday } from "date-fns"
+import { startOfMonth, endOfMonth, isSunday, format } from "date-fns"
 import { toast } from "react-toastify"
 import { useParams } from "react-router-dom"
 import { getAllLeaves, approveLeave, rejectLeave, deleteLeave, getEmployeeById, getAttendanceStatus, getAllAllocatedLeaves, getLeavesPerEmployee } from "../../../api"
-import type { AttendanceEntry, Employee, LeaveRequest } from "../../../types/hrms-types"
-import { ChevronDown, ChevronUp } from "lucide-react"
+import type { LeaveRequest } from "../../../types/hrms-types"
+import { ChevronDown, ChevronUp, FileDown, FileSpreadsheet, FileText, Loader2 } from "lucide-react"
+import {
+    buildAttendanceExportData,
+    exportAttendanceSummaryToExcel,
+    exportAttendanceSummaryToPdf,
+    exportAttendanceSummaryToWord,
+    formatDateDDMMYYYY,
+} from "../../../utils/exportAttendanceSummary"
 
-// Mock data
-const attendanceData: AttendanceEntry[] = [
-    { date: new Date(2025, 4, 1), status: "Present" },
-    { date: new Date(2025, 4, 2), status: "Present" },
-    { date: new Date(2025, 4, 3), status: "Sick Leave" },
-    { date: new Date(2025, 4, 4), status: "Absent" },
-]
+const computeMonthlyAttendanceSummary = (
+    monthDate: Date,
+    attendanceMap: Record<string, string>,
+) => {
+    const start = startOfMonth(monthDate);
+    const end = endOfMonth(monthDate);
+    let totalWorkingDays = 0;
+    let daysPresent = 0;
+
+    for (let day = new Date(start); day <= end; day.setDate(day.getDate() + 1)) {
+        const formatted = format(day, "yyyy-MM-dd");
+        const status = attendanceMap[formatted];
+        const isPresentOnSunday = isSunday(day) && status === "Present";
+
+        if (!isSunday(day) || isPresentOnSunday) {
+            totalWorkingDays += 1;
+        }
+        if (status === "Present") {
+            daysPresent += 1;
+        }
+    }
+
+    return { totalWorkingDays, daysPresent };
+};
 
 export default function EmployeeDetailsLeaveManagement() {
     const { id } = useParams()
     const [selectedDate, setSelectedDate] = useState<Date | null>(new Date())
+    const [viewMonth, setViewMonth] = useState<Date>(() => startOfMonth(new Date()))
     const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([])
     const [loading, setLoading] = useState(true)
     const [employeeDetails, setEmployeeDetails] = useState<any>(null)
     const [showTools, setShowTools] = useState(false)
     const [attendanceMap, setAttendanceMap] = useState<Record<string, string>>({})
+    const [attendanceLoading, setAttendanceLoading] = useState(false)
     const [leaveSummary, setLeaveSummary] = useState<any>(null);
-
+    const [exporting, setExporting] = useState<'pdf' | 'excel' | 'word' | null>(null);
     // Rejection Modal State
     const [rejectModal, setRejectModal] = useState<{ open: boolean; leaveId: string | null }>({
         open: false,
@@ -82,17 +107,17 @@ export default function EmployeeDetailsLeaveManagement() {
         fetchLeaveSummary();
     }, [id]);
 
-    // Fetch Attendance
+    // Fetch Attendance for the selected calendar month
     useEffect(() => {
         if (!id) return
         const fetchMonthlyAttendance = async () => {
+            setAttendanceLoading(true)
             try {
-                const today = new Date()
-                const start = startOfMonth(today)
-                const end = endOfMonth(today)
+                const start = startOfMonth(viewMonth)
+                const end = endOfMonth(viewMonth)
                 const allDays: string[] = []
                 for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-                    allDays.push(d.toLocaleDateString("en-CA"))
+                    allDays.push(format(d, "yyyy-MM-dd"))
                 }
 
                 const attendanceData: Record<string, string> = {}
@@ -103,10 +128,12 @@ export default function EmployeeDetailsLeaveManagement() {
                 setAttendanceMap(attendanceData)
             } catch (err: any) {
                 toast.error(err.message || "Failed to fetch attendance status")
+            } finally {
+                setAttendanceLoading(false)
             }
         }
         fetchMonthlyAttendance()
-    }, [id])
+    }, [id, viewMonth])
 
     // Fetch Employee
     useEffect(() => {
@@ -207,9 +234,14 @@ export default function EmployeeDetailsLeaveManagement() {
         }
     }
 
+    const monthlySummary = useMemo(
+        () => computeMonthlyAttendanceSummary(viewMonth, attendanceMap),
+        [viewMonth, attendanceMap],
+    );
+
     // Calendar Helpers
     const getStatusForDate = (date: Date) => {
-        const formatted = date.toLocaleDateString("en-CA")
+        const formatted = format(date, "yyyy-MM-dd")
         const status = attendanceMap[formatted]
         if (status) return status
         if (isSunday(date)) return "Holiday"
@@ -229,13 +261,51 @@ export default function EmployeeDetailsLeaveManagement() {
     }
 
     const handleDateChange = (value: any) => {
-        if (value instanceof Date) setSelectedDate(value)
-        else if (Array.isArray(value) && value[0] instanceof Date) setSelectedDate(value[0])
-        else setSelectedDate(null)
+        if (value instanceof Date) {
+            setSelectedDate(value)
+            setViewMonth(startOfMonth(value))
+        } else if (Array.isArray(value) && value[0] instanceof Date) {
+            setSelectedDate(value[0])
+            setViewMonth(startOfMonth(value[0]))
+        } else {
+            setSelectedDate(null)
+        }
     }
 
-    return (
-        <div className="space-y-8">
+    const handleActiveStartDateChange = ({ activeStartDate }: { activeStartDate: Date | null }) => {
+        if (activeStartDate) {
+            setViewMonth(startOfMonth(activeStartDate))
+        }
+    }
+
+    const getExportPayload = () =>
+        buildAttendanceExportData(employeeDetails, attendanceMap, viewMonth);
+
+    const handleExport = async (format: 'pdf' | 'excel' | 'word') => {
+        if (!employeeDetails) {
+            toast.warn("Employee details are still loading.");
+            return;
+        }
+
+        const payload = getExportPayload();
+        try {
+            setExporting(format);
+            if (format === 'pdf') {
+                exportAttendanceSummaryToPdf(payload);
+            } else if (format === 'excel') {
+                exportAttendanceSummaryToExcel(payload);
+            } else {
+                await exportAttendanceSummaryToWord(payload);
+            }
+            toast.success(`Attendance summary exported as ${format.toUpperCase()}`);
+        } catch (err: any) {
+            toast.error(err?.message || `Failed to export ${format.toUpperCase()}`);
+        } finally {
+            setExporting(null);
+        }
+    };
+
+    return (        <div className="space-y-8">
             <style >{`
                 .react-calendar__tile.present { background: rgba(40, 167, 69, 0.5) !important; color: black; }
                 .react-calendar__tile.absent { background: #dc3545 !important; color: white; }
@@ -315,13 +385,118 @@ export default function EmployeeDetailsLeaveManagement() {
             </div>
 
             {/* Attendance Calendar */}
-            <div className="bg-white p-6 rounded-lg shadow-lg">
-                <h2 className="text-xl font-semibold mb-4">Attendance Calendar</h2>
-                <Calendar onChange={handleDateChange} value={selectedDate} tileClassName={tileClassName} />
+            <div className="bg-white p-6 rounded-2xl shadow-lg border border-gray-100">
+                <div className="mb-5 rounded-xl border border-gray-200 bg-gradient-to-r from-slate-50 via-white to-indigo-50/60 p-4 sm:p-5">
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                        <div>
+                            <h2 className="text-xl font-semibold text-gray-900">Attendance Calendar</h2>
+                            <p className="mt-1 text-sm text-gray-500">
+                                Browse monthly attendance and download reports for {format(viewMonth, "MMMM yyyy")}.
+                            </p>
+                        </div>
+
+                        <div className="flex flex-col gap-2 sm:items-end">
+                            <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+                                Download Report
+                            </span>
+                            <div className="flex flex-wrap gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => handleExport('pdf')}
+                                    disabled={!!exporting || attendanceLoading}
+                                    className="group inline-flex min-w-[148px] items-center gap-3 rounded-xl border border-red-100 bg-white px-4 py-2.5 shadow-sm transition-all hover:border-red-200 hover:bg-red-50 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"
+                                >
+                                    <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-red-100 text-red-600 transition-colors group-hover:bg-red-600 group-hover:text-white">
+                                        {exporting === 'pdf' ? (
+                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                        ) : (
+                                            <FileText className="h-4 w-4" />
+                                        )}
+                                    </span>
+                                    <span className="text-left">
+                                        <span className="block text-[11px] font-medium uppercase tracking-wide text-gray-500">Export</span>
+                                        <span className="block text-sm font-semibold text-gray-900">
+                                            {exporting === 'pdf' ? 'Preparing...' : 'PDF'}
+                                        </span>
+                                    </span>
+                                </button>
+
+                                <button
+                                    type="button"
+                                    onClick={() => handleExport('excel')}
+                                    disabled={!!exporting || attendanceLoading}
+                                    className="group inline-flex min-w-[148px] items-center gap-3 rounded-xl border border-emerald-100 bg-white px-4 py-2.5 shadow-sm transition-all hover:border-emerald-200 hover:bg-emerald-50 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"
+                                >
+                                    <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 transition-colors group-hover:bg-emerald-600 group-hover:text-white">
+                                        {exporting === 'excel' ? (
+                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                        ) : (
+                                            <FileSpreadsheet className="h-4 w-4" />
+                                        )}
+                                    </span>
+                                    <span className="text-left">
+                                        <span className="block text-[11px] font-medium uppercase tracking-wide text-gray-500">Export</span>
+                                        <span className="block text-sm font-semibold text-gray-900">
+                                            {exporting === 'excel' ? 'Preparing...' : 'Excel'}
+                                        </span>
+                                    </span>
+                                </button>
+
+                                <button
+                                    type="button"
+                                    onClick={() => handleExport('word')}
+                                    disabled={!!exporting || attendanceLoading}
+                                    className="group inline-flex min-w-[148px] items-center gap-3 rounded-xl border border-blue-100 bg-white px-4 py-2.5 shadow-sm transition-all hover:border-blue-200 hover:bg-blue-50 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"
+                                >
+                                    <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100 text-blue-700 transition-colors group-hover:bg-blue-600 group-hover:text-white">
+                                        {exporting === 'word' ? (
+                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                        ) : (
+                                            <FileDown className="h-4 w-4" />
+                                        )}
+                                    </span>
+                                    <span className="text-left">
+                                        <span className="block text-[11px] font-medium uppercase tracking-wide text-gray-500">Export</span>
+                                        <span className="block text-sm font-semibold text-gray-900">
+                                            {exporting === 'word' ? 'Preparing...' : 'Word'}
+                                        </span>
+                                    </span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <Calendar
+                    onChange={handleDateChange}
+                    value={selectedDate}
+                    activeStartDate={viewMonth}
+                    onActiveStartDateChange={handleActiveStartDateChange}
+                    tileClassName={tileClassName}
+                />
+            </div>
+            <div className="bg-white p-6 rounded-xl shadow-md border border-gray-200">
+                <h2 className="text-xl font-bold mb-4">
+                    Attendance Summary ({format(viewMonth, "MMMM yyyy")})
+                </h2>
+                {attendanceLoading ? (
+                    <p className="text-gray-500 italic">Loading attendance for selected month...</p>
+                ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="p-4 rounded-lg bg-gray-50 border border-gray-200">
+                            <p className="text-xs text-gray-500 uppercase tracking-wide">Total Working Days</p>
+                            <p className="text-2xl font-semibold text-gray-900 mt-1">{monthlySummary.totalWorkingDays}</p>
+                        </div>
+                        <div className="p-4 rounded-lg bg-green-50 border border-green-200">
+                            <p className="text-xs text-green-700 uppercase tracking-wide">Days Present</p>
+                            <p className="text-2xl font-semibold text-green-800 mt-1">{monthlySummary.daysPresent}</p>
+                        </div>
+                    </div>
+                )}
             </div>
             {selectedDate && (
                 <div className="mt-4 p-3 bg-blue-50 rounded-lg text-gray-800">
-                    <strong>Status for {selectedDate.toLocaleDateString()}:</strong> {getStatusForDate(selectedDate)}
+                    <strong>Status for {formatDateDDMMYYYY(selectedDate)}:</strong> {getStatusForDate(selectedDate)}
                 </div>
             )}
             {leaveSummary && (

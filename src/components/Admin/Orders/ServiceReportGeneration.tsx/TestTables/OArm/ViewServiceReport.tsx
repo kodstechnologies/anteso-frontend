@@ -4,6 +4,7 @@ import { useSearchParams } from "react-router-dom";
 import { getReportHeaderForOArm, saveReportHeader, getDetails, getTools } from "../../../../../../api";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
+import { applyEmbeddedImagesToClone, prepareImagesForPdfCapture } from "../../../../../../utils/generatePDF";
 import MainTestTableForOArm from "./MainTestTableForOArm";
 import { ReportPdfPageHeader } from "../RadiographyFixed/component/Header";
 import { ReportPdfPageFooter } from "../RadiographyFixed/component/Footer";
@@ -377,11 +378,19 @@ const ViewServiceReportOArm: React.FC = () => {
         btn.disabled = true;
       }
 
+      const { imageDataUrlMap, restore: restoreImages } = await prepareImagesForPdfCapture(element);
+
+      try {
       const canvas = await html2canvas(element, {
         scale: 1.5, // Optimized for smaller file size
         useCORS: true,
+        allowTaint: true,
         logging: false,
-        backgroundColor: '#ffffff'
+        backgroundColor: '#ffffff',
+        imageTimeout: 15000,
+        onclone: (clonedDoc) => {
+          applyEmbeddedImagesToClone(clonedDoc, imageDataUrlMap);
+        },
       });
       // Convert to JPEG with compression for much smaller file size
       const imgData = canvas.toDataURL("image/jpeg", 0.85); // JPEG at 85% quality - good balance
@@ -434,6 +443,9 @@ const ViewServiceReportOArm: React.FC = () => {
         };
         await saveReportHeader(serviceId!, payload);
         setReport((prev) => (prev ? { ...prev, pages: String(pageCount) } : null));
+      }
+      } finally {
+        restoreImages();
       }
     } catch (error) {
       console.error("PDF Error:", error);

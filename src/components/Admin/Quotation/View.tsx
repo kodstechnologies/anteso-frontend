@@ -33,6 +33,10 @@ interface QuotationData {
         contactPerson: string
         emailAddress: string
         contactNumber: string
+        leadOwner?: {
+            id?: string | null
+            name?: string | null
+        }
         services: Array<{
             machineType: string
             equipmentNo: string
@@ -47,10 +51,10 @@ interface QuotationData {
         specialInstructions: string
 
     },
-    assignedEmployee: {
-        name: string
-        phone: any
-    },
+    assignedEmployee?: {
+        name?: string
+        phone?: any
+    } | null,
     from: {
         name: string
         email: string
@@ -322,6 +326,13 @@ const ViewQuotation: React.FC = () => {
             </div>
         )
     }
+
+    const assignedEmployeeName =
+        quotationData.assignedEmployee?.name ||
+        quotationData.enquiry?.leadOwner?.name ||
+        quotationData.enquiry?.contactPerson ||
+        "-";
+    const assignedEmployeePhone = quotationData.assignedEmployee?.phone || "-";
     // const aitems =
     //     quotationData?.enquiry?.services?.map((service, index) => ({
     //         type: "A",
@@ -371,10 +382,12 @@ const ViewQuotation: React.FC = () => {
     //     })
     // ) || []
     const bitems =
-        quotationData?.enquiry?.additionalServices?.map((service, index) => ({
+        quotationData?.enquiry?.additionalServices
+            ?.filter((service): service is AdditionalServiceData => Boolean(service))
+            ?.map((service, index) => ({
             type: "B",
             id: index + 1,
-            title: service.name,
+            title: service.name || "-",
             description: service.description,
             quantity: "1",
             price: formatNumber(service.totalAmount ?? 0),
@@ -567,13 +580,13 @@ const ViewQuotation: React.FC = () => {
                                 <tr className="text-[.7rem]">
                                     <td className="pl-4 font-bold w-[10rem]">Name:</td>
                                     <td className="pl-2" colSpan={3}>
-                                        {quotationData.assignedEmployee.name} &nbsp;&nbsp;
+                                        {assignedEmployeeName} &nbsp;&nbsp;
                                     </td>
                                 </tr>
                                 <tr className="text-[.7rem]">
                                     <td className="pl-4 font-bold w-[10rem]">Phone:</td>
                                     <td className="pl-2" colSpan={3}>
-                                        {quotationData.assignedEmployee.phone} &nbsp;&nbsp;
+                                        {assignedEmployeePhone} &nbsp;&nbsp;
                                     </td>
                                 </tr>
                                 <tr className="text-[.7rem]">
