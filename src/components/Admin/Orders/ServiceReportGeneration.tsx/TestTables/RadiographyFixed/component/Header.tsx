@@ -12,8 +12,20 @@ export const ReportPdfPageHeader: React.FC<{
   report: ReportPdfPageHeaderData;
   formatDate: (dateStr: string) => string;
 }> = ({ report, formatDate }) => (
-  <div className="report-pdf-page-header flex w-full justify-between items-start m-0 p-0 mb-4 print:mb-2">
-    <img src={logoA} alt="NABL" className="block h-24 self-start m-0 p-0 leading-none print:h-16" />
+  <div
+    className="report-pdf-page-header flex w-full justify-between items-start m-0 p-0 mb-4 print:mb-2"
+    style={{
+      marginLeft: "-16mm",
+      marginRight: "-16mm",
+      width: "calc(100% + 32mm)",
+    }}
+  >
+    <img
+      src={logo}
+      alt="Logo"
+      className="block h-24 self-start m-0 p-0 leading-none print:h-16"
+      style={{ marginTop: "-5mm", display: "block" }}
+    />
     <div className="text-right self-start m-0 p-0">
       <table style={{ fontSize: '9px', borderCollapse: 'collapse', borderSpacing: '0', tableLayout: 'auto', width: 'auto', maxWidth: '200px', border: '0.1px solid #666', marginTop: '0', marginBottom: '0' }}>
         <tbody>
@@ -26,6 +38,11 @@ export const ReportPdfPageHeader: React.FC<{
         </tbody>
       </table>
     </div>
-    <img src={logo} alt="Logo" className="block h-24 self-start m-0 p-0 leading-none print:h-16" />
+    <img
+      src={logoA}
+      alt="NABL"
+      className="block h-24 self-start m-0 p-0 leading-none print:h-16"
+      style={{ marginTop: "-5mm", display: "block" }}
+    />
   </div>
 );
