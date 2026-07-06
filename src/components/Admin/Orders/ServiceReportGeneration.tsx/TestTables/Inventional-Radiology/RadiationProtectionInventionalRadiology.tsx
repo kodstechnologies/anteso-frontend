@@ -195,6 +195,10 @@ const RadiationProtectionInterventionalRadiology: React.FC<Props> = ({ serviceId
                 setIsLoading(false);
                 return;
             }
+            if (csvData && csvData.length > 0) {
+                setIsLoading(false);
+                return;
+            }
             try {
                 const res = await getRadiationProtectionSurveyByServiceIdForInventionalRadiology(serviceId);
                 const data = res?.data;
@@ -236,7 +240,7 @@ const RadiationProtectionInterventionalRadiology: React.FC<Props> = ({ serviceId
             }
         };
         load();
-    }, [serviceId, tubeId]);
+    }, [serviceId, tubeId, csvData]);
 
     // CSV Data Injection
     useEffect(() => {
@@ -284,6 +288,7 @@ const RadiationProtectionInterventionalRadiology: React.FC<Props> = ({ serviceId
             if (!isSaved) {
                 setIsEditing(true);
             }
+            setIsSaved(false);
         }
     }, [csvData, isSaved]);
 

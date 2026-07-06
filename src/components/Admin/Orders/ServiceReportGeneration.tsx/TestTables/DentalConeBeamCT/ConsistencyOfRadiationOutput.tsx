@@ -158,7 +158,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
           data = res?.data;
         }
 
-        if (data) {
+        if (data && !(csvData && csvData.length > 0)) {
           setTestId(data._id || data.testId);
           setFfd(data.ffd || '');
           setOutputRows(
@@ -212,62 +212,74 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
     };
 
     loadTest();
-    loadTest();
-  }, [propTestId, serviceId]);
+  }, [propTestId, serviceId, csvData]);
 
-  // CSV Data Injection
+  // CSV Data Injection — apply after load; shrink/expand columns to match Excel
   useEffect(() => {
-    if (csvData && csvData.length > 0) {
-      // Check for FFD
-      const ffdVal = csvData.find(r => r['Field Name'] === 'FFD')?.['Value'];
-      if (ffdVal) {
-        setFfd(ffdVal);
-      }
+    if (isLoading || !csvData || csvData.length === 0) return;
 
-      // Measurement Rows
-      const rowIndices = [...new Set(csvData
-        .filter(r => r['Field Name'] && (r['Field Name'] === 'kVp' || r['Field Name'] === 'mAs' || r['Field Name'].startsWith('Measured_')))
-        .map(r => parseInt(r['Row Index']))
-        .filter(i => !isNaN(i) && i >= 0)
-      )];
-
-      if (rowIndices.length > 0) {
-        const newRows = rowIndices.map(idx => {
-          const rowData = csvData.filter(r => parseInt(r['Row Index']) === idx);
-          const kvp = rowData.find(r => r['Field Name'] === 'kVp')?.['Value'] || '';
-          const mas = rowData.find(r => r['Field Name'] === 'mAs')?.['Value'] || '';
-
-          const measured: string[] = [];
-          for (let i = 0; i < 10; i++) {
-            const val = rowData.find(r => r['Field Name'] === `Measured_${i}`)?.['Value'];
-            if (val !== undefined) measured.push(val);
-            else break;
-          }
-
-          return {
-            id: String(idx),
-            kvp,
-            mas,
-            outputs: measured,
-            mean: '',
-            cov: '',
-            remarks: '' as ''
-          };
-        });
-
-        setOutputRows(newRows);
-
-        // Update headers
-        const maxMeas = Math.max(...newRows.map(r => r.outputs.length));
-        if (maxMeas > headers.length) {
-          const newCols = Array.from({ length: maxMeas - headers.length }, (_, i) => `Meas ${headers.length + i + 1}`);
-          setHeaders(prev => [...prev, ...newCols]);
-        }
-      }
-
-      if (!testId && (rowIndices.length > 0 || ffdVal)) setIsSaved(false); // Edit mode
+    const ffdVal = csvData.find((r: any) => r['Field Name'] === 'FFD')?.['Value'];
+    if (ffdVal) {
+      setFfd(String(ffdVal));
     }
-  }, [csvData]);
+
+    const labelsMeta = csvData.find((r: any) => r['Field Name'] === 'MeasColumnLabels')?.['Value'];
+    const labelsFromMeta = labelsMeta
+      ? String(labelsMeta).split(',').map((s: string) => s.trim()).filter(Boolean)
+      : [];
+
+    const rowIndices = [...new Set(csvData
+      .filter((r: any) => r['Field Name'] && (r['Field Name'] === 'kVp' || r['Field Name'] === 'mAs' || String(r['Field Name']).startsWith('Measured_')))
+      .map((r: any) => parseInt(r['Row Index']))
+      .filter((i: number) => !isNaN(i) && i >= 0)
+    )];
+
+    if (rowIndices.length > 0) {
+      const newRows = rowIndices.map(idx => {
+        const rowData = csvData.filter((r: any) => parseInt(r['Row Index']) === idx);
+        const kvp = rowData.find((r: any) => r['Field Name'] === 'kVp')?.['Value'] || '';
+        const mas = rowData.find((r: any) => r['Field Name'] === 'mAs')?.['Value'] || '';
+
+        const measured: string[] = [];
+        if (labelsFromMeta.length > 0) {
+          for (let i = 0; i < labelsFromMeta.length; i++) {
+            const val = rowData.find((r: any) => r['Field Name'] === `Measured_${i}`)?.['Value'];
+            measured.push(val !== undefined && val !== null ? String(val) : '');
+          }
+        } else {
+          for (let i = 0; i < 20; i++) {
+            const val = rowData.find((r: any) => r['Field Name'] === `Measured_${i}`)?.['Value'];
+            if (val !== undefined && val !== '') measured.push(String(val));
+            else if (val === undefined) break;
+          }
+        }
+
+        return {
+          id: String(idx),
+          kvp: String(kvp),
+          mas: String(mas),
+          outputs: measured,
+          mean: '',
+          cov: '',
+          remarks: '' as '',
+        };
+      });
+
+      const maxMeas = labelsFromMeta.length > 0
+        ? labelsFromMeta.length
+        : Math.max(...newRows.map((r) => r.outputs.length), 1);
+      const newHeaders = labelsFromMeta.length > 0
+        ? labelsFromMeta
+        : Array.from({ length: maxMeas }, (_, i) => `Meas ${i + 1}`);
+
+      setHeaders(newHeaders);
+      setOutputRows(newRows.map((r) => ({
+        ...r,
+        outputs: Array.from({ length: maxMeas }, (_, i) => r.outputs[i] ?? ''),
+      })));
+      setIsSaved(false);
+    }
+  }, [csvData, isLoading]);
 
   // Save / Update
   const handleSave = async () => {
@@ -381,6 +393,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
         if (field === 'kvp') return { ...row, kvp: value };
         if (field === 'mas') return { ...row, mas: value };
         const newOutputs = [...row.outputs];
+        while (newOutputs.length <= field) newOutputs.push('');
         newOutputs[field] = value;
         return { ...row, outputs: newOutputs };
       })
@@ -523,11 +536,11 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
                       placeholder="100"
                     />
                   </td>
-                  {row.outputs.map((val, idx) => (
+                  {headers.map((_, idx) => (
                     <td key={idx} className="px-2 py-2 border-r">
                       <input
                         type="text"
-                        value={val}
+                        value={row.outputs[idx] ?? ''}
                         onChange={(e) => updateOutputCell(row.id, idx, e.target.value)}
                         disabled={isViewMode}
                         className={`w-full px-2 py-1 border rounded text-center text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}

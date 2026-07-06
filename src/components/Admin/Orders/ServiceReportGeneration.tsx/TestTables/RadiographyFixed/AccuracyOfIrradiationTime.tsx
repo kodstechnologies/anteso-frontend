@@ -129,6 +129,10 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
   // Load saved data
   useEffect(() => {
     const fetchData = async () => {
+      if (csvDataVersion) {
+        setLoading(false);
+        return;
+      }
       if (!serviceId) return;
       setLoading(true);
       try {
@@ -162,7 +166,7 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
     };
 
     fetchData();
-  }, [serviceId]);
+  }, [serviceId, csvDataVersion]);
 
   // Save / Update
   const handleSave = async () => {

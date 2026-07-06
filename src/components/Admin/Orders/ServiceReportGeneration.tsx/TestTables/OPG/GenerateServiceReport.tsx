@@ -169,15 +169,19 @@ const OPG: React.FC<{ serviceId: string; qaTestDate?: string | null; csvFileUrl?
                 return;
             }
             if (currentSection) {
-                const headerOnlyMarkers = ['Applied kVp', 'Set Time (mSec)', 'mA Station', 'mAs Range', 'kVp', 'Location', 'LOCATION', 'LOCATION', 'Survey Date'];
+                const headerOnlyMarkers = ['Applied kVp', 'Set Time (mSec)', 'mA Station', 'mAs Range', 'kVp', 'Location', 'LOCATION', 'Survey Date'];
                 if (firstCell && headerOnlyMarkers.includes(firstCell)) {
-                    return;
+                    // Keep Location header for radiation leakage import (column mapping)
+                    if (!(currentSection === 'radiationLeakageLevel' && firstCell === 'Location')) {
+                        return;
+                    }
                 }
                 if (row.length > 0) {
-                    if (currentSection === 'linearityOfMaLoading' || currentSection === 'linearityOfMasLoading') {
+                    if (currentSection === 'linearityOfMaLoading') {
                         if (!result.linearityOfMaLoading) result.linearityOfMaLoading = [];
-                        if (!result.linearityOfMasLoading) result.linearityOfMasLoading = [];
                         result.linearityOfMaLoading.push(row);
+                    } else if (currentSection === 'linearityOfMasLoading') {
+                        if (!result.linearityOfMasLoading) result.linearityOfMasLoading = [];
                         result.linearityOfMasLoading.push(row);
                     } else {
                         result[currentSection].push(row);

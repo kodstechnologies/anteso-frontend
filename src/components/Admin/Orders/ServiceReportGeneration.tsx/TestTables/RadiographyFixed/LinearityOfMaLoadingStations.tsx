@@ -228,20 +228,29 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
     };
   }, [table2Rows, tolerance, toleranceOperator, table1Row.time]);
 
+  const hasValidTime = useMemo(() => {
+    const timeSec = parseFloat(table1Row.time);
+    return table1Row.time.trim() !== '' && !Number.isNaN(timeSec) && timeSec > 0;
+  }, [table1Row.time]);
+
   // === Form Valid ===
   const isFormValid = useMemo(() => {
     return (
       !!serviceId &&
       table1Row.fcd.trim() &&
       table1Row.kv.trim() &&
-      table1Row.time.trim() &&
+      hasValidTime &&
       table2Rows.every(r => r.ma.trim() && r.measuredOutputs.some(v => v.trim()))
     );
-  }, [serviceId, table1Row, table2Rows]);
+  }, [serviceId, table1Row, table2Rows, hasValidTime]);
 
   // === Load Data from backend ===
   useEffect(() => {
     const load = async () => {
+      if (csvDataVersion) {
+        setIsLoading(false);
+        return;
+      }
       if (!serviceId) {
         setIsLoading(false);
         return;
@@ -284,7 +293,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
       }
     };
     load();
-  }, [serviceId]);
+  }, [serviceId, csvDataVersion]);
 
   // === Save Handler (connected to Fixed Radio Fluoro API) ===
   const handleSave = async () => {
@@ -296,7 +305,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
     }
 
     if (!isFormValid) {
-      toast.error('Please fill all required fields');
+      toast.error(hasValidTime ? 'Please fill all required fields' : 'Time (sec) must be greater than 0');
       console.log('Form validation failed:', {
         fcd: table1Row.fcd,
         kv: table1Row.kv,
@@ -410,6 +419,14 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
     <div className="p-6 max-w-full overflow-x-auto">
       <h2 className="text-2xl font-bold mb-6">{tableTitle}</h2>
 
+      {!isViewMode && table1Row.time.trim() && !hasValidTime && (
+        <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+          <p className="text-sm text-amber-700">
+            Time (sec) must be greater than 0 for X = mGy/(mA × sec) calculation.
+          </p>
+        </div>
+      )}
+
       {/* Table 1: FCD, kV, Time (sec) */}
       <div className="bg-white shadow-md rounded-lg overflow-hidden mb-8">
         <table className="min-w-full divide-y divide-gray-200">
@@ -448,7 +465,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
                   value={table1Row.time}
                   onChange={e => setTable1Row(p => ({ ...p, time: e.target.value }))}
                   disabled={isViewMode}
-                  className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'}`}
+                  className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : !hasValidTime && table1Row.time.trim() ? 'border-red-500' : 'border-gray-300'}`}
                   placeholder="0.5"
                 />
               </td>

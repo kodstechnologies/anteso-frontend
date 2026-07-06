@@ -98,11 +98,16 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
         if (isNaN(err) || isNaN(tol)) return "-";
 
         switch (toleranceOperator) {
-            case ">": return err > tol ? "FAIL" : "PASS";
-            case "<": return err < tol ? "PASS" : "FAIL";
-            case ">=": return err >= tol ? "FAIL" : "PASS";
-            case "<=": return err <= tol ? "PASS" : "FAIL";
-            default: return "-";
+            case ">":
+                return err > tol ? "PASS" : "FAIL";
+            case "<":
+                return err < tol ? "PASS" : "FAIL";
+            case ">=":
+                return err >= tol ? "PASS" : "FAIL";
+            case "<=":
+                return err <= tol ? "PASS" : "FAIL";
+            default:
+                return "-";
         }
     };
 
@@ -428,9 +433,9 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
                     <span className="font-medium text-indigo-800">Error should be</span>
                     <select
                         value={toleranceOperator}
-                        onChange={(e) => setToleranceOperator(e.target.value)}
+                        onChange={(e) => { setToleranceOperator(e.target.value); setIsSaved(false); }}
                         disabled={isViewMode}
-                        className={`px-3 py-1 border border-indigo-300 rounded text-indigo-900 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : 'bg-white'}`}
+                        className={`px-3 py-1 border border-indigo-300 rounded bg-white text-indigo-900 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`}
                     >
                         <option value=">">greater than</option>
                         <option value="<">less than</option>
@@ -443,7 +448,7 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
                         value={toleranceValue}
                         onChange={(e) => { setToleranceValue(e.target.value); setIsSaved(false); }}
                         disabled={isViewMode}
-                        className={`w-20 px-2 py-1 text-center border border-indigo-300 rounded ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : 'bg-white'}`}
+                        className={`w-20 px-2 py-1 text-center border border-indigo-300 rounded bg-white ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`}
                         placeholder="10.0"
                     />
                     <span className="font-medium text-indigo-800">%</span>

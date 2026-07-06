@@ -228,6 +228,17 @@ const DentalConeBeamCT: React.FC<{ serviceId: string; qaTestDate?: string | null
 
         const sectionRowCounter: { [key: string]: number } = {};
 
+        // Computed columns — leave empty in Excel; UI calculates these from raw inputs
+        const computedFields: Record<string, Set<string>> = {
+            accuracyOfOperatingPotential: new Set(['Average_kVp', 'Remarks']),
+            accuracyOfIrradiationTime: new Set(['Error']),
+            linearityOfMaLoading: new Set(['Average', 'mR_mAs']),
+            linearityOfMasLoading: new Set(['Average', 'mR_mAs']),
+            consistencyOfRadiationOutput: new Set(['Mean', 'CoV', 'Remarks']),
+            radiationLeakageLevel: new Set(['Table2_Max', 'Table2_Remark']),
+            radiationProtectionSurvey: new Set(['mR_week', 'Status']),
+        };
+
         for (let i = 0; i < rows.length; i++) {
             if (!rows[i] || !Array.isArray(rows[i])) continue;
             const row = rows[i].map(c => String(c || '').trim());
@@ -316,6 +327,23 @@ const DentalConeBeamCT: React.FC<{ serviceId: string; qaTestDate?: string | null
                 const matches = row.filter(c => (headerMap[currentTestName] || {})[c]).length;
                 if (matches >= 2 || (matches === 1 && row.filter(c => c).length > 2)) {
                     headers = row;
+                    if (currentTestName === 'consistencyOfRadiationOutput') {
+                        const map = headerMap[currentTestName] || {};
+                        const measLabels = row
+                            .map((h) => String(h || '').trim())
+                            .filter((h) => {
+                                if (map[h]?.startsWith('Measured_')) return true;
+                                return /^Meas\s+\d+$/i.test(h);
+                            });
+                        if (measLabels.length > 0) {
+                            data.push({
+                                'Field Name': 'MeasColumnLabels',
+                                'Value': measLabels.join(','),
+                                'Row Index': 0,
+                                'Test Name': currentTestName,
+                            });
+                        }
+                    }
                     continue;
                 } else if (matches === 1 && row.filter(c => c).length === 1) {
                     // Single cell matching a header? Could be a header row with 1 col or just noise.
@@ -326,19 +354,31 @@ const DentalConeBeamCT: React.FC<{ serviceId: string; qaTestDate?: string | null
             }
 
             if (isReadingTest && currentTestName && headers.length > 0) {
+                // Skip summary rows like "CoL,0.08" that are not measurement data
+                const firstVal = String(row[0] || '').trim();
+                if (/^col$/i.test(firstVal) && row.slice(1).filter(c => c).length <= 1) {
+                    continue;
+                }
+
                 sectionRowCounter[currentTestName]++;
                 const rowIdx = sectionRowCounter[currentTestName];
                 row.forEach((value, cellIdx) => {
                     const header = headers[cellIdx];
-                    const internalField = (headerMap[currentTestName] || {})[header];
-                    if (internalField && value) {
-                        data.push({
-                            'Field Name': internalField,
-                            'Value': value,
-                            'Row Index': rowIdx,
-                            'Test Name': currentTestName,
-                        });
+                    let internalField = (headerMap[currentTestName] || {})[header];
+                    if (!internalField && currentTestName === 'consistencyOfRadiationOutput') {
+                        const measMatch = String(header || '').trim().match(/^Meas\s+(\d+)$/i);
+                        if (measMatch) {
+                            internalField = `Measured_${parseInt(measMatch[1], 10) - 1}`;
+                        }
                     }
+                    if (!internalField || !value) return;
+                    if (computedFields[currentTestName]?.has(internalField)) return;
+                    data.push({
+                        'Field Name': internalField,
+                        'Value': value,
+                        'Row Index': rowIdx,
+                        'Test Name': currentTestName,
+                    });
                 });
             }
         }

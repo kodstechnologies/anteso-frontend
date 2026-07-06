@@ -75,7 +75,7 @@ const MainTestTableForBMD: React.FC<MainTestTableProps> = ({ testData, hasTimer 
       const toleranceOperator =
         irrFull?.tolerance?.operator ?? irr?.tolerance?.operator ?? "<=";
       const toleranceValue =
-        irrFull?.tolerance?.value ?? irr?.tolerance?.value ?? irr?.timeToleranceValue ?? "5";
+        irrFull?.tolerance?.value ?? irr?.tolerance?.value ?? irr?.timeToleranceValue ?? "10";
 
       const testRows = validRows.map((row: any) => {
         const setTime = parseFloat(String(row.setTime ?? row.set_time ?? ""));

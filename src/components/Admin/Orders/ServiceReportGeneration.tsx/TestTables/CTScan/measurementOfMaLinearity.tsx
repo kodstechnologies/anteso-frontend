@@ -182,6 +182,11 @@ const MeasurementOfMaLinearity: React.FC<Props> = ({ serviceId, testId: propTest
         });
     }, [table2Rows, tolerance, table1Row.time]);
 
+    const hasValidTime = useMemo(() => {
+        const timeVal = parseFloat(table1Row.time);
+        return table1Row.time.trim() !== '' && !Number.isNaN(timeVal) && timeVal > 0;
+    }, [table1Row.time]);
+
     // === CSV Data Injection ===
     useEffect(() => {
         if (csvData && csvData.length > 0) {
@@ -261,10 +266,10 @@ const MeasurementOfMaLinearity: React.FC<Props> = ({ serviceId, testId: propTest
             !!serviceId &&
             table1Row.kvp.trim() &&
             table1Row.sliceThickness.trim() &&
-            table1Row.time.trim() &&
+            hasValidTime &&
             table2Rows.every(r => r.mAsApplied.trim() && r.measuredOutputs.some(v => v.trim()))
         );
-    }, [serviceId, table1Row, table2Rows]);
+    }, [serviceId, table1Row, table2Rows, hasValidTime]);
 
     // === Load Data ===
     useEffect(() => {
@@ -337,7 +342,10 @@ const MeasurementOfMaLinearity: React.FC<Props> = ({ serviceId, testId: propTest
     // === Save / Update ===
     // === Save / Update ===
     const handleSave = async () => {
-        if (!isFormValid) return;
+        if (!isFormValid) {
+            toast.error(hasValidTime ? 'Please fill all required fields' : 'Time (ms) must be greater than 0');
+            return;
+        }
         setIsSaving(true);
 
         // Use the already processed data (includes avg, x, xmax, xmin, col, remarks)
@@ -401,6 +409,14 @@ const MeasurementOfMaLinearity: React.FC<Props> = ({ serviceId, testId: propTest
         <div className="p-6 max-w-full overflow-x-auto">
             <h2 className="text-2xl font-bold mb-6">Measurement of mA Linearity</h2>
 
+            {!isViewMode && table1Row.time.trim() && !hasValidTime && (
+                <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                    <p className="text-sm text-amber-700">
+                        Time (ms) must be greater than 0 for X = mGy/(mA × time) calculation.
+                    </p>
+                </div>
+            )}
+
             {/* Table 1: Fixed */}
             <div className="bg-white shadow-md rounded-lg overflow-hidden mb-8">
                 <table className="min-w-full divide-y divide-gray-200">
@@ -441,7 +457,7 @@ const MeasurementOfMaLinearity: React.FC<Props> = ({ serviceId, testId: propTest
                                     value={table1Row.time}
                                     onChange={e => setTable1Row(p => ({ ...p, time: e.target.value }))}
                                     disabled={isViewMode}
-                                    className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'
+                                    className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : !hasValidTime && table1Row.time.trim() ? 'border-red-500' : 'border-gray-300'
                                         }`}
                                     placeholder="100"
                                 />

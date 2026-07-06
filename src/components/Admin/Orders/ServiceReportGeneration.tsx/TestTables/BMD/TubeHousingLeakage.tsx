@@ -225,11 +225,16 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
       return;
     }
 
+    const hasCsvImport = initialData && (
+      initialData.leakageMeasurements?.length > 0 ||
+      initialData.measurementSettings?.kv
+    );
+
     const loadTest = async () => {
       setIsLoading(true);
       try {
         const response = await getRadiationLeakageLevelByServiceIdForBMD(serviceId);
-        if (response?.data) {
+        if (response?.data && !hasCsvImport) {
           const testData = response.data;
           setTestId(testData._id || null);
 
@@ -303,50 +308,53 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
     };
 
     loadTest();
-  }, [serviceId]);
+  }, [serviceId, initialData]);
 
-  // Load initialData from CSV if provided
+  // Load initialData from CSV — apply after load finishes so server data does not overwrite import
   useEffect(() => {
-    if (initialData) {
-      try {
-        if (initialData.measurementSettings) {
-          setSettings({
-            fcd: initialData.measurementSettings.distance || '',
-            kv: initialData.measurementSettings.kv || '',
-            ma: initialData.measurementSettings.ma || '',
-            time: initialData.measurementSettings.time || '',
-          });
-        }
-        if (initialData.workload) {
-          setWorkload(initialData.workload);
-        }
-        if (initialData.toleranceValue) setToleranceValue(initialData.toleranceValue);
-        if (initialData.toleranceOperator) setToleranceOperator(initialData.toleranceOperator);
-        if (initialData.toleranceTime) setToleranceTime(initialData.toleranceTime);
-        if (initialData.leakageMeasurements && initialData.leakageMeasurements.length > 0) {
-          const sortedMeasurements = initialData.leakageMeasurements.sort((a: any, b: any) => {
-            if (a.location === 'Tube') return -1;
-            if (b.location === 'Tube') return 1;
-            return 0;
-          });
-          setLeakageRows(sortedMeasurements.map((m: any) => ({
-            location: m.location || '',
-            left: String(m.left ?? ''),
-            right: String(m.right ?? ''),
-            front: String(m.front ?? ''),
-            back: String(m.back ?? ''),
-            top: String(m.top ?? ''),
-            max: String(m.max ?? ''),
-            result: String(m.result ?? ''),
-            unit: m.unit || 'mR/h',
-            mgy: String(m.mgy ?? ''),
-          })));
-        }
-      } catch (err) {
-        console.error('Error loading initialData:', err);
+    if (isLoading || !initialData) return;
+    try {
+      if (initialData.measurementSettings) {
+        setSettings({
+          fcd: initialData.measurementSettings.distance || '',
+          kv: initialData.measurementSettings.kv || '',
+          ma: initialData.measurementSettings.ma || '',
+          time: initialData.measurementSettings.time || '',
+        });
       }
+      if (initialData.workload) {
+        setWorkload(initialData.workload);
+      }
+      if (initialData.toleranceValue) setToleranceValue(initialData.toleranceValue);
+      if (initialData.toleranceOperator) setToleranceOperator(initialData.toleranceOperator);
+      if (initialData.toleranceTime) setToleranceTime(initialData.toleranceTime);
+      if (initialData.leakageMeasurements?.length > 0) {
+        const sortedMeasurements = [...initialData.leakageMeasurements].sort((a: any, b: any) => {
+          const aLoc = (a.location || '').toLowerCase();
+          const bLoc = (b.location || '').toLowerCase();
+          if (aLoc.includes('tube')) return -1;
+          if (bLoc.includes('tube')) return 1;
+          return 0;
+        });
+        setLeakageRows(sortedMeasurements.map((m: any) => ({
+          location: (m.location || '').toLowerCase().includes('collimator') ? 'Collimator' : 'Tube',
+          left: String(m.left ?? ''),
+          right: String(m.right ?? ''),
+          front: String(m.front ?? ''),
+          back: String(m.back ?? ''),
+          top: String(m.top ?? ''),
+          max: String(m.max ?? ''),
+          result: String(m.result ?? ''),
+          unit: m.unit || 'mR/h',
+          mgy: String(m.mgy ?? ''),
+        })));
+      }
+      setHasSaved(false);
+      setIsEditing(true);
+    } catch (err) {
+      console.error('Error loading initialData:', err);
     }
-  }, [initialData]);
+  }, [initialData, isLoading]);
 
   const handleSave = async () => {
     if (!isFormValid) {

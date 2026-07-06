@@ -46,10 +46,19 @@ const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, 
 
   const [observedTilt, setObservedTilt] = useState<string>('1.5');
 
-  const [toleranceOperator, setToleranceOperator] = useState<'<' | '>' | '<=' | '>=' | '='>('<=');
+  const [toleranceOperator, setToleranceOperator] = useState<'<' | '>' | '='>('=');
   const [toleranceValue, setToleranceValue] = useState<string>('1.5');
 
-  const operators = ['<', '>', '<=', '>=', '='] as const;
+  const operators = ['=', '<', '>'] as const;
+
+  const normalizeOperator = (op: string): '<' | '>' | '=' => {
+    if (op === '>') return '>';
+    if (op === '<') return '<';
+    if (op === '=') return '=';
+    if (op === '>=') return '>';
+    if (op === '<=') return '<';
+    return '=';
+  };
 
   const evaluation = useMemo(() => {
     const observed = parseFloat(observedTilt) || 0;
@@ -59,16 +68,12 @@ const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, 
       return { remark: '' as const, pass: false };
     }
 
-    // Requirement: equality must be treated as FAIL.
-    // So even for <= / >= we evaluate with strict inequality.
-    let pass = false;
-    if (toleranceOperator === '<' || toleranceOperator === '<=') {
-      pass = observed < tolerance;
-    } else if (toleranceOperator === '>' || toleranceOperator === '>=') {
-      pass = observed > tolerance;
-    } else if (toleranceOperator === '=') {
-      pass = false;
-    }
+    // Operator-based comparison; '=' passes when observed matches tolerance.
+    const pass = toleranceOperator === '<'
+      ? observed < tolerance
+      : toleranceOperator === '>'
+        ? observed > tolerance
+        : Math.abs(observed - tolerance) < 0.0001;
 
     return {
       remark: pass ? 'Pass' : 'Fail' as 'Pass' | 'Fail',
@@ -82,6 +87,10 @@ const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, 
   useEffect(() => {
     const load = async () => {
       if (!serviceId) {
+        setIsLoading(false);
+        return;
+      }
+      if (csvData && csvData.length > 0) {
         setIsLoading(false);
         return;
       }
@@ -102,7 +111,7 @@ const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, 
             setObservedTilt(String(data.observedTilt.value ?? ''));
           }
           if (data.tolerance) {
-            setToleranceOperator(data.tolerance.operator || '<=');
+            setToleranceOperator(normalizeOperator(data.tolerance.operator || '='));
             setToleranceValue(String(data.tolerance.value ?? '2'));
           }
           setIsSaved(true);
@@ -120,7 +129,7 @@ const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, 
       }
     };
     load();
-  }, [serviceId, propTestId, tubeId]);
+  }, [serviceId, propTestId, tubeId, csvData]);
 
   // CSV Data Injection
   useEffect(() => {
@@ -131,10 +140,11 @@ const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, 
       const tTime = csvData.find(r => r['Field Name'] === 'Table1_time')?.['Value'];
 
       if (tKv || tMa || tTime) {
+        const mas = tMa && tTime ? String(parseFloat(tMa) * parseFloat(tTime)) : tMa || '';
         setTechniqueRow(prev => ({
           ...prev,
           kv: tKv || prev.kv,
-          mas: tMa || prev.mas, // Mapping mA/mSec logic might be needed but for now simple mapping
+          mas: mas || prev.mas,
         }));
       }
 
@@ -144,10 +154,13 @@ const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, 
 
       // Tolerance
       const tol = csvData.find(r => r['Field Name'] === 'Tolerance')?.['Value'];
+      const tolOp = csvData.find(r => r['Field Name'] === 'Tolerance_Operator' || r['Field Name'] === 'ToleranceOperator')?.['Value'];
       if (tol) setToleranceValue(tol);
+      if (tolOp) setToleranceOperator(normalizeOperator(tolOp));
 
       if (!testId) {
         setIsEditing(true);
+        setIsSaved(false);
       }
     }
   }, [csvData, testId]);

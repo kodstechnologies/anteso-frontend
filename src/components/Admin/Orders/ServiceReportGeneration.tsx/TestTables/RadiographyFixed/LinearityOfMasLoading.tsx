@@ -140,6 +140,10 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
   // Load data from backend
   useEffect(() => {
     const load = async () => {
+      if (csvDataVersion) {
+        setIsLoading(false);
+        return;
+      }
       if (!serviceId) {
         setIsLoading(false);
         return;
@@ -184,7 +188,7 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
       }
     };
     load();
-  }, [serviceId]);
+  }, [serviceId, csvDataVersion]);
 
   // Save handler
   const handleSave = async () => {

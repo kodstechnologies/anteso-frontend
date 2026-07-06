@@ -81,7 +81,7 @@ const MainTestTableForMammography: React.FC<MainTestTableProps> = ({ testData })
     const validRows = testData.irradiationTime.irradiationTimes.filter((row: any) => row.setTime || row.measuredTime);
     if (validRows.length > 0) {
       const toleranceOperator = testData.irradiationTime.tolerance?.operator || "<=";
-      const toleranceValue = testData.irradiationTime.tolerance?.value || "5";
+      const toleranceValue = testData.irradiationTime.tolerance?.value || "10";
       const testRows = validRows.map((row: any) => {
         const setTime = parseFloat(row.setTime);
         const measuredTime = parseFloat(row.measuredTime);
@@ -95,8 +95,12 @@ const MainTestTableForMammography: React.FC<MainTestTableProps> = ({ testData })
 
           if (toleranceOperator === "<=") {
             isPass = errorVal <= tol;
+          } else if (toleranceOperator === "<") {
+            isPass = errorVal < tol;
           } else if (toleranceOperator === ">=") {
             isPass = errorVal >= tol;
+          } else if (toleranceOperator === ">") {
+            isPass = errorVal > tol;
           } else if (toleranceOperator === "=") {
             isPass = Math.abs(errorVal - tol) < 0.01;
           }

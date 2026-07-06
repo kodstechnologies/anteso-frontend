@@ -219,6 +219,10 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, initialData, cs
   // Load existing survey
   useEffect(() => {
     const load = async () => {
+      if (csvDataVersion) {
+        setIsLoading(false);
+        return;
+      }
       if (!serviceId) {
         setIsLoading(false);
         return;
@@ -261,7 +265,7 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, initialData, cs
       }
     };
     load();
-  }, [serviceId]);
+  }, [serviceId, csvDataVersion]);
 
   const handleSave = async () => {
     if (!serviceId) {

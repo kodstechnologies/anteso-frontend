@@ -354,7 +354,7 @@ const ViewServiceReportOBI: React.FC = () => {
               ...ttData,
               irradiationTimes,
               testConditions: ttData.testConditions || {},
-              tolerance: ttData.tolerance || { operator: "<=", value: "5" },
+              tolerance: ttData.tolerance || { operator: "<=", value: "10" },
             };
           };
 
@@ -1117,26 +1117,55 @@ const ViewServiceReportOBI: React.FC = () => {
                       <tr>
                         <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Set Time (sec)</th>
                         <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Measured Time (sec)</th>
-                        <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Tolerance</th>
+                        <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>% Error</th>
                         <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Remarks</th>
                       </tr>
                     </thead>
                     <tbody>
                       {testData.timerTest.irradiationTimes.map((row: any, i: number) => {
-                        const toleranceOperator = testData.timerTest.tolerance?.operator || "<=";
-                        const toleranceValue = testData.timerTest.tolerance?.value || "5";
+                        const tolOp = testData.timerTest.tolerance?.operator || "<=";
+                        const tolVal = parseFloat(testData.timerTest.tolerance?.value || "10");
+                        const calcError = (set: string, meas: string): string => {
+                          const s = parseFloat(set);
+                          const m = parseFloat(meas);
+                          if (isNaN(s) || isNaN(m) || s === 0) return "-";
+                          return Math.abs(((m - s) / s) * 100).toFixed(2);
+                        };
+                        const getRemark = (errorPct: string): string => {
+                          if (errorPct === "-" || isNaN(tolVal)) return "-";
+                          const err = parseFloat(errorPct);
+                          if (isNaN(err)) return "-";
+                          switch (tolOp) {
+                            case ">": return err > tolVal ? "PASS" : "FAIL";
+                            case "<": return err < tolVal ? "PASS" : "FAIL";
+                            case ">=": return err >= tolVal ? "PASS" : "FAIL";
+                            case "<=": return err <= tolVal ? "PASS" : "FAIL";
+                            default: return "-";
+                          }
+                        };
+                        const error = calcError(String(row.setTime ?? ""), String(row.measuredTime ?? ""));
+                        const remark = getRemark(error);
                         return (
                           <tr key={i} style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
                             <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.setTime || "-"}</td>
                             <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.measuredTime || "-"}</td>
-                            <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{toleranceOperator} {toleranceValue}%</td>
-                            <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>-</td>
+                            <td className="border border-black p-2 print:p-1 text-center font-medium" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{error !== "-" ? `${error}%` : "-"}</td>
+                            <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>
+                              <span className={remark === "PASS" ? "text-green-600 font-semibold" : remark === "FAIL" ? "text-red-600 font-semibold" : ""}>{remark}</span>
+                            </td>
                           </tr>
                         );
                       })}
                     </tbody>
                   </table>
                 </div>
+                {testData.timerTest.tolerance && (
+                  <div className="bg-gray-50 p-4 print:p-1 rounded border" style={{ padding: '2px 4px', marginTop: '4px' }}>
+                    <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
+                      <strong>Tolerance:</strong> Error {testData.timerTest.tolerance.operator || "<="} {testData.timerTest.tolerance.value || "10"}%
+                    </p>
+                  </div>
+                )}
               </div>
             )}
             {/* 2. Accuracy of Operating Potential */}

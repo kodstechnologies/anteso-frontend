@@ -433,8 +433,8 @@ const ViewServiceReport: React.FC = () => {
                   </th>
                   <td style={cellStyle({ border: "0.1px solid #666" })}>
                     {c.tolerance && typeof c.tolerance === "object"
-                      ? `${c.tolerance.operator || "<"} ${c.tolerance.value || "1.5"}°`
-                      : c.tolerance || "< 1.5°"}
+                      ? `${c.tolerance.operator || "="} ${c.tolerance.value || "1.5"}°`
+                      : c.tolerance || "= 1.5°"}
                   </td>
                 </tr>
               </tbody>

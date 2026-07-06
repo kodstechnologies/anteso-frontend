@@ -1,5 +1,11 @@
 import XLSX from 'xlsx';
 import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const templateDir = path.join(__dirname, 'public/templates');
 
 // Define the data structure
 const data = [];
@@ -159,7 +165,6 @@ ws['!cols'] = Array(10).fill({ wch: 20 });
 XLSX.utils.book_append_sheet(wb, ws, 'CT Scan Data');
 
 // Write file
-const templateDir = 'd:/projects/anteso-admin-frontend/public/templates';
 const filename = path.join(templateDir, 'CTScan_SingleTube_Sample.xlsx');
 XLSX.writeFile(wb, filename);
 
@@ -178,7 +183,6 @@ const escapeCSV = (val) => {
 };
 
 const csvContent = data.map(row => row.map(escapeCSV).join(',')).join('\n');
-import fs from 'fs';
 fs.writeFileSync(path.join(templateDir, 'CTScan_Test_Data_Template_WithTimer.csv'), csvContent);
 fs.writeFileSync(path.join(templateDir, 'CTScan_Test_Data_Template_NoTimer.csv'), csvContent);
 

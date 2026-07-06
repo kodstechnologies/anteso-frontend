@@ -754,20 +754,44 @@ const ViewServiceReportCBCT: React.FC = () => {
                     </thead>
                     <tbody>
                       {testData.irradiationTime.irradiationTimes.map((row: any, i: number) => {
-                        const deviation = row.setTime && row.measuredTime
-                          ? ((Math.abs(row.measuredTime - row.setTime) / row.setTime) * 100).toFixed(2)
-                          : "N/A";
-                        const pass = deviation !== "N/A" && Number(deviation) <= 5;
-                        const toleranceOperator = testData.irradiationTime.tolerance?.operator || "<=";
-                        const toleranceValue = testData.irradiationTime.tolerance?.value || "5";
+                        const setNum = parseFloat(row.setTime);
+                        const measNum = parseFloat(row.measuredTime);
+                        const tolOp = testData.irradiationTime.tolerance?.operator || "<=";
+                        const tolVal = parseFloat(testData.irradiationTime.tolerance?.value ?? "10");
+                        let deviation = "-";
+                        let pass = false;
+
+                        if (!isNaN(setNum) && !isNaN(measNum) && setNum > 0) {
+                          const err = Math.abs((measNum - setNum) / setNum * 100);
+                          deviation = err.toFixed(2);
+                          if (!isNaN(tolVal)) {
+                            switch (tolOp) {
+                              case ">":
+                                pass = err > tolVal;
+                                break;
+                              case "<":
+                                pass = err < tolVal;
+                                break;
+                              case ">=":
+                                pass = err >= tolVal;
+                                break;
+                              case "<=":
+                                pass = err <= tolVal;
+                                break;
+                              default:
+                                pass = err <= tolVal;
+                            }
+                          }
+                        }
+
                         return (
                           <tr key={i}>
                             <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.setTime || "-"}</td>
                             <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.measuredTime || "-"}</td>
-                            <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{deviation !== "N/A" ? `${deviation}%` : "-"}</td>
-                            <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Error {toleranceOperator} {toleranceValue}%</td>
+                            <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{deviation !== "-" ? `${deviation}%` : "-"}</td>
+                            <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Error {tolOp} {testData.irradiationTime.tolerance?.value || "10"}%</td>
                             <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>
-                              <span className={pass ? "text-green-600" : "text-red-600"}>{pass ? "PASS" : "FAIL"}</span>
+                              <span className={pass ? "text-green-600" : deviation !== "-" ? "text-red-600" : ""}>{deviation !== "-" ? (pass ? "PASS" : "FAIL") : "-"}</span>
                             </td>
                           </tr>
                         );
@@ -951,20 +975,27 @@ const ViewServiceReportCBCT: React.FC = () => {
                 ? testData.linearityOfMaLoading.table1?.[0]
                 : testData.linearityOfMaLoading.table1;
               const hasTime = table1?.time !== undefined && table1?.time !== null && String(table1?.time).trim() !== "";
+              const timeStr = hasTime ? String(table1?.time).trim() : '';
+              const timeVal = parseFloat(timeStr);
+              const hasValidTime = timeStr !== '' && !isNaN(timeVal) && timeVal > 0;
+              const xUnitLabel = hasTime ? 'mGy/(mA*s)' : 'mGy/mA';
               const hasMasShape = rows.some((row: any) => row.mAsRange || row.mAsApplied);
               const linearityHeading = (!hasTime || hasMasShape)
                 ? "Linearity of mAs Loading (Coefficient of Linearity)"
                 : "Linearity of mA Loading (Coefficient of Linearity)";
 
-              // Calculate overall Xmax, Xmin, CoL if not already pre-calculated
               const xResults = rows.map((row: any) => {
                 const outputsArr = Array.isArray(row.measuredOutputs) ? row.measuredOutputs : [];
                 const values = outputsArr.map((v: any) => parseFloat(String(v))).filter((n: number) => !isNaN(n) && n > 0);
                 const avg = values.length > 0 ? values.reduce((a: number, b: number) => a + b, 0) / values.length : 0;
                 const ma = parseFloat(row.ma) || 0;
-                const time = parseFloat(testData.linearityOfMaLoading.table1?.time) || 0;
-                const mas = ma * time || 1; // Fallback to 1 to avoid division by zero
-                const x = mas > 0 ? avg / mas : 0;
+                const mAs = hasValidTime && ma > 0 ? ma * timeVal : null;
+                let x = 0;
+                if (avg > 0 && mAs && mAs > 0) {
+                  x = avg / mAs;
+                } else if (avg > 0 && ma > 0) {
+                  x = avg / ma;
+                }
                 return { avg, x, row };
               });
 
@@ -1009,7 +1040,7 @@ const ViewServiceReportCBCT: React.FC = () => {
                             <th key={idx} className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 4px', fontSize: '11px', borderColor: '#000000', textAlign: 'center' }}>{h}</th>
                           ))}
                           <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 4px', fontSize: '11px', borderColor: '#000000', textAlign: 'center' }}>Avg. Output (mGy)</th>
-                          <th className="border border-black p-2 print:p-1 text-center font-bold bg-blue-50" style={{ padding: '0px 4px', fontSize: '11px', borderColor: '#000000', textAlign: 'center' }}>X (mGy/mAs)</th>
+                          <th className="border border-black p-2 print:p-1 text-center font-bold bg-blue-50" style={{ padding: '0px 4px', fontSize: '11px', borderColor: '#000000', textAlign: 'center' }}>X ({xUnitLabel})</th>
                           <th className="border border-black p-2 print:p-1 text-center font-bold bg-yellow-50" style={{ padding: '0px 4px', fontSize: '11px', borderColor: '#000000', textAlign: 'center' }}>CoL</th>
                           <th className="border border-black p-2 print:p-1 text-center font-bold bg-green-50" style={{ padding: '0px 4px', fontSize: '11px', borderColor: '#000000', textAlign: 'center' }}>Remarks</th>
                         </tr>

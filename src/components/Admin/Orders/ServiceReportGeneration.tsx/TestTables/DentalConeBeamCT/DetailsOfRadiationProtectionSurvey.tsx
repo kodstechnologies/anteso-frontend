@@ -276,16 +276,16 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, csvData }) => {
           const rowData = csvData.filter(r => parseInt(r['Row Index']) === idx);
           const location = rowData.find(r => r['Field Name'] === 'Location')?.['Value'] || '';
           const mRhr = rowData.find(r => r['Field Name'] === 'mR_hr')?.['Value'] || '';
-          const category = rowData.find(r => r['Field Name'] === 'Category')?.['Value'] || 'worker';
+          const categoryRaw = rowData.find(r => ['Category', 'Result', 'category', 'result'].includes(r['Field Name']))?.['Value'] || 'worker';
 
           return {
             id: String(idx),
             location,
             mRPerHr: mRhr,
-            mRPerWeek: '', // Calculated by useEffect
+            mRPerWeek: '',
             result: '',
             calculatedResult: '',
-            category: category.toLowerCase() === 'public' ? 'public' : 'worker'
+            category: String(categoryRaw).toLowerCase() === 'public' ? 'public' : 'worker'
           };
         });
 

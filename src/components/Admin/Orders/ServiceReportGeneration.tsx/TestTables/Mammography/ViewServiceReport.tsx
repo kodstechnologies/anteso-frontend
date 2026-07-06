@@ -538,7 +538,23 @@ const ViewServiceReportMammography: React.FC = () => {
                     const varNum = ((measNum - setNum) / setNum) * 100;
                     variation = varNum.toFixed(2);
                     const absVar = Math.abs(varNum);
-                    const isPass = operator === "<=" ? absVar <= tolValue : absVar < tolValue;
+                    let isPass = false;
+                    switch (operator) {
+                      case ">":
+                        isPass = absVar > tolValue;
+                        break;
+                      case "<":
+                        isPass = absVar < tolValue;
+                        break;
+                      case ">=":
+                        isPass = absVar >= tolValue;
+                        break;
+                      case "<=":
+                        isPass = absVar <= tolValue;
+                        break;
+                      default:
+                        isPass = absVar <= tolValue;
+                    }
                     remark = isPass ? "Pass" : "Fail";
                   }
                   return { ...row, variation, remark };
@@ -560,12 +576,21 @@ const ViewServiceReportMammography: React.FC = () => {
                   : 0;
                 const avg = avgNum > 0 ? avgNum.toFixed(3) : "-";
 
-                // In mA Loading Stations, x = output / (mA * time)
+                // X = mGy/(mA*s) when time entered; otherwise mGy/mA
                 const ma = parseFloat(row.ma || row.mAsApplied) || 0;
-                const time = parseFloat(linearity.table1?.[0]?.time) || 1;
+                const timeRaw = linearity.table1?.[0]?.time;
+                const timeStr = timeRaw != null ? String(timeRaw).trim() : '';
+                const time = parseFloat(timeStr);
+                const hasValidTime = timeStr !== '' && !isNaN(time) && time > 0;
+                const mAs = hasValidTime && ma > 0 ? ma * time : null;
 
-                const x = avg !== "-" && ma > 0 ? (parseFloat(avg) / (ma * time)).toFixed(4) : "-";
-                if (x !== "-") xValues.push(parseFloat(x));
+                let x = '-';
+                if (avg !== '-' && mAs && mAs > 0) {
+                  x = (parseFloat(avg) / mAs).toFixed(4);
+                } else if (avg !== '-' && ma > 0) {
+                  x = (parseFloat(avg) / ma).toFixed(4);
+                }
+                if (x !== '-') xValues.push(parseFloat(x));
 
                 return {
                   ...row,
@@ -1293,7 +1318,13 @@ const ViewServiceReportMammography: React.FC = () => {
                   </div>
                 )}
 
-                {testData.maLoadingStations.table2?.length > 0 && (
+                {testData.maLoadingStations.table2?.length > 0 && (() => {
+                  const timeRaw = testData.maLoadingStations.table1?.[0]?.time;
+                  const timeStr = timeRaw != null ? String(timeRaw).trim() : '';
+                  const isTimerSelected = timeStr !== '';
+                  const xUnitLabel = isTimerSelected ? 'mGy/(mA*s)' : 'mGy/mA';
+
+                  return (
                   <div className="overflow-x-auto mb-6 print:mb-1 print:overflow-visible" style={{ marginBottom: '4px' }}>
                     <table className="w-full border-2 border-black compact-table force-small-text" style={{ fontSize: '10px', tableLayout: 'fixed', width: '100%' }}>
                       <thead className="bg-gray-100">
@@ -1303,7 +1334,7 @@ const ViewServiceReportMammography: React.FC = () => {
                             Output (mGy)
                           </th>
                           <th className="border border-black border-b-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px' }}>Avg Output</th>
-                          <th className="border border-black border-b-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px' }}>X (mGy/mAs)</th>
+                          <th className="border border-black border-b-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px' }}>X ({xUnitLabel})</th>
                           <th className="border border-black border-b-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px' }}>X MAX</th>
                           <th className="border border-black border-b-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px' }}>X MIN</th>
                           <th className="border border-black border-b-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px' }}>CoL</th>
@@ -1346,12 +1377,18 @@ const ViewServiceReportMammography: React.FC = () => {
                                : null;
                             const avgDisplay = avg !== null ? parseFloat(avg.toFixed(3)).toFixed(3) : '—';
 
-                            // X = output / (mA * time)
+                            // X = mGy/(mA*s) when time entered; otherwise mGy/mA
                             const maValue = parseFloat(row.ma || row.mAsApplied) || 0;
-                            const timeValue = parseFloat(testData.maLoadingStations.table1?.[0]?.time) || 1;
-                            const midMas = maValue * timeValue;
+                            const timeValue = parseFloat(timeStr);
+                            const hasValidTime = timeStr !== '' && !isNaN(timeValue) && timeValue > 0;
+                            const midMas = hasValidTime && maValue > 0 ? maValue * timeValue : null;
 
-                            const x = avg !== null && midMas > 0 ? avg / midMas : null;
+                            let x: number | null = null;
+                            if (avg !== null && midMas && midMas > 0) {
+                              x = avg / midMas;
+                            } else if (avg !== null && maValue > 0) {
+                              x = avg / maValue;
+                            }
                             const xDisplay = x !== null ? parseFloat(x.toFixed(4)).toFixed(4) : '—';
                             if (x !== null) xValues.push(parseFloat(x.toFixed(4)));
 
@@ -1404,7 +1441,8 @@ const ViewServiceReportMammography: React.FC = () => {
                       </tbody>
                     </table>
                   </div>
-                )}
+                  );
+                })()}
                 {testData.maLoadingStations.tolerance && (
                   <div className="bg-gray-50 p-4 print:p-1 rounded border">
                     <p className="text-sm print:text-[10px]" style={{ fontSize: '10px' }}>

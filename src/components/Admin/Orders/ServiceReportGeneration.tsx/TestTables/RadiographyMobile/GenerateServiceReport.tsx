@@ -445,14 +445,15 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
       "CONGRUENCE OF RADIATION": "Congruence of Radiation",
       "EFFECTIVE FOCAL SPOT": "Effective Focal Spot",
       "LINEARITY OF MAS LOADING STATIONS": "Linearity of mAs Loading Stations",
+      "LINEARITY OF MA LOADING": "Linearity of mA Loading",
       "RADIATION LEAKAGE LEVEL": "Radiation Leakage Level",
       "TUBE HOUSING LEAKAGE": "Radiation Leakage Level",
     };
 
     const headerMap: Record<string, Record<string, string>> = {
       "Accuracy of Operating Potential": {
-        "mA Station": "MeasHeader",
         "Applied kV": "Measurement_AppliedKvp",
+        "Applied kVp": "Measurement_AppliedKvp",
         "Meas 1": "Measurement_Meas1",
         "Meas 2": "Measurement_Meas2",
         "Meas 3": "Measurement_Meas3",
@@ -511,6 +512,19 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
         "Measured Nominal": "FocalSpot_MeasuredNominal",
         "Measured Focal Spot (Nominal)": "FocalSpot_MeasuredNominal",
       },
+      "Linearity of mA Loading": {
+        "FCD": "Table1_FCD",
+        "kV": "Table1_kV",
+        "Time (sec)": "Table1_Time",
+        "Time": "Table1_Time",
+        "Timer": "Table1_Time",
+        "mA Applied": "Table2_mAsApplied",
+        "Meas 1": "Table2_Meas1",
+        "Meas 2": "Table2_Meas2",
+        "Meas 3": "Table2_Meas3",
+        "Tolerance Operator": "ToleranceOperator",
+        "Tolerance": "Tolerance",
+      },
       "Linearity of mAs Loading Stations": {
         "FCD": "Table1_FCD",
         "kV": "Table1_kV",
@@ -554,6 +568,19 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
 
       if (isReading && headers.length === 0 && row.some((c) => c !== "")) {
         headers = row;
+        if (currentTestName === "Accuracy of Operating Potential") {
+          headers.forEach((headerCell) => {
+            const trimmed = (headerCell || "").trim();
+            if (/^Meas\s+\d+$/i.test(trimmed)) {
+              out.push({
+                "Field Name": "MeasHeader",
+                "Value": trimmed,
+                "Row Index": "0",
+                "Test Name": currentTestName,
+              });
+            }
+          });
+        }
         continue;
       }
 
@@ -699,11 +726,64 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
       if (!raw) { i++; continue; }
 
       if (raw.startsWith("TEST:")) {
-        const label = raw.slice(5).trim();
+        const label = raw.slice(5).split(",")[0].trim();
 
         // 1) Accuracy of Operating Potential (kVp)
         if (label.startsWith("ACCURACY OF OPERATING POTENTIAL")) {
           const testName = "Accuracy of Operating Potential";
+          const nextLine = (lines[i + 1] || "").trim();
+
+          // Excel / horizontal template: header row starts with "mA Station"
+          if (nextLine.startsWith("mA Station")) {
+            const header = nextLine.split(",");
+            const col = (name: string) =>
+              header.findIndex((h) => (h || "").trim().toLowerCase() === name.toLowerCase());
+            const idxApplied = col("Applied kV") >= 0 ? col("Applied kV") : col("Applied kVp");
+            const idxMeas = [1, 2, 3].map((n) => col(`Meas ${n}`)).filter((idx) => idx >= 0);
+            const idxTolSign = col("Tolerance Sign");
+            const idxTolVal = col("Tolerance Value");
+            const idxTfMeasured = col("TF Measured");
+            const idxTfRequired = col("TF Required");
+
+            header.forEach((h) => {
+              const trimmed = (h || "").trim();
+              if (/^Meas\s+\d+$/i.test(trimmed)) pushRow(testName, "MeasHeader", trimmed, 0);
+            });
+
+            let rowIdx = 0;
+            for (let j = i + 2; j < lines.length; j++) {
+              const l = lines[j].trim();
+              if (!l || l.startsWith("TEST:")) break;
+              const cells = l.split(",");
+              const applied = idxApplied >= 0 ? (cells[idxApplied] || "").trim() : "";
+              if (!applied) continue;
+
+              if (rowIdx === 0) {
+                if (idxTolSign >= 0 && (cells[idxTolSign] || "").trim()) {
+                  pushRow(testName, "Tolerance_Sign", cells[idxTolSign].trim(), 0);
+                }
+                if (idxTolVal >= 0 && (cells[idxTolVal] || "").trim()) {
+                  pushRow(testName, "Tolerance_Value", cells[idxTolVal].trim(), 0);
+                }
+                if (idxTfMeasured >= 0 && (cells[idxTfMeasured] || "").trim()) {
+                  pushRow(testName, "TotalFiltration_Measured", cells[idxTfMeasured].trim(), 0);
+                }
+                if (idxTfRequired >= 0 && (cells[idxTfRequired] || "").trim()) {
+                  pushRow(testName, "TotalFiltration_Required", cells[idxTfRequired].trim(), 0);
+                }
+              }
+
+              pushRow(testName, "Measurement_AppliedKvp", applied, rowIdx);
+              idxMeas.forEach((mIdx, mi) => {
+                const v = (cells[mIdx] || "").trim();
+                if (v) pushRow(testName, `Measurement_Meas${mi + 1}`, v, rowIdx);
+              });
+              rowIdx++;
+            }
+            i = i + 2 + rowIdx;
+            continue;
+          }
+
           const tolSign = (lines[i + 1] || "").split(",")[1] || "";
           const tolVal = (lines[i + 2] || "").split(",")[1] || "";
           const tfMeasured = (lines[i + 3] || "").split(",")[1] || "";
@@ -715,7 +795,7 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
           if (tfMeasured) pushRow(testName, "TotalFiltration_Measured", tfMeasured, 0);
           if (tfRequired) pushRow(testName, "TotalFiltration_Required", tfRequired, 0);
 
-          // mA stations from header, starting at column 2
+          // mA stations from header, starting at column 1
           for (let c = 1; c < header.length; c++) {
             const h = (header[c] || "").trim();
             if (h) pushRow(testName, "MeasHeader", h, 0);
@@ -731,8 +811,10 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
             const kv = (cells[0] || "").trim();
             if (kv) {
               pushRow(testName, "Measurement_AppliedKvp", kv, rowIdx);
-              if (cells[1] !== undefined && cells[1] !== "") pushRow(testName, "Measurement_Meas1", cells[1], rowIdx);
-              if (cells[2] !== undefined && cells[2] !== "") pushRow(testName, "Measurement_Meas2", cells[2], rowIdx);
+              for (let c = 1; c < cells.length; c++) {
+                const v = (cells[c] || "").trim();
+                if (v) pushRow(testName, `Measurement_Meas${c}`, v, rowIdx);
+              }
               rowIdx++;
             }
             j++;
@@ -912,7 +994,50 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
           continue;
         }
 
-        // 7) Linearity of mAs Loading Stations
+        // 7) Linearity of mA Loading (with timer)
+        if (label === "LINEARITY OF MA LOADING") {
+          const testName = "Linearity of mA Loading";
+          const header = (lines[i + 1] || "").split(",").map((h) => (h || "").trim());
+          const col = (name: string) =>
+            header.findIndex((h) => h.toLowerCase() === name.toLowerCase());
+          const idxFcd = col("FCD");
+          const idxKv = col("kV");
+          const idxTime = col("Time (sec)") >= 0 ? col("Time (sec)") : col("Time");
+          const idxMa = col("mA Applied") >= 0 ? col("mA Applied") : col("mAs Applied");
+          const idxMeas = [1, 2, 3].map((n) => col(`Meas ${n}`)).filter((idx) => idx >= 0);
+          const idxTolOp = col("Tolerance Operator");
+          const idxTol = col("Tolerance");
+
+          let rowIdx = 0;
+          for (let j = i + 2; j < lines.length; j++) {
+            const l = lines[j].trim();
+            if (!l || l.startsWith("TEST:")) break;
+            const cells = l.split(",");
+            const fcd = idxFcd >= 0 ? (cells[idxFcd] || "").trim() : "";
+            const kv = idxKv >= 0 ? (cells[idxKv] || "").trim() : "";
+            const time = idxTime >= 0 ? (cells[idxTime] || "").trim() : "";
+            const ma = idxMa >= 0 ? (cells[idxMa] || "").trim() : "";
+            if (fcd) pushRow(testName, "Table1_FCD", fcd, 0);
+            if (kv) pushRow(testName, "Table1_kV", kv, 0);
+            if (time) pushRow(testName, "Table1_Time", time, 0);
+            if (ma && !isNaN(Number(ma))) {
+              pushRow(testName, "Table2_mAsApplied", ma, rowIdx);
+              idxMeas.forEach((mIdx, mi) => {
+                const v = (cells[mIdx] || "").trim();
+                if (v) pushRow(testName, `Table2_Meas${mi + 1}`, v, rowIdx);
+              });
+              rowIdx++;
+            } else if (idxTolOp >= 0 && (cells[idxTolOp] || "").trim()) {
+              pushRow(testName, "ToleranceOperator", cells[idxTolOp].trim(), 0);
+            } else if (idxTol >= 0 && (cells[idxTol] || "").trim()) {
+              pushRow(testName, "Tolerance", cells[idxTol].trim(), 0);
+            }
+          }
+          i = i + 2 + rowIdx;
+          continue;
+        }
+
+        // 7b) Linearity of mAs Loading Stations
         if (label === "LINEARITY OF mAs LOADING STATIONS") {
           const testName = "Linearity of mAs Loading Stations";
           const cond = (lines[i + 1] || "").split(",");
@@ -1011,7 +1136,7 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
         if (name) { if (!grouped[name]) grouped[name] = []; grouped[name].push(row); }
       });
 
-      if (applyConfigFromExcel && Object.keys(grouped).length > 0) {
+      if (Object.keys(grouped).length > 0) {
         const hasTimerSection = !!(grouped["Accuracy of Irradiation Time"]?.length);
         setHasTimer(hasTimerSection);
         setShowTimerModal(false);
@@ -1029,12 +1154,13 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
           const measHeaders: string[] = [];
           const kVpMeasurements: any[] = [];
           const tol: any = {};
+          const total: any = {};
           let currentBlock: any = null;
           data.forEach((row: any) => {
             const key = (row["Key"] || row["Field Name"] || "").trim();
             const val = (row["Value"] || "").trim();
             if (key === "MeasHeader") {
-              measHeaders.push(val);
+              if (!measHeaders.includes(val)) measHeaders.push(val);
             } else if (key === "Measurement_AppliedKvp") {
               currentBlock = { setKV: val, measurements: [] };
               kVpMeasurements.push(currentBlock);
@@ -1042,6 +1168,8 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
               currentBlock.measurements.push(val);
             } else if (key.startsWith("Tolerance_")) {
               tol[key.split("_")[1]] = val;
+            } else if (key.startsWith("TotalFiltration_")) {
+              total[key.split("_")[1]] = val;
             }
           });
           const table2 = kVpMeasurements.map((block: any) => ({
@@ -1049,11 +1177,16 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
             measuredValues: block.measurements || [],
           }));
           nextState.accuracyOfOperatingPotential = {
-            mAStations: measHeaders.length > 0 ? measHeaders : ["@ mA 10", "@ mA 100", "@ mA 200"],
+            mAStations: measHeaders.length > 0 ? measHeaders : ["Meas 1", "Meas 2", "Meas 3"],
             table2,
             tolerance: {
               sign: tol.Sign || tol.sign || "±",
               value: tol.Value || tol.value || "2.0",
+            },
+            totalFiltration: {
+              measured: total.Measured || total.measured || "",
+              required: total.Required || total.required || "",
+              atKvp: total.AtKvp || total.atKvp || "",
             },
           };
         } catch (e: any) { toast.error(`Accuracy of Operating Potential: ${e?.message}`); }
@@ -1081,7 +1214,11 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
               else if (field === "IrradiationTime_MeasuredTime") irradiationTimes[idx].measuredTime = value;
             }
           });
-          nextState.accuracyOfIrradiationTime = { testConditions, irradiationTimes, tolerance: { operator: toleranceOperator, value: toleranceValue } };
+          nextState.accuracyOfIrradiationTime = {
+            testConditions,
+            irradiationTimes: irradiationTimes.filter((t) => t.setTime || t.measuredTime),
+            tolerance: { operator: toleranceOperator, value: toleranceValue },
+          };
         } catch (e: any) { toast.error(`Accuracy of Irradiation Time: ${e?.message}`); }
       }
 
@@ -1201,50 +1338,60 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
         } catch (e: any) { toast.error(`Effective Focal Spot: ${e?.message}`); }
       }
 
-      // --- Linearity of mAs Loading Stations ---
-      if (grouped["Linearity of mAs Loading Stations"]?.length) {
+      // --- Linearity of mA / mAs Loading Stations ---
+      const linearityData = (groupName: string) => {
+        const data = grouped[groupName];
+        if (!data?.length) return null;
+        const table1: any[] = [];
+        const measHeaders: string[] = [];
+        let tolerance = "0.1", toleranceOperator = "<=";
+        const table2: any[] = [];
+        data.forEach(row => {
+          const field = (row["Field Name"] || "").trim();
+          const value = (row["Value"] || "").trim();
+          const idx = parseInt(row["Row Index"] || "0");
+          if (field.startsWith("Table1_")) {
+            while (table1.length <= idx) table1.push({ fcd: "100", kv: "80", time: "" });
+            const fn = field.replace("Table1_", "");
+            if (fn === "FCD") table1[idx].fcd = value;
+            if (fn === "kV") table1[idx].kv = value;
+            if (fn === "Time" || fn === "Timer") table1[idx].time = value;
+          }
+          if (field === "Tolerance") tolerance = value;
+          if (field === "ToleranceOperator") toleranceOperator = value;
+          if (field === "MeasHeader" && !measHeaders.includes(value)) measHeaders.push(value);
+          if (field.startsWith("Table2_")) {
+            while (table2.length <= idx) table2.push({ mAsRange: "", measuredOutputs: [], average: "", x: "", xMax: "", xMin: "", coL: "" });
+            const fn = field.replace("Table2_", "");
+            if (fn === "mAsApplied" || fn === "mAsRange") table2[idx].mAsRange = value;
+            if (fn === "Average") table2[idx].average = value;
+            if (fn === "X") table2[idx].x = value;
+            if (fn === "XMax") table2[idx].xMax = value;
+            if (fn === "XMin") table2[idx].xMin = value;
+            if (fn === "CoL") table2[idx].coL = value;
+            if (fn.startsWith("Meas")) {
+              const colIdx = parseInt(fn.replace("Meas", "")) - 1;
+              while (table2[idx].measuredOutputs.length <= colIdx) table2[idx].measuredOutputs.push("");
+              table2[idx].measuredOutputs[colIdx] = value;
+            }
+          }
+        });
+        return {
+          table1,
+          measHeaders: measHeaders.length > 0 ? measHeaders : ["Meas 1", "Meas 2", "Meas 3"],
+          tolerance,
+          toleranceOperator,
+          table2,
+        };
+      };
+
+      const maLinearity = linearityData("Linearity of mA Loading");
+      const masLinearity = linearityData("Linearity of mAs Loading Stations");
+      const hasTimerSection = !!(grouped["Accuracy of Irradiation Time"]?.length);
+      const linearityPayload = (hasTimerSection && maLinearity) ? maLinearity : (masLinearity || maLinearity);
+      if (linearityPayload) {
         try {
-          const data = grouped["Linearity of mAs Loading Stations"];
-          const table1: any[] = [];
-          const measHeaders: string[] = [];
-          let tolerance = "0.1", toleranceOperator = "<=";
-          const table2: any[] = [];
-          data.forEach(row => {
-            const field = (row["Field Name"] || "").trim();
-            const value = (row["Value"] || "").trim();
-            const idx = parseInt(row["Row Index"] || "0");
-            if (field.startsWith("Table1_")) {
-              while (table1.length <= idx) table1.push({ fcd: "100", kv: "80" });
-              const fn = field.replace("Table1_", "");
-              if (fn === "FCD") table1[idx].fcd = value;
-              if (fn === "kV") table1[idx].kv = value;
-            }
-            if (field === "Tolerance") tolerance = value;
-            if (field === "ToleranceOperator") toleranceOperator = value;
-            if (field === "MeasHeader" && !measHeaders.includes(value)) measHeaders.push(value);
-            if (field.startsWith("Table2_")) {
-              while (table2.length <= idx) table2.push({ mAsRange: "", measuredOutputs: [], average: "", x: "", xMax: "", xMin: "", coL: "" });
-              const fn = field.replace("Table2_", "");
-              if (fn === "mAsApplied" || fn === "mAsRange") table2[idx].mAsRange = value;
-              if (fn === "Average") table2[idx].average = value;
-              if (fn === "X") table2[idx].x = value;
-              if (fn === "XMax") table2[idx].xMax = value;
-              if (fn === "XMin") table2[idx].xMin = value;
-              if (fn === "CoL") table2[idx].coL = value;
-              if (fn.startsWith("Meas")) {
-                const colIdx = parseInt(fn.replace("Meas", "")) - 1;
-                while (table2[idx].measuredOutputs.length <= colIdx) table2[idx].measuredOutputs.push("");
-                table2[idx].measuredOutputs[colIdx] = value;
-              }
-            }
-          });
-          nextState.linearityOfMasLoading = {
-            table1,
-            measHeaders: measHeaders.length > 0 ? measHeaders : ["Meas 1", "Meas 2", "Meas 3"],
-            tolerance,
-            toleranceOperator,
-            table2,
-          };
+          nextState.linearityOfMasLoading = linearityPayload;
         } catch (e: any) { toast.error(`Linearity of mAs Loading Stations: ${e?.message}`); }
       }
 
@@ -1720,6 +1867,7 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
                 key={`accuracy-${refreshKey}`}
                 serviceId={serviceId}
                 refreshKey={refreshKey}
+                csvDataVersion={refreshKey}
                 initialData={csvDataForComponents.accuracyOfOperatingPotential}
               />
             ),

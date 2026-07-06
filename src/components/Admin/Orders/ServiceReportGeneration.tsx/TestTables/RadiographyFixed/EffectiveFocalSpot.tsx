@@ -153,6 +153,7 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, on
 
   // Load existing test data
   useEffect(() => {
+    if (csvDataVersion) return;
     if (!serviceId) return;
     const loadTest = async () => {
       try {
@@ -200,7 +201,7 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, on
       }
     };
     loadTest();
-  }, [serviceId]);
+  }, [serviceId, csvDataVersion]);
 
   const handleSave = async () => {
     if (!serviceId) return toast.error("Service ID missing");

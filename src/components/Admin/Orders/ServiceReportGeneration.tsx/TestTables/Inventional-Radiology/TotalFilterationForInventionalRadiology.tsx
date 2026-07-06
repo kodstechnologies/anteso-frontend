@@ -82,6 +82,10 @@ const TotalFilterationForInventionalRadiology: React.FC<TotalFilterationForInven
                 setIsLoading(false);
                 return;
             }
+            if (csvData && csvData.length > 0) {
+                setIsLoading(false);
+                return;
+            }
 
             setIsLoading(true);
             try {
@@ -163,48 +167,109 @@ const TotalFilterationForInventionalRadiology: React.FC<TotalFilterationForInven
             }
         };
         loadTest();
-    }, [serviceId, initialTestId, tubeId]);
+    }, [serviceId, initialTestId, tubeId, csvData]);
 
-    // CSV Data Injection
     useEffect(() => {
-        if (csvData && csvData.length > 0) {
-            // Table 2 Results (mapping to Table Filteration measurements)
-            const table2Results = csvData.filter(r => r['Field Name'] === 'Table2_SetKV' || r['Field Name'] === 'Table2_MeasuredKV');
-            if (table2Results.length > 0) {
-                const rowIndices = Array.from(new Set(table2Results.map(r => parseInt(r['Row Index'])))).sort((a, b) => a - b);
-                const newRows = rowIndices.map(idx => {
-                    const setKV = csvData.find(r => r['Field Name'] === 'Table2_SetKV' && parseInt(r['Row Index']) === idx)?.['Value'] || "";
-                    const measuredKV = csvData.find(r => r['Field Name'] === 'Table2_MeasuredKV' && parseInt(r['Row Index']) === idx)?.['Value'] || "";
-                    
-                    return {
-                        id: Date.now().toString() + Math.random() + idx,
-                        appliedKvp: setKV,
-                        measuredValues: [measuredKV],
-                        measuredValuesStatus: [true],
-                        averageKvp: measuredKV,
-                        averageKvpStatus: true,
-                        remarks: "-" as "PASS" | "FAIL" | "-",
-                    };
-                });
-                if (newRows.length > 0) {
-                    setRows(newRows);
-                    setMAStations(["Result"]);
+        if (!csvData || csvData.length === 0) return;
+
+        const isOpRow = (r: any) => /operating potential/i.test(String(r['Test Name'] || ''));
+        const isTfRow = (r: any) => /total filtration/i.test(String(r['Test Name'] || ''));
+
+        const opData = csvData.filter(isOpRow);
+        const tfData = csvData.filter(isTfRow);
+
+        const opTableRows = opData.filter(
+            (r) => r['Field Name'] === 'Table2_SetKV' || String(r['Field Name'] || '').startsWith('Table2_MeasuredKV')
+        );
+        if (opTableRows.length > 0) {
+            const colCount = opData.some((r) => r['Field Name'] === 'Table2_MeasuredKV_2')
+                ? 3
+                : opData.some((r) => r['Field Name'] === 'Table2_MeasuredKV_1')
+                  ? 2
+                  : 1;
+            const stations = Array.from({ length: colCount }, (_, i) => `Meas ${i + 1}`);
+
+            const rowIndices = Array.from(new Set(opTableRows.map((r) => parseInt(r['Row Index'], 10)))).sort((a, b) => a - b);
+            const tol = parseFloat(toleranceValue || '0');
+            const sign = toleranceSign;
+
+            const newRows = rowIndices.map((idx) => {
+                const setKV =
+                    opData.find((r) => r['Field Name'] === 'Table2_SetKV' && parseInt(r['Row Index'], 10) === idx)?.['Value'] || '';
+                const measuredValues: string[] = [];
+                for (let i = 0; i < colCount; i++) {
+                    const fieldName = i === 0 ? 'Table2_MeasuredKV' : `Table2_MeasuredKV_${i}`;
+                    measuredValues.push(
+                        opData.find((r) => r['Field Name'] === fieldName && parseInt(r['Row Index'], 10) === idx)?.['Value'] ||
+                            ''
+                    );
                 }
-            }
 
-            // Total Filtration
-            const tFil = csvData.find(r => r['Field Name'] === 'Table1_totalFiltration')?.['Value'];
-            if (tFil) {
-                setTotalFiltration(prev => ({ ...prev, measured: tFil }));
-            }
+                const nums = measuredValues.filter((v) => v !== '' && !isNaN(Number(v))).map(Number);
+                const avg = nums.length > 0 ? (nums.reduce((a, b) => a + b, 0) / nums.length).toFixed(2) : '';
+                const applied = parseFloat(setKV || '0');
+                const measuredStatus = measuredValues.map((val) =>
+                    checkTolerance(parseFloat(val || '0'), applied, tol, sign)
+                );
+                const avgStatus = checkTolerance(parseFloat(avg || '0'), applied, tol, sign);
+                const hasAnyFailure = measuredStatus.some((status) => status === false) || avgStatus === false;
+                const hasValidData =
+                    !isNaN(applied) &&
+                    applied > 0 &&
+                    !isNaN(tol) &&
+                    tol > 0 &&
+                    (measuredValues.some((v) => v !== '' && !isNaN(parseFloat(v))) || (!isNaN(parseFloat(avg)) && parseFloat(avg) > 0));
 
-            if (!testId) {
-                // Don't auto-set editing true if we already have a testId from DB
-                // Actually testId is null if not in DB.
-                // setIsSaved(false); // Enable editing
+                return {
+                    id: Date.now().toString() + Math.random() + idx,
+                    appliedKvp: setKV,
+                    measuredValues,
+                    measuredValuesStatus: measuredStatus,
+                    averageKvp: avg,
+                    averageKvpStatus: avgStatus,
+                    remarks: (hasValidData ? (hasAnyFailure ? 'FAIL' : 'PASS') : '-') as 'PASS' | 'FAIL' | '-',
+                };
+            });
+
+            if (newRows.length > 0) {
+                setRows(newRows);
+                setMAStations(stations);
             }
         }
-    }, [csvData, testId]);
+
+        if (tfData.length > 0) {
+            const tfRowIdx = parseInt(tfData.find((r) => r['Field Name'] === 'Table1_kv')?.['Row Index'] || '1', 10);
+            const atKvp =
+                tfData.find((r) => r['Field Name'] === 'Table1_kv' && parseInt(r['Row Index'], 10) === tfRowIdx)?.['Value'] || '';
+            const measuredTf =
+                tfData.find((r) => r['Field Name'] === 'Table2_Result' && parseInt(r['Row Index'], 10) === tfRowIdx)?.['Value'] || '';
+            const criteria =
+                tfData.find((r) => r['Field Name'] === 'Criteria' && parseInt(r['Row Index'], 10) === tfRowIdx)?.['Value'] || '';
+
+            setTotalFiltration((prev) => ({
+                measured: measuredTf || prev.measured,
+                required: measuredTf || prev.required,
+                atKvp: atKvp || prev.atKvp,
+            }));
+
+            if (criteria && atKvp) {
+                const kvpNum = parseFloat(atKvp);
+                const threshold1 = parseFloat(filtrationTolerance.kvThreshold1);
+                const threshold2 = parseFloat(filtrationTolerance.kvThreshold2);
+                if (!isNaN(kvpNum) && !isNaN(parseFloat(criteria))) {
+                    if (kvpNum < threshold1) {
+                        setFiltrationTolerance((prev) => ({ ...prev, forKvGreaterThan70: criteria }));
+                    } else if (kvpNum <= threshold2) {
+                        setFiltrationTolerance((prev) => ({ ...prev, forKvBetween70And100: criteria }));
+                    } else {
+                        setFiltrationTolerance((prev) => ({ ...prev, forKvGreaterThan100: criteria }));
+                    }
+                }
+            }
+        }
+
+        setIsSaved(false);
+    }, [csvData, toleranceSign, toleranceValue, filtrationTolerance.kvThreshold1, filtrationTolerance.kvThreshold2]);
 
     // Save function
     const saveTest = async () => {

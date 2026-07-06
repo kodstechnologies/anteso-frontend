@@ -83,25 +83,29 @@ const TotalFilterationForInventionalRadiology: React.FC<TotalFilterationForInven
                 return;
             }
 
+            const hasCsvImport = initialData && (
+                initialData.measurements?.length > 0 ||
+                initialData.table2?.length > 0 ||
+                initialData.totalFiltration?.measured
+            );
+
             setIsLoading(true);
             try {
                 let data = null;
 
-                // Try loading by testId first if available
                 if (initialTestId) {
                     const result = await getTotalFiltrationByTestIdForBMD(initialTestId);
                     if (result?.data) {
                         data = result.data;
                     }
                 } else {
-                    // Try loading by serviceId
                     const result = await getTotalFiltrationByServiceIdForBMD(serviceId);
                     if (result?.data) {
                         data = result.data;
                     }
                 }
 
-                if (data) {
+                if (data && !hasCsvImport) {
                     setTestId(data._id || null);
                     setMAStations(data.mAStations || ["50 mA", "100 mA"]);
                     const loadedToleranceSign = data.tolerance?.sign || "±";
@@ -170,74 +174,95 @@ const TotalFilterationForInventionalRadiology: React.FC<TotalFilterationForInven
             }
         };
         loadTest();
-    }, [serviceId, initialTestId, toleranceSign, toleranceValue]);
+    }, [serviceId, initialTestId, initialData]);
 
-    // Load initialData from CSV if provided
-    useEffect(() => {
-        if (initialData) {
-            try {
-                if (initialData.mAStations) {
-                    setMAStations(initialData.mAStations);
-                }
-                if (initialData.tolerance) {
-                    setToleranceSign(initialData.tolerance.sign || "±");
-                    setToleranceValue(initialData.tolerance.value || "2.0");
-                }
-                if (initialData.measurements && initialData.measurements.length > 0) {
-                    setRows(
-                        initialData.measurements.map((m: any) => {
-                            const rowApplied = parseFloat(m.appliedKvp || "0");
-                            const tol = parseFloat(initialData.tolerance?.value || "2.0");
-                            const sign = (initialData.tolerance?.sign || "±") as "+" | "-" | "±";
-                            const measuredStatus = (m.measuredValues || []).map((val: string) => {
-                                const measured = parseFloat(val || "0");
-                                return checkTolerance(measured, rowApplied, tol, sign);
-                            });
-                            const avgNum = parseFloat(m.averageKvp || "0");
-                            const avgStatus = checkTolerance(avgNum, rowApplied, tol, sign);
+    const applyInitialData = useCallback((data: any) => {
+        if (!data) return;
 
-                            const hasAnyFailure = measuredStatus.some((status: boolean) => status === false) || avgStatus === false;
-                            const hasValidData = !isNaN(rowApplied) && rowApplied > 0 && !isNaN(tol) && tol > 0 &&
-                                ((m.measuredValues || []).some((v: string) => v !== "" && !isNaN(parseFloat(v))) || (!isNaN(avgNum) && avgNum > 0));
-
-                            let remark: "PASS" | "FAIL" | "-" = m.remarks || "-";
-                            if (hasValidData) {
-                                remark = hasAnyFailure ? "FAIL" : "PASS";
-                            }
-
-                            return {
-                                id: Date.now().toString() + Math.random(),
-                                appliedKvp: m.appliedKvp || "",
-                                measuredValues: m.measuredValues || [],
-                                measuredValuesStatus: measuredStatus,
-                                averageKvp: m.averageKvp || "",
-                                averageKvpStatus: avgStatus,
-                                remarks: remark,
-                            };
-                        })
-                    );
-                }
-                if (initialData.totalFiltration) {
-                    setTotalFiltration({
-                        measured: initialData.totalFiltration.measured || "",
-                        required: initialData.totalFiltration.required || "",
-                        atKvp: initialData.totalFiltration.atKvp || "",
-                    });
-                }
-                if (initialData.filtrationTolerance) {
-                    setFiltrationTolerance({
-                        forKvGreaterThan70: initialData.filtrationTolerance.forKvGreaterThan70 || "1.5",
-                        forKvBetween70And100: initialData.filtrationTolerance.forKvBetween70And100 || "2.0",
-                        forKvGreaterThan100: initialData.filtrationTolerance.forKvGreaterThan100 || "2.5",
-                        kvThreshold1: initialData.filtrationTolerance.kvThreshold1 || "70",
-                        kvThreshold2: initialData.filtrationTolerance.kvThreshold2 || "100",
-                    });
-                }
-            } catch (err) {
-                console.error("Error loading initialData:", err);
-            }
+        if (data.mAStations?.length) {
+            setMAStations(data.mAStations);
         }
-    }, [initialData]);
+
+        if (data.tolerance) {
+            const sign = data.tolerance.sign;
+            setToleranceSign(sign === 'both' ? '±' : (sign as "+" | "-" | "±") || "±");
+            setToleranceValue(data.tolerance.value || "2.0");
+        }
+
+        if (data.measurements?.length > 0) {
+            const tol = parseFloat(data.tolerance?.value || "2.0");
+            const sign = (data.tolerance?.sign === 'both' ? '±' : data.tolerance?.sign || "±") as "+" | "-" | "±";
+            setRows(
+                data.measurements.map((m: any, i: number) => {
+                    const rowApplied = parseFloat(m.appliedKvp || "0");
+                    const measuredStatus = (m.measuredValues || []).map((val: string) => {
+                        const measured = parseFloat(val || "0");
+                        return checkTolerance(measured, rowApplied, tol, sign);
+                    });
+                    const avgNum = parseFloat(m.averageKvp || "0");
+                    const avgStatus = checkTolerance(avgNum, rowApplied, tol, sign);
+                    const hasAnyFailure = measuredStatus.some((status: boolean) => status === false) || avgStatus === false;
+                    const hasValidData = !isNaN(rowApplied) && rowApplied > 0 && !isNaN(tol) && tol > 0 &&
+                        ((m.measuredValues || []).some((v: string) => v !== "" && !isNaN(parseFloat(v))) || (!isNaN(avgNum) && avgNum > 0));
+                    let remark: "PASS" | "FAIL" | "-" = m.remarks || "-";
+                    if (hasValidData) {
+                        remark = hasAnyFailure ? "FAIL" : "PASS";
+                    }
+                    return {
+                        id: String(i + 1),
+                        appliedKvp: m.appliedKvp || "",
+                        measuredValues: m.measuredValues || [],
+                        measuredValuesStatus: measuredStatus,
+                        averageKvp: m.averageKvp || "",
+                        averageKvpStatus: avgStatus,
+                        remarks: remark,
+                    };
+                })
+            );
+        } else if (data.table2?.length > 0) {
+            setMAStations(['10 mA', '100 mA', '200 mA']);
+            setRows(
+                data.table2.map((r: any, i: number) => ({
+                    id: String(i + 1),
+                    appliedKvp: r.setKV || '',
+                    measuredValues: [r.ma10 || '', r.ma100 || '', r.ma200 || ''],
+                    measuredValuesStatus: [],
+                    averageKvp: r.avgKvp || '',
+                    remarks: (r.remarks || '-') as "PASS" | "FAIL" | "-",
+                }))
+            );
+        }
+
+        if (data.totalFiltration) {
+            setTotalFiltration({
+                measured: data.totalFiltration.measured || "",
+                required: data.totalFiltration.required || "",
+                atKvp: data.totalFiltration.atKvp || "",
+            });
+        }
+
+        if (data.filtrationTolerance) {
+            setFiltrationTolerance({
+                forKvGreaterThan70: data.filtrationTolerance.forKvGreaterThan70 || "1.5",
+                forKvBetween70And100: data.filtrationTolerance.forKvBetween70And100 || "2.0",
+                forKvGreaterThan100: data.filtrationTolerance.forKvGreaterThan100 || "2.5",
+                kvThreshold1: data.filtrationTolerance.kvThreshold1 || "70",
+                kvThreshold2: data.filtrationTolerance.kvThreshold2 || "100",
+            });
+        }
+
+        setIsSaved(false);
+    }, []);
+
+    // Load initialData from CSV — apply after load finishes so server data does not overwrite import
+    useEffect(() => {
+        if (isLoading || !initialData) return;
+        try {
+            applyInitialData(initialData);
+        } catch (err) {
+            console.error("Error loading initialData:", err);
+        }
+    }, [initialData, isLoading, applyInitialData]);
 
     // Save function
     const saveTest = async () => {

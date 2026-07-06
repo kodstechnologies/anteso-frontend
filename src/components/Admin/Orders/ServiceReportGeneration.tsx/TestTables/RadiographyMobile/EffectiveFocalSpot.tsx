@@ -85,6 +85,42 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, on
     return [0, 1].map((idx) => ({ ...defaults[idx], ...(inputRows[idx] || {}) }));
   };
 
+  const mapSpotToRow = (spot: any, idx: number): FocalSpotRow => {
+    const statedFromLegacy =
+      spot.statedWidth != null && spot.statedHeight != null
+        ? (Number(spot.statedWidth) + Number(spot.statedHeight)) / 2
+        : spot.statedWidth ?? spot.statedHeight;
+    const measuredFromLegacy =
+      spot.measuredWidth != null && spot.measuredHeight != null
+        ? (Number(spot.measuredWidth) + Number(spot.measuredHeight)) / 2
+        : spot.measuredWidth ?? spot.measuredHeight;
+    return {
+      id: idx === 0 ? 'large' : 'small',
+      focusType: spot.focusType || (idx === 0 ? 'Large Focus' : 'Small Focus'),
+      statedNominal: String(spot.statedNominal ?? statedFromLegacy ?? ''),
+      measuredNominal: String(spot.measuredNominal ?? measuredFromLegacy ?? ''),
+      remark: (spot.remark as FocalSpotRow['remark']) || '',
+    };
+  };
+
+  const applyLoadedData = (data: any) => {
+    setTestId(data._id);
+    if (data.fcd != null) setFcd(String(data.fcd));
+    if (data.toleranceCriteria) {
+      setTolSmallMul(String(data.toleranceCriteria.small?.multiplier ?? '0.5'));
+      setSmallLimit(String(data.toleranceCriteria.small?.upperLimit ?? '0.8'));
+      setTolMediumMul(String(data.toleranceCriteria.medium?.multiplier ?? '0.4'));
+      setMediumLower(String(data.toleranceCriteria.medium?.lowerLimit ?? '0.8'));
+      setMediumUpper(String(data.toleranceCriteria.medium?.upperLimit ?? '1.5'));
+      setTolLargeMul(String(data.toleranceCriteria.large?.multiplier ?? '0.3'));
+    }
+    if (data.focalSpots?.length > 0) {
+      setRows(ensureTwoRows(data.focalSpots.slice(0, 2).map(mapSpotToRow)));
+    }
+    setIsSaved(true);
+    setIsEditing(false);
+  };
+
   // Auto-calculate Pass/Fail
   const processedRows = useMemo(() => {
     const sLimit = parseFloat(smallLimit) || 0.8;
@@ -132,30 +168,7 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, on
       try {
         const res = await getEffectiveFocalSpotByServiceIdForRadiographyMobile(serviceId);
         if (res?.data) {
-          const data = res.data;
-          setTestId(data._id);
-          if (data.fcd) setFcd(String(data.fcd));
-          if (data.toleranceCriteria) {
-            setTolSmallMul(String(data.toleranceCriteria.small?.multiplier || '0.5'));
-            setSmallLimit(String(data.toleranceCriteria.small?.upperLimit || '0.8'));
-            setTolMediumMul(String(data.toleranceCriteria.medium?.multiplier || '0.4'));
-            setMediumLower(String(data.toleranceCriteria.medium?.lowerLimit || '0.8'));
-            setMediumUpper(String(data.toleranceCriteria.medium?.upperLimit || '1.5'));
-            setTolLargeMul(String(data.toleranceCriteria.large?.multiplier || '0.3'));
-          }
-          if (data.focalSpots && data.focalSpots.length > 0) {
-            setRows(data.focalSpots.map((spot: any) => ({
-              id: spot._id || Date.now().toString() + Math.random(),
-              focusType: spot.focusType || 'Large Focus',
-              statedWidth: String(spot.statedWidth || ''),
-              statedHeight: String(spot.statedHeight || ''),
-              measuredWidth: String(spot.measuredWidth || ''),
-              measuredHeight: String(spot.measuredHeight || ''),
-              remark: spot.remark || '',
-            })));
-          }
-          setIsSaved(true);
-          setIsEditing(false);
+          applyLoadedData(res.data);
         }
       } catch (err: any) {
         if (err.response?.status !== 404) {
@@ -186,27 +199,7 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, on
       }
     }
     if (initialData.focalSpots?.length) {
-      setRows(
-        ensureTwoRows(
-          initialData.focalSpots.slice(0, 2).map((spot, i) => {
-            const statedFromLegacy =
-              spot.statedWidth != null && spot.statedHeight != null
-                ? (Number(spot.statedWidth) + Number(spot.statedHeight)) / 2
-                : spot.statedWidth ?? spot.statedHeight;
-            const measuredFromLegacy =
-              spot.measuredWidth != null && spot.measuredHeight != null
-                ? (Number(spot.measuredWidth) + Number(spot.measuredHeight)) / 2
-                : spot.measuredWidth ?? spot.measuredHeight;
-            return {
-              id: i === 0 ? 'large' : 'small',
-              focusType: spot.focusType || (i === 0 ? 'Large Focus' : 'Small Focus'),
-              statedNominal: String((spot as any).statedNominal ?? statedFromLegacy ?? ''),
-              measuredNominal: String((spot as any).measuredNominal ?? measuredFromLegacy ?? ''),
-              remark: (spot.remark as any) || '',
-            };
-          })
-        )
-      );
+      setRows(ensureTwoRows(initialData.focalSpots.slice(0, 2).map(mapSpotToRow)));
     }
     setIsSaved(false);
     setIsEditing(true);
@@ -214,6 +207,7 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, on
 
   const handleSave = async () => {
     if (!serviceId) return toast.error("Service ID missing");
+    const isUpdate = !!testId;
     setIsSaving(true);
     try {
       const payload = {
@@ -247,20 +241,28 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, on
         finalResult: finalResult === 'PENDING' ? 'FAIL' : finalResult, // Default to FAIL if pending on save, or handle as needed
       };
 
-      let result;
-      if (testId) {
-        result = await updateEffectiveFocalSpotForRadiographyMobile(testId, payload);
+      let currentTestId = testId;
+      if (currentTestId) {
+        await updateEffectiveFocalSpotForRadiographyMobile(currentTestId, payload);
       } else {
-        result = await addEffectiveFocalSpotForRadiographyMobile(serviceId, payload);
-        if (result?.data?._id) {
-          setTestId(result.data._id);
-          onTestSaved?.(result.data._id);
+        const result = await addEffectiveFocalSpotForRadiographyMobile(serviceId, payload);
+        const newId = result?.data?._id || result?.data?.data?._id;
+        if (newId) {
+          currentTestId = newId;
+          setTestId(newId);
+          onTestSaved?.(newId);
         }
       }
 
-      toast.success(testId ? "Updated successfully!" : "Saved successfully!");
-      setIsSaved(true);
-      setIsEditing(false);
+      const reloadRes = await getEffectiveFocalSpotByServiceIdForRadiographyMobile(serviceId);
+      if (reloadRes?.data) {
+        applyLoadedData(reloadRes.data);
+      } else {
+        setIsSaved(true);
+        setIsEditing(false);
+      }
+
+      toast.success(isUpdate ? "Updated successfully!" : "Saved successfully!");
     } catch (err: any) {
       toast.error(err.response?.data?.message || "Save failed");
     } finally {

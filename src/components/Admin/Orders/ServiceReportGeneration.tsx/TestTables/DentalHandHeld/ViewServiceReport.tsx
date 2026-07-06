@@ -1018,17 +1018,78 @@ const ViewServiceReportDentalHandHeld: React.FC = () => {
             )}
 
             {/* 4. Linearity of mA Loading */}
-            {testData.linearityOfmALoading?.table2?.length > 0 && (
+            {testData.linearityOfmALoading?.table2?.length > 0 && (() => {
+              const rows = testData.linearityOfmALoading.table2;
+              const tolerance = normalizeToleranceValue(testData.linearityOfmALoading?.tolerance, "0.1");
+              const toleranceOperator = testData.linearityOfmALoading?.toleranceOperator || normalizeToleranceOperator(testData.linearityOfmALoading?.tolerance, "<");
+              const table1 = Array.isArray(testData.linearityOfmALoading.table1)
+                ? testData.linearityOfmALoading.table1?.[0]
+                : testData.linearityOfmALoading.table1;
+              const hasTime = table1?.time !== undefined && table1?.time !== null && String(table1?.time).trim() !== "";
+              const timeStr = hasTime ? String(table1?.time).trim() : '';
+              const timeVal = parseFloat(timeStr);
+              const hasValidTime = timeStr !== '' && !isNaN(timeVal) && timeVal > 0;
+              const xUnitLabel = hasTime ? 'mGy/(mA*s)' : 'mGy/mA';
+
+              const xResults = rows.map((row: any) => {
+                const outputsArr = Array.isArray(row.measuredOutputs) ? row.measuredOutputs : [];
+                const values = outputsArr.map((v: any) => parseFloat(String(v))).filter((n: number) => !isNaN(n) && n > 0);
+                const avg = values.length > 0 ? values.reduce((a: number, b: number) => a + b, 0) / values.length : 0;
+                const ma = parseFloat(row.ma) || 0;
+                const mAs = hasValidTime && ma > 0 ? ma * timeVal : null;
+                let x = 0;
+                if (avg > 0 && mAs && mAs > 0) {
+                  x = avg / mAs;
+                } else if (avg > 0 && ma > 0) {
+                  x = avg / ma;
+                }
+                return { avg, x, row };
+              });
+
+              const xValues = xResults.map((r: any) => r.x).filter((x: number) => x > 0);
+              const xMax = xValues.length > 0 ? Math.max(...xValues) : 0;
+              const xMin = xValues.length > 0 ? Math.min(...xValues) : 0;
+              const col = (xMax + xMin) > 0 ? Math.abs(xMax - xMin) / (xMax + xMin) : 0;
+              const tolNum = parseFloat(tolerance);
+              let isPassOverall = false;
+              if (col > 0 && !isNaN(tolNum)) {
+                switch (toleranceOperator) {
+                  case '<': isPassOverall = col < tolNum; break;
+                  case '>': isPassOverall = col > tolNum; break;
+                  case '<=': isPassOverall = col <= tolNum; break;
+                  case '>=': isPassOverall = col >= tolNum; break;
+                  case '=': isPassOverall = Math.abs(col - tolNum) < 0.0001; break;
+                  default: isPassOverall = col <= tolNum;
+                }
+              }
+
+              return (
               <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
                 <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>4. Linearity of mA Loading</h3>
-
+                {(table1?.fcd != null || table1?.kv != null || table1?.time != null) && (
+                  <div className="mb-6 print:mb-1 bg-gray-50 p-4 print:p-1 rounded border overflow-x-auto" style={{ marginBottom: '4px', padding: '2px 4px' }}>
+                    <p className="font-semibold mb-2 print:mb-0.5 print:text-xs" style={{ marginBottom: '2px', fontSize: '8px' }}>Test Conditions:</p>
+                    <table className="w-full border border-black text-sm print:text-[9px]" style={{ fontSize: '11px', borderCollapse: 'collapse', borderSpacing: 0 }}>
+                      <thead className="bg-gray-100"><tr>
+                        <th className="border border-black px-2 py-1 text-center" style={{ padding: '0px 1px' }}>FDD (cm)</th>
+                        <th className="border border-black px-2 py-1 text-center" style={{ padding: '0px 1px' }}>kV</th>
+                        <th className="border border-black px-2 py-1 text-center" style={{ padding: '0px 1px' }}>Time (s)</th>
+                      </tr></thead>
+                      <tbody><tr>
+                        <td className="border border-black px-2 py-1 text-center" style={{ padding: '0px 1px' }}>{table1?.fcd || "-"}</td>
+                        <td className="border border-black px-2 py-1 text-center" style={{ padding: '0px 1px' }}>{table1?.kv || "-"}</td>
+                        <td className="border border-black px-2 py-1 text-center" style={{ padding: '0px 1px' }}>{table1?.time || "-"}</td>
+                      </tr></tbody>
+                    </table>
+                  </div>
+                )}
                 <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
                   <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
                     <thead className="bg-gray-100">
                       <tr>
                         <th className="border border-black p-2 print:p-1 text-center font-bold">mA</th>
                         <th className="border border-black p-2 print:p-1 text-center font-bold">Avg Output</th>
-                        <th className="border border-black p-2 print:p-1 text-center font-bold">X (mGy/mA)</th>
+                        <th className="border border-black p-2 print:p-1 text-center font-bold bg-blue-50">X ({xUnitLabel})</th>
                         <th className="border border-black p-2 print:p-1 text-center font-bold">X MAX</th>
                         <th className="border border-black p-2 print:p-1 text-center font-bold">X MIN</th>
                         <th className="border border-black p-2 print:p-1 text-center font-bold">CoL</th>
@@ -1036,18 +1097,18 @@ const ViewServiceReportDentalHandHeld: React.FC = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {testData.linearityOfmALoading.table2.map((row: any, i: number) => (
+                      {xResults.map((res: any, i: number) => (
                         <tr key={i} className="text-center">
-                          <td className="border border-black p-2 print:p-1 font-semibold">{displayValue(row.ma)}</td>
-                          <td className="border border-black p-2 print:p-1">{displayValue(row.average)}</td>
-                          <td className="border border-black p-2 print:p-1">{displayValue(row.x)}</td>
+                          <td className="border border-black p-2 print:p-1 font-semibold">{displayValue(res.row.ma)}</td>
+                          <td className="border border-black p-2 print:p-1">{res.avg > 0 ? res.avg.toFixed(4) : displayValue(res.row.average)}</td>
+                          <td className="border border-black p-2 print:p-1 font-bold">{res.x > 0 ? res.x.toFixed(4) : displayValue(res.row.x)}</td>
                           {i === 0 && (
                             <>
-                              <td rowSpan={testData.linearityOfmALoading.table2.length} className="border border-black p-2 print:p-1 align-middle">{row.xMax || "-"}</td>
-                              <td rowSpan={testData.linearityOfmALoading.table2.length} className="border border-black p-2 print:p-1 align-middle">{row.xMin || "-"}</td>
-                              <td rowSpan={testData.linearityOfmALoading.table2.length} className="border border-black p-2 print:p-1 font-bold align-middle">{row.col || "-"}</td>
-                              <td rowSpan={testData.linearityOfmALoading.table2.length} className={`border border-black p-2 print:p-1 font-bold align-middle ${row.remarks?.toUpperCase() === "PASS" ? "text-green-800 bg-green-100" : "text-red-800 bg-red-100"}`}>
-                                {row.remarks || "-"}
+                              <td rowSpan={rows.length} className="border border-black p-2 print:p-1 align-middle">{col > 0 ? xMax.toFixed(4) : (rows[0]?.xMax || "-")}</td>
+                              <td rowSpan={rows.length} className="border border-black p-2 print:p-1 align-middle">{col > 0 ? xMin.toFixed(4) : (rows[0]?.xMin || "-")}</td>
+                              <td rowSpan={rows.length} className="border border-black p-2 print:p-1 font-bold align-middle">{col > 0 ? col.toFixed(4) : (rows[0]?.col || "-")}</td>
+                              <td rowSpan={rows.length} className={`border border-black p-2 print:p-1 font-bold align-middle ${isPassOverall ? "text-green-800 bg-green-100" : "text-red-800 bg-red-100"}`}>
+                                {isPassOverall ? "Pass" : col > 0 ? "Fail" : (rows[0]?.remarks || "-")}
                               </td>
                             </>
                           )}
@@ -1059,11 +1120,11 @@ const ViewServiceReportDentalHandHeld: React.FC = () => {
 
                 <div className="bg-gray-50 p-4 print:p-1 rounded border mt-4" style={{ padding: '2px 4px', marginTop: '4px' }}>
                   <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
-                    <strong>Tolerance (CoL):</strong> {normalizeToleranceOperator(testData.linearityOfmALoading?.tolerance, "≤")} {normalizeToleranceValue(testData.linearityOfmALoading?.tolerance, "0.1")}
+                    <strong>Tolerance (CoL):</strong> {toleranceOperator} {tolerance}
                   </p>
                 </div>
               </div>
-            )}
+            )})()}
 
             {/* 5. Linearity of mAs Loading */}
             {testData.linearityOfMasLoading?.table2?.length > 0 && (

@@ -639,7 +639,7 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
                     const testConditions = { fcd: '', kv: '', ma: '' };
                     const irradiationTimes: any[] = [];
                     let toleranceOperator = '<=';
-                    let toleranceValue = '5';
+                    let toleranceValue = '10';
 
                     data.forEach((row) => {
                         const field = (row['Field Name'] || '').trim();

@@ -49,10 +49,10 @@ const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, 
   const [observedTilt, setObservedTilt] = useState<string>('1.5');
 
   // Tolerance (Acceptance Criteria)
-  const [toleranceOperator, setToleranceOperator] = useState<'<' | '>'>('<');
+  const [toleranceOperator, setToleranceOperator] = useState<'<' | '>' | '='>('=');
   const [toleranceValue, setToleranceValue] = useState<string>('1.5');
 
-  const operators = ['<', '>'] as const;
+  const operators = ['=', '<', '>'] as const;
 
   // Auto-calculate Pass/Fail based on TOLERANCE
   const evaluation = useMemo(() => {
@@ -63,11 +63,12 @@ const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, 
       return { remark: '' as const, pass: false };
     }
 
-    // Strict operator-based comparison.
-    // Requirement: if observed tilt equals acceptance criteria, it must be FAIL.
+    // Operator-based comparison; '=' passes when observed matches tolerance.
     const pass = toleranceOperator === '<'
       ? observed < tolerance
-      : observed > tolerance;
+      : toleranceOperator === '>'
+        ? observed > tolerance
+        : Math.abs(observed - tolerance) < 0.0001;
 
     return {
       remark: pass ? 'Pass' : 'Fail' as 'Pass' | 'Fail',
@@ -84,8 +85,10 @@ const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, 
     if (tf) setTechniqueRow(prev => ({ ...prev, fcd: tf.fcd ?? prev.fcd, kv: tf.kv ?? prev.kv, mas: tf.mAs ?? prev.mas }));
     if (initialData.observedTilt?.value) setObservedTilt(initialData.observedTilt.value);
     if (initialData.tolerance?.value) setToleranceValue(initialData.tolerance.value);
-    if (initialData.tolerance?.operator === '<=' || initialData.tolerance?.operator === '<') setToleranceOperator('<');
-    if (initialData.tolerance?.operator === '>') setToleranceOperator('>');
+    if (initialData.tolerance?.operator) {
+      const op = initialData.tolerance.operator;
+      setToleranceOperator(op === '>' ? '>' : op === '<' ? '<' : '=');
+    }
   }, [initialData]);
 
   // Load existing data
@@ -112,8 +115,9 @@ const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, 
             setObservedTilt(String(data.observedTilt.value ?? ''));
           }
           if (data.tolerance) {
-            setToleranceOperator(data.tolerance.operator === '>' ? '>' : '<');
-            setToleranceValue(String(data.tolerance.value ?? '2'));
+            const op = data.tolerance.operator;
+            setToleranceOperator(op === '>' ? '>' : op === '<' ? '<' : '=');
+            setToleranceValue(String(data.tolerance.value ?? '1.5'));
           }
           setIsSaved(true);
           setIsEditing(false);

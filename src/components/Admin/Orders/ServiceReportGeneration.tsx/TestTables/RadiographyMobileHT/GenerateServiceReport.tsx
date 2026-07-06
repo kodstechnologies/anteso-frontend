@@ -582,8 +582,11 @@ const RadiographyMobileHT: React.FC<{ serviceId: string; qaTestDate?: string | n
           const cond = (lines[i + 1] || "").split(",");
           const fcd = cond[1] || "";
           const kv = cond[3] || "";
+          const timeIdx = cond.findIndex((c, idx) => idx > 0 && /time/i.test(String(c || "").trim()));
+          const time = timeIdx >= 0 && cond[timeIdx + 1] != null ? String(cond[timeIdx + 1]).trim() : (cond[5] || "");
           if (fcd) pushRow(testName, "Table1_FCD", fcd, 0);
           if (kv) pushRow(testName, "Table1_kV", kv, 0);
+          if (time) pushRow(testName, "Table1_Time", time, 0);
 
           let rowIdx = 0;
           let j = i + 3; // data rows
@@ -863,7 +866,7 @@ const RadiographyMobileHT: React.FC<{ serviceId: string; qaTestDate?: string | n
 
       if (grouped["Central Beam Alignment"]?.length) {
         const data = grouped["Central Beam Alignment"];
-        let fcd = "100", kv = "80", mAs = "10", observedTilt = "0.5", tiltOperator = "<=", toleranceValue = "1.5", toleranceOperator = "<=";
+        let fcd = "100", kv = "80", mAs = "10", observedTilt = "0.5", tiltOperator = "<=", toleranceValue = "1.5", toleranceOperator = "=";
         data.forEach((r) => {
           const f = (r["Field Name"] ?? "").trim();
           const v = (r["Value"] ?? "").trim();
@@ -918,7 +921,10 @@ const RadiographyMobileHT: React.FC<{ serviceId: string; qaTestDate?: string | n
           if (f === "IrradiationTime_SetTime") {
             while (times.length <= ri) times.push({ setTime: "", measuredTime: "" });
             times[ri].setTime = v;
-          } else if (f === "IrradiationTime_MeasuredTime" && times[ri]) times[ri].measuredTime = v;
+          } else if (f === "IrradiationTime_MeasuredTime") {
+            while (times.length <= ri) times.push({ setTime: "", measuredTime: "" });
+            times[ri].measuredTime = v;
+          }
         });
         setCsvDataForComponents((prev) => ({ ...prev, accuracyOfIrradiationTime: { testConditions: { fcd, kv, ma }, irradiationTimes: times.filter((t) => t.setTime || t.measuredTime), tolerance: { operator: tolOp, value: tolVal } } }));
       }
@@ -951,9 +957,9 @@ const RadiographyMobileHT: React.FC<{ serviceId: string; qaTestDate?: string | n
         setCsvDataForComponents((prev) => ({ ...prev, totalFilteration: { mAStations: mAStations.length ? mAStations : ["50 mA", "100 mA"], measurements, tolerance: { sign: toleranceSign, value: toleranceValue }, totalFiltration: { measured: totalFiltrationMeasured, required: totalFiltrationRequired, atKvp: "" } } }));
       }
 
-      if (grouped["Linearity of mA Loading"]?.length || grouped["Linearity of mAs Loading Stations"]?.length) {
-        const data = grouped["Linearity of mA Loading"] ?? grouped["Linearity of mAs Loading Stations"] ?? [];
-        let table1Fcd = "100", table1Kv = "80", tolerance = "0.1", toleranceOperator = "<=";
+      if (grouped["Linearity of mA Loading"]?.length || grouped["Linearity of mAs Loading Stations"]?.length || grouped["Linearity of mAs Loading"]?.length) {
+        const data = grouped["Linearity of mA Loading"] ?? grouped["Linearity of mAs Loading Stations"] ?? grouped["Linearity of mAs Loading"] ?? [];
+        let table1Fcd = "100", table1Kv = "80", table1Time = "", tolerance = "0.1", toleranceOperator = "<";
         const measHeaders: string[] = [];
         const table2Rows: any[] = [];
         data.forEach((r) => {
@@ -962,10 +968,11 @@ const RadiographyMobileHT: React.FC<{ serviceId: string; qaTestDate?: string | n
           const ri = parseInt(r["Row Index"] ?? "0", 10);
           if (f === "Table1_FCD") table1Fcd = v;
           if (f === "Table1_kV") table1Kv = v;
+          if (f === "Table1_Time" || f === "Table1_Timer") table1Time = v;
           if (f === "Tolerance") tolerance = v;
           if (f === "ToleranceOperator") toleranceOperator = v;
           if (f === "MeasHeader" && v && !measHeaders.includes(v)) measHeaders.push(v);
-          if (f === "Table2_mAsApplied") {
+          if (f === "Table2_mAsApplied" || f === "Table2_mAApplied" || f === "Table2_ma") {
             while (table2Rows.length <= ri) table2Rows.push({ mAsApplied: "", meas: [] });
             table2Rows[ri].mAsApplied = v;
           } else if (f.startsWith("Table2_Meas") && table2Rows[ri]) {
@@ -976,7 +983,7 @@ const RadiographyMobileHT: React.FC<{ serviceId: string; qaTestDate?: string | n
             }
           }
         });
-        const linearityData = { table1: { fcd: table1Fcd, kv: table1Kv }, tolerance, toleranceOperator, measHeaders: measHeaders.length ? measHeaders : ["Meas 1", "Meas 2", "Meas 3"], table2Rows: table2Rows.filter((row) => row.mAsApplied || row.meas.some((m: string) => m)) };
+        const linearityData = { table1: { fcd: table1Fcd, kv: table1Kv, time: table1Time }, tolerance, toleranceOperator, measHeaders: measHeaders.length ? measHeaders : ["Meas 1", "Meas 2", "Meas 3"], table2Rows: table2Rows.filter((row) => row.mAsApplied || row.meas.some((m: string) => m)) };
         setCsvDataForComponents((prev) => ({ ...prev, linearityOfMaLoading: linearityData, linearityOfMasLoading: linearityData }));
       }
 
@@ -1104,7 +1111,9 @@ const RadiographyMobileHT: React.FC<{ serviceId: string; qaTestDate?: string | n
       reader.onload = async (ev) => {
         try {
           const text = ev.target?.result as string;
-          const rows = parseTableCSVToRows(text);
+          const tableRows = parseTableCSVToRows(text);
+          const horizontalRows = text.includes("Field Name") ? parseCSV(text) : [];
+          const rows = tableRows.length > 0 ? (horizontalRows.length > 0 ? [...tableRows, ...horizontalRows] : tableRows) : horizontalRows;
           await processCSVData(rows);
         } catch (err: any) {
           toast.error(err?.message ?? "Failed to read CSV file");
@@ -1131,7 +1140,9 @@ const RadiographyMobileHT: React.FC<{ serviceId: string; qaTestDate?: string | n
         } else {
           const res = await proxyFile(csvFileUrl);
           const text = await (res.data as Blob).text();
-          csvData = parseCSV(text);
+          const tableRows = parseTableCSVToRows(text);
+          const horizontalRows = parseCSV(text);
+          csvData = tableRows.length > 0 ? (horizontalRows.length > 0 ? [...tableRows, ...horizontalRows] : tableRows) : horizontalRows;
         }
         if (csvData.length > 0) {
         await processCSVData(csvData, true);

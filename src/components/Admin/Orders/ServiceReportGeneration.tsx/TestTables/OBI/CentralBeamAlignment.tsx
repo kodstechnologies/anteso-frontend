@@ -65,10 +65,10 @@ const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, 
     const [observedTilt, setObservedTilt] = useState<string>('1.5');
 
     // Tolerance (Acceptance Criteria)
-    const [toleranceOperator, setToleranceOperator] = useState<'<' | '>'>('<');
+    const [toleranceOperator, setToleranceOperator] = useState<'<' | '>' | '='>('=');
     const [toleranceValue, setToleranceValue] = useState<string>('1.5');
 
-    const operators = ['<', '>'] as const;
+    const operators = ['=', '<', '>'] as const;
 
     // Auto-calculate Pass/Fail based on TOLERANCE
     const evaluation = useMemo(() => {
@@ -79,11 +79,11 @@ const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, 
             return { remark: '' as const, pass: false };
         }
 
-        // Strict operator-based comparison.
-        // Requirement: if observed tilt equals acceptance criteria, it must be FAIL.
         const pass = toleranceOperator === '<'
             ? observed < tolerance
-            : observed > tolerance;
+            : toleranceOperator === '>'
+                ? observed > tolerance
+                : Math.abs(observed - tolerance) < 0.0001;
 
         return {
             remark: pass ? 'Pass' : 'Fail' as 'Pass' | 'Fail',
@@ -110,8 +110,8 @@ const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, 
                 setObservedTilt(initialData.observedTilt.value);
             }
             if (initialData.tolerance) {
-                const op = initialData.tolerance.operator || '<';
-                setToleranceOperator((op === '<=' || op === '<') ? '<' : '>');
+                const op = initialData.tolerance.operator || '=';
+                setToleranceOperator(op === '>' ? '>' : op === '<' || op === '<=' ? '<' : '=');
                 setToleranceValue(initialData.tolerance.value || '1.5');
             }
             setIsEditing(true);
@@ -149,7 +149,8 @@ const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, 
                         setObservedTilt(String(data.observedTilt.value ?? ''));
                     }
                     if (data.tolerance) {
-                        setToleranceOperator(data.tolerance.operator === '>' ? '>' : '<');
+                        const op = data.tolerance.operator;
+                        setToleranceOperator(op === '>' ? '>' : op === '<' || op === '<=' ? '<' : '=');
                         setToleranceValue(String(data.tolerance.value ?? '2'));
                     }
                     setIsSaved(true);

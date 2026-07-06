@@ -1,5 +1,5 @@
 // src/components/TestTables/AccuracyOfIrradiationTime.tsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { PlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { Edit3, Save } from "lucide-react";
 import toast from "react-hot-toast";
@@ -59,6 +59,7 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
   // Tolerance
   const [toleranceOperator, setToleranceOperator] = useState("<=");
   const [toleranceValue, setToleranceValue] = useState("10");
+  const hasLoadedFromCSV = useRef(false);
 
   const updateTable1 = (field: keyof Table1Row, value: string) => {
     setTable1Row((prev) => ({ ...prev, [field]: value }));
@@ -102,26 +103,31 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
     if (isNaN(err) || isNaN(tol)) return "-";
 
     switch (toleranceOperator) {
-      case ">": return err > tol ? "FAIL" : "PASS";
-      case "<": return err < tol ? "PASS" : "FAIL";
-      case ">=": return err >= tol ? "FAIL" : "PASS";
-      case "<=": return err <= tol ? "PASS" : "FAIL";
-      default: return "-";
+      case ">":
+        return err > tol ? "PASS" : "FAIL";
+      case "<":
+        return err < tol ? "PASS" : "FAIL";
+      case ">=":
+        return err >= tol ? "PASS" : "FAIL";
+      case "<=":
+        return err <= tol ? "PASS" : "FAIL";
+      default:
+        return "-";
     }
   };
 
-  // Load saved data
+  // Load saved data (skip when CSV/Excel import is present)
   useEffect(() => {
     const fetchData = async () => {
-      if (!serviceId) return;
-      // If we have uploaded Excel data, don't overwrite it by reloading from API
-      if (initialData) {
+      if (initialData || hasLoadedFromCSV.current) {
         setLoading(false);
         return;
       }
+      if (!serviceId) return;
       setLoading(true);
       try {
         const res = await getAccuracyOfIrradiationTimeByServiceIdForRadiographyMobile(serviceId);
+        if (hasLoadedFromCSV.current) return;
         const data = res?.data;
         if (data) {
           setTestId(data._id || null);
@@ -173,10 +179,12 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
     }
     if (initialData.tolerance) {
       setToleranceOperator(initialData.tolerance.operator || "<=");
-      setToleranceValue(initialData.tolerance.value || "10");
+      setToleranceValue(String(initialData.tolerance.value ?? "10"));
     }
+    hasLoadedFromCSV.current = true;
     setIsSaved(false);
     setIsEditing(true);
+    setLoading(false);
   }, [initialData]);
 
   // Save / Update

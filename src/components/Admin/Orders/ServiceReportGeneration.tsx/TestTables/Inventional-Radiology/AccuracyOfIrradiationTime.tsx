@@ -115,6 +115,10 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
   useEffect(() => {
     const fetchData = async () => {
       if (!serviceId) return;
+      if (csvData && csvData.length > 0) {
+        setLoading(false);
+        return;
+      }
       setLoading(true);
       try {
         const res = await getAccuracyOfIrradiationTimeByServiceId(serviceId, tubeId);
@@ -149,7 +153,7 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
     };
 
     fetchData();
-  }, [serviceId, tubeId]);
+  }, [serviceId, tubeId, csvData]);
 
   // CSV Data Injection
   useEffect(() => {
@@ -190,6 +194,7 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
 
       if (!testId) {
         setIsEditing(true);
+        setIsSaved(false);
       }
     }
   }, [csvData, testId]); // Added testId to dependencies as its value affects the logic inside this effect

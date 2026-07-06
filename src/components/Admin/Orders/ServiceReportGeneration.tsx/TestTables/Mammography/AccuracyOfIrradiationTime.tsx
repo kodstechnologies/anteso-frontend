@@ -58,7 +58,7 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
 
   // Tolerance
   const [toleranceOperator, setToleranceOperator] = useState("<=");
-  const [toleranceValue, setToleranceValue] = useState("5");
+  const [toleranceValue, setToleranceValue] = useState("10");
 
   const updateTable1 = (field: keyof Table1Row, value: string) => {
     setTable1Row((prev) => ({ ...prev, [field]: value }));
@@ -102,11 +102,16 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
     if (isNaN(err) || isNaN(tol)) return "-";
 
     switch (toleranceOperator) {
-      case ">": return err > tol ? "FAIL" : "PASS";
-      case "<": return err < tol ? "PASS" : "FAIL";
-      case ">=": return err >= tol ? "FAIL" : "PASS";
-      case "<=": return err <= tol ? "PASS" : "FAIL";
-      default: return "-";
+      case ">":
+        return err > tol ? "PASS" : "FAIL";
+      case "<":
+        return err < tol ? "PASS" : "FAIL";
+      case ">=":
+        return err >= tol ? "PASS" : "FAIL";
+      case "<=":
+        return err <= tol ? "PASS" : "FAIL";
+      default:
+        return "-";
     }
   };
 
@@ -133,7 +138,7 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
       }
       if (initialData.tolerance) {
         setToleranceOperator(initialData.tolerance.operator || "<=");
-        setToleranceValue(initialData.tolerance.value || "5");
+        setToleranceValue(initialData.tolerance.value || "10");
       }
       setIsEditing(true); // Allow editing after CSV load
       setLoading(false);
@@ -167,7 +172,7 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
               : [{ id: "1", setTime: "", measuredTime: "" }]
           );
           setToleranceOperator(data.tolerance?.operator || "<=");
-          setToleranceValue(data.tolerance?.value || "5");
+          setToleranceValue(data.tolerance?.value || "10");
           setIsSaved(true);
           setIsEditing(false);
         } else {

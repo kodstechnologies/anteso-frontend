@@ -372,8 +372,16 @@ const ViewServiceReportCTScan: React.FC = () => {
   };
 
   // Dynamic mA columns for Measurement of Operating Potential (support maColumnLabels + row.ma)
-  const getOperatingPotentialMaLabels = (op: any): string[] =>
-    (Array.isArray(op?.maColumnLabels) && op.maColumnLabels.length > 0) ? op.maColumnLabels : ['10', '100', '200'];
+  const getOperatingPotentialMaLabels = (op: any): string[] => {
+    if (Array.isArray(op?.maColumnLabels) && op.maColumnLabels.length > 0) {
+      return op.maColumnLabels.map(String);
+    }
+    const fromRow = op?.table2?.find((r: any) => r?.ma && typeof r.ma === 'object');
+    if (fromRow?.ma) {
+      return Object.keys(fromRow.ma).map(String);
+    }
+    return ['10', '100', '200'];
+  };
   const getOperatingPotentialMaValue = (row: any, label: string): string | number =>
     row?.ma != null && row.ma[label] !== undefined && row.ma[label] !== null
       ? row.ma[label]
@@ -1075,7 +1083,7 @@ const ViewServiceReportCTScan: React.FC = () => {
                                   <tr>
                                     <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Set kV</th>
                                     {maLabels.map((l: string) => (
-                                      <th key={l} className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>mA {l}</th>
+                                      <th key={l} className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>@ mA {l}</th>
                                     ))}
                                     <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Avg kVp</th>
                                     <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Remarks</th>
@@ -1144,7 +1152,7 @@ const ViewServiceReportCTScan: React.FC = () => {
                                   <tr>
                                     <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Set kV</th>
                                     {maLabels.map((l: string) => (
-                                      <th key={l} className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>mA {l}</th>
+                                      <th key={l} className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>@ mA {l}</th>
                                     ))}
                                     <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Avg kVp</th>
                                     <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Remarks</th>

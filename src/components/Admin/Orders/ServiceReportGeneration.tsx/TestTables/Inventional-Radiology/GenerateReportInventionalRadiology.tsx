@@ -249,15 +249,15 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
     const sectionRowCounter: { [key: string]: number } = {};
 
     for (let i = 0; i < rows.length; i++) {
-      const row = rows[i].map(c => String(c || '').trim());
+      const row = rows[i].map((c) => (c === null || c === undefined || c === '' ? '' : String(c).trim()));
       const firstCell = row[0];
 
-      if (firstCell.startsWith('TEST: ')) {
+      if (/^TEST:\s*/i.test(firstCell)) {
         // Always reset state when we see a new TEST: marker
         isReadingTest = false;
         headers = [];
 
-        const rawTitle = firstCell.replace('TEST: ', '').trim();
+        const rawTitle = firstCell.replace(/^TEST:\s*/i, '').split(',')[0].trim();
         let tubeSuffix = '';
         let baseTitle = rawTitle;
 
@@ -296,8 +296,13 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
         const rowIdx = sectionRowCounter[currentTestName];
         row.forEach((value, cellIdx) => {
           const header = headers[cellIdx];
-          const internalField = (headerMap[currentTestNameBase] || {})[header];
-          if (internalField && value) {
+          if (!header) return;
+          let internalField = (headerMap[currentTestNameBase] || {})[header];
+          if (internalField === 'Table2_MeasuredKV') {
+            const measIdx = headers.slice(0, cellIdx + 1).filter((h) => h === header).length - 1;
+            internalField = measIdx === 0 ? 'Table2_MeasuredKV' : `Table2_MeasuredKV_${measIdx}`;
+          }
+          if (internalField && value !== '') {
             data.push({
               'Field Name': internalField,
               'Value': value,
@@ -411,6 +416,9 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
     return parseHorizontalData(jsonData);
   };
 
+  const mergeCsvSections = (...keys: string[]) =>
+    keys.flatMap((key) => csvDataForComponents[key] || []);
+
   // Process CSV data and populate component states.
   // When applyConfigFromExcel is true (file from ServiceDetails2 redirect), infer tubeType (single vs double) from Excel and skip tube modal.
   const processCSVData = async (csvData: any[], applyConfigFromExcel?: boolean) => {
@@ -430,13 +438,15 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
 
       console.log('IR CSV Data grouped:', groupedData);
 
-      if (applyConfigFromExcel && Object.keys(groupedData).length > 0) {
+      if (Object.keys(groupedData).length > 0) {
         const keys = Object.keys(groupedData);
         const hasDoubleTube = keys.some((k) => / - Frontal\s*$/i.test(k) || / - Lateral\s*$/i.test(k));
         const inferredType: 'single' | 'double' = hasDoubleTube ? 'double' : 'single';
         setTubeType(inferredType);
         setShowTubeModal(false);
-        localStorage.setItem(`inventional_radiology_tube_type_${serviceId}`, inferredType);
+        if (serviceId) {
+          localStorage.setItem(`inventional_radiology_tube_type_${serviceId}`, inferredType);
+        }
       }
 
       setCsvDataForComponents(groupedData);
@@ -1222,9 +1232,10 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
             title: "Total Filtration",
             component: (
               <TotalFilteration
+                key={`total-filtration-${refreshKey}`}
                 serviceId={serviceId}
                 tubeId={null}
-                csvData={csvDataForComponents['Total Filtration']}
+                csvData={mergeCsvSections('Accuracy Of Operating Potential', 'Total Filtration')}
               />
             ),
           },
@@ -1314,7 +1325,7 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
           },
           {
             title: "Total Filtration - Frontal",
-            component: <TotalFilteration serviceId={serviceId} tubeId="frontal" csvData={csvDataForComponents['Total Filtration - Frontal']} />,
+            component: <TotalFilteration key={`total-filtration-frontal-${refreshKey}`} serviceId={serviceId} tubeId="frontal" csvData={mergeCsvSections('Accuracy Of Operating Potential - Frontal', 'Total Filtration - Frontal')} />,
           },
           {
             title: "Consistency of Radiation Output - Frontal",
@@ -1356,7 +1367,7 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
           },
           {
             title: "Total Filtration - Lateral",
-            component: <TotalFilteration serviceId={serviceId} tubeId="lateral" csvData={csvDataForComponents['Total Filtration - Lateral']} />,
+            component: <TotalFilteration key={`total-filtration-lateral-${refreshKey}`} serviceId={serviceId} tubeId="lateral" csvData={mergeCsvSections('Accuracy Of Operating Potential - Lateral', 'Total Filtration - Lateral')} />,
           },
           {
             title: "Consistency of Radiation Output - Lateral",
@@ -1390,7 +1401,7 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
           },
         ] as any)
           .map((item: any, idx: number) => (
-            <Disclosure key={idx} defaultOpen={idx === 0}>
+            <Disclosure key={`${item.title}-${refreshKey}`} defaultOpen={idx === 0}>
               {({ open }) => (
                 <>
                   <Disclosure.Button className="w-full flex justify-between items-center px-6 py-4 text-left font-semibold text-gray-800 bg-gray-100 hover:bg-gray-200 rounded-lg mb-2 transition">

@@ -45,6 +45,10 @@ const HighContrastResolutionForInventionalRadiology: React.FC<Props> = ({
         setIsLoading(false);
         return;
       }
+      if (csvData && csvData.length > 0) {
+        setIsLoading(false);
+        return;
+      }
       setIsLoading(true);
       try {
         const res = await getHighContrastResolutionByServiceIdForInventionalRadiology(serviceId, tubeId ?? null);
@@ -68,7 +72,7 @@ const HighContrastResolutionForInventionalRadiology: React.FC<Props> = ({
       }
     };
     loadTest();
-  }, [serviceId, tubeId]);
+  }, [serviceId, tubeId, csvData]);
 
   useEffect(() => {
     if (csvData && csvData.length > 0) {

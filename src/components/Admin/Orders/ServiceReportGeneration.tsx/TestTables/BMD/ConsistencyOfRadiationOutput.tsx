@@ -308,6 +308,11 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
           console.log('Set tolerance:', { operator: initialData.tolerance.operator || '<=', value: initialData.tolerance.value || '5.0' });
         }
 
+        const fcdVal = initialData.fcd?.value ?? initialData.fcd?.fcd ?? initialData.fcd;
+        if (fcdVal != null && String(fcdVal).trim() !== '') {
+          setFcd({ value: String(fcdVal) });
+        }
+
         setIsEditing(true); // Allow editing when data comes from CSV
         setIsSaved(false);
         setIsLoading(false);

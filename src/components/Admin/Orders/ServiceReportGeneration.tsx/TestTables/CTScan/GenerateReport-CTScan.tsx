@@ -387,7 +387,7 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
                 'Applied': 'Table2_Applied', 'Measured': 'Table2_Measured', 'kVp': 'Table1_kvp', 'mA': 'Table1_ma'
             },
             'Measurement of Operating Potential': {
-                'Set kV': 'Table2_SetKV', '@ mA 10': 'Table2_ma10', '@ mA 100': 'Table2_ma100', '@ mA 200': 'Table2_ma200',
+                'Set kV': 'Table2_SetKV',
                 'Time (ms)': 'Table1_Time', 'Slice Thickness (mm)': 'Table1_SliceThickness',
                 'Tol Value': 'Tolerance_Value', 'Tol Type': 'Tolerance_Type', 'Tol Sign': 'Tolerance_Sign',
                 'Tol kV': 'Tolerance_Value'
@@ -475,6 +475,22 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
 
             if (isReadingTest && headers.length === 0 && row.some(c => c)) {
                 headers = row;
+                if (currentTestNameBase === 'Measurement of Operating Potential' && currentTestName) {
+                    const maLabels = headers
+                        .map(h => {
+                            const m = String(h || '').trim().match(/^@\s*mA\s+(.+)$/i);
+                            return m ? m[1].trim() : null;
+                        })
+                        .filter((l): l is string => !!l);
+                    if (maLabels.length > 0) {
+                        data.push({
+                            'Field Name': 'MaColumnLabels',
+                            'Value': maLabels.join(','),
+                            'Row Index': 0,
+                            'Test Name': currentTestName,
+                        });
+                    }
+                }
                 continue;
             }
 
@@ -487,12 +503,20 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
                 sectionRowCounter[currentTestName] = (sectionRowCounter[currentTestName] || 0) + 1;
                 const rowIdx = sectionRowCounter[currentTestName];
                 row.forEach((value, cellIdx) => {
-                    const header = headers[cellIdx];
-                    const internalField = (headerMap[currentTestNameBase] || {})[header];
-                    if (internalField && value) {
+                    const header = String(headers[cellIdx] || '').trim();
+                    let internalField = (headerMap[currentTestNameBase] || {})[header];
+                    // Dynamic @ mA column headers (e.g. "@ mA 10", "@ mA 100")
+                    if (!internalField && currentTestNameBase === 'Measurement of Operating Potential') {
+                        const maMatch = header.match(/^@\s*mA\s+(.+)$/i);
+                        if (maMatch) {
+                            internalField = `Table2_ma${maMatch[1].trim()}`;
+                        }
+                    }
+                    const strVal = String(value ?? '').trim();
+                    if (internalField && strVal) {
                         data.push({
                             'Field Name': internalField,
-                            'Value': value,
+                            'Value': strVal,
                             'Row Index': rowIdx,
                             'Test Name': currentTestName,
                         });

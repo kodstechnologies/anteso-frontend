@@ -167,6 +167,8 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
       try {
         const res = await getRadiationLeakageLevelByServiceIdForOPG(serviceId);
         const rec = res?.data;
+        const hasCsvImport = csvData && csvData.length > 0;
+
         if (!rec) {
           setIsLoading(false);
           setIsEditing(true);
@@ -176,38 +178,43 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
         if (rec) {
           setTestId(rec._id || propTestId);
 
-          if (rec.settings?.[0] || rec.measurementSettings?.[0]) {
-            const s = rec.settings?.[0] || rec.measurementSettings?.[0];
-            setSettings({
-              kv: String(s.kv || s.kvp || ''),
-              ma: String(s.ma || ''),
-              time: String(s.time || ''),
-            });
+          if (!hasCsvImport) {
+            if (rec.settings?.[0] || rec.measurementSettings?.[0]) {
+              const s = rec.settings?.[0] || rec.measurementSettings?.[0];
+              setSettings({
+                kv: String(s.kv || s.kvp || ''),
+                ma: String(s.ma || ''),
+                time: String(s.time || ''),
+              });
+            }
+
+            if (Array.isArray(rec.leakageMeasurements)) {
+              setLeakageRows(
+                rec.leakageMeasurements.map((r: any) => ({
+                  location: r.location || '',
+                  front: String(r.front || r.top || ''),
+                  back: String(r.back || r.up || ''),
+                  left: String(r.left || ''),
+                  right: String(r.right || ''),
+                  max: '',
+                  unit: r.unit || 'mGy/h',
+                  remark: '',
+                }))
+              );
+            }
+
+            setWorkload(rec.workload || '');
+            setWorkloadUnit(rec.workloadUnit || 'mA·min/week');
+            setToleranceValue(rec.toleranceValue || rec.tolerance || '');
+            setToleranceOperator(rec.toleranceOperator || 'less than or equal to');
+            setToleranceTime(rec.toleranceTime || '1');
+
+            setHasSaved(true);
+            setIsEditing(false);
+          } else {
+            setHasSaved(false);
+            setIsEditing(true);
           }
-
-          if (Array.isArray(rec.leakageMeasurements)) {
-            setLeakageRows(
-              rec.leakageMeasurements.map((r: any) => ({
-                location: r.location || '',
-                front: String(r.front || r.top || ''),
-                back: String(r.back || r.up || ''),
-                left: String(r.left || ''),
-                right: String(r.right || ''),
-                max: '',
-                unit: r.unit || 'mGy/h',
-                remark: '',
-              }))
-            );
-          }
-
-          setWorkload(rec.workload || '');
-          setWorkloadUnit(rec.workloadUnit || 'mA·min/week');
-          setToleranceValue(rec.toleranceValue || rec.tolerance || '');
-          setToleranceOperator(rec.toleranceOperator || 'less than or equal to');
-          setToleranceTime(rec.toleranceTime || '1');
-
-          setHasSaved(true);
-          setIsEditing(false);
         } else {
           setHasSaved(false);
           setIsEditing(true);
@@ -221,67 +228,178 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
     };
 
     load();
-  }, [serviceId]);
+  }, [serviceId, csvData]);
 
-  // CSV Data Injection
+  const cellStr = (c: unknown) => c?.toString()?.trim() ?? '';
+  const cellLower = (c: unknown) => cellStr(c).toLowerCase();
+  const isFfdLabel = (c: unknown) => ['ffd', 'fcd', 'fdd'].includes(cellLower(c));
+  const isKvLabel = (c: unknown) => cellLower(c).includes('kv');
+  const isMaLabel = (c: unknown) => cellLower(c) === 'ma';
+  const isTimeLabel = (c: unknown) => {
+    const s = cellLower(c);
+    return s === 'time' || s === 'timer' || s.startsWith('time ') || s.startsWith('timer ');
+  };
+  const isTolLabel = (c: unknown) => {
+    const s = cellLower(c);
+    return s === 'tolerance' || s.startsWith('tolerance ');
+  };
+
+  // CSV Data Injection — apply after load finishes so server data does not overwrite import
   useEffect(() => {
-    if (csvData && csvData.length > 0) {
-      // Settings
-      const kv = csvData.find(r => ['kv', 'kvp', 'kV', 'kVp'].includes(r['Field Name']))?.['Value'];
-      const ma = csvData.find(r => ['ma', 'mA'].includes(r['Field Name']))?.['Value'];
-      const time = csvData.find(r => ['time', 'Time'].includes(r['Field Name']))?.['Value'];
+    if (isLoading || !csvData || csvData.length === 0) return;
 
-      if (kv || ma || time) {
-        setSettings(prev => ({
-          ...prev,
-          kv: kv || prev.kv,
-          ma: ma || prev.ma,
-          time: time || prev.time
-        }));
+    const isHorizontalFormat = Array.isArray(csvData[0]);
+
+    if (isHorizontalFormat) {
+      const headerRow = csvData.find((r: any[]) => cellLower(r[0]) === 'location');
+      const colMap: Record<string, number> = {};
+      if (headerRow) {
+        headerRow.forEach((c: unknown, i: number) => {
+          const key = cellLower(c);
+          if (i > 0 && key) colMap[key] = i;
+        });
+      } else {
+        colMap.left = 1;
+        colMap.right = 2;
+        colMap.top = 3;
+        colMap.up = 4;
+        colMap.down = 5;
       }
 
-      // Leakage Rows
-      const rowIndices = [...new Set(csvData
-        .filter(r => r['Field Name'] && (r['Field Name'].startsWith('Table2_') || r['Field Name'].startsWith('leakageRows_')))
-        .map(r => parseInt(r['Row Index']))
-        .filter(i => !isNaN(i) && i >= 0)
-      )];
+      const getCol = (row: any[], ...names: string[]) => {
+        for (const name of names) {
+          const idx = colMap[name.toLowerCase()];
+          if (idx != null && row[idx] != null && cellStr(row[idx]) !== '') {
+            return cellStr(row[idx]);
+          }
+        }
+        return '';
+      };
 
-      if (rowIndices.length > 0) {
-        const newRows = rowIndices.map(idx => {
-          const rowData = csvData.filter(r => parseInt(r['Row Index']) === idx);
-          return {
-            location: rowData.find(r => ['Location', 'location', 'Table2_Area'].includes(r['Field Name']))?.['Value'] || '',
-            front: rowData.find(r => ['Front', 'front', 'Table2_Front', 'top', 'Top'].includes(r['Field Name']))?.['Value'] || '',
-            back: rowData.find(r => ['Back', 'back', 'Table2_Back', 'up', 'Up'].includes(r['Field Name']))?.['Value'] || '',
-            left: rowData.find(r => ['Left', 'left', 'Table2_Left'].includes(r['Field Name']))?.['Value'] || '',
-            right: rowData.find(r => ['Right', 'right', 'Table2_Right'].includes(r['Field Name']))?.['Value'] || '',
+      const newLeakageRows: LeakageRow[] = [];
+
+      csvData.forEach((row: any[]) => {
+        const first = cellStr(row[0]);
+        const firstLower = first.toLowerCase();
+
+        if (row.some(isFfdLabel) && row.some(isKvLabel)) {
+          const kIndex = row.findIndex(isKvLabel);
+          const maIndex = row.findIndex(isMaLabel);
+          const tIndex = row.findIndex(isTimeLabel);
+          const tolIndex = row.findIndex(isTolLabel);
+
+          setSettings(prev => ({
+            ...prev,
+            kv: kIndex >= 0 && row[kIndex + 1] != null ? String(row[kIndex + 1]) : prev.kv,
+            ma: maIndex >= 0 && row[maIndex + 1] != null ? String(row[maIndex + 1]) : prev.ma,
+            time: tIndex >= 0 && row[tIndex + 1] != null ? String(row[tIndex + 1]) : prev.time,
+          }));
+          if (tolIndex >= 0 && row[tolIndex + 1] != null) {
+            setToleranceValue(String(row[tolIndex + 1]));
+          }
+          return;
+        }
+
+        if (firstLower === 'workload' && row[1] != null) {
+          setWorkload(String(row[1]));
+          return;
+        }
+
+        if (firstLower === 'location') return;
+        if (firstLower.startsWith('tolerance')) return;
+
+        if (firstLower === 'front' || firstLower === 'back') {
+          newLeakageRows.push({
+            location: firstLower === 'front' ? 'Tube' : 'Collimator',
+            left: getCol(row, 'left'),
+            right: getCol(row, 'right'),
+            front: getCol(row, 'front', 'top'),
+            back: getCol(row, 'back', 'up', 'down'),
             max: '',
             unit: 'mGy/h',
             remark: '',
-          };
-        });
-        setLeakageRows(newRows);
+          });
+          return;
+        }
+
+        if (firstLower === 'tube' || firstLower === 'collimator') {
+          newLeakageRows.push({
+            location: firstLower === 'collimator' ? 'Collimator' : 'Tube',
+            left: getCol(row, 'left'),
+            right: getCol(row, 'right'),
+            front: getCol(row, 'front', 'top'),
+            back: getCol(row, 'back', 'up', 'down'),
+            max: '',
+            unit: 'mGy/h',
+            remark: '',
+          });
+        }
+      });
+
+      if (newLeakageRows.length > 0) {
+        setLeakageRows(newLeakageRows);
       }
 
-      // Workload and Tolerance
-      const wl = csvData.find(r => ['Workload', 'workload'].includes(r['Field Name']))?.['Value'];
-      const wlUnit = csvData.find(r => ['WorkloadUnit', 'workloadUnit'].includes(r['Field Name']))?.['Value'];
-      const tol = csvData.find(r => ['ToleranceValue', 'toleranceValue', 'Tolerance', 'tolerance'].includes(r['Field Name']))?.['Value'];
-      const tolOp = csvData.find(r => r['Field Name'] === 'ToleranceOperator')?.['Value'];
-      const tolTime = csvData.find(r => r['Field Name'] === 'ToleranceTime')?.['Value'];
-
-      if (wl) setWorkload(wl);
-      if (wlUnit) setWorkloadUnit(wlUnit);
-      if (tol) setToleranceValue(tol);
-      if (tolOp) setToleranceOperator(tolOp as any);
-      if (tolTime) setToleranceTime(tolTime);
-
-      if (!testId) {
-        setIsEditing(true);
-      }
+      setIsEditing(true);
+      setHasSaved(false);
+      return;
     }
-  }, [csvData]);
+
+    // Legacy vertical Field Name / Value format
+    const getField = (...names: string[]) =>
+      csvData.find((r: any) => names.includes(String(r['Field Name'] || '')))?.['Value'];
+
+    const kv = getField('kV', 'kVp', 'kv', 'kvp');
+    const ma = getField('mA', 'ma');
+    const time = getField('Time', 'time');
+
+    if (kv || ma || time) {
+      setSettings(prev => ({
+        ...prev,
+        kv: kv ? String(kv) : prev.kv,
+        ma: ma ? String(ma) : prev.ma,
+        time: time ? String(time) : prev.time,
+      }));
+    }
+
+    const rowIndices = [...new Set(csvData
+      .filter((r: any) => r['Field Name'] && (r['Field Name'].startsWith('Table2_') || r['Field Name'].startsWith('leakageRows_')))
+      .map((r: any) => parseInt(r['Row Index']))
+      .filter((i: number) => !isNaN(i) && i >= 0)
+    )];
+
+    if (rowIndices.length > 0) {
+      const newRows = rowIndices.map(idx => {
+        const rowData = csvData.filter((r: any) => parseInt(r['Row Index']) === idx);
+        return {
+          location: rowData.find((r: any) => ['Location', 'location', 'Table2_Area'].includes(r['Field Name']))?.['Value'] || '',
+          front: rowData.find((r: any) => ['Front', 'front', 'Table2_Front', 'top', 'Top'].includes(r['Field Name']))?.['Value'] || '',
+          back: rowData.find((r: any) => ['Back', 'back', 'Table2_Back', 'up', 'Up'].includes(r['Field Name']))?.['Value'] || '',
+          left: rowData.find((r: any) => ['Left', 'left', 'Table2_Left'].includes(r['Field Name']))?.['Value'] || '',
+          right: rowData.find((r: any) => ['Right', 'right', 'Table2_Right'].includes(r['Field Name']))?.['Value'] || '',
+          max: '',
+          unit: 'mGy/h',
+          remark: '',
+        };
+      });
+      setLeakageRows(newRows);
+    }
+
+    const wl = getField('Workload', 'workload');
+    const wlUnit = getField('WorkloadUnit', 'workloadUnit');
+    const tol = getField('ToleranceValue', 'toleranceValue', 'Tolerance', 'tolerance');
+    const tolOp = getField('ToleranceOperator');
+    const tolTime = getField('ToleranceTime');
+
+    if (wl) setWorkload(String(wl));
+    if (wlUnit) setWorkloadUnit(String(wlUnit));
+    if (tol) setToleranceValue(String(tol));
+    if (tolOp) setToleranceOperator(String(tolOp) as any);
+    if (tolTime) setToleranceTime(String(tolTime));
+
+    setIsEditing(true);
+    setHasSaved(false);
+  }, [csvData, isLoading]);
 
   // === Save / Update ===
   const handleSave = async () => {

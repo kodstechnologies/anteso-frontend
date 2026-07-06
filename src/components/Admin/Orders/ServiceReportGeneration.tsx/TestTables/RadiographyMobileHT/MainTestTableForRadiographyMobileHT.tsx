@@ -72,8 +72,8 @@ const MainTestTableForRadiographyMobileHT: React.FC<MainTestTableProps> = ({ tes
   // Central Beam Alignment — RadiographyFixed
   if (testData.centralBeamAlignment?.observedTilt) {
     const tiltValue = testData.centralBeamAlignment.observedTilt.value || "-";
-    const toleranceOperator = testData.centralBeamAlignment.tolerance?.operator || "<=";
-    const toleranceValue = testData.centralBeamAlignment.tolerance?.value || "5";
+    const toleranceOperator = testData.centralBeamAlignment.tolerance?.operator || "=";
+    const toleranceValue = testData.centralBeamAlignment.tolerance?.value || "1.5";
 
     let isPass = false;
     if (
@@ -164,6 +164,8 @@ const MainTestTableForRadiographyMobileHT: React.FC<MainTestTableProps> = ({ tes
           if (toleranceOperator === "<=") isPass = errorVal <= tol;
           else if (toleranceOperator === ">=") isPass = errorVal >= tol;
           else if (toleranceOperator === "=") isPass = Math.abs(errorVal - tol) < 0.01;
+          else if (toleranceOperator === "<") isPass = errorVal < tol;
+          else if (toleranceOperator === ">") isPass = errorVal > tol;
         }
 
         return {
@@ -318,7 +320,7 @@ const MainTestTableForRadiographyMobileHT: React.FC<MainTestTableProps> = ({ tes
     const validRows = testData.linearityOfMasLoading.table2.filter((row: any) => row.mAsApplied);
     if (validRows.length > 0) {
       const tolerance = testData.linearityOfMasLoading.tolerance || "0.1";
-      const toleranceOperator = testData.linearityOfMasLoading.toleranceOperator || "<=";
+      const toleranceOperator = testData.linearityOfMasLoading.toleranceOperator || "<";
 
       const getVal = (o: any): number => {
         if (o == null) return NaN;
@@ -327,6 +329,12 @@ const MainTestTableForRadiographyMobileHT: React.FC<MainTestTableProps> = ({ tes
         if (typeof o === "object" && "value" in o) return parseFloat(o.value);
         return NaN;
       };
+
+      const table1 = Array.isArray(testData.linearityOfMasLoading?.table1)
+        ? testData.linearityOfMasLoading?.table1?.[0]
+        : testData.linearityOfMasLoading?.table1;
+      const timeVal = parseFloat(String(table1?.time ?? ""));
+      const hasValidTime = !isNaN(timeVal) && timeVal > 0;
 
       let colValue =
         testData.linearityOfMasLoading.col ||
@@ -342,12 +350,15 @@ const MainTestTableForRadiographyMobileHT: React.FC<MainTestTableProps> = ({ tes
           const avg =
             outputs.length > 0 ? outputs.reduce((a: number, b: number) => a + b, 0) / outputs.length : null;
 
-          const mAsLabel = String(row.mAsApplied ?? row.mAsRange ?? "");
-          const match = mAsLabel.match(/(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)/);
-          const midMas = match ? (parseFloat(match[1]) + parseFloat(match[2])) / 2 : parseFloat(mAsLabel) || 0;
+          const maVal = parseFloat(String(row.mAsApplied ?? row.ma ?? row.mAsRange ?? ""));
+          const match = String(row.mAsApplied ?? row.mAsRange ?? "").match(/(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)/);
+          const midLoad = match
+            ? (parseFloat(match[1]) + parseFloat(match[2])) / 2
+            : maVal;
 
-          if (avg !== null && midMas > 0) {
-            const xVal = avg / midMas;
+          if (avg !== null && midLoad > 0) {
+            const mAs = hasValidTime ? midLoad * timeVal : null;
+            const xVal = mAs && mAs > 0 ? avg / mAs : avg / midLoad;
             if (isFinite(xVal)) xValues.push(xVal);
           }
         });
@@ -370,6 +381,7 @@ const MainTestTableForRadiographyMobileHT: React.FC<MainTestTableProps> = ({ tes
         else if (toleranceOperator === "<") isPass = c < t;
         else if (toleranceOperator === ">=") isPass = c >= t;
         else if (toleranceOperator === ">") isPass = c > t;
+        else if (toleranceOperator === "=") isPass = Math.abs(c - t) < 0.0001;
       }
 
       const tableLevelKv =

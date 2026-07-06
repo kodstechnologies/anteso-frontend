@@ -210,19 +210,99 @@ export default function TubeHousingLeakage({
     );
   }, [serviceId, settings, leakageRows, workload, toleranceValue]);
 
+  const mapToleranceOperator = (op: string): typeof toleranceOperator => {
+    const s = String(op || '').trim().toLowerCase();
+    if (s === '<=' || s === '≤' || s === 'less than or equal to') return 'less than or equal to';
+    if (s === '>=' || s === '≥' || s === 'greater than or equal to') return 'greater than or equal to';
+    if (s === '=') return '=';
+    return 'less than or equal to';
+  };
+
+  const getField = (rows: any[], ...names: string[]) => {
+    const found = rows.find(r => names.includes(String(r['Field Name'] || '')));
+    return found?.['Value'] != null ? String(found['Value']) : '';
+  };
+
+  const applyCsvImport = (rows: any[]) => {
+    const settingsIdx = rows.find(r =>
+      ['distance', 'kV', 'FCD', 'Distance', 'mA', 'Time'].includes(String(r['Field Name'] || ''))
+    )?.['Row Index'];
+    const settingsRow = settingsIdx !== undefined
+      ? rows.filter(r => parseInt(r['Row Index']) === parseInt(String(settingsIdx)))
+      : rows;
+
+    const fcdVal = getField(settingsRow, 'distance', 'FCD', 'Distance', 'FFD', 'FDD');
+    const kvVal = getField(settingsRow, 'kV', 'kVp');
+    const maVal = getField(settingsRow, 'mA');
+    const timeVal = getField(settingsRow, 'Time');
+    if (fcdVal || kvVal || maVal || timeVal) {
+      setSettings(prev => ({
+        fcd: fcdVal || prev.fcd,
+        kv: kvVal || prev.kv,
+        ma: maVal || prev.ma,
+        time: timeVal || prev.time,
+      }));
+    }
+
+    const workloadVal = getField(rows, 'Workload');
+    if (workloadVal) setWorkload(workloadVal);
+
+    const tolVal = getField(rows, 'ToleranceValue', 'Tolerance');
+    if (tolVal) setToleranceValue(tolVal);
+    const tolOp = getField(rows, 'ToleranceOperator');
+    if (tolOp) setToleranceOperator(mapToleranceOperator(tolOp));
+    const tolTime = getField(rows, 'ToleranceTime');
+    if (tolTime) setToleranceTime(tolTime);
+
+    const rowIndices = [...new Set(rows
+      .filter(r => {
+        const fn = String(r['Field Name'] || '');
+        return fn === 'Table2_Area' || fn === 'Table2_Front' || fn === 'Table2_Left'
+          || fn === 'Location' || fn === 'Left' || fn === 'Front';
+      })
+      .map(r => parseInt(r['Row Index']))
+      .filter(i => !isNaN(i) && i >= 0)
+    )].sort((a, b) => a - b);
+
+    if (rowIndices.length > 0) {
+      const newRows = rowIndices.map(idx => {
+        const rowData = rows.filter(r => parseInt(r['Row Index']) === idx);
+        const locRaw = getField(rowData, 'Table2_Area', 'Location') || 'Tube';
+        const locLower = locRaw.toLowerCase();
+        const location = locLower.includes('collimator') ? 'Collimator' : 'Tube';
+        return {
+          location,
+          left: getField(rowData, 'Table2_Left', 'Left'),
+          right: getField(rowData, 'Table2_Right', 'Right'),
+          front: getField(rowData, 'Table2_Front', 'Front'),
+          back: getField(rowData, 'Table2_Back', 'Back'),
+          top: getField(rowData, 'Table2_Top', 'Top'),
+          max: '',
+          result: '',
+          unit: 'mR/h',
+          remark: '',
+        };
+      });
+      setLeakageRows(newRows);
+    }
+
+    setHasSaved(false);
+    setIsEditing(true);
+  };
+
   // Load existing test data
   useEffect(() => {
     if (!serviceId) return;
 
     const loadTest = async () => {
       setIsLoading(true);
+      const hasCsvImport = csvData && csvData.length > 0;
       try {
         const data = await getTubeHousingLeakageByServiceIdForDentalHandHeld(serviceId);
-        if (data?.data) {
+        if (data?.data && !hasCsvImport) {
           const testData = data.data;
           setTestId(testData._id);
 
-          // Map measurementSettings (backend) to settings (frontend); backend uses distance, we use fcd
           if (testData.measurementSettings) {
             setSettings({
               fcd: testData.measurementSettings.distance ?? testData.measurementSettings.fcd ?? '100',
@@ -232,7 +312,6 @@ export default function TubeHousingLeakage({
             });
           }
 
-          // Map leakageMeasurements (backend) to leakageRows (frontend); Tube first, then Collimator
           if (testData.leakageMeasurements && testData.leakageMeasurements.length > 0) {
             const sorted = [...testData.leakageMeasurements].sort((a: any, b: any) => {
               if ((a.location || '').toLowerCase().includes('tube')) return -1;
@@ -262,6 +341,9 @@ export default function TubeHousingLeakage({
 
           setHasSaved(true);
           setIsEditing(false);
+        } else if (hasCsvImport) {
+          setHasSaved(false);
+          setIsEditing(true);
         }
       } catch (err: any) {
         if (err.response?.status !== 404) {
@@ -273,43 +355,13 @@ export default function TubeHousingLeakage({
     };
 
     loadTest();
-  }, [serviceId]);
+  }, [serviceId, csvData]);
 
-  // === CSV Injection ===
+  // CSV import — apply after load finishes so server data does not overwrite import
   useEffect(() => {
-    if (csvData && csvData.length > 0) {
-      const fcdVal = csvData.find(r => r['Field Name'] === 'FCD' || r['Field Name'] === 'Distance')?.['Value'];
-      const kvVal = csvData.find(r => r['Field Name'] === 'kV')?.['Value'];
-      const maVal = csvData.find(r => r['Field Name'] === 'mA')?.['Value'];
-      const timeVal = csvData.find(r => r['Field Name'] === 'Time')?.['Value'];
-      if (fcdVal || kvVal || maVal || timeVal) {
-        setSettings(prev => ({
-          fcd: fcdVal || prev.fcd,
-          kv: kvVal || prev.kv,
-          ma: maVal || prev.ma,
-          time: timeVal || prev.time
-        }));
-      }
-      const workloadVal = csvData.find(r => r['Field Name'] === 'Workload')?.['Value'];
-      if (workloadVal) setWorkload(workloadVal);
-
-      const tubeRowIdx = csvData.find(r => (r['Field Name'] === 'Location' && (r['Value'] === 'Tube' || r['Value'] === 'Tube Housing')))?.['Row Index'];
-      if (tubeRowIdx !== undefined) {
-        const rowData = csvData.filter(r => r['Row Index'] === tubeRowIdx);
-        const left = rowData.find(r => r['Field Name'] === 'Left')?.['Value'] || '';
-        const right = rowData.find(r => r['Field Name'] === 'Right')?.['Value'] || '';
-        const front = rowData.find(r => r['Field Name'] === 'Front')?.['Value'] || '';
-        const back = rowData.find(r => r['Field Name'] === 'Back')?.['Value'] || '';
-        const top = rowData.find(r => r['Field Name'] === 'Top')?.['Value'] || '';
-        setLeakageRows([{
-          location: 'Tube',
-          left, right, front, back, top,
-          max: '', result: '', unit: 'mR/h', remark: ''
-        }]);
-      }
-      if (!testId) setIsEditing(true);
-    }
-  }, [csvData, testId]);
+    if (isLoading || !csvData || csvData.length === 0) return;
+    applyCsvImport(csvData);
+  }, [csvData, isLoading]);
 
   const handleSave = async () => {
     if (!isFormValid) {

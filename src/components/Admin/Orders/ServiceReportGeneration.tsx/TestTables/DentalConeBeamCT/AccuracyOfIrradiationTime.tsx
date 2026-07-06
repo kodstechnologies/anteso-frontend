@@ -102,11 +102,16 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
     if (isNaN(err) || isNaN(tol)) return "-";
 
     switch (toleranceOperator) {
-      case ">": return err > tol ? "FAIL" : "PASS";
-      case "<": return err < tol ? "PASS" : "FAIL";
-      case ">=": return err >= tol ? "FAIL" : "PASS";
-      case "<=": return err <= tol ? "PASS" : "FAIL";
-      default: return "-";
+      case ">":
+        return err > tol ? "PASS" : "FAIL";
+      case "<":
+        return err < tol ? "PASS" : "FAIL";
+      case ">=":
+        return err >= tol ? "PASS" : "FAIL";
+      case "<=":
+        return err <= tol ? "PASS" : "FAIL";
+      default:
+        return "-";
     }
   };
 
@@ -130,7 +135,7 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
               }))
               : [{ id: "1", setTime: "", measuredTime: "" }]
           );
-          setToleranceOperator(data.tolerance?.operator || "");
+          setToleranceOperator(data.tolerance?.operator || "<=");
           setToleranceValue(data.tolerance?.value || "10");
           setIsSaved(true);
           setIsEditing(false);
@@ -187,8 +192,7 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
 
       // Tolerance from CSV (Tolerance_Operator, Tolerance_Value or % Error)
       const tolOp = csvData.find((r: any) => r['Field Name'] === 'Tolerance_Operator')?.['Value'];
-      const tolVal = csvData.find((r: any) => r['Field Name'] === 'Tolerance_Value')?.['Value']
-        ?? csvData.find((r: any) => r['Field Name'] === 'Error')?.['Value'];
+      const tolVal = csvData.find((r: any) => r['Field Name'] === 'Tolerance_Value')?.['Value'];
       if (tolOp) setToleranceOperator(String(tolOp).trim() || '<=');
       if (tolVal !== undefined && tolVal !== '') setToleranceValue(String(tolVal).trim());
 
@@ -417,7 +421,7 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
           <span className="font-medium text-indigo-800">Error should be</span>
           <select
             value={toleranceOperator}
-            onChange={(e) => setToleranceOperator(e.target.value)}
+            onChange={(e) => { setToleranceOperator(e.target.value); setIsSaved(false); }}
             disabled={isViewMode}
             className={`px-3 py-1 border border-indigo-300 rounded text-indigo-900 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : 'bg-white'}`}
           >

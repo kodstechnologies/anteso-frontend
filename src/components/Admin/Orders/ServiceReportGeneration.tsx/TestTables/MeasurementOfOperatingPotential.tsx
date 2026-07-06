@@ -105,6 +105,33 @@ const MeasurementOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: p
         );
     };
 
+    const updateMaColumnLabel = (index: number, value: string) => {
+        const newLabel = value.trim() || `mA${index + 1}`;
+
+        setMaColumnLabels((prev) => {
+            const oldLabel = prev[index];
+            if (oldLabel === newLabel) return prev;
+            if (prev.includes(newLabel)) return prev;
+
+            const updated = [...prev];
+            updated[index] = newLabel;
+
+            setTable2Rows((rows) =>
+                rows.map((r) => {
+                    const ma = { ...r.ma };
+                    ma[newLabel] = ma[oldLabel] ?? '';
+                    delete ma[oldLabel];
+                    const failed = { ...(r.failedCells || {}) };
+                    failed[newLabel] = failed[oldLabel] ?? false;
+                    delete failed[oldLabel];
+                    return calculateRowValuesForLabels({ ...r, ma, failedCells: failed }, updated);
+                })
+            );
+
+            return updated;
+        });
+    };
+
     // Helper function to check if a value is within tolerance
     const checkTolerance = useCallback((measured: number, setKV: number): boolean => {
         if (isNaN(measured) || isNaN(setKV) || setKV <= 0) return false;
@@ -124,9 +151,8 @@ const MeasurementOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: p
     }, [toleranceValue, toleranceType, toleranceSign]);
 
     // Helper function to calculate row values (avg, remarks, failedCells) using dynamic mA columns
-    const calculateRowValues = useCallback((row: Table2Row): Table2Row => {
+    const calculateRowValuesForLabels = useCallback((row: Table2Row, labels: string[]): Table2Row => {
         const setKV = parseFloat(row.setKV);
-        const labels = maColumnLabels;
         if (isNaN(setKV) || setKV <= 0) {
             return { ...row, avgKvp: '', remarks: '', failedCells: emptyFailed(labels) };
         }
@@ -152,7 +178,11 @@ const MeasurementOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: p
             remarks: allPass ? 'Pass' : 'Fail',
             failedCells,
         };
-    }, [checkTolerance, maColumnLabels]);
+    }, [checkTolerance]);
+
+    const calculateRowValues = useCallback((row: Table2Row): Table2Row => {
+        return calculateRowValuesForLabels(row, maColumnLabels);
+    }, [calculateRowValuesForLabels, maColumnLabels]);
 
     // === Auto-calculate Avg & Pass/Fail when tolerance settings change ===
     useEffect(() => {
@@ -176,69 +206,93 @@ const MeasurementOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: p
         );
     };
 
-    // === CSV Data Injection ===
+    // === CSV Data Injection (apply after load finishes so saved data does not overwrite import) ===
     useEffect(() => {
-        if (csvData && csvData.length > 0) {
-            // Table 1: Map kvp->time, ma->sliceThickness based on logic inferred from export
-            // Or look for specific Time/SliceThickness fields if they exist?
-            // Export: ['kVp', 'mA'] headers but values correspond to time/sliceThickness.
-            // So if user uses template, Table1_kvp -> Time, Table1_ma -> SliceThickness.
-            const t1Time = csvData.find(r => r['Field Name'] === 'Table1_kvp' || r['Field Name'] === 'Table1_Time')?.['Value'];
-            const t1Slice = csvData.find(r => r['Field Name'] === 'Table1_ma' || r['Field Name'] === 'Table1_SliceThickness')?.['Value'];
+        if (isLoading || !csvData || csvData.length === 0) return;
 
-            if (t1Time || t1Slice) {
-                setTable1Row(prev => ({
-                    ...prev,
-                    time: t1Time || prev.time,
-                    sliceThickness: t1Slice || prev.sliceThickness
-                }));
-            }
+        const t1Time = csvData.find(r => r['Field Name'] === 'Table1_kvp' || r['Field Name'] === 'Table1_Time')?.['Value'];
+        const t1Slice = csvData.find(r => r['Field Name'] === 'Table1_ma' || r['Field Name'] === 'Table1_SliceThickness')?.['Value'];
 
-            // Table 2
-            // Find all unique row indices for Table 2
-            const t2Indices = [...new Set(csvData
-                .filter(r => r['Field Name'].startsWith('Table2_'))
-                .map(r => parseInt(r['Row Index']))
-                .filter(i => !isNaN(i) && i > 0)
-            )];
-
-            if (t2Indices.length > 0) {
-                const labels = maColumnLabels;
-                const newRows = t2Indices.map(idx => {
-                    const setKV = csvData.find(r => r['Field Name'] === 'Table2_SetKV' && parseInt(r['Row Index']) === idx)?.['Value'] || '';
-                    const ma: Record<string, string> = {};
-                    for (const label of labels) {
-                        ma[label] = csvData.find(r => (r['Field Name'] === `Table2_ma${label}` || r['Field Name'] === `Table2_ma_${label}`) && parseInt(r['Row Index']) === idx)?.['Value']
-                            || (label === '100' ? csvData.find(r => r['Field Name'] === 'Table2_Result' && parseInt(r['Row Index']) === idx)?.['Value'] : undefined)
-                            || '';
-                    }
-                    const row: Table2Row = {
-                        id: Date.now().toString() + Math.random(),
-                        setKV,
-                        ma,
-                        avgKvp: '',
-                        remarks: '',
-                        failedCells: emptyFailed(labels)
-                    };
-                    return calculateRowValues(row);
-                });
-                setTable2Rows(newRows);
-            }
-
-            // Tolerance
-            const tolVal = csvData.find(r => r['Field Name'] === 'Tolerance_Value')?.['Value'];
-            const tolType = csvData.find(r => r['Field Name'] === 'Tolerance_Type')?.['Value'];
-            const tolSign = csvData.find(r => r['Field Name'] === 'Tolerance_Sign')?.['Value'];
-
-            if (tolVal) setToleranceValue(tolVal);
-            if (tolType) setToleranceType(tolType.toLowerCase().includes('kv') ? 'absolute' : 'percent');
-            if (tolSign) setToleranceSign(tolSign.includes('plus') ? 'plus' : tolSign.includes('minus') ? 'minus' : 'both');
-
-            if (!testId) {
-                setIsEditing(true);
-            }
+        if (t1Time || t1Slice) {
+            setTable1Row(prev => ({
+                ...prev,
+                time: t1Time || prev.time,
+                sliceThickness: t1Slice || prev.sliceThickness
+            }));
         }
-    }, [csvData, calculateRowValues]);
+
+        // Prefer explicit column order from Excel/CSV, then field names, then current labels
+        const maLabelsFromMeta = csvData.find(r => r['Field Name'] === 'MaColumnLabels')?.['Value'];
+        const orderedFromMeta = maLabelsFromMeta
+            ? String(maLabelsFromMeta).split(',').map(s => s.trim()).filter(Boolean)
+            : [];
+
+        const maLabelFromField = (field: string): string | null => {
+            const m = field.match(/^Table2_ma_?(.+)$/i);
+            return m ? m[1] : null;
+        };
+        const importedMaLabels = [...new Set(
+            csvData
+                .map(r => maLabelFromField(String(r['Field Name'] || '')))
+                .filter((l): l is string => !!l)
+        )].sort((a, b) => {
+            const na = Number(a), nb = Number(b);
+            if (!isNaN(na) && !isNaN(nb)) return na - nb;
+            return a.localeCompare(b);
+        });
+
+        const labels = orderedFromMeta.length > 0
+            ? orderedFromMeta
+            : importedMaLabels.length > 0
+                ? importedMaLabels
+                : maColumnLabels;
+        if (labels.length > 0) setMaColumnLabels(labels);
+
+        const t2ByIndex: Record<number, Record<string, string>> = {};
+        csvData.forEach((row: any) => {
+            const field = String(row['Field Name'] || '').trim();
+            const value = String(row['Value'] ?? '').trim();
+            const idx = parseInt(row['Row Index'] || '0', 10);
+            if (!field.startsWith('Table2_') || isNaN(idx) || idx <= 0 || !value) return;
+            if (!t2ByIndex[idx]) t2ByIndex[idx] = {};
+            t2ByIndex[idx][field.replace(/^Table2_/, '')] = value;
+        });
+
+        const t2Indices = Object.keys(t2ByIndex).map(Number).sort((a, b) => a - b);
+        if (t2Indices.length > 0) {
+            const newRows = t2Indices.map(idx => {
+                const r = t2ByIndex[idx];
+                const ma: Record<string, string> = {};
+                for (const label of labels) {
+                    ma[label] = r[`ma${label}`] ?? r[`ma_${label}`] ?? '';
+                }
+                const row: Table2Row = {
+                    id: Date.now().toString() + Math.random(),
+                    setKV: r['SetKV'] ?? r['setKV'] ?? '',
+                    ma,
+                    avgKvp: '',
+                    remarks: '',
+                    failedCells: emptyFailed(labels)
+                };
+                return calculateRowValuesForLabels(row, labels);
+            });
+            setTable2Rows(newRows);
+        }
+
+        const tolVal = csvData.find(r => r['Field Name'] === 'Tolerance_Value')?.['Value'];
+        const tolType = csvData.find(r => r['Field Name'] === 'Tolerance_Type')?.['Value'];
+        const tolSign = csvData.find(r => r['Field Name'] === 'Tolerance_Sign')?.['Value'];
+
+        if (tolVal) setToleranceValue(String(tolVal));
+        if (tolType) setToleranceType(String(tolType).toLowerCase().includes('kv') ? 'absolute' : 'percent');
+        if (tolSign) {
+            const s = String(tolSign);
+            setToleranceSign(s.includes('plus') ? 'plus' : s.includes('minus') ? 'minus' : 'both');
+        }
+
+        setIsEditing(true);
+        setHasSaved(false);
+    }, [csvData, isLoading, calculateRowValues]);
 
     // === Form Valid ===
     const isFormValid = useMemo(() => {
@@ -281,21 +335,31 @@ const MeasurementOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: p
 
                     // Table 2: support maColumnLabels + row.ma, or legacy ma10/ma100/ma200
                     if (Array.isArray(rec.table2) && rec.table2.length > 0) {
-                        const labels = Array.isArray(rec.maColumnLabels) && rec.maColumnLabels.length > 0
+                        let labels = Array.isArray(rec.maColumnLabels) && rec.maColumnLabels.length > 0
                             ? rec.maColumnLabels.map((l: any) => String(l))
-                            : ['10', '100', '200'];
+                            : [];
+                        if (labels.length === 0) {
+                            const fromMaObject = rec.table2.find((r: any) => r.ma && typeof r.ma === 'object');
+                            if (fromMaObject?.ma) {
+                                labels = Object.keys(fromMaObject.ma).map(String);
+                            }
+                        }
+                        if (labels.length === 0) labels = ['10', '100', '200'];
                         setMaColumnLabels(labels);
                         setTable2Rows(
                             rec.table2.map((r: any) => {
                                 const ma: Record<string, string> = {};
                                 if (r.ma && typeof r.ma === 'object') {
-                                    labels.forEach((l: string) => { ma[l] = String(r.ma[l] ?? ''); });
+                                    labels.forEach((l: string) => { ma[l] = String(r.ma[l] ?? r.ma[String(l)] ?? ''); });
                                 } else {
-                                    ma['10'] = String(r.ma10 ?? '');
-                                    ma['100'] = String(r.ma100 ?? '');
-                                    ma['200'] = String(r.ma200 ?? '');
+                                    const legacyMap: Record<string, string> = {
+                                        '10': String(r.ma10 ?? ''),
+                                        '100': String(r.ma100 ?? ''),
+                                        '200': String(r.ma200 ?? ''),
+                                    };
+                                    labels.forEach((l: string) => { ma[l] = legacyMap[l] ?? ''; });
                                 }
-                                return {
+                                const row: Table2Row = {
                                     id: Date.now().toString() + Math.random(),
                                     setKV: String(r.setKV ?? ''),
                                     ma,
@@ -303,6 +367,7 @@ const MeasurementOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: p
                                     remarks: r.remarks || '',
                                     failedCells: emptyFailed(labels),
                                 };
+                                return calculateRowValuesForLabels(row, labels);
                             })
                         );
                     }
@@ -477,43 +542,61 @@ const MeasurementOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: p
                     <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                             <tr>
-                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">
+                                <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 tracking-wider border-r align-middle">
                                     Set kV
                                 </th>
-                                {maColumnLabels.map((label, idx) => (
-                                    <th key={label} className="px-4 py-3 text-left text-xs font-medium text-gray-700 tracking-wider border-r relative group">
-                                        @ mA {label}
-                                        {!isViewMode && maColumnLabels.length > 1 && (
+                                <th colSpan={maColumnLabels.length} className="px-4 py-3 text-center text-xs font-medium text-gray-700 tracking-wider border-r">
+                                    <div className="flex items-center justify-center gap-2">
+                                        <span>Measured kVp @ mA</span>
+                                        {!isViewMode && (
                                             <button
                                                 type="button"
-                                                onClick={() => removeMaColumn(idx)}
-                                                className="absolute -top-0.5 -right-1 p-0.5 text-red-500 opacity-0 group-hover:opacity-100 hover:bg-red-100 rounded"
-                                                title="Remove mA column"
+                                                onClick={addMaColumn}
+                                                className="p-1.5 text-blue-600 hover:bg-blue-50 rounded"
+                                                title="Add mA column"
                                             >
-                                                <Trash2 className="w-3 h-3" />
+                                                <Plus className="w-4 h-4" />
                                             </button>
                                         )}
-                                    </th>
-                                ))}
-                                {!isViewMode && (
-                                    <th className="px-2 py-3 border-r">
-                                        <button
-                                            type="button"
-                                            onClick={addMaColumn}
-                                            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded"
-                                            title="Add mA column"
-                                        >
-                                            <Plus className="w-4 h-4" />
-                                        </button>
-                                    </th>
-                                )}
-                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">
+                                    </div>
+                                </th>
+                                <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 tracking-wider border-r align-middle">
                                     Avg kVp
                                 </th>
-                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider">
+                                <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 tracking-wider align-middle">
                                     Pass/Fail
                                 </th>
-                                <th className="w-12" />
+                                <th rowSpan={2} className="w-12" />
+                            </tr>
+                            <tr>
+                                {maColumnLabels.map((label, idx) => (
+                                    <th key={`${label}-${idx}`} className="px-3 py-3 text-center text-xs font-medium text-gray-700 tracking-wider border-r">
+                                        <div className="flex items-center justify-center gap-1">
+                                            <span className="text-gray-500">@ mA</span>
+                                            <input
+                                                type="text"
+                                                value={label}
+                                                onChange={(e) => updateMaColumnLabel(idx, e.target.value)}
+                                                disabled={isViewMode}
+                                                className={`w-16 px-2 py-1 text-xs border rounded text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode
+                                                    ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300'
+                                                    : 'border-gray-300'
+                                                    }`}
+                                                placeholder="10"
+                                            />
+                                            {!isViewMode && maColumnLabels.length > 1 && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removeMaColumn(idx)}
+                                                    className="p-1 text-red-500 hover:bg-red-100 rounded"
+                                                    title="Remove mA column"
+                                                >
+                                                    <Trash2 className="w-3 h-3" />
+                                                </button>
+                                            )}
+                                        </div>
+                                    </th>
+                                ))}
                             </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
@@ -532,8 +615,8 @@ const MeasurementOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: p
                                             placeholder="80"
                                         />
                                     </td>
-                                    {maColumnLabels.map((label) => (
-                                        <td key={label} className={`px-4 py-2 border-r ${row.failedCells?.[label] ? 'bg-red-100' : ''}`}>
+                                    {maColumnLabels.map((label, colIdx) => (
+                                        <td key={colIdx} className={`px-4 py-2 border-r ${row.failedCells?.[label] ? 'bg-red-100' : ''}`}>
                                             <input
                                                 type="text"
                                                 value={row.ma[label] ?? ''}

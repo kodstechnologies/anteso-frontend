@@ -1,5 +1,5 @@
 // src/components/TestTables/AccuracyOfIrradiationTime.tsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { PlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { Edit3, Save } from "lucide-react";
 import toast from "react-hot-toast";
@@ -52,14 +52,31 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
 
   const [toleranceOperator, setToleranceOperator] = useState("<=");
   const [toleranceValue, setToleranceValue] = useState("10");
+  const hasLoadedFromCSV = useRef(false);
 
   useEffect(() => {
-    if (!initialData || !csvDataVersion) return;
+    if (!initialData) return;
     const tc = initialData.testConditions;
-    if (tc) setTable1Row(prev => ({ ...prev, fcd: tc.fcd ?? prev.fcd, kv: tc.kv ?? prev.kv, ma: tc.ma ?? prev.ma }));
-    if (initialData.irradiationTimes?.length) setTable2Rows(initialData.irradiationTimes.map((t, i) => ({ id: String(i + 1), setTime: t.setTime ?? "", measuredTime: t.measuredTime ?? "" })));
-    if (initialData.tolerance?.value) setToleranceValue(initialData.tolerance.value);
-    if (initialData.tolerance?.operator) setToleranceOperator(initialData.tolerance.operator === ">=" ? ">=" : "<=");
+    if (tc) {
+      setTable1Row(prev => ({
+        ...prev,
+        fcd: tc.fcd != null ? String(tc.fcd) : prev.fcd,
+        kv: tc.kv != null ? String(tc.kv) : prev.kv,
+        ma: tc.ma != null ? String(tc.ma) : prev.ma,
+      }));
+    }
+    if (initialData.irradiationTimes?.length) {
+      setTable2Rows(initialData.irradiationTimes.map((t, i) => ({
+        id: String(i + 1),
+        setTime: t.setTime != null ? String(t.setTime) : "",
+        measuredTime: t.measuredTime != null ? String(t.measuredTime) : "",
+      })));
+    }
+    if (initialData.tolerance?.value != null) setToleranceValue(String(initialData.tolerance.value));
+    if (initialData.tolerance?.operator) setToleranceOperator(initialData.tolerance.operator);
+    hasLoadedFromCSV.current = true;
+    setIsEditing(true);
+    setLoading(false);
   }, [initialData, csvDataVersion]);
 
   const updateTable1 = (field: keyof Table1Row, value: string) => {
@@ -104,21 +121,31 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
     if (isNaN(err) || isNaN(tol)) return "-";
 
     switch (toleranceOperator) {
-      case ">": return err > tol ? "FAIL" : "PASS";
-      case "<": return err < tol ? "PASS" : "FAIL";
-      case ">=": return err >= tol ? "FAIL" : "PASS";
-      case "<=": return err <= tol ? "PASS" : "FAIL";
-      default: return "-";
+      case ">":
+        return err > tol ? "PASS" : "FAIL";
+      case "<":
+        return err < tol ? "PASS" : "FAIL";
+      case ">=":
+        return err >= tol ? "PASS" : "FAIL";
+      case "<=":
+        return err <= tol ? "PASS" : "FAIL";
+      default:
+        return "-";
     }
   };
 
-  // Load saved data
+  // Load saved data (skip when CSV import is present)
   useEffect(() => {
     const fetchData = async () => {
+      if (initialData || hasLoadedFromCSV.current) {
+        setLoading(false);
+        return;
+      }
       if (!serviceId) return;
       setLoading(true);
       try {
         const res = await getAccuracyOfIrradiationTimeByServiceIdForRadiographyMobileHT(serviceId);
+        if (hasLoadedFromCSV.current) return;
         const data = res?.data;
         if (data) {
           setTestId(data._id || null);
@@ -148,7 +175,7 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
     };
 
     fetchData();
-  }, [serviceId]);
+  }, [serviceId, initialData]);
 
   // Save / Update
   const handleSave = async () => {

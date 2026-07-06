@@ -123,6 +123,10 @@ const CongruenceOfRadiation: React.FC<Props> = ({ serviceId, testId: propTestId,
   // Load existing data
   useEffect(() => {
     const load = async () => {
+      if (csvDataVersion) {
+        setIsLoading(false);
+        return;
+      }
       if (!serviceId) return;
       setIsLoading(true);
       try {
@@ -168,7 +172,7 @@ const CongruenceOfRadiation: React.FC<Props> = ({ serviceId, testId: propTestId,
       }
     };
     load();
-  }, [serviceId, propTestId]);
+  }, [serviceId, propTestId, csvDataVersion]);
 
   // Save handler
   const handleSave = async () => {

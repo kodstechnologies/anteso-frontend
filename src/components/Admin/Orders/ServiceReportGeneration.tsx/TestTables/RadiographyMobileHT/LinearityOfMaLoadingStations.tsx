@@ -1,7 +1,7 @@
 // components/TestTables/LinearityOfMaLoading.tsx
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Plus, Trash2, Loader2, Edit3, Save } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
@@ -51,26 +51,35 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
   ]);
 
   const [tolerance, setTolerance] = useState<string>('0.1');
-  const [toleranceOperator, setToleranceOperator] = useState<string>('<=');
+  const [toleranceOperator, setToleranceOperator] = useState<string>('<');
+  const hasLoadedFromCSV = useRef(false);
 
   useEffect(() => {
     if (!initialData) return;
     if (initialData.table1?.fcd) setTable1Row(prev => ({ ...prev, fcd: initialData.table1.fcd }));
     if (initialData.table1?.kv) setTable1Row(prev => ({ ...prev, kv: initialData.table1.kv }));
+    if (initialData.table1?.time != null && String(initialData.table1.time).trim() !== '') {
+      setTable1Row(prev => ({ ...prev, time: String(initialData.table1.time) }));
+    }
     if (initialData.measHeaders?.length) setMeasHeaders(initialData.measHeaders);
     if (initialData.tolerance) setTolerance(initialData.tolerance);
     if (initialData.toleranceOperator) setToleranceOperator(initialData.toleranceOperator);
-    if (initialData.table2Rows?.length) setTable2Rows(initialData.table2Rows.map((r: any, i: number) => ({
-      id: String(i + 1),
-      ma: r.mAsApplied ?? '',
-      measuredOutputs: r.meas ?? [],
-      average: '',
-      x: '',
-      xMax: '',
-      xMin: '',
-      col: '',
-      remarks: '',
-    })));
+    if (initialData.table2Rows?.length) {
+      setTable2Rows(initialData.table2Rows.map((r: any, i: number) => ({
+        id: String(i + 1),
+        ma: r.mAsApplied ?? r.ma ?? '',
+        measuredOutputs: r.meas ?? [],
+        average: '',
+        x: '',
+        xMax: '',
+        xMin: '',
+        col: '',
+        remarks: '',
+      })));
+    }
+    hasLoadedFromCSV.current = true;
+    setIsEditing(true);
+    setIsLoading(false);
   }, [initialData]);
 
   const [isSaving, setIsSaving] = useState(false);
@@ -219,36 +228,40 @@ const processedTable2 = useMemo(() => {
   }
 
   return {
-    rows: rowsWithX.map(row => ({
-      ...row,
-      xMax,
-      xMin,
-      col,
-      remarks,
-    })),
+    rows: rowsWithX,
     summary: { xMax, xMin, col, remarks, rowSpan: rowsWithX.length }
   };
-}, [table2Rows, tolerance, toleranceOperator, table1Row.time]); // Add table1Row.time to dependencies
+}, [table2Rows, tolerance, toleranceOperator, table1Row.time]);
+
+  const hasValidTime = useMemo(() => {
+    const timeSec = parseFloat(table1Row.time);
+    return table1Row.time.trim() !== '' && !Number.isNaN(timeSec) && timeSec > 0;
+  }, [table1Row.time]);
   // === Form Valid ===
   const isFormValid = useMemo(() => {
     return (
       !!serviceId &&
       table1Row.fcd.trim() &&
       table1Row.kv.trim() &&
-      table1Row.time.trim() &&
+      hasValidTime &&
       table2Rows.every(r => r.ma.trim() && r.measuredOutputs.some(v => v.trim()))
     );
-  }, [serviceId, table1Row, table2Rows]);
+  }, [serviceId, table1Row, table2Rows, hasValidTime]);
 
   // === Load Data from backend ===
   useEffect(() => {
     const load = async () => {
+      if (initialData || hasLoadedFromCSV.current) {
+        setIsLoading(false);
+        return;
+      }
       if (!serviceId) {
         setIsLoading(false);
         return;
       }
       try {
         const res = await getLinearityOfMasLoadingStationsByServiceIdForRadiographyMobileHT(serviceId);
+        if (hasLoadedFromCSV.current) return;
         const data = res?.data;
         if (data) {
           setTestId(data._id || null);
@@ -274,7 +287,7 @@ const processedTable2 = useMemo(() => {
             );
           }
           setTolerance(data.tolerance || '0.1');
-          setToleranceOperator(data.toleranceOperator || '<=');
+          setToleranceOperator(data.toleranceOperator || '<');
           setHasSaved(true);
           setIsEditing(false);
         } else {
@@ -290,7 +303,7 @@ const processedTable2 = useMemo(() => {
       }
     };
     load();
-  }, [serviceId]);
+  }, [serviceId, initialData]);
 
   // === Save Handler ===
   const handleSave = async () => {
@@ -302,7 +315,7 @@ const processedTable2 = useMemo(() => {
     }
 
     if (!isFormValid) {
-      toast.error('Please fill all required fields');
+      toast.error(hasValidTime ? 'Please fill all required fields' : 'Time (sec) must be greater than 0');
       console.log('Form validation failed:', {
         fcd: table1Row.fcd,
         kv: table1Row.kv,
@@ -326,13 +339,14 @@ const processedTable2 = useMemo(() => {
           }),
           average: r.average || '',
           x: r.x || '',
-          xMax: r.xMax || '',
-          xMin: r.xMin || '',
-          col: r.col || '',
-          remarks: r.remarks || '',
+          xMax: processedTable2.summary.xMax,
+          xMin: processedTable2.summary.xMin,
+          col: processedTable2.summary.col,
+          remarks: processedTable2.summary.remarks,
         })),
         measHeaders,
         tolerance,
+        toleranceOperator,
       };
 
       let result;
@@ -393,6 +407,14 @@ const processedTable2 = useMemo(() => {
   const isViewMode = hasSaved && !isEditing;
   const buttonText = isViewMode ? 'Edit' : testId ? 'Update' : 'Save';
   const ButtonIcon = isViewMode ? Edit3 : Save;
+  const isTimerSelected = String(table1Row.time || '').trim() !== '';
+  const tableTitle = isTimerSelected
+    ? 'Linearity of mAs Loading'
+    : 'Linearity of mA Loading';
+  const sectionTitle = isTimerSelected
+    ? 'Linearity of mAs Loading and Accuracy of Irradiation Time'
+    : 'Linearity of mA Loading Stations';
+  const xUnitLabel = isTimerSelected ? 'mGy/(mA*s)' : 'mGy/mA';
 
   if (isLoading) {
     return (
@@ -405,7 +427,15 @@ const processedTable2 = useMemo(() => {
 
   return (
     <div className="p-6 max-w-full overflow-x-auto">
-      <h2 className="text-2xl font-bold mb-6">Linearity of mA Loading</h2>
+      <h2 className="text-2xl font-bold mb-6">{tableTitle}</h2>
+
+      {!isViewMode && table1Row.time.trim() && !hasValidTime && (
+        <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+          <p className="text-sm text-amber-700">
+            Time (sec) must be greater than 0 for X = mGy/(mA × sec) calculation.
+          </p>
+        </div>
+      )}
 
       {/* Table 1: FCD, kV, Time (sec) */}
       <div className="bg-white shadow-md rounded-lg overflow-hidden mb-8">
@@ -445,7 +475,7 @@ const processedTable2 = useMemo(() => {
                   value={table1Row.time}
                   onChange={e => setTable1Row(p => ({ ...p, time: e.target.value }))}
                   disabled={isViewMode}
-                  className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'}`}
+                  className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : !hasValidTime && table1Row.time.trim() ? 'border-red-500' : 'border-gray-300'}`}
                   placeholder="0.5"
                 />
               </td>
@@ -456,6 +486,9 @@ const processedTable2 = useMemo(() => {
 
       {/* Table 2: mA + Output (mGy) */}
       <div className="bg-white shadow-md rounded-lg overflow-hidden">
+        <div className="px-4 py-3 bg-blue-50 border-b">
+          <h3 className="text-lg font-semibold text-blue-900">{sectionTitle}</h3>
+        </div>
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-blue-50">
             <tr>
@@ -480,7 +513,7 @@ const processedTable2 = useMemo(() => {
                 </div>
               </th>
               <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 tracking-wider border-r">Avg Output</th>
-              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 tracking-wider border-r">X (mGy/mAs)</th>
+              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 tracking-wider border-r">X ({xUnitLabel})</th>
               <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 tracking-wider border-r">X MAX</th>
               <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 tracking-wider border-r">X MIN</th>
               <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 tracking-wider border-r">CoL</th>
@@ -596,14 +629,26 @@ const processedTable2 = useMemo(() => {
             </button>
           )}
           <div className="flex items-center gap-2 ml-auto">
-            <span className="text-sm font-medium text-gray-700">Tolerance (CoL) less than</span>
+            <span className="text-sm font-medium text-gray-700">Tolerance (CoL)</span>
+            <select
+              value={toleranceOperator}
+              onChange={e => setToleranceOperator(e.target.value)}
+              disabled={isViewMode}
+              className={`px-3 py-2 text-center font-bold border-2 border-blue-400 rounded-lg focus:ring-4 focus:ring-blue-200 text-sm ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`}
+            >
+              <option value="<">&lt;</option>
+              <option value=">">&gt;</option>
+              <option value="<=">&lt;=</option>
+              <option value=">=">&gt;=</option>
+              <option value="=">=</option>
+            </select>
             <input
               type="number"
               step="0.001"
               value={tolerance}
               onChange={e => setTolerance(e.target.value)}
               disabled={isViewMode}
-              className={`w-24 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'}`}
+              className={`w-24 px-3 py-2 text-center font-bold border-2 border-blue-400 rounded-lg focus:ring-4 focus:ring-blue-200 text-sm ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`}
             />
           </div>
         </div>
@@ -638,7 +683,7 @@ const processedTable2 = useMemo(() => {
           ) : (
             <>
               <ButtonIcon className="w-4 h-4" />
-              {buttonText} mA Linearity
+              {buttonText} {isTimerSelected ? 'mAs' : 'mA'} Linearity
             </>
           )}
         </button>

@@ -191,13 +191,12 @@ const MainTestTableForOPG: React.FC<MainTestTableProps> = ({ testData }) => {
         ? testData.linearityOfMaLoading?.table1?.[0]
         : testData.linearityOfMaLoading?.table1;
       const hasTime = table1?.time !== undefined && table1?.time !== null && String(table1?.time).trim() !== "";
-      const hasMasShape = validRows.some((row: any) => row.mAsRange || row.mAsApplied);
-      const linearityHeading = (!hasTime || hasMasShape)
-        ? "Linearity of mAs Loading (Coefficient of Linearity)"
-        : "Linearity of mA Loading (Coefficient of Linearity)";
+      const timeVal = parseFloat(String(table1?.time ?? ""));
+      const hasValidTime = hasTime && !isNaN(timeVal) && timeVal > 0;
+      const linearityHeading = "Linearity of mA Loading (Coefficient of Linearity)";
 
       const tolerance = testData.linearityOfMaLoading.tolerance || "0.1";
-      const toleranceOperator = testData.linearityOfMaLoading.toleranceOperator || "<=";
+      const toleranceOperator = testData.linearityOfMaLoading.toleranceOperator || "<";
       const getVal = (o: any): number => {
         if (o == null) return NaN;
         if (typeof o === "number") return o;
@@ -215,7 +214,8 @@ const MainTestTableForOPG: React.FC<MainTestTableProps> = ({ testData }) => {
           const avg = outputs.length > 0 ? outputs.reduce((a: number, b: number) => a + b, 0) / outputs.length : null;
           const maVal = parseFloat(String(row.ma ?? row.mA ?? row.appliedCurrent ?? ""));
           if (avg !== null && !isNaN(maVal) && maVal > 0) {
-            const xVal = avg / maVal;
+            const mAs = hasValidTime ? maVal * timeVal : null;
+            const xVal = mAs && mAs > 0 ? avg / mAs : avg / maVal;
             if (isFinite(xVal)) xValues.push(xVal);
           }
         });
@@ -237,6 +237,7 @@ const MainTestTableForOPG: React.FC<MainTestTableProps> = ({ testData }) => {
         else if (toleranceOperator === "<") isPass = c < t;
         else if (toleranceOperator === ">=") isPass = c >= t;
         else if (toleranceOperator === ">") isPass = c > t;
+        else if (toleranceOperator === "=") isPass = Math.abs(c - t) < 0.0001;
       }
 
       const tableLevelKv =

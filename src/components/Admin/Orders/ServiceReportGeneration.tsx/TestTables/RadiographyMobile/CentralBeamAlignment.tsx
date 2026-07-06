@@ -50,10 +50,10 @@ const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, 
 
   const [observedTilt, setObservedTilt] = useState<string>('1.5');
 
-  const [toleranceOperator, setToleranceOperator] = useState<'<' | '>'>('>');
+  const [toleranceOperator, setToleranceOperator] = useState<'<' | '>' | '='>('=');
   const [toleranceValue, setToleranceValue] = useState<string>('1.5');
 
-  const operators = ['<', '>'] as const;
+  const operators = ['=', '<', '>'] as const;
 
   const evaluation = useMemo(() => {
     const observed = parseFloat(observedTilt) || 0;
@@ -63,11 +63,12 @@ const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, 
       return { remark: '' as const, pass: false };
     }
 
-    // Strict operator-based comparison.
-    // Requirement: if observed tilt equals acceptance criteria, it must be FAIL.
+    // Operator-based comparison; '=' passes when observed matches tolerance.
     const pass = toleranceOperator === '<'
       ? observed < tolerance
-      : observed > tolerance;
+      : toleranceOperator === '>'
+        ? observed > tolerance
+        : Math.abs(observed - tolerance) < 0.0001;
 
     return {
       remark: pass ? 'Pass' : 'Fail' as 'Pass' | 'Fail',
@@ -106,8 +107,9 @@ const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, 
             setObservedTilt(String(data.observedTilt.value ?? ''));
           }
           if (data.tolerance) {
-            setToleranceOperator(data.tolerance.operator === '>' ? '>' : '<');
-            setToleranceValue(String(data.tolerance.value ?? '2'));
+            const op = data.tolerance.operator;
+            setToleranceOperator(op === '>' ? '>' : op === '<' ? '<' : '=');
+            setToleranceValue(String(data.tolerance.value ?? '1.5'));
           }
           setIsSaved(true);
           setIsEditing(false);
@@ -141,7 +143,8 @@ const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, 
       setObservedTilt(String(initialData.observedTilt.value ?? ''));
     }
     if (initialData.tolerance) {
-      setToleranceOperator((initialData.tolerance.operator as any) || '<');
+      const op = initialData.tolerance.operator;
+      setToleranceOperator(op === '>' ? '>' : op === '<' ? '<' : '=');
       setToleranceValue(String(initialData.tolerance.value ?? '1.5'));
     }
     setIsSaved(false);

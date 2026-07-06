@@ -103,6 +103,7 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, tu
     // Load existing test data
     useEffect(() => {
         if (!serviceId) return;
+        if (csvData && csvData.length > 0) return;
         const loadTest = async () => {
             try {
                 const res = await getEffectiveFocalSpotByServiceIdForInventionalRadiology(serviceId, tubeId);
@@ -147,48 +148,63 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, tu
             }
         };
         loadTest();
-    }, [serviceId, tubeId, propTestId]);
+    }, [serviceId, tubeId, propTestId, csvData]);
 
     // CSV Data Injection
     useEffect(() => {
         if (csvData && csvData.length > 0) {
-            // FCD
-            const tKv = csvData.find(r => r['Field Name'] === 'Table1_kv')?.['Value'];
-            const tMa = csvData.find(r => r['Field Name'] === 'Table1_ma')?.['Value'];
-            const fSpot = csvData.find(r => r['Field Name'] === 'Table1_focalSpotSize')?.['Value'];
+            const tableRows = csvData.filter(
+                (r) =>
+                    r['Field Name'] === 'Table1_focalSpotSize' ||
+                    r['Field Name'] === 'Table2_MeasuredWidth' ||
+                    r['Field Name'] === 'Table2_MeasuredLength' ||
+                    r['Field Name'] === 'Table2_MeasuredNominal'
+            );
 
-            // Measured Dimensions
-            const mWidth = csvData.find(r => r['Field Name'] === 'Table2_MeasuredWidth')?.['Value'];
-            const mLength = csvData.find(r => r['Field Name'] === 'Table2_MeasuredLength')?.['Value'];
-                const mNominal = csvData.find(r => r['Field Name'] === 'Table2_MeasuredNominal')?.['Value'];
+            if (tableRows.length > 0) {
+                const rowIndices = Array.from(new Set(tableRows.map((r) => parseInt(r['Row Index'], 10)))).sort((a, b) => a - b);
+                const importedRows = rowIndices.map((idx) => {
+                    const fSpot =
+                        csvData.find((r) => r['Field Name'] === 'Table1_focalSpotSize' && parseInt(r['Row Index'], 10) === idx)?.['Value'] || '';
+                    const mWidth =
+                        csvData.find((r) => r['Field Name'] === 'Table2_MeasuredWidth' && parseInt(r['Row Index'], 10) === idx)?.['Value'] || '';
+                    const mLength =
+                        csvData.find((r) => r['Field Name'] === 'Table2_MeasuredLength' && parseInt(r['Row Index'], 10) === idx)?.['Value'] || '';
+                    const mNominal =
+                        csvData.find((r) => r['Field Name'] === 'Table2_MeasuredNominal' && parseInt(r['Row Index'], 10) === idx)?.['Value'] || '';
+                    const measuredNominal =
+                        mNominal !== ''
+                            ? Number(mNominal)
+                            : mWidth !== '' && mLength !== ''
+                              ? (Number(mWidth) + Number(mLength)) / 2
+                              : Number(mWidth || mLength || 0);
+                    const focusType =
+                        /small/i.test(fSpot) ? 'Small Focus' : /large/i.test(fSpot) ? 'Large Focus' : idx === 2 ? 'Small Focus' : 'Large Focus';
 
-            if (mWidth || mLength) {
-                setRows(prev => prev.map(row => {
-                    // Logic to decide which row to update: large or small? 
-                    // Usually Excel might have one row per test section.
-                    // If multiple rows needed, mapping logic would be more complex.
-                    // For now, mapping to 'large' if only one result.
-                    if (row.id === 'large') {
-                            const measuredNominal =
-                                mNominal != null && String(mNominal).trim() !== ''
-                                    ? Number(mNominal)
-                                    : (mWidth != null && mLength != null
-                                        ? (Number(mWidth) + Number(mLength)) / 2
-                                        : Number(mWidth || mLength || 0));
-                        return {
-                            ...row,
-                            measuredNominal: String(measuredNominal),
-                        };
-                    }
-                    return row;
-                }));
+                    return {
+                        id: /small/i.test(focusType) ? 'small' : 'large',
+                        focusType: focusType as 'Large Focus' | 'Small Focus',
+                        statedNominal: fSpot || (focusType === 'Small Focus' ? '0.6' : '2'),
+                        measuredNominal: Number.isFinite(measuredNominal) ? String(measuredNominal) : '',
+                        remark: '' as 'Pass' | 'Fail' | '',
+                    };
+                });
+
+                if (importedRows.length > 0) {
+                    setRows((prev) => {
+                        const next = [...prev];
+                        importedRows.forEach((imported) => {
+                            const targetIdx = next.findIndex((r) => r.id === imported.id);
+                            if (targetIdx >= 0) next[targetIdx] = { ...next[targetIdx], ...imported };
+                            else next.push(imported);
+                        });
+                        return next;
+                    });
+                }
             }
 
-                if (fSpot != null && String(fSpot).trim() !== '') {
-                    setRows(prev =>
-                        prev.map(row => (row.id === 'large' ? { ...row, statedNominal: String(fSpot) } : row))
-                    );
-                }
+            const tKv = csvData.find((r) => r['Field Name'] === 'Table1_kv')?.['Value'];
+            if (tKv) setFcd(String(tKv));
 
             // Tolerance
             const tW = csvData.find(r => r['Field Name'] === 'ToleranceWidth')?.['Value'];
@@ -197,6 +213,7 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, tu
 
             if (!testId) {
                 setIsEditing(true);
+                setIsSaved(false);
             }
         }
     }, [csvData, testId]);

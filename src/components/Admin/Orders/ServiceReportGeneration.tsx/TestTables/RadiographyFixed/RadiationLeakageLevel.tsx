@@ -298,6 +298,10 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
   // Load existing data
   useEffect(() => {
     const load = async () => {
+      if (csvDataVersion) {
+        setIsLoading(false);
+        return;
+      }
       if (!serviceId) {
         setIsLoading(false);
         return;
@@ -364,7 +368,7 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
       }
     };
     load();
-  }, [serviceId]);
+  }, [serviceId, csvDataVersion]);
 
   const handleSave = async () => {
     console.log('handleSave called', { isFormValid, serviceId, testId });

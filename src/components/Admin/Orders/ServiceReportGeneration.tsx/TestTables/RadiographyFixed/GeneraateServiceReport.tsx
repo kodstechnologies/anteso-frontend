@@ -395,6 +395,36 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
 
   // --- CSV/Excel Logic ---
 
+  const normalizeCsvToleranceSign = (raw: unknown): string => {
+    const s = String(raw ?? "±").trim();
+    if (!s || s === "\uFFFD" || s.charCodeAt(0) === 65533) return "±";
+    const lower = s.toLowerCase();
+    if (lower === "plus" || s === "+") return "+";
+    if (lower === "minus" || s === "-") return "-";
+    if (lower === "both" || s === "±" || s === "+/-" || s === "+/-") return "±";
+    return "±";
+  };
+
+  const normalizeCsvComparisonOperator = (raw: unknown): string =>
+    String(raw ?? "").trim().replace(/\s+/g, "");
+
+  const rowsFromSpreadsheetText = (text: string): any[] => {
+    const trimmed = text.trim();
+    if (trimmed.startsWith("TEST:")) {
+      return parseTableCSVToRows(text);
+    }
+    return parseCSV(text);
+  };
+
+  const inferTimerModeFromGroupedData = (groupedData: { [key: string]: any[] }) => {
+    const hasTimerSection = !!groupedData["Accuracy Of Irradiation Time"];
+    const hasMaLinearity = !!groupedData["Linearity Of mA Loading"];
+    const hasMasLinearity = !!groupedData["Linearity Of mAs Loading"];
+    if (hasTimerSection || hasMaLinearity) return true;
+    if (hasMasLinearity) return false;
+    return null;
+  };
+
   const parseCSV = (text: string): any[] => {
     const lines = text.split('\n').filter(line => line.trim());
     if (lines.length === 0) return [];
@@ -486,7 +516,7 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
       if (!raw) { i++; continue; }
 
       if (raw.startsWith("TEST:")) {
-        const label = raw.slice(5).trim();
+        const label = raw.slice(5).split(",")[0].trim();
 
         // 1) Congruence of Radiation
         if (label === "CONGRUENCE OF RADIATION") {
@@ -538,7 +568,7 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
           if (tiltVal) pushRow(testName, "ObservedTilt_value", tiltVal, 0);
 
           const tolOpLine = (lines[i + 3] || "").split(",");
-          const tolOp = (tolOpLine[1] || "").trim();
+          const tolOp = normalizeCsvComparisonOperator(tolOpLine[1] || "");
           if (tolOp) pushRow(testName, "Tolerance_operator", tolOp, 0);
           const tolValLine = (lines[i + 4] || "").split(",");
           const tolVal = (tolValLine[1] || "").trim();
@@ -550,43 +580,35 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
         // 3) Effective Focal Spot
         if (label === "EFFECTIVE FOCAL SPOT") {
           const testName = "Effective Focal Spot";
-          const cond = (lines[i + 1] || "").split(",");
-          const fcd = cond[1] || "";
-          if (fcd) pushRow(testName, "FCD", fcd, 0);
-
-          // tolerance lines
-          let j = i + 2;
+          let idx = 0;
+          let j = i + 1;
           while (j < lines.length) {
             const l = lines[j].trim();
             if (!l) { j++; continue; }
-            if (l.startsWith("Focus Type")) { break; }
+            if (l.startsWith("TEST:")) break;
             const cells = l.split(",");
             const labelCell = (cells[0] || "").trim();
             const valCell = (cells[1] || "").trim();
-            if (labelCell === "Tolerance Small Multiplier") pushRow(testName, "ToleranceCriteria_tolSmallMul", valCell, 0);
-            if (labelCell === "Tolerance Small Limit") pushRow(testName, "ToleranceCriteria_smallLimit", valCell, 0);
-            if (labelCell === "Tolerance Medium Multiplier") pushRow(testName, "ToleranceCriteria_tolMediumMul", valCell, 0);
-            if (labelCell === "Tolerance Medium Lower") pushRow(testName, "ToleranceCriteria_mediumLower", valCell, 0);
-            if (labelCell === "Tolerance Medium Upper") pushRow(testName, "ToleranceCriteria_mediumUpper", valCell, 0);
-            if (labelCell === "Tolerance Large Multiplier") pushRow(testName, "ToleranceCriteria_tolLargeMul", valCell, 0);
-            j++;
-          }
-
-          // focal spot rows start where header "Focus Type..." is
-          while (j < lines.length && !lines[j].trim().startsWith("Focus Type")) j++;
-          j++; // first data row
-          let idx = 0;
-          while (j < lines.length) {
-            const l = lines[j].trim();
-            if (!l || l.startsWith("TEST:")) break;
-            const cells = l.split(",");
-            const fType = (cells[0] || "").trim();
-            if (fType) {
+            if (labelCell.startsWith("FCD")) {
+              if (valCell) pushRow(testName, "FCD", valCell, 0);
+            } else if (labelCell === "Tolerance Small Multiplier") {
+              pushRow(testName, "ToleranceCriteria_tolSmallMul", valCell, 0);
+            } else if (labelCell === "Tolerance Small Limit") {
+              pushRow(testName, "ToleranceCriteria_smallLimit", valCell, 0);
+            } else if (labelCell === "Tolerance Medium Multiplier") {
+              pushRow(testName, "ToleranceCriteria_tolMediumMul", valCell, 0);
+            } else if (labelCell === "Tolerance Medium Lower") {
+              pushRow(testName, "ToleranceCriteria_mediumLower", valCell, 0);
+            } else if (labelCell === "Tolerance Medium Upper") {
+              pushRow(testName, "ToleranceCriteria_mediumUpper", valCell, 0);
+            } else if (labelCell === "Tolerance Large Multiplier") {
+              pushRow(testName, "ToleranceCriteria_tolLargeMul", valCell, 0);
+            } else if (labelCell !== "Focus Type" && labelCell.includes("Focus")) {
               const sW = (cells[1] || "").trim();
               const sH = (cells[2] || "").trim();
               const mW = (cells[3] || "").trim();
               const mH = (cells[4] || "").trim();
-              pushRow(testName, "FocalSpot_focusType", fType, idx);
+              pushRow(testName, "FocalSpot_focusType", labelCell, idx);
               if (sW) pushRow(testName, "FocalSpot_statedWidth", sW, idx);
               if (sH) pushRow(testName, "FocalSpot_statedHeight", sH, idx);
               if (mW) pushRow(testName, "FocalSpot_measuredWidth", mW, idx);
@@ -650,7 +672,7 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
             const cells = l.split(",");
             const labelCell = (cells[0] || "").trim();
             const valCell = (cells[1] || "").trim();
-            if (labelCell === "Tolerance Sign") pushRow(testName, "Tolerance_sign", valCell, 0);
+            if (labelCell === "Tolerance Sign") pushRow(testName, "Tolerance_sign", normalizeCsvToleranceSign(valCell), 0);
             if (labelCell.startsWith("Tolerance Value")) pushRow(testName, "Tolerance_value", valCell, 0);
             if (labelCell.startsWith("Total Filtration Measured")) pushRow(testName, "TotalFiltration_measured", valCell, 0);
             if (labelCell.startsWith("Total Filtration Required")) pushRow(testName, "TotalFiltration_required", valCell, 0);
@@ -803,26 +825,20 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
         // 9) Radiation Protection Survey
         if (label === "RADIATION PROTECTION SURVEY") {
           const testName = "Radiation Protection Survey";
-          const header = (lines[i + 1] || "").split(",");
-          const vals = (lines[i + 2] || "").split(",");
-          const getVal = (label: string): string => {
-            const idx = header.findIndex(h => h.trim() === label);
-            return idx >= 0 ? (vals[idx] || "").trim() : "";
-          };
-          const surveyDate = getVal("Survey Date");
-          const appliedCurrent = getVal("Applied Current (mA)");
-          const appliedVoltage = getVal("Applied Voltage (kV)");
-          const exposureTime = getVal("Exposure Time (s)");
-          const workload = getVal("Workload (mA.min/week)");
-          if (surveyDate) pushRow(testName, "surveyDate", surveyDate, 0);
-          if (appliedCurrent) pushRow(testName, "appliedCurrent", appliedCurrent, 0);
-          if (appliedVoltage) pushRow(testName, "appliedVoltage", appliedVoltage, 0);
-          if (exposureTime) pushRow(testName, "exposureTime", exposureTime, 0);
-          if (workload) pushRow(testName, "workload", workload, 0);
+          const metaCells = (lines[i + 1] || "").split(",");
+          for (let k = 0; k < metaCells.length - 1; k += 2) {
+            const labelCell = (metaCells[k] || "").trim();
+            const valCell = (metaCells[k + 1] || "").trim();
+            if (labelCell === "Survey Date" && valCell) pushRow(testName, "surveyDate", valCell, 0);
+            if (labelCell === "Applied Current (mA)" && valCell) pushRow(testName, "appliedCurrent", valCell, 0);
+            if (labelCell === "Applied Voltage (kV)" && valCell) pushRow(testName, "appliedVoltage", valCell, 0);
+            if (labelCell === "Exposure Time (s)" && valCell) pushRow(testName, "exposureTime", valCell, 0);
+            if (labelCell === "Workload (mA.min/week)" && valCell) pushRow(testName, "workload", valCell, 0);
+          }
 
-          // locations header at i+3, rows at i+4+
+          // locations header at i+2, rows at i+3+
           let idx = 0;
-          let j = i + 4;
+          let j = i + 3;
           while (j < lines.length) {
             const l = lines[j].trim();
             if (!l || l.startsWith("TEST:")) break;
@@ -869,6 +885,16 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
         setShowTimerModal(false);
         if (serviceId) {
           localStorage.setItem(`radiography-fixed-timer-${serviceId}`, String(hasTimerSection));
+        }
+      }
+
+      const inferredTimer = inferTimerModeFromGroupedData(groupedData);
+      if (inferredTimer !== null) {
+        setHasTimer(inferredTimer);
+        setShowTimerModal(false);
+        setTimerPreferenceResolved(true);
+        if (serviceId) {
+          localStorage.setItem(`radiography-fixed-timer-${serviceId}`, String(inferredTimer));
         }
       }
 
@@ -919,7 +945,10 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
           const val = row['Value'];
           if (key.startsWith('TechniqueFactors_')) tech[key.split('_')[1]] = val;
           else if (key.startsWith('ObservedTilt_')) obs[key.split('_')[1]] = val;
-          else if (key.startsWith('Tolerance_')) tol[key.split('_')[1]] = val;
+          else if (key.startsWith('Tolerance_')) {
+            const field = key.split('_')[1];
+            tol[field] = field === 'operator' ? normalizeCsvComparisonOperator(val) : val;
+          }
         });
         newDataForComponents.centralBeamAlignment = { techniqueFactors: tech, observedTilt: obs, tolerance: tol };
       }
@@ -1011,7 +1040,7 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
         newDataForComponents.totalFiltration = {
           mAStations: measHeaders,
           measurements: tfMeasurements,
-          tolerance: { sign: tol.Sign || tol.sign || '±', value: tol.Value || tol.value || '2.0' },
+          tolerance: { sign: normalizeCsvToleranceSign(tol.Sign || tol.sign || '±'), value: tol.Value || tol.value || '2.0' },
           totalFiltration: tfTotalFiltration,
         };
       }
@@ -1063,7 +1092,7 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
         newDataForComponents.totalFiltration = {
           mAStations: ma.length ? ma : ['50', '100'],
           measurements: meas.filter(Boolean),
-          tolerance: { sign: tol.Sign || tol.sign || '±', value: tol.Value || tol.value || '2.0' },
+          tolerance: { sign: normalizeCsvToleranceSign(tol.Sign || tol.sign || '±'), value: tol.Value || tol.value || '2.0' },
           totalFiltration: { measured: total.Measured || total.measured || '', required: total.Required || total.required || '', atKvp: total.AtKvp || total.atKvp || '' },
         };
       }
@@ -1113,7 +1142,7 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
             tolOp = val;
           } else if (key.startsWith('Tolerance_')) {
             if (key === 'Tolerance_value') tol = val;
-            else if (key === 'Tolerance_operator') tolOp = val;
+            else if (key === 'Tolerance_operator') tolOp = normalizeCsvComparisonOperator(val) || val;
           }
         });
         newDataForComponents.linearityOfMaLoading = { table1: cond, table2: rows.filter(Boolean), tolerance: tol, toleranceOperator: tolOp };
@@ -1297,7 +1326,7 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
           const firstSheetName = workbook.SheetNames[0];
           const worksheet = workbook.Sheets[firstSheetName];
           const csv = XLSX.utils.sheet_to_csv(worksheet);
-          const csvData = parseCSV(csv);
+          const csvData = rowsFromSpreadsheetText(csv);
           await processCSVData(csvData);
         } else {
           // CSV: support Dental-style table format (RadiographyFixed_Template_WithTimer.csv)
@@ -1455,7 +1484,7 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
         const workbook = XLSX.read(arrayBuffer, { type: 'array' });
         const ws = workbook.Sheets[workbook.SheetNames[0]];
         const csv = XLSX.utils.sheet_to_csv(ws);
-        const parsed = parseCSV(csv);
+        const parsed = rowsFromSpreadsheetText(csv);
         await processCSVData(parsed, true);
         toast.success('Excel data auto-loaded!', { id: 'auto-load' });
       } catch (err: any) {

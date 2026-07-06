@@ -123,6 +123,10 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
                 setIsLoading(false);
                 return;
             }
+            if (csvData && csvData.length > 0) {
+                setIsLoading(false);
+                return;
+            }
 
             setIsLoading(true);
             try {
@@ -171,21 +175,30 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
         };
 
         loadTest();
-    }, [propTestId, serviceId, tubeId]);
+    }, [propTestId, serviceId, tubeId, csvData]);
 
     // CSV Data Injection
     useEffect(() => {
         if (csvData && csvData.length > 0) {
-            // Mapping table rows from CSV
-            const tableRows = csvData.filter(r => r['Field Name'] === 'Table1_kv' || r['Field Name'] === 'Table1_mas' || r['Field Name']?.startsWith('Table1_Meas'));
+            const tableRows = csvData.filter(
+                (r) =>
+                    r['Field Name'] === 'Table1_kv' ||
+                    r['Field Name'] === 'Table1_ma' ||
+                    r['Field Name']?.startsWith('Table2_Exp')
+            );
             if (tableRows.length > 0) {
-                const rowIndices = Array.from(new Set(tableRows.map(r => parseInt(r['Row Index'])))).sort((a, b) => a - b);
+                const rowIndices = Array.from(new Set(tableRows.map((r) => parseInt(r['Row Index'], 10)))).sort((a, b) => a - b);
                 const newRows = rowIndices.map((idx, i) => {
-                    const kv = csvData.find(r => r['Field Name'] === 'Table1_kv' && parseInt(r['Row Index']) === idx)?.['Value'] || '';
-                    const mas = csvData.find(r => r['Field Name'] === 'Table1_mas' && parseInt(r['Row Index']) === idx)?.['Value'] || '';
-                    const outputs = headers.map((_, hIdx) => {
-                        return csvData.find(r => r['Field Name'] === `Table1_Meas${hIdx + 1}` && parseInt(r['Row Index']) === idx)?.['Value'] || '';
-                    });
+                    const kv = csvData.find((r) => r['Field Name'] === 'Table1_kv' && parseInt(r['Row Index'], 10) === idx)?.['Value'] || '';
+                    const ma = csvData.find((r) => r['Field Name'] === 'Table1_ma' && parseInt(r['Row Index'], 10) === idx)?.['Value'] || '';
+                    const time = csvData.find((r) => r['Field Name'] === 'Table1_time' && parseInt(r['Row Index'], 10) === idx)?.['Value'] || '';
+                    const mas = ma && time ? String(parseFloat(ma) * parseFloat(time)) : ma;
+                    const outputs = [1, 2, 3, 4, 5].map(
+                        (n) =>
+                            csvData.find(
+                                (r) => r['Field Name'] === `Table2_Exp${n}` && parseInt(r['Row Index'], 10) === idx
+                            )?.['Value'] || ''
+                    );
 
                     return {
                         id: String(i + 1),
@@ -210,6 +223,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
 
             if (!testId) {
                 setIsEditing(true);
+                setIsSaved(false);
             }
         }
     }, [csvData, testId, headers]);

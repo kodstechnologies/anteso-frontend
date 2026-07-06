@@ -353,11 +353,12 @@ const ViewServiceReportBMD: React.FC = () => {
               accuracyOfIrradiationTime = {
                 rows: irrData.irradiationTimes?.map((t: any) => ({
                   setTime: t.setTime || "",
+                  measuredTime: t.measuredTime || "",
                   avgTime: t.measuredTime || "",
                   remark: t.remark || "-",
                 })) || [],
-                timeToleranceSign: irrData.tolerance?.operator === ">" || irrData.tolerance?.operator === ">=" ? "+" : irrData.tolerance?.operator === "<" || irrData.tolerance?.operator === "<=" ? "-" : "Â±",
-                timeToleranceValue: irrData.tolerance?.value || "10",
+                tolerance: irrData.tolerance || { operator: "<=", value: "10" },
+                irradiationTimes: irrData.irradiationTimes || [],
               };
             }
           } catch (err) {
@@ -875,22 +876,28 @@ const ViewServiceReportBMD: React.FC = () => {
                         </thead>
                         <tbody>
                           {testData.accuracyOfIrradiationTimeFull.irradiationTimes.map((row: any, i: number) => {
-                            const setTime = parseFloat(row.setTime) || 0;
-                            const measuredTime = parseFloat(row.measuredTime) || 0;
-                            const error = setTime > 0 ? Math.abs((measuredTime - setTime) / setTime * 100).toFixed(2) : "-";
-                            const toleranceValue = parseFloat(testData.accuracyOfIrradiationTimeFull.tolerance?.value || "10");
-                            const toleranceOp = testData.accuracyOfIrradiationTimeFull.tolerance?.operator || "<=";
-                            let remark = "-";
-                            if (error !== "-" && !isNaN(parseFloat(error))) {
-                              const errorVal = parseFloat(error);
+                            const calcError = (set: string, meas: string): string => {
+                              const s = parseFloat(set);
+                              const m = parseFloat(meas);
+                              if (isNaN(s) || isNaN(m) || s === 0) return "-";
+                              return Math.abs(((m - s) / s) * 100).toFixed(2);
+                            };
+                            const getRemark = (errorPct: string): string => {
+                              const toleranceValue = parseFloat(testData.accuracyOfIrradiationTimeFull.tolerance?.value || "10");
+                              const toleranceOp = testData.accuracyOfIrradiationTimeFull.tolerance?.operator || "<=";
+                              if (errorPct === "-" || isNaN(toleranceValue)) return "-";
+                              const errorVal = parseFloat(errorPct);
+                              if (isNaN(errorVal)) return "-";
                               switch (toleranceOp) {
-                                case ">": remark = errorVal > toleranceValue ? "FAIL" : "PASS"; break;
-                                case "<": remark = errorVal < toleranceValue ? "PASS" : "FAIL"; break;
-                                case ">=": remark = errorVal >= toleranceValue ? "FAIL" : "PASS"; break;
-                                case "<=": remark = errorVal <= toleranceValue ? "PASS" : "FAIL"; break;
-                                default: remark = "-";
+                                case ">": return errorVal > toleranceValue ? "PASS" : "FAIL";
+                                case "<": return errorVal < toleranceValue ? "PASS" : "FAIL";
+                                case ">=": return errorVal >= toleranceValue ? "PASS" : "FAIL";
+                                case "<=": return errorVal <= toleranceValue ? "PASS" : "FAIL";
+                                default: return "-";
                               }
-                            }
+                            };
+                            const error = calcError(String(row.setTime ?? ""), String(row.measuredTime ?? ""));
+                            const remark = getRemark(error);
                             return (
                               <tr key={i} className="text-center">
                                 <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.setTime || "-"}</td>
@@ -910,7 +917,7 @@ const ViewServiceReportBMD: React.FC = () => {
                     {testData.accuracyOfIrradiationTimeFull.tolerance && (
                       <div className="mt-2 print:mt-1" style={{ marginTop: '2px' }}>
                         <p className="text-sm print:text-[9px]" style={{ fontSize: '11px' }}>
-                          Tolerance : Error {testData.accuracyOfIrradiationTimeFull.tolerance.operator === ">" || testData.accuracyOfIrradiationTimeFull.tolerance.operator === ">=" ? ">" : testData.accuracyOfIrradiationTimeFull.tolerance.operator === "<" || testData.accuracyOfIrradiationTimeFull.tolerance.operator === "<=" ? "<" : "Â±"} {testData.accuracyOfIrradiationTimeFull.tolerance.value || "10"} %
+                          <strong>Tolerance:</strong> Error {testData.accuracyOfIrradiationTimeFull.tolerance.operator || "<="} {testData.accuracyOfIrradiationTimeFull.tolerance.value || "10"}%
                         </p>
                       </div>
                     )}

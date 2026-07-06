@@ -168,6 +168,11 @@ const MeasurementOfMaLinearity: React.FC<Props> = ({ serviceId, tubeId, testId: 
     };
   }, [table2Rows, tolerance, table1Row.time]);
 
+  const hasValidTime = useMemo(() => {
+    const timeSec = parseFloat(table1Row.time);
+    return table1Row.time.trim() !== '' && !Number.isNaN(timeSec) && timeSec > 0;
+  }, [table1Row.time]);
+
   // CSV injection (CTScan-style fields)
   useEffect(() => {
     if (!csvData || csvData.length === 0) return;
@@ -225,22 +230,29 @@ const MeasurementOfMaLinearity: React.FC<Props> = ({ serviceId, tubeId, testId: 
     const tol = csvData.find((r) => r["Field Name"] === "Tolerance")?.["Value"];
     if (tol) setTolerance(tol);
 
-    if (!testId) setIsEditing(true);
-  }, [csvData]);
+    if (!testId) {
+      setIsEditing(true);
+      setHasSaved(false);
+    }
+  }, [csvData, testId]);
 
   const isFormValid = useMemo(() => {
     return (
       !!serviceId &&
       table1Row.kvp.trim() &&
       table1Row.sliceThickness.trim() &&
-      table1Row.time.trim() &&
+      hasValidTime &&
       table2Rows.every((r) => r.mAsApplied.trim() && r.measuredOutputs.some((v) => v.trim()))
     );
-  }, [serviceId, table1Row, table2Rows]);
+  }, [serviceId, table1Row, table2Rows, hasValidTime]);
 
   useEffect(() => {
     const load = async () => {
       if (!serviceId) {
+        setIsLoading(false);
+        return;
+      }
+      if (csvData && csvData.length > 0) {
         setIsLoading(false);
         return;
       }
@@ -289,10 +301,13 @@ const MeasurementOfMaLinearity: React.FC<Props> = ({ serviceId, tubeId, testId: 
       }
     };
     load();
-  }, [serviceId, propTestId, tubeId]);
+  }, [serviceId, propTestId, tubeId, csvData]);
 
   const handleSave = async () => {
-    if (!isFormValid) return;
+    if (!isFormValid) {
+      toast.error(hasValidTime ? 'Please fill all required fields' : 'Time must be greater than 0');
+      return;
+    }
     setIsSaving(true);
 
     const payload = {
@@ -352,10 +367,10 @@ const MeasurementOfMaLinearity: React.FC<Props> = ({ serviceId, tubeId, testId: 
       <h2 className="text-2xl font-bold text-gray-800">Measurement of mA Linearity</h2>
 
       {/* Warning message for missing time */}
-      {!isViewMode && table1Row.time && (isNaN(parseFloat(table1Row.time)) || parseFloat(table1Row.time) <= 0) && (
+      {!isViewMode && table1Row.time.trim() && !hasValidTime && (
         <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
           <p className="text-sm text-amber-700">
-            Time value is required for accurate X = mGy/(mA*time) calculation.
+            Time must be greater than 0 for X = mGy/(mA × time) calculation.
           </p>
         </div>
       )}
@@ -402,7 +417,7 @@ const MeasurementOfMaLinearity: React.FC<Props> = ({ serviceId, tubeId, testId: 
                     onChange={(e) => setTable1Row((p) => ({ ...p, time: e.target.value }))}
                     disabled={isViewMode}
                     className={`w-full px-2 py-1 border rounded text-sm text-center ${
-                      isViewMode ? "bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300" : "border-gray-300"
+                      isViewMode ? "bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300" : !hasValidTime && table1Row.time.trim() ? "border-red-500" : "border-gray-300"
                     }`}
                     placeholder="e.g., 0.5"
                   />

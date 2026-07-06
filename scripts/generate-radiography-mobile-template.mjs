@@ -67,7 +67,18 @@ sec(
   ]
 );
 
-// 7) Linearity of mAs Loading Stations
+// 7) Linearity — mA Loading (with timer): includes Time (sec)
+sec(
+  "LINEARITY OF MA LOADING",
+  ["FCD", "kV", "Time (sec)", "mA Applied", "Meas 1", "Meas 2", "Meas 3", "Tolerance Operator", "Tolerance"],
+  [
+    ["100", "80", "1", "50", "", "", "", "<=", "0.1"],
+    ["", "", "", "100", "", "", "", "", ""],
+    ["", "", "", "200", "", "", "", "", ""],
+  ]
+);
+
+// 7b) Linearity — mAs Loading (no timer)
 sec(
   "LINEARITY OF MAS LOADING STATIONS",
   ["FCD", "kV", "mAs Applied", "Meas 1", "Meas 2", "Meas 3", "Tolerance Operator", "Tolerance"],

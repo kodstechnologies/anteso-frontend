@@ -56,6 +56,7 @@ const LinearityOfMaLoading: React.FC<LinearityOfMaLoadingProps> = ({
     ]);
 
     const [tolerance, setTolerance] = useState<string>('0.1');
+    const [toleranceOperator, setToleranceOperator] = useState<string>('<');
 
     const [isSaving, setIsSaving] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
@@ -132,25 +133,21 @@ const LinearityOfMaLoading: React.FC<LinearityOfMaLoadingProps> = ({
         const tol = parseFloat(tolerance) || 0.1;
         const xValues: number[] = [];
 
-        // Get time in seconds from table1Row
-        const timeSec = parseFloat(table1Row.time);
-        const hasValidTime = !isNaN(timeSec) && timeSec > 0;
-
         const rowsWithX = table2Rows.map(row => {
             const outputs = row.measuredOutputs.map(v => parseFloat(v)).filter(v => !isNaN(v) && v > 0);
-            const avg = outputs.length > 0 ? (outputs.reduce((a, b) => a + b, 0) / outputs.length) : 0;
-            const avgDisplay = avg > 0 ? avg.toFixed(4) : '—';
+            const avg = outputs.length > 0 ? parseFloat((outputs.reduce((a, b) => a + b, 0) / outputs.length).toFixed(4)) : null;
+            const avgDisplay = avg !== null ? avg.toFixed(4) : '—';
+
             const ma = parseFloat(row.ma);
-            
-            // Calculate X = mGy / (mA * time) and round to 4 decimal places
-            let x = null;
-            if (avg > 0 && ma > 0 && hasValidTime) {
-                x = avg / (ma * timeSec);
-            } else if (avg > 0 && ma > 0 && !hasValidTime) {
-                // Fallback to original calculation if time is invalid
-                x = avg / ma;
+            const timeSec = parseFloat(table1Row.time);
+            const rowHasValidTime = !isNaN(timeSec) && timeSec > 0;
+            const mAs = !isNaN(ma) && ma > 0 && rowHasValidTime ? ma * timeSec : null;
+            let x: number | null = null;
+            if (avg !== null && mAs && mAs > 0) {
+                x = parseFloat((avg / mAs).toFixed(4));
+            } else if (avg !== null && !isNaN(ma) && ma > 0) {
+                x = parseFloat((avg / ma).toFixed(4));
             }
-            
             const xDisplay = x !== null ? x.toFixed(4) : '—';
 
             if (x !== null) xValues.push(x);
@@ -158,31 +155,60 @@ const LinearityOfMaLoading: React.FC<LinearityOfMaLoadingProps> = ({
             return { ...row, average: avgDisplay, x: xDisplay };
         });
 
-        const xMax = xValues.length > 0 ? Math.max(...xValues).toFixed(4) : '—';
-        const xMin = xValues.length > 0 ? Math.min(...xValues).toFixed(4) : '—';
-        const colVal = xMax !== '—' && xMin !== '—' && (parseFloat(xMax) + parseFloat(xMin)) > 0
-            ? ((parseFloat(xMax) - parseFloat(xMin)) / (parseFloat(xMax) + parseFloat(xMin))).toFixed(4)
-            : '—';
-        const pass = colVal !== '—' && parseFloat(colVal) <= tol;
+        const hasData = xValues.length > 0;
+        const xMax = hasData ? parseFloat(Math.max(...xValues).toFixed(4)).toFixed(4) : '—';
+        const xMin = hasData ? parseFloat(Math.min(...xValues).toFixed(4)).toFixed(4) : '—';
+        const colNum = hasData && xMax !== '—' && xMin !== '—' && (parseFloat(xMax) + parseFloat(xMin)) > 0
+            ? Math.abs(parseFloat(xMax) - parseFloat(xMin)) / (parseFloat(xMax) + parseFloat(xMin))
+            : null;
+        const col = hasData && colNum !== null && colNum >= 0 ? parseFloat(colNum.toFixed(4)).toFixed(4) : '—';
 
-        return rowsWithX.map(row => ({
-            ...row,
-            xMax,
-            xMin,
-            col: colVal,
-            remarks: pass ? 'Pass' : colVal === '—' ? '' : 'Fail',
-        }));
-    }, [table2Rows, tolerance, table1Row.time]);
+        let pass = false;
+        let remarks = '—';
+        if (hasData && col !== '—' && colNum !== null) {
+            const colVal = parseFloat(col);
+            switch (toleranceOperator) {
+                case '<':
+                    pass = colVal < tol;
+                    break;
+                case '>':
+                    pass = colVal > tol;
+                    break;
+                case '<=':
+                    pass = colVal <= tol;
+                    break;
+                case '>=':
+                    pass = colVal >= tol;
+                    break;
+                case '=':
+                    pass = Math.abs(colVal - tol) < 0.0001;
+                    break;
+                default:
+                    pass = colVal <= tol;
+            }
+            remarks = pass ? 'Pass' : 'Fail';
+        }
+
+        return {
+            rows: rowsWithX,
+            summary: { xMax, xMin, col, remarks, rowSpan: rowsWithX.length },
+        };
+    }, [table2Rows, tolerance, toleranceOperator, table1Row.time]);
+
+    const hasValidTime = useMemo(() => {
+        const timeSec = parseFloat(table1Row.time);
+        return table1Row.time.trim() !== '' && !Number.isNaN(timeSec) && timeSec > 0;
+    }, [table1Row.time]);
 
     const isFormValid = useMemo(() => {
         return (
             !!serviceId &&
             table1Row.fcd.trim() &&
             table1Row.kv.trim() &&
-            table1Row.time.trim() &&
+            hasValidTime &&
             table2Rows.every(r => r.ma.trim() && r.measuredOutputs.some(v => v.trim()))
         );
-    }, [serviceId, table1Row, table2Rows]);
+    }, [serviceId, table1Row, table2Rows, hasValidTime]);
 
     useEffect(() => {
         const load = async () => {
@@ -220,6 +246,7 @@ const LinearityOfMaLoading: React.FC<LinearityOfMaLoadingProps> = ({
                         }
                     }
                     setTolerance(data.tolerance || '0.1');
+                    setToleranceOperator(data.toleranceOperator || '<');
                     setHasSaved(true);
                     setIsEditing(false);
                 } else {
@@ -298,7 +325,7 @@ const LinearityOfMaLoading: React.FC<LinearityOfMaLoadingProps> = ({
         }
 
         if (!isFormValid) {
-            toast.error('Please fill all required fields');
+            toast.error(hasValidTime ? 'Please fill all required fields' : 'Time (sec) must be greater than 0');
             return;
         }
 
@@ -310,7 +337,7 @@ const LinearityOfMaLoading: React.FC<LinearityOfMaLoadingProps> = ({
                     kv: table1Row.kv,
                     time: table1Row.time,
                 },
-                table2: processedTable2.map(r => ({
+                table2: processedTable2.rows.map(r => ({
                     ma: r.ma,
                     measuredOutputs: r.measuredOutputs.map(v => {
                         const val = v.trim();
@@ -318,12 +345,13 @@ const LinearityOfMaLoading: React.FC<LinearityOfMaLoadingProps> = ({
                     }),
                     average: r.average || '',
                     x: r.x || '',
-                    xMax: r.xMax || '',
-                    xMin: r.xMin || '',
-                    col: r.col || '',
-                    remarks: r.remarks || '',
+                    xMax: processedTable2.summary.xMax,
+                    xMin: processedTable2.summary.xMin,
+                    col: processedTable2.summary.col,
+                    remarks: processedTable2.summary.remarks,
                 })),
                 tolerance,
+                toleranceOperator,
             };
 
             let result;
@@ -369,6 +397,14 @@ const LinearityOfMaLoading: React.FC<LinearityOfMaLoadingProps> = ({
     const isViewMode = hasSaved && !isEditing;
     const buttonText = isViewMode ? 'Edit' : testId ? 'Update' : 'Save';
     const ButtonIcon = isViewMode ? Edit3 : Save;
+    const isTimerSelected = String(table1Row.time || '').trim() !== '';
+    const tableTitle = isTimerSelected
+        ? 'Linearity of mAs Loading'
+        : 'Linearity of mA Loading';
+    const sectionTitle = isTimerSelected
+        ? 'Linearity of mAs Loading and Accuracy of Irradiation Time'
+        : 'Linearity of mA Loading Stations';
+    const xUnitLabel = isTimerSelected ? 'mGy/(mA*s)' : 'mGy/mA';
 
     if (isLoading) {
         return (
@@ -381,13 +417,12 @@ const LinearityOfMaLoading: React.FC<LinearityOfMaLoadingProps> = ({
 
     return (
         <div className="p-6 max-w-full overflow-x-auto">
-            <h2 className="text-2xl font-bold mb-6">Linearity of mA Loading</h2>
+            <h2 className="text-2xl font-bold mb-6">{tableTitle}</h2>
 
-            {/* Warning message for missing time */}
-            {!isViewMode && table1Row.time && (isNaN(parseFloat(table1Row.time)) || parseFloat(table1Row.time) <= 0) && (
+            {!isViewMode && table1Row.time.trim() && !hasValidTime && (
                 <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
                     <p className="text-sm text-amber-700">
-                        ⚠️ Time value is required for accurate X = mGy/(mA × sec) calculation. Please enter a valid time in seconds.
+                        Time (sec) must be greater than 0 for X = mGy/(mA × sec) calculation.
                     </p>
                 </div>
             )}
@@ -429,7 +464,7 @@ const LinearityOfMaLoading: React.FC<LinearityOfMaLoadingProps> = ({
                                     value={table1Row.time}
                                     onChange={e => setTable1Row(p => ({ ...p, time: e.target.value }))}
                                     disabled={isViewMode}
-                                    className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'}`}
+                                    className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : !hasValidTime && table1Row.time.trim() ? 'border-red-500' : 'border-gray-300'}`}
                                     placeholder="0.5"
                                 />
                             </td>
@@ -439,6 +474,9 @@ const LinearityOfMaLoading: React.FC<LinearityOfMaLoadingProps> = ({
             </div>
 
             <div className="bg-white shadow-md rounded-lg overflow-hidden">
+                <div className="px-4 py-3 bg-blue-50 border-b">
+                    <h3 className="text-lg font-semibold text-blue-900">{sectionTitle}</h3>
+                </div>
                 <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-blue-50">
                         <tr>
@@ -463,7 +501,7 @@ const LinearityOfMaLoading: React.FC<LinearityOfMaLoadingProps> = ({
                                 </div>
                             </th>
                             <th rowSpan={2} className="px-4 py-3 w-28 text-left text-xs font-medium text-gray-700 tracking-wider border-r whitespace-nowrap">Avg Output</th>
-                            <th rowSpan={2} className="px-4 py-3 w-32 text-left text-xs font-medium text-gray-700 tracking-wider border-r whitespace-nowrap">X (mGy/(mA·sec))</th>
+                            <th rowSpan={2} className="px-4 py-3 w-32 text-left text-xs font-medium text-gray-700 tracking-wider border-r whitespace-nowrap">X ({xUnitLabel})</th>
                             <th rowSpan={2} className="px-4 py-3 w-24 text-left text-xs font-medium text-gray-700 tracking-wider border-r whitespace-nowrap">X MAX</th>
                             <th rowSpan={2} className="px-4 py-3 w-24 text-left text-xs font-medium text-gray-700 tracking-wider border-r whitespace-nowrap">X MIN</th>
                             <th rowSpan={2} className="px-4 py-3 w-24 text-left text-xs font-medium text-gray-700 tracking-wider border-r whitespace-nowrap">CoL</th>
@@ -492,7 +530,7 @@ const LinearityOfMaLoading: React.FC<LinearityOfMaLoadingProps> = ({
                         </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                        {processedTable2.map((p, rowIdx) => (
+                        {processedTable2.rows.map((p, rowIdx) => (
                             <tr key={p.id} className="hover:bg-gray-50">
                                 <td className="px-4 py-2 border-r">
                                     <input
@@ -527,38 +565,40 @@ const LinearityOfMaLoading: React.FC<LinearityOfMaLoadingProps> = ({
                                 {rowIdx === 0 && (
                                     <>
                                         <td
-                                            rowSpan={processedTable2.length}
+                                            rowSpan={processedTable2.summary.rowSpan}
                                             className="px-4 py-2 text-center border-r font-medium bg-yellow-50 align-middle min-w-[80px]"
                                         >
-                                            {p.xMax}
+                                            {processedTable2.summary.xMax}
                                         </td>
                                         <td
-                                            rowSpan={processedTable2.length}
+                                            rowSpan={processedTable2.summary.rowSpan}
                                             className="px-4 py-2 text-center border-r font-medium bg-yellow-50 align-middle min-w-[80px]"
                                         >
-                                            {p.xMin}
+                                            {processedTable2.summary.xMin}
                                         </td>
                                         <td
-                                            rowSpan={processedTable2.length}
+                                            rowSpan={processedTable2.summary.rowSpan}
                                             className="px-4 py-2 text-center border-r font-medium bg-yellow-50 align-middle min-w-[80px]"
                                         >
-                                            {p.col}
+                                            {processedTable2.summary.col}
+                                        </td>
+                                        <td
+                                            rowSpan={processedTable2.summary.rowSpan}
+                                            className="px-4 py-2 text-center align-middle min-w-[80px]"
+                                        >
+                                            <span
+                                                className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${processedTable2.summary.remarks === 'Pass'
+                                                    ? 'bg-green-100 text-green-800'
+                                                    : processedTable2.summary.remarks === 'Fail'
+                                                        ? 'bg-red-100 text-red-800'
+                                                        : 'text-gray-400'
+                                                    }`}
+                                            >
+                                                {processedTable2.summary.remarks || '—'}
+                                            </span>
                                         </td>
                                     </>
                                 )}
-
-                                <td className="px-4 py-2 text-center min-w-[80px]">
-                                    <span
-                                        className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${p.remarks === 'Pass'
-                                            ? 'bg-green-100 text-green-800'
-                                            : p.remarks === 'Fail'
-                                                ? 'bg-red-100 text-red-800'
-                                                : 'text-gray-400'
-                                            }`}
-                                    >
-                                        {p.remarks || '—'}
-                                    </span>
-                                </td>
 
                                 <td className="px-2 py-2 text-center">
                                     {table2Rows.length > 1 && !isViewMode && (
@@ -585,14 +625,26 @@ const LinearityOfMaLoading: React.FC<LinearityOfMaLoadingProps> = ({
                         </button>
                     )}
                     <div className="flex items-center gap-2 ml-auto">
-                        <span className="text-sm font-medium text-gray-700">Tolerance (CoL) less than</span>
+                        <span className="text-sm font-medium text-gray-700">Tolerance (CoL)</span>
+                        <select
+                            value={toleranceOperator}
+                            onChange={e => setToleranceOperator(e.target.value)}
+                            disabled={isViewMode}
+                            className={`px-3 py-2 text-center font-bold border-2 border-blue-400 rounded-lg focus:ring-4 focus:ring-blue-200 text-sm ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`}
+                        >
+                            <option value="<">&lt;</option>
+                            <option value=">">&gt;</option>
+                            <option value="<=">&lt;=</option>
+                            <option value=">=">&gt;=</option>
+                            <option value="=">=</option>
+                        </select>
                         <input
                             type="number"
                             step="0.001"
                             value={tolerance}
                             onChange={e => setTolerance(e.target.value)}
                             disabled={isViewMode}
-                            className={`w-24 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'}`}
+                            className={`w-24 px-3 py-2 text-center font-bold border-2 border-blue-400 rounded-lg focus:ring-4 focus:ring-blue-200 text-sm ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`}
                         />
                     </div>
                 </div>
@@ -625,7 +677,7 @@ const LinearityOfMaLoading: React.FC<LinearityOfMaLoadingProps> = ({
                     ) : (
                         <>
                             <ButtonIcon className="w-4 h-4" />
-                            {buttonText} mA Linearity
+                            {buttonText} {isTimerSelected ? 'mAs' : 'mA'} Linearity
                         </>
                     )}
                 </button>

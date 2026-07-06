@@ -87,7 +87,7 @@ const MainTestTableForDentalHandHeld: React.FC<MainTestTableProps> = ({ testData
         normalizeToleranceOperator(irrBlocks?.timeToleranceSign) ??
         "<=";
       const toleranceValue =
-        irrBlocks?.tolerance?.value ?? irrBlocks?.timeToleranceValue ?? "5";
+        irrBlocks?.tolerance?.value ?? irrBlocks?.timeToleranceValue ?? "10";
 
       const testRows = validRows.map((row: any) => {
         const setTime = parseFloat(String(irrRowSetTime(row)));
@@ -283,7 +283,11 @@ const MainTestTableForDentalHandHeld: React.FC<MainTestTableProps> = ({ testData
   const addLinearityOfMaLoadingSummary = (lob: any, validRows: any[], label: string) => {
     if (!lob || validRows.length === 0) return;
     const tolerance = linearityToleranceValue(lob.tolerance, "0.1");
-    const toleranceOperator = linearityToleranceOperator(lob.tolerance, lob.toleranceOperator, "<=");
+    const toleranceOperator = linearityToleranceOperator(lob.tolerance, lob.toleranceOperator, "<");
+
+    const table1 = Array.isArray(lob?.table1) ? lob?.table1?.[0] : lob?.table1;
+    const timeVal = parseFloat(String(table1?.time ?? ""));
+    const hasValidTime = !isNaN(timeVal) && timeVal > 0;
 
     const getVal = (o: any): number => {
       if (o == null) return NaN;
@@ -311,7 +315,8 @@ const MainTestTableForDentalHandHeld: React.FC<MainTestTableProps> = ({ testData
           : parseFloat(loadLabel) || 0;
 
         if (avg !== null && midLoad > 0) {
-          const xVal = avg / midLoad;
+          const mAs = row.ma && hasValidTime ? midLoad * timeVal : null;
+          const xVal = mAs && mAs > 0 ? avg / mAs : avg / midLoad;
           if (isFinite(xVal)) xValues.push(xVal);
         }
       });
@@ -336,6 +341,7 @@ const MainTestTableForDentalHandHeld: React.FC<MainTestTableProps> = ({ testData
       else if (toleranceOperator === "<") isPass = c < t;
       else if (toleranceOperator === ">=") isPass = c >= t;
       else if (toleranceOperator === ">") isPass = c > t;
+      else if (toleranceOperator === "=") isPass = Math.abs(c - t) < 0.0001;
     }
 
     const tableLevelKv =

@@ -225,16 +225,21 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
     }));
   }, [table2Rows, tolerance, table1Row.time]);
 
+  const hasValidTime = useMemo(() => {
+    const timeSec = parseFloat(table1Row.time);
+    return table1Row.time.trim() !== '' && !Number.isNaN(timeSec) && timeSec > 0;
+  }, [table1Row.time]);
+
   // === Form Valid ===
   const isFormValid = useMemo(() => {
     return (
       !!serviceId &&
       table1Row.fcd.trim() &&
       table1Row.kv.trim() &&
-      table1Row.time.trim() &&
+      hasValidTime &&
       table2Rows.every(r => r.ma.trim() && r.measuredOutputs.some(v => v.trim()))
     );
-  }, [serviceId, table1Row, table2Rows]);
+  }, [serviceId, table1Row, table2Rows, hasValidTime]);
 
   // === Load Data from backend ===
   useEffect(() => {
@@ -301,11 +306,12 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
     }
 
     if (!isFormValid) {
-      toast.error('Please fill all required fields');
+      toast.error(hasValidTime ? 'Please fill all required fields' : 'Time (sec) must be greater than 0');
       console.log('Form validation failed:', {
         fcd: table1Row.fcd,
         kv: table1Row.kv,
         time: table1Row.time,
+        hasValidTime,
         table2Rows: table2Rows.map(r => ({ ma: r.ma, hasOutputs: r.measuredOutputs.some(v => v.trim()) }))
       });
       return;
@@ -406,11 +412,11 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
     <div className="p-6 max-w-full">
       <h2 className="text-2xl font-bold mb-6">Linearity of mA Loading</h2>
 
-      {/* Warning message for missing time */}
-      {!isViewMode && table1Row.time && (isNaN(parseFloat(table1Row.time)) || parseFloat(table1Row.time) <= 0) && (
+      {/* Warning message for invalid time */}
+      {!isViewMode && table1Row.time.trim() && !hasValidTime && (
         <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
           <p className="text-sm text-amber-700">
-            ⚠️ Time value is required for accurate X = mGy/(mA × sec) calculation. Please enter a valid time in seconds.
+            Time (sec) must be greater than 0 for X = mGy/(mA × sec) calculation.
           </p>
         </div>
       )}
@@ -453,7 +459,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
                   value={table1Row.time}
                   onChange={e => setTable1Row(p => ({ ...p, time: e.target.value }))}
                   disabled={isViewMode}
-                  className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'}`}
+                  className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : !hasValidTime && table1Row.time.trim() ? 'border-red-500' : 'border-gray-300'}`}
                   placeholder="0.5"
                 />
               </td>

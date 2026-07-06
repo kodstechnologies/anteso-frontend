@@ -213,44 +213,50 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
         if (rec) {
           setTestId(rec._id || propTestId);
 
-          if (rec.settings?.[0] || rec.measurementSettings?.[0]) {
-            const s = rec.settings?.[0] || rec.measurementSettings?.[0];
-            setSettings({
-              kv: s.kv || s.kvp || s.kV || s.kVp || s.appliedVoltage ? String(getPrimitive(s.kv ?? s.kvp ?? s.kV ?? s.kVp ?? s.appliedVoltage) ?? '') : '',
-              ma: s.ma || s.mA || s.appliedCurrent ? String(getPrimitive(s.ma ?? s.mA ?? s.appliedCurrent) ?? '') : '',
-              time: s.time || s.exposureTime ? String(getPrimitive(s.time ?? s.exposureTime) ?? '') : '',
-            });
+          const hasCsvImport = csvData && csvData.length > 0;
+          if (!hasCsvImport) {
+            if (rec.settings?.[0] || rec.measurementSettings?.[0]) {
+              const s = rec.settings?.[0] || rec.measurementSettings?.[0];
+              setSettings({
+                kv: s.kv || s.kvp || s.kV || s.kVp || s.appliedVoltage ? String(getPrimitive(s.kv ?? s.kvp ?? s.kV ?? s.kVp ?? s.appliedVoltage) ?? '') : '',
+                ma: s.ma || s.mA || s.appliedCurrent ? String(getPrimitive(s.ma ?? s.mA ?? s.appliedCurrent) ?? '') : '',
+                time: s.time || s.exposureTime ? String(getPrimitive(s.time ?? s.exposureTime) ?? '') : '',
+              });
+            } else {
+              setSettings({
+                kv: rec.kv || rec.kvp || rec.kV ? String(getPrimitive(rec.kv ?? rec.kvp ?? rec.kV ?? rec.kVp ?? rec.appliedVoltage) ?? '') : '',
+                ma: rec.ma || rec.mA ? String(getPrimitive(rec.ma ?? rec.mA ?? rec.appliedCurrent) ?? '') : '',
+                time: rec.time || rec.exposureTime ? String(getPrimitive(rec.time ?? rec.exposureTime) ?? '') : '',
+              });
+            }
+
+            if (Array.isArray(rec.leakageMeasurements)) {
+              setLeakageRows(
+                rec.leakageMeasurements.map((r: any) => ({
+                  location: String(r.location ?? ''),
+                  front: r.front != null && r.front !== 0 ? String(getPrimitive(r.front ?? r.top) ?? '') : '',
+                  back: r.back != null && r.back !== 0 ? String(getPrimitive(r.back ?? r.up ?? r.down) ?? '') : '',
+                  left: r.left != null && r.left !== 0 ? String(getPrimitive(r.left) ?? '') : '',
+                  right: r.right != null && r.right !== 0 ? String(getPrimitive(r.right) ?? '') : '',
+                  max: '',
+                  unit: String(getPrimitive(r.unit) ?? 'mGy/h'),
+                  remark: '',
+                }))
+              );
+            }
+
+            setWorkload(String(rec.workload ?? ''));
+            setWorkloadUnit(String(rec.workloadUnit ?? 'mA·min/week'));
+            setToleranceValue(String(rec.toleranceValue ?? rec.tolerance?.value ?? rec.tolerance ?? ''));
+            setToleranceOperator((rec.toleranceOperator ?? rec.tolerance?.operator ?? 'less than or equal to') as any);
+            setToleranceTime(String(rec.toleranceTime ?? '1'));
+
+            setHasSaved(true);
+            setIsEditing(false);
           } else {
-            setSettings({
-              kv: rec.kv || rec.kvp || rec.kV ? String(getPrimitive(rec.kv ?? rec.kvp ?? rec.kV ?? rec.kVp ?? rec.appliedVoltage) ?? '') : '',
-              ma: rec.ma || rec.mA ? String(getPrimitive(rec.ma ?? rec.mA ?? rec.appliedCurrent) ?? '') : '',
-              time: rec.time || rec.exposureTime ? String(getPrimitive(rec.time ?? rec.exposureTime) ?? '') : '',
-            });
+            setHasSaved(false);
+            setIsEditing(true);
           }
-
-          if (Array.isArray(rec.leakageMeasurements)) {
-            setLeakageRows(
-              rec.leakageMeasurements.map((r: any) => ({
-                location: String(r.location ?? ''),
-                front: r.front != null && r.front !== 0 ? String(getPrimitive(r.front ?? r.top) ?? '') : '',
-                back: r.back != null && r.back !== 0 ? String(getPrimitive(r.back ?? r.up ?? r.down) ?? '') : '',
-                left: r.left != null && r.left !== 0 ? String(getPrimitive(r.left) ?? '') : '',
-                right: r.right != null && r.right !== 0 ? String(getPrimitive(r.right) ?? '') : '',
-                max: '',
-                unit: String(getPrimitive(r.unit) ?? 'mGy/h'),
-                remark: '',
-              }))
-            );
-          }
-
-          setWorkload(String(rec.workload ?? ''));
-          setWorkloadUnit(String(rec.workloadUnit ?? 'mA·min/week'));
-          setToleranceValue(String(rec.toleranceValue ?? rec.tolerance?.value ?? rec.tolerance ?? ''));
-          setToleranceOperator((rec.toleranceOperator ?? rec.tolerance?.operator ?? 'less than or equal to') as any);
-          setToleranceTime(String(rec.toleranceTime ?? '1'));
-
-          setHasSaved(true);
-          setIsEditing(false);
         } else {
           setHasSaved(false);
           setIsEditing(true);
@@ -264,26 +270,27 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
     };
 
     load();
-  }, [serviceId, refreshKey]);
+  }, [serviceId, refreshKey, propTestId, csvData]);
 
-  // CSV Data Injection
+  // CSV Data Injection — apply after load finishes so server/empty state does not overwrite import
   useEffect(() => {
-    // Do not overwrite persisted server data in edit/view mode.
-    if (hasSaved || !!testId || !!propTestId) return;
-    if (csvData && csvData.length > 0) {
-      // Settings
-      const kv = csvData.find(r => ['kv', 'kvp', 'kV', 'kVp'].includes(r['Field Name']))?.['Value'];
-      const ma = csvData.find(r => ['ma', 'mA'].includes(r['Field Name']))?.['Value'];
-      const time = csvData.find(r => ['time', 'Time'].includes(r['Field Name']))?.['Value'];
+    if (isLoading || !csvData || csvData.length === 0) return;
 
-      if (kv || ma || time) {
-        setSettings(prev => ({
-          ...prev,
-          kv: kv || prev.kv,
-          ma: ma || prev.ma,
-          time: time || prev.time
-        }));
-      }
+    const getField = (...names: string[]) =>
+      csvData.find((r: any) => names.includes(String(r['Field Name'] || '')))?.['Value'];
+
+    const kv = getField('kV', 'kVp', 'kv', 'kvp');
+    const ma = getField('mA', 'ma');
+    const time = getField('Time', 'time');
+
+    if (kv || ma || time) {
+      setSettings(prev => ({
+        ...prev,
+        kv: kv ? String(kv) : prev.kv,
+        ma: ma ? String(ma) : prev.ma,
+        time: time ? String(time) : prev.time,
+      }));
+    }
 
       // Leakage Rows
       const rowIndices = [...new Set(csvData
@@ -310,23 +317,21 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
       }
 
       // Workload and Tolerance
-      const wl = csvData.find(r => ['Workload', 'workload'].includes(r['Field Name']))?.['Value'];
-      const wlUnit = csvData.find(r => ['WorkloadUnit', 'workloadUnit'].includes(r['Field Name']))?.['Value'];
-      const tol = csvData.find(r => ['ToleranceValue', 'toleranceValue', 'Tolerance', 'tolerance'].includes(r['Field Name']))?.['Value'];
-      const tolOp = csvData.find(r => r['Field Name'] === 'ToleranceOperator')?.['Value'];
-      const tolTime = csvData.find(r => r['Field Name'] === 'ToleranceTime')?.['Value'];
+      const wl = getField('Workload', 'workload');
+      const wlUnit = getField('WorkloadUnit', 'workloadUnit');
+      const tol = getField('ToleranceValue', 'toleranceValue', 'Tolerance', 'tolerance');
+      const tolOp = getField('ToleranceOperator');
+      const tolTime = getField('ToleranceTime');
 
-      if (wl) setWorkload(wl);
-      if (wlUnit) setWorkloadUnit(wlUnit);
-      if (tol) setToleranceValue(tol);
-      if (tolOp) setToleranceOperator(tolOp as any);
-      if (tolTime) setToleranceTime(tolTime);
+      if (wl) setWorkload(String(wl));
+      if (wlUnit) setWorkloadUnit(String(wlUnit));
+      if (tol) setToleranceValue(String(tol));
+      if (tolOp) setToleranceOperator(String(tolOp) as any);
+      if (tolTime) setToleranceTime(String(tolTime));
 
-      if (!testId) {
-        setIsEditing(true);
-      }
-    }
-  }, [csvData, hasSaved, testId, propTestId]);
+      setIsEditing(true);
+      setHasSaved(false);
+  }, [csvData, isLoading]);
 
   // === Save / Update ===
   const handleSave = async () => {

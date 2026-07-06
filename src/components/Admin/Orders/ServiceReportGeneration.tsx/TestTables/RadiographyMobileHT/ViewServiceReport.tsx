@@ -606,7 +606,7 @@ const ViewServiceReportRadiographyMobileHT: React.FC = () => {
                               {testData.centralBeamAlignment.observedTilt.value && testData.centralBeamAlignment.observedTilt.value !== "-" ? "°" : ""}
                             </td>
                             <td className="border border-black p-3 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>
-                              {testData.centralBeamAlignment.tolerance?.operator || "<"} {testData.centralBeamAlignment.tolerance?.value || "1.5"}°
+                              {testData.centralBeamAlignment.tolerance?.operator || "="} {testData.centralBeamAlignment.tolerance?.value || "1.5"}°
                             </td>
                           </tr>
                         </tbody>
@@ -722,30 +722,62 @@ const ViewServiceReportRadiographyMobileHT: React.FC = () => {
                     </div>
                   </div>
                 )}
-                {testData.accuracyOfIrradiationTime.irradiationTimes?.length > 0 && (
+                {testData.accuracyOfIrradiationTime.irradiationTimes?.length > 0 && (() => {
+                  const tolOp = testData.accuracyOfIrradiationTime.tolerance?.operator || "<=";
+                  const tolVal = parseFloat(testData.accuracyOfIrradiationTime.tolerance?.value || "10");
+                  const calcError = (set: string, meas: string): string => {
+                    const s = parseFloat(set);
+                    const m = parseFloat(meas);
+                    if (isNaN(s) || isNaN(m) || s === 0) return "-";
+                    return Math.abs(((m - s) / s) * 100).toFixed(2);
+                  };
+                  const getRemark = (errorPct: string): string => {
+                    if (errorPct === "-" || isNaN(tolVal)) return "-";
+                    const err = parseFloat(errorPct);
+                    if (isNaN(err)) return "-";
+                    switch (tolOp) {
+                      case ">": return err > tolVal ? "PASS" : "FAIL";
+                      case "<": return err < tolVal ? "PASS" : "FAIL";
+                      case ">=": return err >= tolVal ? "PASS" : "FAIL";
+                      case "<=": return err <= tolVal ? "PASS" : "FAIL";
+                      default: return "-";
+                    }
+                  };
+                  return (
                   <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
                     <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
                       <thead className="bg-gray-100">
                         <tr>
                           <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Set Time (mSec)</th>
                           <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Measured Time (mSec)</th>
+                          <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>% Error</th>
+                          <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Remarks</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {testData.accuracyOfIrradiationTime.irradiationTimes.map((row: any, i: number) => (
+                        {testData.accuracyOfIrradiationTime.irradiationTimes.map((row: any, i: number) => {
+                          const error = calcError(String(row.setTime ?? ""), String(row.measuredTime ?? ""));
+                          const remark = getRemark(error);
+                          return (
                           <tr key={i} className="text-center" style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
                             <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.setTime || "-"}</td>
                             <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.measuredTime || "-"}</td>
+                            <td className="border border-black p-2 print:p-1 text-center font-medium" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{error !== "-" ? `${error}%` : "-"}</td>
+                            <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>
+                              <span className={remark === "PASS" ? "text-green-600 font-semibold" : remark === "FAIL" ? "text-red-600 font-semibold" : ""}>{remark}</span>
+                            </td>
                           </tr>
-                        ))}
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
-                )}
+                  );
+                })()}
                 {testData.accuracyOfIrradiationTime.tolerance && (
                   <div className="bg-gray-50 p-4 print:p-1 rounded border" style={{ padding: '2px 4px', marginTop: '4px' }}>
                     <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
-                      <strong>Tolerance:</strong> Error {testData.accuracyOfIrradiationTime.tolerance.operator || "<="} {testData.accuracyOfIrradiationTime.tolerance.value || "-"}kVp
+                      <strong>Tolerance:</strong> Error {testData.accuracyOfIrradiationTime.tolerance.operator || "<="} {testData.accuracyOfIrradiationTime.tolerance.value || "10"}%
                     </p>
                   </div>
                 )}
@@ -970,7 +1002,7 @@ const ViewServiceReportRadiographyMobileHT: React.FC = () => {
                         {(() => {
                           const rows = testData.linearityOfMasLoading.table2;
                           const tolVal = parseFloat(testData.linearityOfMasLoading.tolerance ?? '0.1') || 0.1;
-                          const tolOp = testData.linearityOfMasLoading.toleranceOperator ?? '<=';
+                          const tolOp = testData.linearityOfMasLoading.toleranceOperator ?? '<';
 
                           const formatV = (val: any) => {
                             if (val === undefined || val === null) return '-';

@@ -42,6 +42,46 @@ const checkTolerance = (
   return diff <= tolerance;
 };
 
+const buildImportedRow = (
+  r: any,
+  index: number,
+  stationCount: number,
+  tolSign: "+" | "-" | "±",
+  tolVal: number
+): RowData => {
+  const vals = Array.isArray(r.measuredValues)
+    ? r.measuredValues.map((v: any) => String(v ?? ""))
+    : [String(r.ma10 ?? ""), String(r.ma100 ?? ""), String(r.ma200 ?? "")];
+  while (vals.length < stationCount) vals.push("");
+
+  const applied = parseFloat(String(r.setKV ?? r.appliedKvp ?? "0"));
+  const statuses = vals.map((v) => checkTolerance(parseFloat(v || "0"), applied, tolVal, tolSign));
+  const nums = vals.filter((v) => v !== "" && !isNaN(parseFloat(v))).map(Number);
+  const avg = nums.length > 0 ? (nums.reduce((a, b) => a + b, 0) / nums.length).toFixed(2) : "";
+  const avgStatus = avg ? checkTolerance(parseFloat(avg), applied, tolVal, tolSign) : true;
+  const hasFail = statuses.some((s) => !s) || !avgStatus;
+  const hasData =
+    !isNaN(applied) &&
+    applied > 0 &&
+    !isNaN(tolVal) &&
+    tolVal > 0 &&
+    (nums.length > 0 || (!!avg && !isNaN(parseFloat(avg))));
+
+  let remark: "PASS" | "FAIL" | "-" = "-";
+  if (r.remarks === "PASS" || r.remarks === "FAIL") remark = r.remarks;
+  else if (hasData) remark = hasFail ? "FAIL" : "PASS";
+
+  return {
+    id: String(index + 1),
+    appliedKvp: String(r.setKV ?? r.appliedKvp ?? ""),
+    measuredValues: vals,
+    measuredValuesStatus: statuses,
+    averageKvp: String(r.avgKvp ?? avg),
+    averageKvpStatus: avgStatus,
+    remarks: remark,
+  };
+};
+
 const AccuracyOfOperatingPotential: React.FC<Props> = ({
   serviceId,
   testId: initialTestId = null,
@@ -79,43 +119,10 @@ const AccuracyOfOperatingPotential: React.FC<Props> = ({
   // Apply CSV/Excel initial data
   useEffect(() => {
     if (!initialData) return;
-    if (initialData.mAStations?.length > 0) setMAStations(initialData.mAStations.map(String));
-    if (initialData.table2?.length > 0) {
-      const stationCount = initialData.mAStations?.length ?? mAStations.length;
-      setRows(
-        initialData.table2.map((r: any, i: number) => {
-          const vals = Array.isArray(r.measuredValues)
-            ? r.measuredValues.map((v: any) => String(v ?? ""))
-            : [String(r.ma10 ?? ""), String(r.ma100 ?? ""), String(r.ma200 ?? "")];
-          while (vals.length < stationCount) vals.push("");
-          return {
-            id: String(i + 1),
-            appliedKvp: String(r.setKV ?? r.appliedKvp ?? ""),
-            measuredValues: vals,
-            measuredValuesStatus: [] as boolean[],
-            averageKvp: String(r.avgKvp ?? ""),
-            remarks: (r.remarks === "PASS" || r.remarks === "FAIL" ? r.remarks : "-") as "PASS" | "FAIL" | "-",
-          };
-        })
-      );
-    }
-    if (initialData.measurements?.length > 0) {
-      const stationCount = initialData.mAStations?.length ?? 2;
-      setRows(
-        initialData.measurements.map((m: any, i: number) => {
-          const vals = (m.measuredValues ?? []).map(String);
-          while (vals.length < stationCount) vals.push("");
-          return {
-            id: String(i + 1),
-            appliedKvp: String(m.appliedKvp ?? ""),
-            measuredValues: vals,
-            measuredValuesStatus: [] as boolean[],
-            averageKvp: "",
-            remarks: "-" as const,
-          };
-        })
-      );
-    }
+
+    const tolSign = (initialData.tolerance?.sign as "+" | "-" | "±") || toleranceSign;
+    const tolVal = parseFloat(String(initialData.tolerance?.value ?? toleranceValue)) || 0;
+
     if (initialData.tolerance) {
       if (initialData.tolerance.sign) setToleranceSign(initialData.tolerance.sign as "+" | "-" | "±");
       if (initialData.tolerance.value) setToleranceValue(String(initialData.tolerance.value));
@@ -128,6 +135,34 @@ const AccuracyOfOperatingPotential: React.FC<Props> = ({
         atKvp: String(initialData.totalFiltration.atKvp ?? prev.atKvp),
       }));
     }
+
+    const importedStations =
+      initialData.mAStations?.length > 0
+        ? initialData.mAStations.map(String)
+        : mAStations;
+    if (initialData.mAStations?.length > 0) setMAStations(importedStations);
+
+    if (initialData.table2?.length > 0) {
+      const stationCount = importedStations.length;
+      setRows(
+        initialData.table2.map((r: any, i: number) =>
+          buildImportedRow(r, i, stationCount, tolSign, tolVal)
+        )
+      );
+    } else if (initialData.measurements?.length > 0) {
+      const stationCount = importedStations.length;
+      setRows(
+        initialData.measurements.map((m: any, i: number) =>
+          buildImportedRow(
+            { ...m, setKV: m.appliedKvp, measuredValues: m.measuredValues },
+            i,
+            stationCount,
+            tolSign,
+            tolVal
+          )
+        )
+      );
+    }
   }, [csvDataVersion, initialData]);
 
   useEffect(() => {
@@ -135,7 +170,7 @@ const AccuracyOfOperatingPotential: React.FC<Props> = ({
       setIsLoading(false);
       return;
     }
-    if (initialData && csvDataVersion === 0) {
+    if (csvDataVersion) {
       setIsLoading(false);
       return;
     }
@@ -213,7 +248,7 @@ const AccuracyOfOperatingPotential: React.FC<Props> = ({
       }
     };
     load();
-  }, [serviceId, refreshKey]);
+  }, [serviceId, refreshKey, csvDataVersion]);
 
   const getFiltrationRemark = (): "PASS" | "FAIL" | "-" => {
     const kvp = parseFloat(totalFiltration.atKvp);

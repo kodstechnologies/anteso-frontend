@@ -117,7 +117,7 @@ const MainTestTableForInventionalRadiology: React.FC<MainTestTableProps> = ({ te
   // Central Beam Alignment — RadiographyFixed
   if (testData.centralBeamAlignment?.observedTilt) {
     const tiltValue = testData.centralBeamAlignment.observedTilt.value || "-";
-    const toleranceOperator = testData.centralBeamAlignment.tolerance?.operator || "<=";
+    const toleranceOperator = testData.centralBeamAlignment.tolerance?.operator || "=";
     const toleranceValue = testData.centralBeamAlignment.tolerance?.value || "5";
 
     let isPass = false;

@@ -1,6 +1,6 @@
 // components/TestTables/LinearityOfMasLoading.tsx
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Plus, Trash2, Save, Edit3, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
@@ -62,6 +62,13 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
 
   const [tolerance, setTolerance] = useState<string>('0.1');
   const [toleranceOperator, setToleranceOperator] = useState<string>('<');
+  const hasLoadedFromCSV = useRef(false);
+
+  const hasValidTime = useMemo(() => {
+    if (!hasTimer) return true;
+    const timeSec = parseFloat(exposureCondition.time);
+    return exposureCondition.time.trim() !== '' && !Number.isNaN(timeSec) && timeSec > 0;
+  }, [hasTimer, exposureCondition.time]);
 
   const addMeasColumn = () => {
     setMeasHeaders(p => [...p, `Meas ${p.length + 1}`]);
@@ -119,17 +126,17 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
 
   useEffect(() => {
     const load = async () => {
-      if (!serviceId) {
+      if (initialData || hasLoadedFromCSV.current) {
         setIsLoading(false);
         return;
       }
-      // If we have uploaded Excel data, don't overwrite it by reloading from API
-      if (initialData) {
+      if (!serviceId) {
         setIsLoading(false);
         return;
       }
       try {
         const res = await getLinearityOfMasLoadingStationsByServiceIdForRadiographyMobile(serviceId);
+        if (hasLoadedFromCSV.current) return;
         const data = res?.data;
         if (data) {
           setTestId(data._id || null);
@@ -196,13 +203,20 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
     if (initialData.tolerance) setTolerance(String(initialData.tolerance));
     if (initialData.toleranceOperator) setToleranceOperator(initialData.toleranceOperator);
 
+    hasLoadedFromCSV.current = true;
     setHasSaved(false);
     setIsEditing(true);
+    setIsLoading(false);
   }, [initialData]);
 
   const handleSave = async () => {
     if (!serviceId) {
       toast.error('Service ID is missing');
+      return;
+    }
+
+    if (hasTimer && !hasValidTime) {
+      toast.error('Time (sec) must be greater than 0');
       return;
     }
 
@@ -270,38 +284,36 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
   const isViewMode = hasSaved && !isEditing;
   const buttonText = isViewMode ? 'Edit' : testId ? 'Update' : 'Save';
   const ButtonIcon = isViewMode ? Edit3 : Save;
-  const isTimerSelected = hasTimer;
-  const testTitle = isTimerSelected
+  const isMaLoading = hasTimer;
+  const canSave = !isMaLoading || hasValidTime;
+  const testTitle = isMaLoading
     ? 'Linearity of mA Loading'
     : 'Linearity of mAs Loading';
-  const xUnitLabel = isTimerSelected ? 'mGy/mAs' : 'mGy/mAs';
+  const xUnitLabel = isMaLoading && hasValidTime ? 'mGy/(mA*s)' : isMaLoading ? 'mGy/mA' : 'mGy/mAs';
 
   const processedTable2 = useMemo(() => {
     const tol = parseFloat(tolerance) || 0.1;
     const xValues: number[] = [];
-
-    // Get time in seconds (convert if needed)
     const timeSec = parseFloat(exposureCondition.time);
-    const hasValidTime = !isNaN(timeSec) && timeSec > 0;
+    const rowHasValidTime = hasTimer && !Number.isNaN(timeSec) && timeSec > 0;
 
     const rowsWithX = table2Rows.map(row => {
       const outputs = row.measuredOutputs.map(v => parseFloat(v)).filter(v => !isNaN(v) && v > 0);
-      // Calculate average mGy and round to 4 decimal places
       const avg = outputs.length > 0 ? outputs.reduce((a, b) => a + b, 0) / outputs.length : null;
       const avgDisplay = avg !== null ? parseFloat(avg.toFixed(4)).toFixed(4) : '—';
 
-      // Extract mAs value (mA*s) from range or single value
       const match = row.mAsRange.match(/(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)/);
-      const midMas = match
+      const loadingValue = match
         ? (parseFloat(match[1]) + parseFloat(match[2])) / 2
         : parseFloat(row.mAsRange) || 0;
 
-      // Timer selected: X = mGy/(mA*s). Otherwise: X = mGy/mA.
       let x = null;
-      if (avg !== null && midMas > 0 && hasValidTime) {
-        x = avg / (midMas * timeSec);
-      } else if (avg !== null && midMas > 0 && !hasValidTime) {
-        x = avg / midMas;
+      if (avg !== null && loadingValue > 0) {
+        if (hasTimer && rowHasValidTime) {
+          x = avg / (loadingValue * timeSec);
+        } else {
+          x = avg / loadingValue;
+        }
       }
 
       const xDisplay = x !== null ? parseFloat(x.toFixed(4)).toFixed(4) : '—';
@@ -370,7 +382,7 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
       rows: rowsWithStatus,
       summary: { xMax, xMin, col, remarks, rowSpan: rowsWithStatus.length }
     };
-  }, [table2Rows, tolerance, toleranceOperator, exposureCondition.time, hasTimer]);
+  }, [table2Rows, tolerance, toleranceOperator, hasTimer, exposureCondition.time]);
 
   const processedRowById = useMemo(() => {
     const map = new Map<string, any>();
@@ -390,12 +402,19 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
 
   return (
     <div className="p-6 max-w-full mx-auto space-y-10">
+      {!isViewMode && isMaLoading && exposureCondition.time.trim() && !hasValidTime && (
+        <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+          <p className="text-sm text-amber-700">
+            Time (sec) must be greater than 0 for Linearity of mA Loading.
+          </p>
+        </div>
+      )}
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-gray-800">{testTitle}</h2>
         <button
           onClick={isViewMode ? toggleEdit : handleSave}
-          disabled={isSaving}
-          className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${isSaving
+          disabled={isSaving || (!isViewMode && !canSave)}
+          className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${isSaving || (!isViewMode && !canSave)
             ? 'bg-gray-400 cursor-not-allowed'
             : isViewMode
               ? 'bg-orange-600 hover:bg-orange-700'
@@ -410,7 +429,7 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
           ) : (
             <>
               <ButtonIcon className="w-4 h-4" />
-              {buttonText} {isTimerSelected ? 'mAs' : 'mA'} Linearity
+              {buttonText} {isMaLoading ? 'mA' : 'mAs'} Linearity
             </>
           )}
         </button>
@@ -425,7 +444,7 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-700  border-r">FDD (cm)</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-700  border-r">kV</th>
-              {isTimerSelected && (
+              {isMaLoading && (
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 ">Time (sec)</th>
               )}
             </tr>
@@ -452,7 +471,7 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
                     }`}
                 />
               </td>
-              {isTimerSelected && (
+              {isMaLoading && (
                 <td className="px-6 py-4">
                   <input
                     type="text"
@@ -460,7 +479,7 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
                     onChange={e => setExposureCondition(p => ({ ...p, time: e.target.value }))}
                     disabled={isViewMode}
                     placeholder="e.g. 0.5"
-                    className={`w-full px-4 py-2 text-center border rounded font-medium border-gray-300 focus:ring-2 focus:ring-teal-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''
+                    className={`w-full px-4 py-2 text-center border rounded font-medium focus:ring-2 focus:ring-teal-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : !hasValidTime && exposureCondition.time.trim() ? 'border-red-500' : 'border-gray-300'
                       }`}
                   />
                 </td>
@@ -473,7 +492,7 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
       <div className="bg-white shadow-md rounded-lg overflow-hidden border border-gray-200">
         <div className="px-6 py-4 bg-blue-50 border-b">
           <h3 className="text-lg font-semibold text-blue-900">
-            {isTimerSelected
+            {isMaLoading
               ? 'Linearity of mA Loading'
               : 'Linearity of mAs Loading'}
           </h3>
@@ -483,7 +502,7 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-blue-50">
               <tr>
-                <th rowSpan={2} className="px-6 py-3 text-left text-xs font-medium text-gray-700  border-r">{isTimerSelected ? 'mA' : 'mAs'}</th>
+                <th rowSpan={2} className="px-6 py-3 text-left text-xs font-medium text-gray-700  border-r">{isMaLoading ? 'mA' : 'mAs'}</th>
                 <th colSpan={measHeaders.length} className="px-6 py-3 text-center text-xs font-medium text-gray-700  border-r">
                   <div className="flex items-center justify-between px-4">
                     <span>Radiation Output (mGy)</span>

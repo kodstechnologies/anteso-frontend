@@ -1,6 +1,33 @@
 // Helper file for CT Scan Excel export with proper table structures
 import * as XLSX from "xlsx";
 
+const getOperatingPotentialMaValue = (row: any, label: string): string | number => {
+    if (row?.ma != null && typeof row.ma === 'object') {
+        const val = row.ma[label] ?? row.ma[String(label)];
+        if (val !== undefined && val !== null && val !== '') return val;
+    }
+    const legacy = row?.[`ma${label}`];
+    if (legacy !== undefined && legacy !== null && legacy !== '') return legacy;
+    return '';
+};
+
+const getOperatingPotentialMaLabelsFromData = (op: any): string[] => {
+    if (Array.isArray(op?.maColumnLabels) && op.maColumnLabels.length > 0) {
+        return op.maColumnLabels.map(String);
+    }
+    const fromRow = op?.table2?.find((r: any) => r?.ma && typeof r.ma === 'object');
+    if (fromRow?.ma) {
+        return Object.keys(fromRow.ma).map(String);
+    }
+    return ['10', '100', '200'];
+};
+
+const getOperatingPotentialTolerance = (op: any) => ({
+    value: op?.toleranceValue ?? op?.tolerance?.value ?? '',
+    type: op?.toleranceType ?? op?.tolerance?.type ?? '',
+    sign: op?.toleranceSign ?? op?.tolerance?.sign ?? '',
+});
+
 export interface CTScanExportData {
     radiationProfileWidth?: any;
     measurementOfOperatingPotential?: any;
@@ -79,26 +106,22 @@ export const createCTScanExcelWithTables = (data: CTScanExportData, hasTimer: bo
 
         // Set KV vs Measured KV Table (dynamic mA columns)
         if (data.measurementOfOperatingPotential.table2 && data.measurementOfOperatingPotential.table2.length > 0) {
-            const maLabels = (Array.isArray(data.measurementOfOperatingPotential.maColumnLabels) && data.measurementOfOperatingPotential.maColumnLabels.length > 0)
-                ? data.measurementOfOperatingPotential.maColumnLabels
-                : ['10', '100', '200'];
-            const getMa = (row: any, l: string) => row?.ma?.[l] ?? row?.[`ma${l}`] ?? '';
+            const maLabels = getOperatingPotentialMaLabelsFromData(data.measurementOfOperatingPotential);
             const table2Rows = data.measurementOfOperatingPotential.table2.map((row: any) => [
                 row.setKV || '',
-                ...maLabels.map((l: string) => getMa(row, l))
+                ...maLabels.map((l: string) => getOperatingPotentialMaValue(row, l))
             ]);
             addTable(['Set kV', ...maLabels.map((l: string) => `@ mA ${l}`)], table2Rows);
         }
 
         // Tolerance
-        if (data.measurementOfOperatingPotential.toleranceValue ||
-            data.measurementOfOperatingPotential.toleranceType ||
-            data.measurementOfOperatingPotential.toleranceSign) {
+        const opTolerance = getOperatingPotentialTolerance(data.measurementOfOperatingPotential);
+        if (opTolerance.value || opTolerance.type || opTolerance.sign) {
             allData.push(['Tolerance']);
             allData.push([
-                'Value', data.measurementOfOperatingPotential.toleranceValue || '',
-                'Type', data.measurementOfOperatingPotential.toleranceType || '',
-                'Sign', data.measurementOfOperatingPotential.toleranceSign || ''
+                'Value', opTolerance.value || '',
+                'Type', opTolerance.type || '',
+                'Sign', opTolerance.sign || ''
             ]);
             allData.push([]);
         }
@@ -541,21 +564,19 @@ export const createCTScanUploadableExcel = (data: CTScanExportData, hasTimer: bo
     // 2. MEASUREMENT OF OPERATING POTENTIAL (dynamic mA columns)
     if (data.measurementOfOperatingPotential) {
         const t1 = data.measurementOfOperatingPotential.table1?.[0] || {};
-        const maLabels = (Array.isArray(data.measurementOfOperatingPotential.maColumnLabels) && data.measurementOfOperatingPotential.maColumnLabels.length > 0)
-            ? data.measurementOfOperatingPotential.maColumnLabels
-            : ['10', '100', '200'];
-        const getMa = (row: any, l: string) => row?.ma?.[l] ?? row?.[`ma${l}`] ?? '';
+        const maLabels = getOperatingPotentialMaLabelsFromData(data.measurementOfOperatingPotential);
+        const opTolerance = getOperatingPotentialTolerance(data.measurementOfOperatingPotential);
         const rows = (data.measurementOfOperatingPotential.table2 || []).map((row: any) => [
             row.setKV || '',
-            ...maLabels.map((l: string) => getMa(row, l)),
+            ...maLabels.map((l: string) => getOperatingPotentialMaValue(row, l)),
             t1.time || '',
             t1.sliceThickness || '',
-            data.measurementOfOperatingPotential.toleranceValue || '',
-            data.measurementOfOperatingPotential.toleranceType || '',
-            data.measurementOfOperatingPotential.toleranceSign || ''
+            opTolerance.value || '',
+            opTolerance.type || '',
+            opTolerance.sign || ''
         ]);
         if (rows.length === 0 && (t1.time || t1.sliceThickness)) {
-            rows.push(['', ...maLabels.map(() => ''), t1.time, t1.sliceThickness, data.measurementOfOperatingPotential.toleranceValue || '', data.measurementOfOperatingPotential.toleranceType || '', data.measurementOfOperatingPotential.toleranceSign || '']);
+            rows.push(['', ...maLabels.map(() => ''), t1.time, t1.sliceThickness, opTolerance.value || '', opTolerance.type || '', opTolerance.sign || '']);
         }
         addSection('MEASUREMENT OF OPERATING POTENTIAL', ['Set kV', ...maLabels.map((l: string) => `@ mA ${l}`), 'Time (ms)', 'Slice Thickness (mm)', 'Tol Value', 'Tol Type', 'Tol Sign'], rows);
     }

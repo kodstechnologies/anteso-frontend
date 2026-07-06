@@ -157,7 +157,7 @@ const MainTestTableForOBI: React.FC<MainTestTableProps> = ({ testData, hasTimer 
     const validRows = irrBlock.irradiationTimes.filter((row: any) => row.setTime || row.measuredTime);
     if (validRows.length > 0) {
       const toleranceOperator = irrBlock.tolerance?.operator || "<=";
-      const toleranceValue = irrBlock.tolerance?.value || "5";
+      const toleranceValue = irrBlock.tolerance?.value || "10";
       const testRows = validRows.map((row: any) => {
         const setTime = parseFloat(row.setTime);
         const measuredTime = parseFloat(row.measuredTime);
@@ -169,6 +169,8 @@ const MainTestTableForOBI: React.FC<MainTestTableProps> = ({ testData, hasTimer 
           if (toleranceOperator === "<=") isPass = errorVal <= tol;
           else if (toleranceOperator === ">=") isPass = errorVal >= tol;
           else if (toleranceOperator === "=") isPass = Math.abs(errorVal - tol) < 0.01;
+          else if (toleranceOperator === "<") isPass = errorVal < tol;
+          else if (toleranceOperator === ">") isPass = errorVal > tol;
         }
 
         return {

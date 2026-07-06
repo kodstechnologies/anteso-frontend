@@ -642,11 +642,15 @@ const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId, qaTestDate,
             }
         });
 
-        if (applyConfigFromExcel && Object.keys(grouped).length > 0) {
+        if (Object.keys(grouped).length > 0) {
             const hasTimerSection = !!(grouped['accuracyOfIrradiationTime']?.length);
-            setHasTimer(hasTimerSection);
-            setShowTimerModal(false);
-            localStorage.setItem(`dental_intra_timer_choice_${serviceId}`, JSON.stringify(hasTimerSection));
+            if (hasTimerSection || applyConfigFromExcel) {
+                setHasTimer(hasTimerSection);
+                setShowTimerModal(false);
+                if (serviceId) {
+                    localStorage.setItem(`dental_intra_timer_choice_${serviceId}`, JSON.stringify(hasTimerSection));
+                }
+            }
         }
 
         setCsvDataForComponents(grouped);

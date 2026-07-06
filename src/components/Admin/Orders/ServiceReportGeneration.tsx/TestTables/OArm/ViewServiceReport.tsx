@@ -1299,8 +1299,12 @@ const ViewServiceReportOArm: React.FC = () => {
               const isMaLinear = lin.selection === "mA" || lin.selection === "ma";
               const linearitySectionTitle = isMaLinear ? "8. Linearity of mA Loading" : "8. Linearity of mAs Loading";
               const firstColHeader = isMaLinear ? "mA" : "mAs range";
-              const xColHeader = isMaLinear ? "X (mGy/(mAÂ·s))" : "X (mGy/mAs)";
               const t1 = lin.table1?.[0];
+              const timeSec = parseFloat(String(t1?.time ?? ""));
+              const hasValidTimer = !isNaN(timeSec) && timeSec > 0;
+              const xColHeader = isMaLinear
+                ? (hasValidTimer ? "X (mGy/(mA*s))" : "X (mGy/mA)")
+                : "X (mGy/mAs)";
               const showTimeCol = isMaLinear || !!(t1 && String(t1.time ?? "").trim() !== "");
               return (
                 <div className="mb-16 print:mb-12 test-section">

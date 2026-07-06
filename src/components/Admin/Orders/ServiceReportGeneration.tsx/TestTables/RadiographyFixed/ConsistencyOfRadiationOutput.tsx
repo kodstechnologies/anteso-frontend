@@ -243,6 +243,10 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
 
   // Load existing test data
   useEffect(() => {
+    if (csvDataVersion) {
+      setIsLoading(false);
+      return;
+    }
     if (!serviceId) {
       setIsLoading(false);
       return;
@@ -290,7 +294,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
     };
 
     loadTest();
-  }, [serviceId]);
+  }, [serviceId, csvDataVersion]);
 
   const handleSave = async () => {
     if (!serviceId) {

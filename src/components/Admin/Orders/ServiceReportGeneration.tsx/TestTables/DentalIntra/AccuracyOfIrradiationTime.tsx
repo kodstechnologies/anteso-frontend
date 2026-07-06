@@ -98,46 +98,105 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
     if (isNaN(err) || isNaN(tol)) return "-";
 
     switch (toleranceOperator) {
-      case ">": return err > tol ? "FAIL" : "PASS";
-      case "<": return err < tol ? "PASS" : "FAIL";
-      case ">=": return err >= tol ? "FAIL" : "PASS";
-      case "<=": return err <= tol ? "PASS" : "FAIL";
-      default: return "-";
+      case ">":
+        return err > tol ? "PASS" : "FAIL";
+      case "<":
+        return err < tol ? "PASS" : "FAIL";
+      case ">=":
+        return err >= tol ? "PASS" : "FAIL";
+      case "<=":
+        return err <= tol ? "PASS" : "FAIL";
+      default:
+        return "-";
     }
+  };
+
+  const applyCsvImport = (rows: any[]) => {
+    const rowIndices = [...new Set(rows
+      .filter(r => r['Field Name'] === 'Set_Time' || r['Field Name'] === 'Measured_Time')
+      .map(r => parseInt(r['Row Index']))
+      .filter(i => !isNaN(i) && i >= 0)
+    )].sort((a, b) => a - b);
+
+    if (rowIndices.length > 0) {
+      const settingsIdx = rowIndices[0];
+      const settingsRow = rows.filter(r => parseInt(r['Row Index']) === settingsIdx);
+      const fcd = settingsRow.find(r => r['Field Name'] === 'FCD')?.['Value'];
+      const kv = settingsRow.find(r => r['Field Name'] === 'kV' || r['Field Name'] === 'kVp')?.['Value'];
+      const ma = settingsRow.find(r => r['Field Name'] === 'mA')?.['Value'];
+
+      if (fcd || kv || ma) {
+        setTable1Row(prev => ({
+          ...prev,
+          fcd: fcd ? String(fcd) : prev.fcd,
+          kv: kv ? String(kv) : prev.kv,
+          ma: ma ? String(ma) : prev.ma,
+        }));
+      }
+
+      setTable2Rows(rowIndices.map(idx => {
+        const rowData = rows.filter(r => parseInt(r['Row Index']) === idx);
+        return {
+          id: String(idx),
+          setTime: String(rowData.find(r => r['Field Name'] === 'Set_Time')?.['Value'] ?? ''),
+          measuredTime: String(rowData.find(r => r['Field Name'] === 'Measured_Time')?.['Value'] ?? ''),
+        };
+      }));
+    } else {
+      const fcd = rows.find(r => r['Field Name'] === 'FCD')?.['Value'];
+      const kv = rows.find(r => r['Field Name'] === 'kV' || r['Field Name'] === 'kVp')?.['Value'];
+      const ma = rows.find(r => r['Field Name'] === 'mA')?.['Value'];
+      if (fcd || kv || ma) {
+        setTable1Row(prev => ({
+          ...prev,
+          fcd: fcd ? String(fcd) : prev.fcd,
+          kv: kv ? String(kv) : prev.kv,
+          ma: ma ? String(ma) : prev.ma,
+        }));
+      }
+    }
+
+    setIsSaved(false);
+    setIsEditing(true);
   };
 
   useEffect(() => {
     const fetchData = async () => {
       if (!serviceId) return;
       setLoading(true);
+      const hasCsvImport = csvData && csvData.length > 0;
       try {
         const res = await getAccuracyOfIrradiationTimeByServiceIdForDentalIntra(serviceId);
         const data = res?.data?.data || res?.data || res;
         if (data) {
           setTestId(data._id || null);
-          if (data.testConditions) {
-            setTable1Row({
-              id: "1",
-              fcd: String(data.testConditions.fcd || ""),
-              kv: String(data.testConditions.kv || ""),
-              ma: String(data.testConditions.ma || ""),
-            });
+          if (!hasCsvImport) {
+            if (data.testConditions) {
+              setTable1Row({
+                id: "1",
+                fcd: String(data.testConditions.fcd || ""),
+                kv: String(data.testConditions.kv || ""),
+                ma: String(data.testConditions.ma || ""),
+              });
+            }
+            setTable2Rows(
+              data.rows && data.rows.length > 0
+                ? data.rows.map((t: any, i: number) => ({
+                  id: String(i + 1),
+                  setTime: t.setTime || "",
+                  measuredTime: t.maStations?.[0]?.time || "",
+                }))
+                : [{ id: "1", setTime: "", measuredTime: "" }]
+            );
+            setToleranceOperator(data.timeToleranceSign || "<=");
+            setToleranceValue(data.timeToleranceValue || "10");
+            setIsSaved(true);
+            setIsEditing(false);
+            (window as any).accuracyOfOperatingPotentialAndTimeFullData = data;
+          } else {
+            setIsSaved(false);
+            setIsEditing(true);
           }
-          setTable2Rows(
-            data.rows && data.rows.length > 0
-              ? data.rows.map((t: any, i: number) => ({
-                id: String(i + 1),
-                setTime: t.setTime || "",
-                measuredTime: t.maStations?.[0]?.time || "",
-              }))
-              : [{ id: "1", setTime: "", measuredTime: "" }]
-          );
-          setToleranceOperator(data.timeToleranceSign || "<=");
-          setToleranceValue(data.timeToleranceValue || "10");
-          setIsSaved(true);
-          setIsEditing(false);
-          // Keep track of full data for merging on save
-          (window as any).accuracyOfOperatingPotentialAndTimeFullData = data;
         } else {
           setIsSaved(false);
           setIsEditing(true);
@@ -145,50 +204,20 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
       } catch (err) {
         console.log("No saved data or failed to load:", err);
         setIsSaved(false);
+        setIsEditing(true);
       } finally {
         setLoading(false);
       }
     };
 
     fetchData();
-  }, [serviceId]);
+  }, [serviceId, csvData]);
 
+  // Apply CSV after load finishes so server/empty state does not overwrite import
   useEffect(() => {
-    if (csvData && csvData.length > 0) {
-      const fcd = csvData.find(r => r['Field Name'] === 'FCD')?.['Value'];
-      const kv = csvData.find(r => r['Field Name'] === 'kV')?.['Value'];
-      const ma = csvData.find(r => r['Field Name'] === 'mA')?.['Value'];
-
-      if (fcd || kv || ma) {
-        setTable1Row(prev => ({
-          ...prev,
-          fcd: fcd || prev.fcd,
-          kv: kv || prev.kv,
-          ma: ma || prev.ma
-        }));
-      }
-
-      const rowIndices = [...new Set(csvData
-        .filter(r => r['Field Name'] && (r['Field Name'] === 'Set_Time' || r['Field Name'] === 'Measured_Time'))
-        .map(r => parseInt(r['Row Index']))
-        .filter(i => !isNaN(i) && i >= 0)
-      )].sort((a, b) => a - b);
-
-      if (rowIndices.length > 0) {
-        const newTable2Rows = rowIndices.map(idx => {
-          const rowData = csvData.filter(r => parseInt(r['Row Index']) === idx);
-          return {
-            id: String(idx),
-            setTime: rowData.find(r => r['Field Name'] === 'Set_Time')?.['Value'] || '',
-            measuredTime: rowData.find(r => r['Field Name'] === 'Measured_Time')?.['Value'] || '',
-          };
-        });
-        setTable2Rows(newTable2Rows);
-      }
-
-      if (!testId && (rowIndices.length > 0 || fcd || kv || ma)) setIsEditing(true);
-    }
-  }, [csvData]);
+    if (loading || !csvData || csvData.length === 0) return;
+    applyCsvImport(csvData);
+  }, [csvData, loading]);
 
   const handleSave = async () => {
     if (!serviceId) {
@@ -418,9 +447,9 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
           <span className="font-medium text-indigo-800">Error should be</span>
           <select
             value={toleranceOperator}
-            onChange={(e) => setToleranceOperator(e.target.value)}
+            onChange={(e) => { setToleranceOperator(e.target.value); setIsSaved(false); }}
             disabled={isViewMode}
-            className={`px-3 py-1 border border-indigo-300 rounded text-indigo-900 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : 'bg-white'}`}
+            className={`px-3 py-1 border border-indigo-300 rounded bg-white text-indigo-900 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`}
           >
             <option value=">">greater than</option>
             <option value="<">less than</option>
@@ -433,7 +462,7 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
             value={toleranceValue}
             onChange={(e) => { setToleranceValue(e.target.value); setIsSaved(false); }}
             disabled={isViewMode}
-            className={`w-20 px-2 py-1 text-center border border-indigo-300 rounded ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : 'bg-white'}`}
+            className={`w-20 px-2 py-1 text-center border border-indigo-300 rounded bg-white ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`}
             placeholder="10.0"
           />
           <span className="font-medium text-indigo-800">%</span>

@@ -811,16 +811,41 @@ const ViewServiceReportDentalIntra: React.FC = () => {
                         </thead>
                         <tbody>
                           {((testData.accuracyOfIrradiationTime?.rows || testData.accuracyOfOperatingPotentialAndTime?.rows) || []).map((row: any, i: number) => {
+                            const tolOp =
+                              testData.accuracyOfIrradiationTime?.tolerance?.operator ||
+                              testData.accuracyOfIrradiationTime?.timeToleranceSign ||
+                              testData.accuracyOfOperatingPotentialAndTime?.timeToleranceSign ||
+                              "<=";
+                            const tolVal = parseFloat(
+                              String(
+                                testData.accuracyOfIrradiationTime?.tolerance?.value ??
+                                testData.accuracyOfIrradiationTime?.timeToleranceValue ??
+                                testData.accuracyOfOperatingPotentialAndTime?.timeToleranceValue ??
+                                "10"
+                              )
+                            );
                             const calcError = (set: string, meas: string): string => {
                               const s = parseFloat(set);
                               const m = parseFloat(meas);
                               if (isNaN(s) || isNaN(m) || s === 0) return "-";
                               return Math.abs(((m - s) / s) * 100).toFixed(2);
                             };
+                            const getRemark = (errorPct: string): string => {
+                              if (errorPct === "-" || isNaN(tolVal)) return "-";
+                              const err = parseFloat(errorPct);
+                              if (isNaN(err)) return "-";
+                              switch (tolOp) {
+                                case ">": return err > tolVal ? "PASS" : "FAIL";
+                                case "<": return err < tolVal ? "PASS" : "FAIL";
+                                case ">=": return err >= tolVal ? "PASS" : "FAIL";
+                                case "<=": return err <= tolVal ? "PASS" : "FAIL";
+                                default: return "-";
+                              }
+                            };
 
-                            const measuredValue = String(row.maStations?.[0]?.time ?? row.avgTime ?? '');
+                            const measuredValue = String(row.maStations?.[0]?.time ?? row.avgTime ?? row.measuredTime ?? '');
                             const errorPct = calcError(String(row.setTime ?? ''), measuredValue);
-                            const remark = row.remark || "-";
+                            const remark = getRemark(errorPct);
 
                             return (
                               <tr key={i} className="text-center" style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>

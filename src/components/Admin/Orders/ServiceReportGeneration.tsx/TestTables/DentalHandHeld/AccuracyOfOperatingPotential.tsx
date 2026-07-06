@@ -88,13 +88,13 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
         const loadTest = async () => {
             if (!serviceId) return;
             setIsLoading(true);
+            const hasCsvImport = csvData && csvData.length > 0;
             try {
                 const res = await getAccuracyOfOperatingPotentialByServiceIdForDentalHandHeld(serviceId);
                 const data = res?.data;
-                if (data) {
+                if (data && !hasCsvImport) {
                     setTestId(data._id || null);
                     
-                    // Headers: Try to find globally or take from first row
                     const maxCols = data.rows?.length 
                         ? Math.max(...data.rows.map((row: any) => (row.maStations?.length || 0)), 2) 
                         : 2;
@@ -109,7 +109,6 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
                     
                     setRows(
                         data.rows?.map((m: any, i: number) => {
-                            // Map maStations.kvp to flat measuredValues array
                             const measuredValues = Array.isArray(m.maStations)
                                 ? m.maStations.map((s: any) => s?.kvp ?? "")
                                 : Array(2).fill("");
@@ -158,6 +157,9 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
                     if (data._id && !initialTestId) {
                         onTestSaved?.(data._id);
                     }
+                } else if (!data) {
+                    setIsSaved(false);
+                    setIsEditing(true);
                 } else {
                     setIsSaved(false);
                     setIsEditing(true);
@@ -171,7 +173,7 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
             }
         };
         loadTest();
-    }, [serviceId, initialTestId]);
+    }, [serviceId, initialTestId, csvData]);
 
     // Recalc Row function defined early for CSV injection
     const recalcRow = useCallback((row: RowData, measuredValuesOverride?: string[]): RowData => {
@@ -210,64 +212,66 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
         };
     }, [toleranceValue, toleranceSign]);
 
-    // CSV Data Injection
+    // CSV Data Injection — apply after load finishes so server data does not overwrite import
     useEffect(() => {
-        if (csvData && csvData.length > 0) {
-            // Total Filtration
-            const tfMeasured = csvData.find(r => r['Field Name'] === 'Measured')?.['Value'];
-            const tfRequired = csvData.find(r => r['Field Name'] === 'Required')?.['Value'];
-            const tfAtKvp = csvData.find(r => r['Field Name'] === 'atKvp' || r['Field Name'] === 'Applied_kVp')?.['Value'];
+        if (isLoading || !csvData || csvData.length === 0) return;
 
-            if (tfMeasured || tfRequired || tfAtKvp) {
+        const tfRowIdx = csvData.find(r => r['Field Name'] === 'Measured' || r['Field Name'] === 'atKvp')?.['Row Index'];
+        if (tfRowIdx !== undefined) {
+            const tfRow = csvData.filter(r => parseInt(r['Row Index']) === parseInt(String(tfRowIdx)));
+            const measured = tfRow.find(r => r['Field Name'] === 'Measured')?.['Value'];
+            const required = tfRow.find(r => r['Field Name'] === 'Required')?.['Value'];
+            const atKvp = tfRow.find(r => r['Field Name'] === 'atKvp' || r['Field Name'] === 'Applied_kVp')?.['Value'];
+            if (measured || required || atKvp) {
                 setTotalFiltration({
-                    measured: tfMeasured || "",
-                    required: tfRequired || "",
-                    atKvp: tfAtKvp || ""
+                    measured: measured ? String(measured) : "",
+                    required: required ? String(required) : "",
+                    atKvp: atKvp ? String(atKvp) : "",
                 });
-            }
-
-            // Measurement Rows
-            const rowIndices = [...new Set(csvData
-                .filter(r => r['Field Name'] && (r['Field Name'] === 'Applied_kVp' || r['Field Name'].startsWith('Measured_')))
-                .map(r => parseInt(r['Row Index']))
-                .filter(i => !isNaN(i) && i >= 0)
-            )].sort((a, b) => a - b);
-
-            if (rowIndices.length > 0) {
-                const newRows = rowIndices.map(idx => {
-                    const rowData = csvData.filter(r => parseInt(r['Row Index']) === idx);
-                    const applied = rowData.find(r => r['Field Name'] === 'Applied_kVp')?.['Value'] || '';
-
-                    const measured: string[] = [];
-                    for (let i = 0; i < 10; i++) {
-                        const val = rowData.find(r => r['Field Name'] === `Measured_${i}`)?.['Value'];
-                        if (val !== undefined) measured.push(val);
-                        else break;
-                    }
-
-                    const baseRow: RowData = {
-                        id: String(idx),
-                        appliedKvp: applied,
-                        measuredValues: measured,
-                        measuredValuesStatus: [],
-                        averageKvp: "",
-                        remarks: "-"
-                    };
-                    return recalcRow(baseRow);
-                });
-
-                setRows(newRows);
-
-                const maxMeas = Math.max(...newRows.map(r => r.measuredValues.length));
-                if (maxMeas > mAStations.length) {
-                    const newCols = Array.from({ length: maxMeas - mAStations.length }, (_, i) => `mA ${mAStations.length + i + 1}`);
-                    setMAStations(prev => [...prev, ...newCols]);
-                }
-
-                if (!testId) setIsEditing(true);
             }
         }
-    }, [csvData, recalcRow, testId, mAStations.length]);
+
+        const rowIndices = [...new Set(csvData
+            .filter(r => r['Field Name'] && (r['Field Name'] === 'Applied_kVp' || r['Field Name'].startsWith('Measured_')))
+            .map(r => parseInt(r['Row Index']))
+            .filter(i => !isNaN(i) && i >= 0)
+        )].sort((a, b) => a - b);
+
+        if (rowIndices.length > 0) {
+            const newRows = rowIndices.map(idx => {
+                const rowData = csvData.filter(r => parseInt(r['Row Index']) === idx);
+                const applied = rowData.find(r => r['Field Name'] === 'Applied_kVp')?.['Value'] || '';
+
+                const measured: string[] = [];
+                for (let i = 0; i < 10; i++) {
+                    const val = rowData.find(r => r['Field Name'] === `Measured_${i}`)?.['Value'];
+                    if (val !== undefined) measured.push(val);
+                    else break;
+                }
+
+                const baseRow: RowData = {
+                    id: String(idx),
+                    appliedKvp: applied,
+                    measuredValues: measured,
+                    measuredValuesStatus: [],
+                    averageKvp: "",
+                    remarks: "-"
+                };
+                return recalcRow(baseRow);
+            });
+
+            setRows(newRows);
+
+            const maxMeas = Math.max(...newRows.map(r => r.measuredValues.length));
+            if (maxMeas > mAStations.length) {
+                const newCols = Array.from({ length: maxMeas - mAStations.length }, (_, i) => `mA Station ${mAStations.length + i + 1}`);
+                setMAStations(prev => [...prev, ...newCols]);
+            }
+        }
+
+        setIsSaved(false);
+        setIsEditing(true);
+    }, [csvData, isLoading, recalcRow, mAStations.length]);
 
     // Save function
     const saveTest = async () => {

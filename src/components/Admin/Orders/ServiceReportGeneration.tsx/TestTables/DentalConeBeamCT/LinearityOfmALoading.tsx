@@ -52,6 +52,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
   ]);
 
   const [tolerance, setTolerance] = useState<string>('0.1');
+  const [toleranceOperator, setToleranceOperator] = useState<string>('<');
 
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -127,61 +128,86 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
   };
 
   // === Auto-calc: Avg, X, Xmax, Xmin, CoL, Remarks ===
- // === Auto-calc: Avg, X, Xmax, Xmin, CoL, Remarks ===
-const processedTable2 = useMemo(() => {
-  const tol = parseFloat(tolerance) || 0.1;
-  const xValues: number[] = [];
+  const processedTable2 = useMemo(() => {
+    const tol = parseFloat(tolerance) || 0.1;
+    const xValues: number[] = [];
 
-  // Get time in seconds
-  const timeSec = parseFloat(table1Row.time);
-  const hasValidTime = !isNaN(timeSec) && timeSec > 0;
+    const rowsWithX = table2Rows.map(row => {
+      const outputs = row.measuredOutputs.map(v => parseFloat(v)).filter(v => !isNaN(v) && v > 0);
+      const avg = outputs.length > 0 ? parseFloat((outputs.reduce((a, b) => a + b, 0) / outputs.length).toFixed(4)) : null;
+      const avgDisplay = avg !== null ? avg.toFixed(4) : '—';
 
-  const rowsWithX = table2Rows.map(row => {
-    const outputs = row.measuredOutputs.map(v => parseFloat(v)).filter(v => !isNaN(v) && v > 0);
-    const avg = outputs.length > 0 ? (outputs.reduce((a, b) => a + b, 0) / outputs.length).toFixed(3) : '—';
-    const ma = parseFloat(row.ma);
-    
-    // Calculate X = mGy / (mA * time)
-    let x = '—';
-    if (avg !== '—' && ma > 0 && hasValidTime) {
-      const avgNum = parseFloat(avg);
-      x = (avgNum / (ma * timeSec)).toFixed(4);
-    } else if (avg !== '—' && ma > 0 && !hasValidTime) {
-      // Fallback to original calculation if time is invalid (show warning in UI)
-      const avgNum = parseFloat(avg);
-      x = (avgNum / ma).toFixed(4);
+      const ma = parseFloat(row.ma);
+      const timeSec = parseFloat(table1Row.time);
+      const rowHasValidTime = !isNaN(timeSec) && timeSec > 0;
+      const mAs = !isNaN(ma) && ma > 0 && rowHasValidTime ? ma * timeSec : null;
+      let x: number | null = null;
+      if (avg !== null && mAs && mAs > 0) {
+        x = parseFloat((avg / mAs).toFixed(4));
+      } else if (avg !== null && !isNaN(ma) && ma > 0) {
+        x = parseFloat((avg / ma).toFixed(4));
+      }
+      const xDisplay = x !== null ? x.toFixed(4) : '—';
+
+      if (x !== null) xValues.push(x);
+
+      return { ...row, average: avgDisplay, x: xDisplay };
+    });
+
+    const hasData = xValues.length > 0;
+    const xMax = hasData ? parseFloat(Math.max(...xValues).toFixed(4)).toFixed(4) : '—';
+    const xMin = hasData ? parseFloat(Math.min(...xValues).toFixed(4)).toFixed(4) : '—';
+    const colNum = hasData && xMax !== '—' && xMin !== '—' && (parseFloat(xMax) + parseFloat(xMin)) > 0
+      ? Math.abs(parseFloat(xMax) - parseFloat(xMin)) / (parseFloat(xMax) + parseFloat(xMin))
+      : null;
+    const col = hasData && colNum !== null && colNum >= 0 ? parseFloat(colNum.toFixed(4)).toFixed(4) : '—';
+
+    let pass = false;
+    let remarks = '—';
+    if (hasData && col !== '—' && colNum !== null) {
+      const colVal = parseFloat(col);
+      switch (toleranceOperator) {
+        case '<':
+          pass = colVal < tol;
+          break;
+        case '>':
+          pass = colVal > tol;
+          break;
+        case '<=':
+          pass = colVal <= tol;
+          break;
+        case '>=':
+          pass = colVal >= tol;
+          break;
+        case '=':
+          pass = Math.abs(colVal - tol) < 0.0001;
+          break;
+        default:
+          pass = colVal <= tol;
+      }
+      remarks = pass ? 'Pass' : 'Fail';
     }
 
-    if (x !== '—') xValues.push(parseFloat(x));
+    return {
+      rows: rowsWithX,
+      summary: { xMax, xMin, col, remarks, rowSpan: rowsWithX.length },
+    };
+  }, [table2Rows, tolerance, toleranceOperator, table1Row.time]);
 
-    return { ...row, average: avg, x };
-  });
-
-  const xMax = xValues.length > 0 ? Math.max(...xValues).toFixed(4) : '—';
-  const xMin = xValues.length > 0 ? Math.min(...xValues).toFixed(4) : '—';
-  const colVal = xMax !== '—' && xMin !== '—' && (parseFloat(xMax) + parseFloat(xMin)) > 0
-    ? ((parseFloat(xMax) - parseFloat(xMin)) / (parseFloat(xMax) + parseFloat(xMin))).toFixed(3)
-    : '—';
-  const pass = colVal !== '—' && parseFloat(colVal) <= tol;
-
-  return rowsWithX.map(row => ({
-    ...row,
-    xMax,
-    xMin,
-    col: colVal,
-    remarks: pass ? 'Pass' : colVal === '—' ? '' : 'Fail',
-  }));
-}, [table2Rows, tolerance, table1Row.time]);
+  const hasValidTime = useMemo(() => {
+    const timeSec = parseFloat(table1Row.time);
+    return table1Row.time.trim() !== '' && !Number.isNaN(timeSec) && timeSec > 0;
+  }, [table1Row.time]);
   // === Form Valid ===
   const isFormValid = useMemo(() => {
     return (
       !!serviceId &&
       table1Row.fcd.trim() &&
       table1Row.kv.trim() &&
-      table1Row.time.trim() &&
+      hasValidTime &&
       table2Rows.every(r => r.ma.trim() && r.measuredOutputs.some(v => v.trim()))
     );
-  }, [serviceId, table1Row, table2Rows]);
+  }, [serviceId, table1Row, table2Rows, hasValidTime]);
 
   // === Load Data from backend ===
   useEffect(() => {
@@ -223,6 +249,7 @@ const processedTable2 = useMemo(() => {
             }
           }
           setTolerance(data.tolerance || '0.1');
+          setToleranceOperator(data.toleranceOperator || '<=');
           setHasSaved(true);
           setIsEditing(false);
         } else {
@@ -237,7 +264,6 @@ const processedTable2 = useMemo(() => {
         setIsLoading(false);
       }
     };
-    load();
     load();
   }, [serviceId]);
 
@@ -309,7 +335,7 @@ const processedTable2 = useMemo(() => {
     }
 
     if (!isFormValid) {
-      toast.error('Please fill all required fields');
+      toast.error(hasValidTime ? 'Please fill all required fields' : 'Time (sec) must be greater than 0');
       console.log('Form validation failed:', {
         fcd: table1Row.fcd,
         kv: table1Row.kv,
@@ -329,7 +355,7 @@ const processedTable2 = useMemo(() => {
           kv: table1Row.kv,
           time: table1Row.time,
         },
-        table2: processedTable2.map(r => ({
+        table2: processedTable2.rows.map(r => ({
           ma: r.ma,
           measuredOutputs: r.measuredOutputs.map(v => {
             const val = v.trim();
@@ -337,12 +363,13 @@ const processedTable2 = useMemo(() => {
           }),
           average: r.average || '',
           x: r.x || '',
-          xMax: r.xMax || '',
-          xMin: r.xMin || '',
-          col: r.col || '',
-          remarks: r.remarks || '',
+          xMax: processedTable2.summary.xMax,
+          xMin: processedTable2.summary.xMin,
+          col: processedTable2.summary.col,
+          remarks: processedTable2.summary.remarks,
         })),
         tolerance,
+        toleranceOperator,
       };
 
       let result;
@@ -403,6 +430,14 @@ const processedTable2 = useMemo(() => {
   const isViewMode = hasSaved && !isEditing;
   const buttonText = isViewMode ? 'Edit' : testId ? 'Update' : 'Save';
   const ButtonIcon = isViewMode ? Edit3 : Save;
+  const isTimerSelected = String(table1Row.time || '').trim() !== '';
+  const tableTitle = isTimerSelected
+    ? 'Linearity of mAs Loading'
+    : 'Linearity of mA Loading';
+  const sectionTitle = isTimerSelected
+    ? 'Linearity of mAs Loading and Accuracy of Irradiation Time'
+    : 'Linearity of mA Loading Stations';
+  const xUnitLabel = isTimerSelected ? 'mGy/(mA*s)' : 'mGy/mA';
 
   if (isLoading) {
     return (
@@ -415,7 +450,15 @@ const processedTable2 = useMemo(() => {
 
   return (
     <div className="p-6 max-w-full overflow-x-auto">
-      <h2 className="text-2xl font-bold mb-6">Linearity of mA Loading</h2>
+      <h2 className="text-2xl font-bold mb-6">{tableTitle}</h2>
+
+      {!isViewMode && table1Row.time.trim() && !hasValidTime && (
+        <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+          <p className="text-sm text-amber-700">
+            Time (sec) must be greater than 0 for X = mGy/(mA × sec) calculation.
+          </p>
+        </div>
+      )}
 
       {/* Table 1: FCD, kV, Time (sec) */}
       <div className="bg-white shadow-md rounded-lg overflow-hidden mb-8">
@@ -455,7 +498,7 @@ const processedTable2 = useMemo(() => {
                   value={table1Row.time}
                   onChange={e => setTable1Row(p => ({ ...p, time: e.target.value }))}
                   disabled={isViewMode}
-                  className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'}`}
+                  className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : !hasValidTime && table1Row.time.trim() ? 'border-red-500' : 'border-gray-300'}`}
                   placeholder="0.5"
                 />
               </td>
@@ -466,6 +509,9 @@ const processedTable2 = useMemo(() => {
 
       {/* Table 2: mA + Output (mGy) */}
       <div className="bg-white shadow-md rounded-lg overflow-hidden">
+        <div className="px-4 py-3 bg-blue-50 border-b">
+          <h3 className="text-lg font-semibold text-blue-900">{sectionTitle}</h3>
+        </div>
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-blue-50">
             <tr>
@@ -490,7 +536,7 @@ const processedTable2 = useMemo(() => {
                 </div>
               </th>
               <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">Avg Output</th>
-              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">X (mGy/mAs)</th>
+              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">X ({xUnitLabel})</th>
               <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">X MAX</th>
               <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">X MIN</th>
               <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">CoL</th>
@@ -519,7 +565,7 @@ const processedTable2 = useMemo(() => {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {processedTable2.map((p, rowIdx) => (
+            {processedTable2.rows.map((p, rowIdx) => (
               <tr key={p.id} className="hover:bg-gray-50">
                 <td className="px-4 py-2 border-r">
                   <input
@@ -555,38 +601,40 @@ const processedTable2 = useMemo(() => {
                 {rowIdx === 0 && (
                   <>
                     <td
-                      rowSpan={processedTable2.length}
+                      rowSpan={processedTable2.summary.rowSpan}
                       className="px-4 py-2 text-center border-r font-medium bg-yellow-50 align-middle"
                     >
-                      {p.xMax}
+                      {processedTable2.summary.xMax}
                     </td>
                     <td
-                      rowSpan={processedTable2.length}
+                      rowSpan={processedTable2.summary.rowSpan}
                       className="px-4 py-2 text-center border-r font-medium bg-yellow-50 align-middle"
                     >
-                      {p.xMin}
+                      {processedTable2.summary.xMin}
                     </td>
                     <td
-                      rowSpan={processedTable2.length}
+                      rowSpan={processedTable2.summary.rowSpan}
                       className="px-4 py-2 text-center border-r font-medium bg-yellow-50 align-middle"
                     >
-                      {p.col}
+                      {processedTable2.summary.col}
+                    </td>
+                    <td
+                      rowSpan={processedTable2.summary.rowSpan}
+                      className="px-4 py-2 text-center align-middle"
+                    >
+                      <span
+                        className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${processedTable2.summary.remarks === 'Pass'
+                          ? 'bg-green-100 text-green-800'
+                          : processedTable2.summary.remarks === 'Fail'
+                            ? 'bg-red-100 text-red-800'
+                            : 'text-gray-400'
+                          }`}
+                      >
+                        {processedTable2.summary.remarks || '—'}
+                      </span>
                     </td>
                   </>
                 )}
-
-                <td className="px-4 py-2 text-center">
-                  <span
-                    className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${p.remarks === 'Pass'
-                      ? 'bg-green-100 text-green-800'
-                      : p.remarks === 'Fail'
-                        ? 'bg-red-100 text-red-800'
-                        : 'text-gray-400'
-                      }`}
-                  >
-                    {p.remarks || '—'}
-                  </span>
-                </td>
 
                 <td className="px-2 py-2 text-center">
                   {table2Rows.length > 1 && !isViewMode && (
@@ -613,7 +661,19 @@ const processedTable2 = useMemo(() => {
             </button>
           )}
           <div className="flex items-center gap-2 ml-auto">
-            <span className="text-sm font-medium text-gray-700">Tolerance (CoL) less than</span>
+            <span className="text-sm font-medium text-gray-700">Tolerance (CoL)</span>
+            <select
+              value={toleranceOperator}
+              onChange={e => setToleranceOperator(e.target.value)}
+              disabled={isViewMode}
+              className={`px-3 py-2 text-center font-bold border-2 border-blue-400 rounded-lg focus:ring-4 focus:ring-blue-200 text-sm ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`}
+            >
+              <option value="<">&lt;</option>
+              <option value=">">&gt;</option>
+              <option value="<=">&lt;=</option>
+              <option value=">=">&gt;=</option>
+              <option value="=">=</option>
+            </select>
             <input
               type="number"
               step="0.001"
@@ -655,7 +715,7 @@ const processedTable2 = useMemo(() => {
           ) : (
             <>
               <ButtonIcon className="w-4 h-4" />
-              {buttonText} mA Linearity
+              {buttonText} {isTimerSelected ? 'mAs' : 'mA'} Linearity
             </>
           )}
         </button>

@@ -1118,7 +1118,7 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
                             </th>
                             <th className="border border-black p-2 print:p-1 text-center font-bold" style={{ width: '12%', padding: '0px 2px', fontSize: '11px' }}>Avg Output</th>
                             <th className="border border-black p-2 print:p-1 text-center font-bold" style={{ width: '12%', padding: '0px 2px', fontSize: '11px' }}>
-                              {isMaLoading ? "X (mGy/mA)" : "X (mGy/mAs)"}
+                              {isMaLoading ? "X (mGy/(mA*s))" : "X (mGy/mAs)"}
                             </th>
                             <th className="border border-black p-2 print:p-1 text-center font-bold" style={{ width: '8%', padding: '0px 2px', fontSize: '11px' }}>X MAX</th>
                             <th className="border border-black p-2 print:p-1 text-center font-bold" style={{ width: '8%', padding: '0px 2px', fontSize: '11px' }}>X MIN</th>

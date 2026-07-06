@@ -47,6 +47,35 @@ const ExposureRateAtTableTop: React.FC<Props> = ({
     const [nonAecTolerance, setNonAecTolerance] = useState("5");
     const [minFocusDistance, setMinFocusDistance] = useState("30");
 
+    const minFocus = parseFloat(minFocusDistance);
+    const hasValidMinFocus = !Number.isNaN(minFocus) && minFocus > 0;
+    const distanceValidationByRow = useMemo(() => {
+        return rows.reduce<Record<string, string>>((acc, row) => {
+            const distanceRaw = (row.distance || "").trim();
+            if (!distanceRaw) {
+                acc[row.id] = "Distance is required";
+                return acc;
+            }
+
+            const distanceVal = parseFloat(distanceRaw);
+            if (Number.isNaN(distanceVal)) {
+                acc[row.id] = "Distance must be a valid number";
+                return acc;
+            }
+
+            if (!hasValidMinFocus) {
+                acc[row.id] = "Enter valid Min. Focus to Tabletop Distance";
+                return acc;
+            }
+
+            if (distanceVal > minFocus) {
+                acc[row.id] = `Distance must be <= ${minFocusDistance} cm`;
+            }
+
+            return acc;
+        }, {});
+    }, [rows, hasValidMinFocus, minFocus, minFocusDistance]);
+
     // Compute PASS/FAIL for each row
     const rowsWithResult = useMemo(() => {
         return rows.map(row => {
@@ -68,6 +97,10 @@ const ExposureRateAtTableTop: React.FC<Props> = ({
 
     useEffect(() => {
         const loadTest = async () => {
+            if (csvData && csvData.length > 0) {
+                setIsLoading(false);
+                return;
+            }
             setIsLoading(true);
             try {
                 let data;
@@ -108,36 +141,50 @@ const ExposureRateAtTableTop: React.FC<Props> = ({
             }
         };
         loadTest();
-    }, [propTestId, serviceId, tubeId]);
+    }, [propTestId, serviceId, tubeId, csvData]);
 
     // CSV Data Injection
     useEffect(() => {
         if (csvData && csvData.length > 0) {
-            // Mapping table rows from CSV
-            const tableRows = csvData.filter(r =>
-                r['Field Name'] === 'Table1_Distance' ||
-                r['Field Name'] === 'Table1_AppliedKV' ||
-                r['Field Name'] === 'Table1_AppliedMA' ||
-                r['Field Name'] === 'Table1_Exposure' ||
-                r['Field Name'] === 'Table1_Mode'
+            const tableRows = csvData.filter(
+                (r) =>
+                    r['Field Name'] === 'Table1_kv' ||
+                    r['Field Name'] === 'Table1_ma' ||
+                    r['Field Name'] === 'Table2_Mode' ||
+                    r['Field Name'] === 'Table2_MeasuredRate'
             );
 
             if (tableRows.length > 0) {
-                const rowIndices = Array.from(new Set(tableRows.map(r => parseInt(r['Row Index'])))).sort((a, b) => a - b);
+                const rowIndices = Array.from(new Set(tableRows.map((r) => parseInt(r['Row Index'], 10)))).sort((a, b) => a - b);
                 const newRows = rowIndices.map((idx, i) => {
-                    const dist = csvData.find(r => r['Field Name'] === 'Table1_Distance' && parseInt(r['Row Index']) === idx)?.['Value'] || "";
-                    const kv = csvData.find(r => r['Field Name'] === 'Table1_AppliedKV' && parseInt(r['Row Index']) === idx)?.['Value'] || "";
-                    const ma = csvData.find(r => r['Field Name'] === 'Table1_AppliedMA' && parseInt(r['Row Index']) === idx)?.['Value'] || "";
-                    const exposure = csvData.find(r => r['Field Name'] === 'Table1_Exposure' && parseInt(r['Row Index']) === idx)?.['Value'] || "";
-                    const mode = csvData.find(r => r['Field Name'] === 'Table1_Mode' && parseInt(r['Row Index']) === idx)?.['Value'] || "";
+                    const kv = csvData.find((r) => r['Field Name'] === 'Table1_kv' && parseInt(r['Row Index'], 10) === idx)?.['Value'] || '';
+                    const ma = csvData.find((r) => r['Field Name'] === 'Table1_ma' && parseInt(r['Row Index'], 10) === idx)?.['Value'] || '';
+                    const exposure =
+                        csvData.find((r) => r['Field Name'] === 'Table2_MeasuredRate' && parseInt(r['Row Index'], 10) === idx)?.['Value'] || '';
+                    const mode = csvData.find((r) => r['Field Name'] === 'Table2_Mode' && parseInt(r['Row Index'], 10) === idx)?.['Value'] || '';
+                    const criteria =
+                        csvData.find((r) => r['Field Name'] === 'Criteria' && parseInt(r['Row Index'], 10) === idx)?.['Value'] || '';
+
+                    const remark =
+                        mode === 'AEC' || mode === 'AEC Mode'
+                            ? 'AEC Mode'
+                            : mode === 'Manual' || mode === 'Manual Mode'
+                              ? 'Manual Mode'
+                              : ('' as const);
+
+                    if (criteria) {
+                        if (remark === 'AEC Mode') setAecTolerance(criteria);
+                        else if (remark === 'Manual Mode') setNonAecTolerance(criteria);
+                        else setNonAecTolerance(criteria);
+                    }
 
                     return {
                         id: Date.now().toString() + i,
-                        distance: dist,
+                        distance: '',
                         appliedKv: kv,
                         appliedMa: ma,
-                        exposure: exposure,
-                        remark: (mode === "AEC" || mode === "AEC Mode") ? "AEC Mode" : (mode === "Manual" || mode === "Manual Mode") ? "Manual Mode" : "" as any,
+                        exposure,
+                        remark,
                     };
                 });
                 if (newRows.length > 0) setRows(newRows);
@@ -156,6 +203,7 @@ const ExposureRateAtTableTop: React.FC<Props> = ({
             if (!isSaved) {
                 setIsEditing(true);
             }
+            setIsSaved(false);
         }
     }, [csvData, isSaved]);
 
@@ -163,6 +211,20 @@ const ExposureRateAtTableTop: React.FC<Props> = ({
     const handleSave = async () => {
         if (rows.some(r => !r.exposure.trim() || !r.remark)) {
             toast.error("Please fill exposure and select mode for all rows");
+            return;
+        }
+
+        if (!hasValidMinFocus) {
+            toast.error("Please enter a valid Min. Focus to Tabletop Distance");
+            return;
+        }
+
+        const invalidDistanceRow = rows.find((r) => Boolean(distanceValidationByRow[r.id]));
+
+        if (invalidDistanceRow) {
+            toast.error(
+                `Distance (cm) must be less than or equal to Min. Focus to Tabletop Distance (${minFocusDistance} cm)`
+            );
             return;
         }
 
@@ -291,8 +353,11 @@ const ExposureRateAtTableTop: React.FC<Props> = ({
                                             value={row.distance}
                                             onChange={(e) => updateRow(row.id, "distance", e.target.value)}
                                             disabled={isViewOnly}
-                                            className={`w-full px-3 py-2 text-center border rounded-md text-sm ${isViewOnly ? "bg-gray-50" : ""}`}
+                                            className={`w-full px-3 py-2 text-center border rounded-md text-sm ${isViewOnly ? "bg-gray-50" : ""} ${!isViewOnly && distanceValidationByRow[row.id] ? "border-red-500" : ""}`}
                                         />
+                                        {!isViewOnly && distanceValidationByRow[row.id] && (
+                                            <p className="mt-1 text-xs text-red-600">{distanceValidationByRow[row.id]}</p>
+                                        )}
                                     </td>
                                     <td className="px-4 py-3 border-r">
                                         <input
@@ -439,11 +504,16 @@ const ExposureRateAtTableTop: React.FC<Props> = ({
                                 disabled={isViewOnly}
                                 className={`w-28 px-4 py-3 text-center border-2 rounded-lg font-bold text-2xl ${isViewOnly
                                     ? "border-gray-300 bg-gray-100 text-gray-500"
-                                    : "border-purple-400 text-purple-900 bg-white"
+                                    : hasValidMinFocus
+                                        ? "border-purple-400 text-purple-900 bg-white"
+                                        : "border-red-500 text-purple-900 bg-white"
                                     }`}
                             />
                             <span className="text-lg font-bold text-purple-800">cm</span>
                         </div>
+                        {!isViewOnly && !hasValidMinFocus && (
+                            <p className="mt-1 text-xs text-red-600">Enter a valid value greater than 0</p>
+                        )}
                     </div>
                 </div>
             </div>

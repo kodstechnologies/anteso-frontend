@@ -229,6 +229,10 @@ export default function TubeHousingLeakageForInventionalRadiology({
       setIsLoading(false);
       return;
     }
+    if (csvData && csvData.length > 0) {
+      setIsLoading(false);
+      return;
+    }
     const load = async () => {
       try {
         const res = await getTubeHousingLeakageByServiceIdForInventionalRadiology(serviceId, tubeId);
@@ -284,7 +288,7 @@ export default function TubeHousingLeakageForInventionalRadiology({
       }
     };
     load();
-  }, [serviceId, tubeId]);
+  }, [serviceId, tubeId, csvData]);
 
   // CSV Data Injection (same field names as RadiographyFixed where applicable)
   useEffect(() => {

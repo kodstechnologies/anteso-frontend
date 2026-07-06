@@ -1094,15 +1094,52 @@ const ViewServiceReportOPG: React.FC = () => {
            
             {/* 4. Linearity of mA / mAs Loading */}
             {testData.linearityOfMaLoading?.table2Rows?.length > 0 && (() => {
-              const linearityRows = testData.linearityOfMaLoading.table2Rows || [];
+              const rows = testData.linearityOfMaLoading.table2Rows || [];
+              const measHeaders = testData.linearityOfMaLoading.measurementHeaders || ["Meas 1", "Meas 2", "Meas 3"];
+              const measCount = measHeaders.length;
+              const tolerance = testData.linearityOfMaLoading.tolerance || "0.1";
+              const toleranceOperator = testData.linearityOfMaLoading.toleranceOperator || "<";
               const table1 = Array.isArray(testData.linearityOfMaLoading.table1)
                 ? testData.linearityOfMaLoading.table1?.[0]
                 : testData.linearityOfMaLoading.table1;
               const hasTime = table1?.time !== undefined && table1?.time !== null && String(table1?.time).trim() !== "";
-              const hasMasShape = linearityRows.some((row: any) => row.mAsRange || row.mAsApplied);
-              const linearityHeading = (!hasTime || hasMasShape)
-                ? "Linearity of mAs Loading (Coefficient of Linearity)"
-                : "Linearity of mA Loading (Coefficient of Linearity)";
+              const timeStr = hasTime ? String(table1?.time).trim() : '';
+              const timeVal = parseFloat(timeStr);
+              const hasValidTime = timeStr !== '' && !isNaN(timeVal) && timeVal > 0;
+              const xUnitLabel = hasTime ? 'mGy/(mA*s)' : 'mGy/mA';
+              const linearityHeading = "Linearity of mA Loading (Coefficient of Linearity)";
+
+              const xResults = rows.map((row: any) => {
+                const outputsArr = Array.isArray(row.measuredOutputs) ? row.measuredOutputs : [];
+                const values = outputsArr.map((v: any) => parseFloat(String(v))).filter((n: number) => !isNaN(n) && n > 0);
+                const avg = values.length > 0 ? values.reduce((a: number, b: number) => a + b, 0) / values.length : 0;
+                const ma = parseFloat(row.ma) || 0;
+                const mAs = hasValidTime && ma > 0 ? ma * timeVal : null;
+                let x = 0;
+                if (avg > 0 && mAs && mAs > 0) {
+                  x = avg / mAs;
+                } else if (avg > 0 && ma > 0) {
+                  x = avg / ma;
+                }
+                return { avg, x, row };
+              });
+
+              const xValues = xResults.map((r: any) => r.x).filter((x: number) => x > 0);
+              const xMax = xValues.length > 0 ? Math.max(...xValues) : 0;
+              const xMin = xValues.length > 0 ? Math.min(...xValues) : 0;
+              const col = (xMax + xMin) > 0 ? Math.abs(xMax - xMin) / (xMax + xMin) : 0;
+              const tolNum = parseFloat(tolerance);
+              let isPassOverall = false;
+              if (col > 0 && !isNaN(tolNum)) {
+                switch (toleranceOperator) {
+                  case '<': isPassOverall = col < tolNum; break;
+                  case '>': isPassOverall = col > tolNum; break;
+                  case '<=': isPassOverall = col <= tolNum; break;
+                  case '>=': isPassOverall = col >= tolNum; break;
+                  case '=': isPassOverall = Math.abs(col - tolNum) < 0.0001; break;
+                  default: isPassOverall = col <= tolNum;
+                }
+              }
 
               return (
               <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
@@ -1132,25 +1169,39 @@ const ViewServiceReportOPG: React.FC = () => {
                   <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
                     <thead className="bg-gray-100">
                       <tr>
-                        <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{testData.linearityOfMaLoading.table2Rows[0]?.ma ? "mA" : "mAs Range"}</th>
-                        <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Meas 1</th>
-                        <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Meas 2</th>
-                        <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Meas 3</th>
+                        <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>mA</th>
+                        {measHeaders.map((h: string, idx: number) => (
+                          <th key={idx} className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{h}</th>
+                        ))}
                         <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Average</th>
-                        <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Coefficient of Linearity</th>
-                        <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Remarks</th>
+                        <th className="border border-black p-2 print:p-1 text-center font-bold bg-blue-50" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>X ({xUnitLabel})</th>
+                        <th className="border border-black p-2 print:p-1 text-center font-bold bg-yellow-50" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>CoL</th>
+                        <th className="border border-black p-2 print:p-1 text-center font-bold bg-green-50" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Remarks</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {testData.linearityOfMaLoading.table2Rows.map((row: any, i: number) => (
+                      {xResults.map((res: any, i: number) => (
                         <tr key={i} className="text-center" style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
-                          <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.ma || row.mAsRange || "-"}</td>
-                          {row.measuredOutputs?.map((val: string, idx: number) => (
-                            <td key={idx} className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{val || "-"}</td>
+                          <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{res.row.ma || "-"}</td>
+                          {Array.from({ length: measCount }).map((_, idx) => (
+                            <td key={idx} className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>
+                              {res.row.measuredOutputs?.[idx] || "-"}
+                            </td>
                           ))}
-                          <td className="border border-black p-2 print:p-1 font-semibold text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.average || "-"}</td>
-                          <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.col || "-"}</td>
-                          <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}><span className={row.remarks === "Pass" || row.remarks === "PASS" ? "text-green-600 font-semibold" : row.remarks === "Fail" || row.remarks === "FAIL" ? "text-red-600 font-semibold" : ""}>{row.remarks || "-"}</span></td>
+                          <td className="border border-black p-2 print:p-1 font-semibold text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{res.avg > 0 ? res.avg.toFixed(4) : (res.row.average || "-")}</td>
+                          <td className="border border-black p-2 print:p-1 text-center font-bold" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{res.x > 0 ? res.x.toFixed(4) : (res.row.x || "-")}</td>
+                          {i === 0 && (
+                            <td rowSpan={rows.length} className="border border-black p-2 print:p-1 text-center font-bold align-middle bg-yellow-50" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center', verticalAlign: 'middle' }}>
+                              {col > 0 ? col.toFixed(4) : (rows[0]?.col || "-")}
+                            </td>
+                          )}
+                          {i === 0 && (
+                            <td rowSpan={rows.length} className="border border-black p-2 print:p-1 text-center font-bold align-middle bg-green-50" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center', verticalAlign: 'middle' }}>
+                              <span className={isPassOverall ? "text-green-600 font-semibold" : "text-red-600 font-semibold"}>
+                                {isPassOverall ? "Pass" : col > 0 ? "Fail" : (rows[0]?.remarks || "-")}
+                              </span>
+                            </td>
+                          )}
                         </tr>
                       ))}
                     </tbody>
@@ -1158,7 +1209,7 @@ const ViewServiceReportOPG: React.FC = () => {
                 </div>
                 <div className="bg-gray-50 p-4 print:p-1 rounded border" style={{ padding: '2px 4px', marginTop: '4px' }}>
                   <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
-                    <strong>Tolerance:</strong> Coefficient of Linearity ≤ {testData.linearityOfMaLoading.tolerance || "0.1"}
+                    <strong>Tolerance:</strong> Coefficient of Linearity {toleranceOperator} {tolerance}
                   </p>
                 </div>
               </div>
