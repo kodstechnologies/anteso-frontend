@@ -117,13 +117,23 @@ const MainTestTableForOBI: React.FC<MainTestTableProps> = ({ testData, hasTimer 
 
   // Effective Focal Spot Size
   if (testData.effectiveFocalSpot?.focalSpots && Array.isArray(testData.effectiveFocalSpot.focalSpots)) {
-    const validRows = testData.effectiveFocalSpot.focalSpots.filter((spot: any) => spot.focusType || spot.measuredWidth);
+    const validRows = testData.effectiveFocalSpot.focalSpots.filter(
+      (spot: any) => spot.focusType || spot.measuredNominal || spot.measuredWidth
+    );
     if (validRows.length > 0) {
       const formatValue = (val: any) => {
         if (val === undefined || val === null || val === "") return null;
         const numVal = typeof val === "number" ? val : parseFloat(val);
         if (isNaN(numVal)) return null;
         return numVal.toFixed(1);
+      };
+      const nominalValue = (spot: any, kind: "stated" | "measured") => {
+        const nominal = kind === "stated" ? spot.statedNominal : spot.measuredNominal;
+        if (nominal != null && nominal !== "") return formatValue(nominal);
+        const width = kind === "stated" ? spot.statedWidth : spot.measuredWidth;
+        const height = kind === "stated" ? spot.statedHeight : spot.measuredHeight;
+        if (width != null && height != null) return formatValue((Number(width) + Number(height)) / 2);
+        return formatValue(width ?? height);
       };
 
       const toleranceCriteria = testData.effectiveFocalSpot.toleranceCriteria || {};
@@ -138,11 +148,11 @@ const MainTestTableForOBI: React.FC<MainTestTableProps> = ({ testData, hasTimer 
 
       const testRows = validRows.map((spot: any) => {
         const isPass = spot.remark === "Pass" || spot.remark === "PASS";
-        const statedWidth = formatValue(spot.statedWidth);
-        const measuredWidth = formatValue(spot.measuredWidth);
+        const statedNominal = nominalValue(spot, "stated");
+        const measuredNominal = nominalValue(spot, "measured");
         return {
-          specified: statedWidth !== null ? `${statedWidth} mm` : "-",
-          measured: measuredWidth !== null ? `${measuredWidth} mm` : "-",
+          specified: statedNominal !== null ? `${statedNominal} mm` : "-",
+          measured: measuredNominal !== null ? `${measuredNominal} mm` : "-",
           tolerance: toleranceStr,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };

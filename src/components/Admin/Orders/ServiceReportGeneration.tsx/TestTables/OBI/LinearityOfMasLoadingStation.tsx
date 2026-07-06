@@ -390,8 +390,8 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
                 <table className="w-full">
                     <thead className="bg-gray-50">
                         <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase border-r">FCD (cm)</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">kV</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-700  border-r">FDD (cm)</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 ">kV</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -431,8 +431,8 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
                     <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-blue-50">
                             <tr>
-                                <th rowSpan={2} className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase border-r">mAs Range</th>
-                                <th colSpan={measHeaders.length} className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase border-r">
+                                <th rowSpan={2} className="px-6 py-3 text-left text-xs font-medium text-gray-700  border-r">mAs Range</th>
+                                <th colSpan={measHeaders.length} className="px-6 py-3 text-center text-xs font-medium text-gray-700  border-r">
                                     <div className="flex items-center justify-between px-4">
                                         <span>Radiation Output (mGy)</span>
                                         {!isViewMode && (
@@ -442,12 +442,12 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
                                         )}
                                     </div>
                                 </th>
-                                <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase border-r">Avg Output</th>
-                                <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase border-r">X (mGy/mAs)</th>
-                                <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase border-r">X Max</th>
-                                <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase border-r">X Min</th>
-                                <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase border-r">CoL</th>
-                                <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase">Remarks</th>
+                                <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700  border-r">Avg Output</th>
+                                <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700  border-r">X (mGy/mAs)</th>
+                                <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700  border-r">X Max</th>
+                                <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700  border-r">X Min</th>
+                                <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700  border-r">CoL</th>
+                                <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700 ">Remarks</th>
                                 <th rowSpan={2} className="w-12"></th>
                             </tr>
                             <tr>

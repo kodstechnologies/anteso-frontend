@@ -773,21 +773,32 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null; qaTestDate?
                             while (focalSpots.length <= rowIndex) {
                                 focalSpots.push({
                                     focusType: '',
-                                    statedWidth: '',
-                                    statedHeight: '',
-                                    measuredWidth: '',
-                                    measuredHeight: '',
+                                    statedNominal: '',
+                                    measuredNominal: '',
                                     remark: '' as 'Pass' | 'Fail' | '',
                                 });
                             }
                             const fieldName = field.replace('FocalSpot_', '');
                             if (fieldName === 'FocusType') focalSpots[rowIndex].focusType = value;
+                            if (fieldName === 'StatedNominal') focalSpots[rowIndex].statedNominal = value;
+                            if (fieldName === 'MeasuredNominal') focalSpots[rowIndex].measuredNominal = value;
+                            // Legacy width/height → single nominal (average when both present)
                             if (fieldName === 'StatedWidth') focalSpots[rowIndex].statedWidth = value;
                             if (fieldName === 'StatedHeight') focalSpots[rowIndex].statedHeight = value;
-                            if (fieldName === 'StatedNominal') focalSpots[rowIndex].statedNominal = value;
+                            if (fieldName === 'StatedWidth' || fieldName === 'StatedHeight') {
+                                const w = focalSpots[rowIndex].statedWidth;
+                                const h = focalSpots[rowIndex].statedHeight;
+                                if (w && h) focalSpots[rowIndex].statedNominal = String((Number(w) + Number(h)) / 2);
+                                else if (value && !focalSpots[rowIndex].statedNominal) focalSpots[rowIndex].statedNominal = value;
+                            }
                             if (fieldName === 'MeasuredWidth') focalSpots[rowIndex].measuredWidth = value;
                             if (fieldName === 'MeasuredHeight') focalSpots[rowIndex].measuredHeight = value;
-                            if (fieldName === 'MeasuredNominal') focalSpots[rowIndex].measuredNominal = value;
+                            if (fieldName === 'MeasuredWidth' || fieldName === 'MeasuredHeight') {
+                                const w = focalSpots[rowIndex].measuredWidth;
+                                const h = focalSpots[rowIndex].measuredHeight;
+                                if (w && h) focalSpots[rowIndex].measuredNominal = String((Number(w) + Number(h)) / 2);
+                                else if (value && !focalSpots[rowIndex].measuredNominal) focalSpots[rowIndex].measuredNominal = value;
+                            }
                         }
                     });
 

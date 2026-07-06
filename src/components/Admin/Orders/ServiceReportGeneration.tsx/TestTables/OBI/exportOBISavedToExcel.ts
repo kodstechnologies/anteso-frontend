@@ -45,9 +45,26 @@ export const createOBISavedExcel = (data: OBISavedExportData): XLSX.WorkBook => 
   }
 
   const efs = unwrap(data.effectiveFocalSpot);
-  if (efs?.table2?.length > 0) {
-    const rows = efs.table2.map((r: any) => [r.focusType ?? "", r.measuredLpPerMm ?? "", r.recommendedStandard ?? "", r.smallestHoleSize ?? ""]);
-    addSection("EFFECTIVE FOCAL SPOT", ["Focus Type", "Measured lp/mm", "Recommended", "Smallest Hole"], rows);
+  if (efs?.focalSpots?.length > 0) {
+    allData.push(["========== EFFECTIVE FOCAL SPOT =========="]);
+    allData.push(["Field Name", "Value"]);
+    allData.push(["FCD", efs.fcd ?? ""]);
+    efs.focalSpots.forEach((spot: any) => {
+      const stated =
+        spot.statedNominal ??
+        (spot.statedWidth != null && spot.statedHeight != null
+          ? (Number(spot.statedWidth) + Number(spot.statedHeight)) / 2
+          : spot.statedWidth ?? spot.statedHeight ?? "");
+      const measured =
+        spot.measuredNominal ??
+        (spot.measuredWidth != null && spot.measuredHeight != null
+          ? (Number(spot.measuredWidth) + Number(spot.measuredHeight)) / 2
+          : spot.measuredWidth ?? spot.measuredHeight ?? "");
+      allData.push(["FocalSpot_FocusType", spot.focusType ?? ""]);
+      allData.push(["FocalSpot_StatedNominal", stated]);
+      allData.push(["FocalSpot_MeasuredNominal", measured]);
+    });
+    addBlank();
   }
 
   const timer = unwrap(data.timerTest);
