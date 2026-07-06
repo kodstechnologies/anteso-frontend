@@ -11,7 +11,7 @@ import {
     WidthType,
     PageOrientation,
 } from 'docx';
-import { formatCreatedAtDisplay } from './tableDateFilter';
+import { formatDateForExport, formatGeneratedAtForExport, getExportFileNameDateStamp } from './tableDateFilter';
 
 export type EnquiryExportRow = {
     enquiryId: string;
@@ -63,7 +63,7 @@ const ENQUIRY_EXPORT_HEADERS = [
 
 export const mapEnquiryToExportRow = (item: Record<string, any>): EnquiryExportRow => ({
     enquiryId: item.enquiryID || item.enquiryId || '-',
-    createdAt: formatCreatedAtDisplay(item.createdAt),
+    createdAt: formatDateForExport(item.createdAt),
     hospitalName: item.hName || item.hospitalName || '-',
     fullAddress: item.fullAddress || '-',
     city: item.city || '-',
@@ -101,7 +101,7 @@ const rowsToMatrix = (rows: EnquiryExportRow[]) =>
 const buildFilterSummary = (filters: EnquiryExportFilters, totalRecords: number) => {
     const summary: string[][] = [
         ['Enquiries Export'],
-        ['Generated At', new Date().toLocaleString('en-GB')],
+        ['Generated At', formatGeneratedAtForExport()],
         ['Total Records', String(totalRecords)],
     ];
 
@@ -112,8 +112,8 @@ const buildFilterSummary = (filters: EnquiryExportFilters, totalRecords: number)
         ['Branch Name', filters.branch],
         ['Email', filters.emailAddress],
         ['Phone', filters.contactNumber],
-        ['From Date', filters.dateFrom],
-        ['To Date', filters.dateTo],
+        ['From Date', filters.dateFrom ? formatDateForExport(filters.dateFrom) : undefined],
+        ['To Date', filters.dateTo ? formatDateForExport(filters.dateTo) : undefined],
         ['Search', filters.search],
     ];
 
@@ -128,10 +128,7 @@ const buildFilterSummary = (filters: EnquiryExportFilters, totalRecords: number)
     return summary;
 };
 
-const getExportFileName = (extension: string) => {
-    const dateStamp = new Date().toISOString().slice(0, 10);
-    return `enquiries-export-${dateStamp}.${extension}`;
-};
+const getExportFileName = (extension: string) => `enquiries-export-${getExportFileNameDateStamp()}.${extension}`;
 
 const PDF_MARGIN = 14;
 const CARD_GAP = 8;

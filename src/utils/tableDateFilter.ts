@@ -37,3 +37,35 @@ export function formatCreatedAtDisplay(value: string | Date | undefined | null):
         minute: '2-digit',
     });
 }
+
+/** dd/mm/yyyy for exported documents (PDF, Excel, Word) */
+export function formatDateForExport(value: string | Date | undefined | null): string {
+    if (value == null || value === '') return '—';
+
+    if (typeof value === 'string') {
+        const isoMatch = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
+        if (isoMatch) {
+            return `${isoMatch[3]}/${isoMatch[2]}/${isoMatch[1]}`;
+        }
+    }
+
+    const d = typeof value === 'string' ? new Date(value) : value;
+    if (Number.isNaN(d.getTime())) return '—';
+
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}/${month}/${year}`;
+}
+
+export function formatGeneratedAtForExport(): string {
+    return formatDateForExport(new Date());
+}
+
+/** dd-mm-yyyy for export download filenames (slashes are invalid in file names) */
+export function getExportFileNameDateStamp(date: Date = new Date()): string {
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}-${month}-${year}`;
+}

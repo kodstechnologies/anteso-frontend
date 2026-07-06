@@ -2089,23 +2089,61 @@ export const completeStatusAndReport = async (
     }
 };
 
-export const getAllDealers = async () => {
+export const getAllDealers = async (filters?: DealerListFilters) => {
     try {
         const token = Cookies.get('accessToken')
+        const params: Record<string, string> = {};
+
+        if (filters?.dealerId?.trim()) params.dealerId = filters.dealerId.trim();
+        if (filters?.name?.trim()) params.name = filters.name.trim();
+        if (filters?.pincode?.trim()) params.pincode = filters.pincode.trim();
+        if (filters?.branch?.trim()) params.branch = filters.branch.trim();
+
         const res = await api.get(`/dealers/get-all-dealers`, {
+            params,
             headers: {
                 Authorization: `Bearer ${token}`,
             },
         })
-        // console.log("🚀 ~ getAllDealers ~ res:", res)
         return res
     } catch (error: any) {
-        console.error("🚀 ~ getEngineerByTools ~ error:", error);
+        console.error("🚀 ~ getAllDealers ~ error:", error);
         throw new Error(
-            error?.response?.data?.message || "Failed to fetch raw data"
+            error?.response?.data?.message || "Failed to fetch dealers"
         );
     }
 }
+
+export type DealerListFilters = {
+    dealerId?: string;
+    name?: string;
+    pincode?: string;
+    branch?: string;
+};
+
+export type DealerFilterOptions = {
+    dealerIds: string[];
+    names: string[];
+    pincodes: string[];
+    branches: string[];
+};
+
+export const getDealerFilterOptions = async () => {
+    try {
+        const token = Cookies.get('accessToken');
+        const res = await api.get(`/dealers/filter-options`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
+        return res.data?.filters as DealerFilterOptions;
+    } catch (error: any) {
+        console.error("Failed to fetch dealer filter options:", error);
+        throw new Error(
+            error?.response?.data?.message || "Failed to fetch dealer filter options"
+        );
+    }
+};
 
 export const createPayment = async (payload: any) => {
     console.log("🚀 ~ createPayment ~ payload:", payload)
@@ -3019,20 +3057,61 @@ export const createManufacturer = async (data: any) => {
     }
 };
 
-export const getAllManufacturer = async () => {
+export type ManufacturerListFilters = {
+    manufacturerId?: string;
+    name?: string;
+    pincode?: string;
+    branch?: string;
+    mouValidity?: string;
+};
+
+export type ManufacturerFilterOptions = {
+    manufacturerIds: string[];
+    names: string[];
+    pincodes: string[];
+    branches: string[];
+    mouValidities: string[];
+};
+
+export const getManufacturerFilterOptions = async () => {
+    try {
+        const token = Cookies.get('accessToken');
+        const res = await api.get(`/manufacturers/filter-options`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
+        return res.data?.filters as ManufacturerFilterOptions;
+    } catch (error: any) {
+        console.error("Failed to fetch manufacturer filter options:", error);
+        throw new Error(
+            error?.response?.data?.message || "Failed to fetch manufacturer filter options"
+        );
+    }
+};
+
+export const getAllManufacturer = async (filters?: ManufacturerListFilters) => {
     try {
         const token = Cookies.get('accessToken')
+        const params: Record<string, string> = {};
+
+        if (filters?.manufacturerId?.trim()) params.manufacturerId = filters.manufacturerId.trim();
+        if (filters?.name?.trim()) params.name = filters.name.trim();
+        if (filters?.pincode?.trim()) params.pincode = filters.pincode.trim();
+        if (filters?.branch?.trim()) params.branch = filters.branch.trim();
+        if (filters?.mouValidity?.trim()) params.mouValidity = filters.mouValidity.trim();
+
         const res = await api.get(`/manufacturers/get-all`, {
+            params,
             headers: {
                 Authorization: `Bearer ${token}`,
             },
         })
-        // console.log("🚀 ~ getAllManufacturer ~ res:", res)
         return res
     } catch (error: any) {
         console.error("🚀 ~ getAllManufacturer ~ error:", error);
         throw new Error(
-            error?.response?.data?.message || "Failed to fetch raw data"
+            error?.response?.data?.message || "Failed to fetch manufacturers"
         );
     }
 }

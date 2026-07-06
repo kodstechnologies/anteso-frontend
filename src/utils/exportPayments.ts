@@ -11,7 +11,8 @@ import {
     WidthType,
     PageOrientation,
 } from 'docx';
-import { formatCreatedAtDisplay } from './tableDateFilter';
+import { formatDateForExport, formatGeneratedAtForExport, getExportFileNameDateStamp } from './tableDateFilter';
+import { formatCurrencyForExport, formatCurrencyForPdf } from './formatCurrency';
 
 export type PaymentExportRow = {
     paymentId: string;
@@ -46,17 +47,23 @@ const PAYMENT_EXPORT_HEADERS = [
     'Created At',
 ] as const;
 
-export const mapPaymentToExportRow = (payment: Record<string, any>): PaymentExportRow => ({
-    paymentId: payment.paymentId || '-',
-    srfClient: payment.srfClient || '-',
-    totalAmount: payment.totalAmount ? `₹${payment.totalAmount.toLocaleString()}` : '₹0',
-    paymentAmount: payment.paymentAmount ? `₹${payment.paymentAmount.toLocaleString()}` : '₹0',
-    paymentType: payment.paymentType || '-',
-    utrNumber: payment.utrNumber || '-',
-    paymentMode: payment.paymentMode || '-',
-    branchName: payment.branchName || '-',
-    createdAt: formatCreatedAtDisplay(payment.createdAt),
-});
+export const mapPaymentToExportRow = (
+    payment: Record<string, any>,
+    forPdf = false,
+): PaymentExportRow => {
+    const formatCurrency = forPdf ? formatCurrencyForPdf : formatCurrencyForExport;
+    return {
+        paymentId: payment.paymentId || '-',
+        srfClient: payment.srfClient || '-',
+        totalAmount: formatCurrency(payment.totalAmount),
+        paymentAmount: formatCurrency(payment.paymentAmount),
+        paymentType: payment.paymentType || '-',
+        utrNumber: payment.utrNumber || '-',
+        paymentMode: payment.paymentMode || '-',
+        branchName: payment.branchName || '-',
+        createdAt: formatDateForExport(payment.createdAt),
+    };
+};
 
 const rowsToMatrix = (rows: PaymentExportRow[]) =>
     rows.map((row) => [
@@ -74,7 +81,7 @@ const rowsToMatrix = (rows: PaymentExportRow[]) =>
 const buildFilterSummary = (filters: PaymentExportFilters, totalRecords: number) => {
     const summary: string[][] = [
         ['Payments Export'],
-        ['Generated At', new Date().toLocaleString('en-GB')],
+        ['Generated At', formatGeneratedAtForExport()],
         ['Total Records', String(totalRecords)],
     ];
 
@@ -82,8 +89,8 @@ const buildFilterSummary = (filters: PaymentExportFilters, totalRecords: number)
         ['Payment Type', filters.paymentType],
         ['Payment Mode', filters.paymentMode],
         ['Branch Name', filters.branchName],
-        ['From Date', filters.dateFrom],
-        ['To Date', filters.dateTo],
+        ['From Date', filters.dateFrom ? formatDateForExport(filters.dateFrom) : undefined],
+        ['To Date', filters.dateTo ? formatDateForExport(filters.dateTo) : undefined],
         ['Search', filters.search],
     ];
 
@@ -98,10 +105,7 @@ const buildFilterSummary = (filters: PaymentExportFilters, totalRecords: number)
     return summary;
 };
 
-const getExportFileName = (extension: string) => {
-    const dateStamp = new Date().toISOString().slice(0, 10);
-    return `payments-export-${dateStamp}.${extension}`;
-};
+const getExportFileName = (extension: string) => `payments-export-${getExportFileNameDateStamp()}.${extension}`;
 
 const PDF_MARGIN = 14;
 const CARD_GAP = 8;
@@ -117,8 +121,8 @@ type CardField = {
 
 const getPaymentCardFields = (row: PaymentExportRow): CardField[] => [
     { label: 'SRF No.', value: row.srfClient },
-    { label: 'Total Amount', value: row.totalAmount },
-    { label: 'Payment Amount', value: row.paymentAmount },
+    { label: 'Total Amount', value: row.totalAmount, fullWidth: true },
+    { label: 'Payment Amount', value: row.paymentAmount, fullWidth: true },
     { label: 'Payment Type', value: row.paymentType },
     { label: 'UTR Number', value: row.utrNumber },
     { label: 'Payment Mode', value: row.paymentMode },
@@ -251,7 +255,7 @@ export const exportPaymentsToPdf = (
     payments: Record<string, any>[],
     filters: PaymentExportFilters,
 ) => {
-    const rows = payments.map(mapPaymentToExportRow);
+    const rows = payments.map((payment) => mapPaymentToExportRow(payment, true));
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
     const pageWidth = doc.internal.pageSize.getWidth();
     const contentWidth = pageWidth - PDF_MARGIN * 2;

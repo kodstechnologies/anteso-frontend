@@ -12,103 +12,98 @@ import {
     PageOrientation,
 } from 'docx';
 import { formatDateForExport, formatGeneratedAtForExport, getExportFileNameDateStamp } from './tableDateFilter';
-import { formatCurrencyForExport, formatCurrencyForPdf } from './formatCurrency';
 
-export type InvoiceExportRow = {
-    invoiceId: string;
-    srfNumber: string;
-    buyerName: string;
-    address: string;
-    state: string;
-    branchName: string;
-    createdAt: string;
-    grandtotal: string;
-    status: string;
+export type ManufacturerExportRow = {
+    manufacturerId: string;
+    name: string;
+    contactPersonName: string;
+    pincode: string;
+    branch: string;
+    mouValidity: string;
+    createdBy: string;
 };
 
-export type InvoiceExportFilters = {
-    state?: string;
-    branchName?: string;
-    dateFrom?: string;
-    dateTo?: string;
+export type ManufacturerExportFilters = {
+    manufacturerId?: string;
+    name?: string;
+    pincode?: string;
+    branch?: string;
+    mouValidity?: string;
     search?: string;
 };
 
-const INVOICE_EXPORT_HEADERS = [
-    'Invoice ID',
-    'SRF No',
-    'Customer Name',
-    'Address',
-    'State',
-    'Branch Name',
-    'Created At',
-    'Total Amount',
-    'Status',
+const MANUFACTURER_EXPORT_HEADERS = [
+    'MANU ID',
+    'Name',
+    'Contact Person',
+    'Pincode',
+    'Branch',
+    'MOU Validity',
+    'Created By',
 ] as const;
 
-export const mapInvoiceToExportRow = (
-    invoice: Record<string, any>,
-    forPdf = false,
-): InvoiceExportRow => {
-    const formatCurrency = forPdf ? formatCurrencyForPdf : formatCurrencyForExport;
-    const amount =
-        invoice.grandtotal ??
-        invoice.grandTotal ??
-        invoice.totalAmount;
+const formatMouValidity = (value?: string) => formatDateForExport(value);
 
-    return {
-        invoiceId: invoice.invoiceId || '-',
-        srfNumber: invoice.srfNumber || '-',
-        buyerName: invoice.buyerName || '-',
-        address: invoice.address || '-',
-        state: invoice.state || '-',
-        branchName: invoice.branchName || '-',
-        createdAt: formatDateForExport(invoice.createdAt),
-        grandtotal: formatCurrency(amount),
-        status: invoice.status || '-',
-    };
+const formatCreatedBy = (record: Record<string, any>) => {
+    const creator = record.createdBy;
+    if (!creator) return '-';
+    if (record.createdByModel === 'Admin' || creator.role === 'admin') {
+        return `Admin (${creator.email || '-'})`;
+    }
+    if (creator.role === 'Employee') {
+        const techType = creator.technicianType ? creator.technicianType.replace('-', ' ') : '';
+        return `${techType ? `${techType} - ` : ''}(${creator.email || '-'})`;
+    }
+    return creator.name || creator.email || '-';
 };
 
-const rowsToMatrix = (rows: InvoiceExportRow[]) =>
+export const mapManufacturerToExportRow = (item: Record<string, any>): ManufacturerExportRow => ({
+    manufacturerId: item.manufacturerId || '-',
+    name: item.name || '-',
+    contactPersonName: item.contactPersonName || '-',
+    pincode: item.pincode || item.pinCode || '-',
+    branch: item.branch || '-',
+    mouValidity: formatMouValidity(item.mouValidity),
+    createdBy: formatCreatedBy(item),
+});
+
+const rowsToMatrix = (rows: ManufacturerExportRow[]) =>
     rows.map((row) => [
-        row.invoiceId,
-        row.srfNumber,
-        row.buyerName,
-        row.address,
-        row.state,
-        row.branchName,
-        row.createdAt,
-        row.grandtotal,
-        row.status,
+        row.manufacturerId,
+        row.name,
+        row.contactPersonName,
+        row.pincode,
+        row.branch,
+        row.mouValidity,
+        row.createdBy,
     ]);
 
-const buildFilterSummary = (filters: InvoiceExportFilters, totalRecords: number) => {
+const buildFilterSummary = (filters: ManufacturerExportFilters, totalRecords: number) => {
     const summary: string[][] = [
-        ['Invoices Export'],
+        ['Manufacturers Export'],
         ['Generated At', formatGeneratedAtForExport()],
         ['Total Records', String(totalRecords)],
     ];
 
     const appliedFilters: Array<[string, string | undefined]> = [
-        ['State', filters.state],
-        ['Branch Name', filters.branchName],
-        ['From Date', filters.dateFrom ? formatDateForExport(filters.dateFrom) : undefined],
-        ['To Date', filters.dateTo ? formatDateForExport(filters.dateTo) : undefined],
+        ['MANU ID', filters.manufacturerId],
+        ['Name', filters.name],
+        ['Pincode', filters.pincode],
+        ['Branch', filters.branch],
+        ['MOU Validity', filters.mouValidity ? formatDateForExport(filters.mouValidity) : undefined],
         ['Search', filters.search],
     ];
 
     appliedFilters.forEach(([label, value]) => {
         const trimmed = String(value || '').trim();
-        if (trimmed) {
-            summary.push([label, trimmed]);
-        }
+        if (trimmed) summary.push([label, trimmed]);
     });
 
     summary.push(['']);
     return summary;
 };
 
-const getExportFileName = (extension: string) => `invoices-export-${getExportFileNameDateStamp()}.${extension}`;
+const getExportFileName = (extension: string) => `manufacturers-export-${getExportFileNameDateStamp()}.${extension}`;
 
 const PDF_MARGIN = 14;
 const CARD_GAP = 8;
@@ -116,19 +111,15 @@ const CARD_PADDING = 5;
 const CARD_HEADER_HEIGHT = 10;
 const LINE_HEIGHT = 4.8;
 
-type CardField = {
-    label: string;
-    value: string;
-    fullWidth?: boolean;
-};
+type CardField = { label: string; value: string; fullWidth?: boolean };
 
-const getInvoiceCardFields = (row: InvoiceExportRow): CardField[] => [
-    { label: 'Customer Name', value: row.buyerName, fullWidth: true },
-    { label: 'Address', value: row.address, fullWidth: true },
-    { label: 'State', value: row.state },
-    { label: 'Branch Name', value: row.branchName },
-    { label: 'Created At', value: row.createdAt },
-    { label: 'Total Amount', value: row.grandtotal, fullWidth: true },
+const getManufacturerCardFields = (row: ManufacturerExportRow): CardField[] => [
+    { label: 'Name', value: row.name, fullWidth: true },
+    { label: 'Contact Person', value: row.contactPersonName },
+    { label: 'MOU Validity', value: row.mouValidity },
+    { label: 'Pincode', value: row.pincode },
+    { label: 'Branch', value: row.branch },
+    { label: 'Created By', value: row.createdBy, fullWidth: true },
 ];
 
 const measureCardHeight = (doc: jsPDF, fields: CardField[], contentWidth: number) => {
@@ -142,17 +133,14 @@ const measureCardHeight = (doc: jsPDF, fields: CardField[], contentWidth: number
         const maxWidth = field.fullWidth ? fullValueWidth : valueWidth;
         const lines = doc.splitTextToSize(field.value || '-', maxWidth);
         const rowHeight = Math.max(LINE_HEIGHT, lines.length * LINE_HEIGHT);
-
         if (field.fullWidth) {
             height += rowHeight + 2;
             continue;
         }
-
         const next = fields[i + 1];
         if (next && !next.fullWidth) {
             const nextLines = doc.splitTextToSize(next.value || '-', valueWidth);
-            const nextHeight = Math.max(LINE_HEIGHT, nextLines.length * LINE_HEIGHT);
-            height += Math.max(rowHeight, nextHeight) + 2;
+            height += Math.max(rowHeight, Math.max(LINE_HEIGHT, nextLines.length * LINE_HEIGHT)) + 2;
             i += 1;
         } else {
             height += rowHeight + 2;
@@ -162,34 +150,31 @@ const measureCardHeight = (doc: jsPDF, fields: CardField[], contentWidth: number
     return height + CARD_PADDING;
 };
 
-const drawPdfSummary = (doc: jsPDF, filters: InvoiceExportFilters, totalRecords: number) => {
+const drawPdfSummary = (doc: jsPDF, filters: ManufacturerExportFilters, totalRecords: number) => {
     const summary = buildFilterSummary(filters, totalRecords).slice(1, -1);
     let y = PDF_MARGIN;
-
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(16);
-    doc.text('Invoices Export', PDF_MARGIN, y);
+    doc.text('Manufacturers Export', PDF_MARGIN, y);
     y += 8;
-
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(9);
     summary.forEach(([label, value]) => {
         doc.text(`${label}: ${value}`, PDF_MARGIN, y);
         y += 5;
     });
-
     return y + 4;
 };
 
-const drawInvoiceCard = (
+const drawManufacturerCard = (
     doc: jsPDF,
-    row: InvoiceExportRow,
+    row: ManufacturerExportRow,
     index: number,
     startY: number,
     contentWidth: number,
 ) => {
     const x = PDF_MARGIN;
-    const fields = getInvoiceCardFields(row);
+    const fields = getManufacturerCardFields(row);
     const cardHeight = measureCardHeight(doc, fields, contentWidth);
     const pageHeight = doc.internal.pageSize.getHeight();
     let y = startY;
@@ -202,27 +187,23 @@ const drawInvoiceCard = (
     doc.setDrawColor(210, 214, 220);
     doc.setFillColor(248, 250, 252);
     doc.roundedRect(x, y, contentWidth, cardHeight, 2, 2, 'FD');
-
-    doc.setFillColor(79, 70, 229); // Indigo/Purple accent color for invoices
+    doc.setFillColor(41, 98, 255);
     doc.roundedRect(x, y, contentWidth, CARD_HEADER_HEIGHT, 2, 2, 'F');
     doc.rect(x, y + CARD_HEADER_HEIGHT - 2, contentWidth, 2, 'F');
-
     doc.setTextColor(255, 255, 255);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(10);
-    doc.text(`Invoice ${index + 1}  |  ID: ${row.invoiceId}  |  SRF No: ${row.srfNumber}`, x + CARD_PADDING, y + 6.5);
-    doc.text(`Status: ${row.status}`, x + contentWidth - CARD_PADDING, y + 6.5, { align: 'right' });
+    doc.text(`Manufacturer ${index + 1}  |  MANU ID: ${row.manufacturerId}`, x + CARD_PADDING, y + 6.5);
 
     doc.setTextColor(30, 41, 59);
     doc.setFontSize(8.5);
-
     const innerX = x + CARD_PADDING;
     let cursorY = y + CARD_HEADER_HEIGHT + CARD_PADDING;
     const colWidth = (contentWidth - CARD_PADDING * 2 - 6) / 2;
     const valueWidth = colWidth - 34;
     const fullValueWidth = contentWidth - CARD_PADDING * 2 - 34;
 
-    const drawField = (field: CardField, fieldX: number, fieldY: number, width: number, valueMaxWidth: number) => {
+    const drawField = (field: CardField, fieldX: number, fieldY: number, valueMaxWidth: number) => {
         doc.setFont('helvetica', 'bold');
         doc.text(`${field.label}:`, fieldX, fieldY);
         doc.setFont('helvetica', 'normal');
@@ -233,68 +214,60 @@ const drawInvoiceCard = (
 
     for (let i = 0; i < fields.length; i++) {
         const field = fields[i];
-
         if (field.fullWidth) {
-            cursorY += drawField(field, innerX, cursorY, contentWidth - CARD_PADDING * 2, fullValueWidth);
+            cursorY += drawField(field, innerX, cursorY, fullValueWidth);
             continue;
         }
-
         const next = fields[i + 1];
         if (next && !next.fullWidth) {
-            const leftHeight = drawField(field, innerX, cursorY, colWidth, valueWidth);
-            const rightHeight = drawField(next, innerX + colWidth + 6, cursorY, colWidth, valueWidth);
+            const leftHeight = drawField(field, innerX, cursorY, valueWidth);
+            const rightHeight = drawField(next, innerX + colWidth + 6, cursorY, valueWidth);
             cursorY += Math.max(leftHeight, rightHeight);
             i += 1;
         } else {
-            cursorY += drawField(field, innerX, cursorY, colWidth, valueWidth);
+            cursorY += drawField(field, innerX, cursorY, valueWidth);
         }
     }
 
     return y + cardHeight + CARD_GAP;
 };
 
-export const exportInvoicesToPdf = (
-    invoices: Record<string, any>[],
-    filters: InvoiceExportFilters,
+export const exportManufacturersToPdf = (
+    manufacturers: Record<string, any>[],
+    filters: ManufacturerExportFilters,
 ) => {
-    const rows = invoices.map((invoice) => mapInvoiceToExportRow(invoice, true));
+    const rows = manufacturers.map(mapManufacturerToExportRow);
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const contentWidth = pageWidth - PDF_MARGIN * 2;
-
+    const contentWidth = doc.internal.pageSize.getWidth() - PDF_MARGIN * 2;
     let y = drawPdfSummary(doc, filters, rows.length);
-
     rows.forEach((row, index) => {
-        y = drawInvoiceCard(doc, row, index, y, contentWidth);
+        y = drawManufacturerCard(doc, row, index, y, contentWidth);
     });
-
     doc.save(getExportFileName('pdf'));
 };
 
-export const exportInvoicesToExcel = (
-    invoices: Record<string, any>[],
-    filters: InvoiceExportFilters,
+export const exportManufacturersToExcel = (
+    manufacturers: Record<string, any>[],
+    filters: ManufacturerExportFilters,
 ) => {
-    const rows = invoices.map(mapInvoiceToExportRow);
+    const rows = manufacturers.map(mapManufacturerToExportRow);
     const sheetData = [
         ...buildFilterSummary(filters, rows.length),
-        Array.from(INVOICE_EXPORT_HEADERS),
+        Array.from(MANUFACTURER_EXPORT_HEADERS),
         ...rowsToMatrix(rows),
     ];
-
     const worksheet = XLSX.utils.aoa_to_sheet(sheetData);
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Invoices');
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Manufacturers');
     XLSX.writeFile(workbook, getExportFileName('xlsx'));
 };
 
-export const exportInvoicesToWord = async (
-    invoices: Record<string, any>[],
-    filters: InvoiceExportFilters,
+export const exportManufacturersToWord = async (
+    manufacturers: Record<string, any>[],
+    filters: ManufacturerExportFilters,
 ) => {
-    const rows = invoices.map(mapInvoiceToExportRow);
+    const rows = manufacturers.map(mapManufacturerToExportRow);
     const summaryLines = buildFilterSummary(filters, rows.length);
-
     const summaryParagraphs = summaryLines.map((line) => {
         if (line.length === 1) {
             return new Paragraph({
@@ -312,15 +285,11 @@ export const exportInvoicesToWord = async (
     });
 
     const headerRow = new TableRow({
-        children: INVOICE_EXPORT_HEADERS.map(
+        children: MANUFACTURER_EXPORT_HEADERS.map(
             (header) =>
                 new TableCell({
-                    width: { size: 11, type: WidthType.PERCENTAGE },
-                    children: [
-                        new Paragraph({
-                            children: [new TextRun({ text: header, bold: true, size: 16 })],
-                        }),
-                    ],
+                    width: { size: 14, type: WidthType.PERCENTAGE },
+                    children: [new Paragraph({ children: [new TextRun({ text: header, bold: true, size: 16 })] })],
                 }),
         ),
     });
@@ -331,12 +300,7 @@ export const exportInvoicesToWord = async (
                 children: row.map(
                     (cell) =>
                         new TableCell({
-                            width: { size: 11, type: WidthType.PERCENTAGE },
-                            children: [
-                                new Paragraph({
-                                    children: [new TextRun({ text: String(cell), size: 14 })],
-                                }),
-                            ],
+                            children: [new Paragraph({ children: [new TextRun({ text: String(cell), size: 14 })] })],
                         }),
                 ),
             }),
@@ -345,13 +309,7 @@ export const exportInvoicesToWord = async (
     const document = new Document({
         sections: [
             {
-                properties: {
-                    page: {
-                        size: {
-                            orientation: PageOrientation.LANDSCAPE,
-                        },
-                    },
-                },
+                properties: { page: { size: { orientation: PageOrientation.LANDSCAPE } } },
                 children: [
                     ...summaryParagraphs,
                     new Table({

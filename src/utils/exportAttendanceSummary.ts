@@ -10,27 +10,13 @@ import {
     TextRun,
     WidthType,
 } from 'docx';
-import { format } from 'date-fns';
+import { formatDateForExport, formatGeneratedAtForExport, getExportFileNameDateStamp } from './tableDateFilter';
 
-export const formatDateDDMMYYYY = (value: string | Date | null | undefined): string => {
-    if (!value) return '-';
+/** @deprecated Use formatDateForExport from tableDateFilter */
+export const formatDateDDMMYYYY = (value: string | Date | null | undefined): string =>
+    formatDateForExport(value ?? undefined);
 
-    const date =
-        value instanceof Date
-            ? value
-            : (() => {
-                const isoMatch = String(value).match(/^(\d{4})-(\d{2})-(\d{2})/);
-                if (isoMatch) {
-                    return new Date(Number(isoMatch[1]), Number(isoMatch[2]) - 1, Number(isoMatch[3]));
-                }
-                return new Date(value);
-            })();
-
-    if (Number.isNaN(date.getTime())) return String(value);
-    return format(date, 'dd-MM-yyyy');
-};
-
-const formatGeneratedAt = () => format(new Date(), 'dd-MM-yyyy HH:mm');
+const formatGeneratedAt = () => formatGeneratedAtForExport();
 
 export type AttendanceSummaryExportData = {
     employee: {
@@ -49,8 +35,7 @@ export type AttendanceSummaryExportData = {
 
 const getExportFileName = (employeeName: string, extension: string) => {
     const safeName = employeeName.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '') || 'employee';
-    const dateStamp = format(new Date(), 'dd-MM-yyyy');
-    return `attendance-summary-${safeName}-${dateStamp}.${extension}`;
+    return `attendance-summary-${safeName}-${getExportFileNameDateStamp()}.${extension}`;
 };
 
 const buildEmployeeRows = (data: AttendanceSummaryExportData) => [
@@ -297,7 +282,7 @@ export const buildAttendanceExportData = (
                 : '-',
             workingDays: employeeDetails?.workingDays,
         },
-        period: format(periodDate, 'MMMM yyyy'),
+        period: periodDate.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }),
         dailyAttendance,
     };
 };

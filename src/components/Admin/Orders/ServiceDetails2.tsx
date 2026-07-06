@@ -97,6 +97,76 @@ const getViewGeneratedReportPath = (machineType: string): string | null => {
     return VIEW_GENERATED_REPORT_ROUTES[machineType] || null;
 };
 
+const REPORT_HEADER_API_SLUGS: Record<string, string> = {
+    "C-Arm": "c-arm",
+    "Mammography": "mammography",
+    "OBI": "obi",
+    "KV Imaging (OBI)": "obi",
+    "Bone Densitometer (BMD)": "bmd",
+    "BMD": "bmd",
+    "Radiography and Fluoroscopy": "fixed-radio-fluro",
+    "Computed Tomography": "ct-scan",
+    "Dental Cone Beam CT": "dental-cone-beam-ct",
+    "Dental Intra": "dental-intra",
+    "Dental (Intra Oral)": "dental-intra",
+    "Dental Hand-held": "dental-hand-held",
+    "Dental (Hand-held)": "dental-hand-held",
+    "Radiography (Mobile)": "radiography-mobile",
+    "Radiography (Mobile) with HT": "radiography-mobile-ht",
+    "Radiography (Portable)": "radiography-portable",
+    "Radiography (Fixed)": "radiography-fixed",
+    "Interventional Radiology": "inventional-radiology",
+    "O-Arm": "o-arm",
+    "Ortho Pantomography (OPG)": "opg",
+    "Lead Apron/Thyroid Shield/Gonad Shield": "lead-apron",
+};
+
+const hasNonEmptyText = (value: unknown): boolean =>
+    typeof value === "string" && value.trim().length > 0 && value.trim() !== "N/A";
+
+const isServiceReportHeaderSaved = (header: Record<string, any> | null | undefined): boolean => {
+    if (!header) return false;
+
+    const hasSavedNotes =
+        Array.isArray(header.notes) &&
+        header.notes.some((note: any) =>
+            hasNonEmptyText(typeof note === "string" ? note : note?.text)
+        );
+
+    const hasSavedTools = Array.isArray(header.toolsUsed) && header.toolsUsed.length > 0;
+
+    return (
+        hasNonEmptyText(header.customerName) &&
+        hasNonEmptyText(header.issueDate) &&
+        (hasSavedNotes || hasSavedTools)
+    );
+};
+
+const checkServiceReportGenerated = async (serviceId: string, machineType: string): Promise<boolean> => {
+    const slug = REPORT_HEADER_API_SLUGS[machineType];
+    if (!slug) return false;
+
+    const cleanId = serviceId.replace(/-0$/, "").split("-")[0];
+    const token = Cookies.get("accessToken");
+    if (!token) return false;
+
+    try {
+        const res = await fetch(
+            `${import.meta.env.VITE_BACKEND_API_URL}/service-report/${slug}/report-header/${cleanId}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+        if (!res.ok) return false;
+
+        const json = await res.json();
+        const payload = json?.data?.exists !== undefined ? json.data : json;
+        if (!payload?.exists || !payload?.data) return false;
+
+        return isServiceReportHeaderSaved(payload.data);
+    } catch {
+        return false;
+    }
+};
+
 interface Technician {
     _id: string
     name: string
@@ -268,6 +338,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
         Record<string, { field1: string; field2: string }>
     >({})
     const [machineData, setMachineData] = useState<MachineData[]>([])
+    const [serviceReportsGenerated, setServiceReportsGenerated] = useState<Record<string, boolean>>({})
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
     const [technicians, setTechnicians] = useState<Technician[]>([])
@@ -423,6 +494,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
         try {
             setLoading(true);
             setError(null);
+            setServiceReportsGenerated({});
             const response = await getMachineDetails(orderId);
             const extraServices = Array.isArray(response.additionalServices) ? response.additionalServices : [];
             setAdditionalServices(extraServices);
@@ -800,6 +872,17 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
             };
 
             await fetchAllReportNumbers();
+
+            const qaServicesWithReportSupport = allTransformedData.filter(
+                (service) => isQAWorkType(service.workTypeName) && getViewGeneratedReportPath(service.machineType)
+            );
+            const generatedChecks = await Promise.all(
+                qaServicesWithReportSupport.map(async (service) => {
+                    const generated = await checkServiceReportGenerated(service.id, service.machineType);
+                    return [service.id, generated] as const;
+                })
+            );
+            setServiceReportsGenerated(Object.fromEntries(generatedChecks));
 
             // Save new assignments
             setAssignments(initialAssignments);
@@ -2367,16 +2450,6 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                    {isQAWorkType(service.workTypeName) && getViewGeneratedReportPath(service.machineType) && (
-                                        <button
-                                            type="button"
-                                            onClick={() => handleViewGeneratedReport(service)}
-                                            className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-md hover:bg-blue-700 transition-colors"
-                                        >
-                                            <FileText className="h-3.5 w-3.5" />
-                                            View Generated Report
-                                        </button>
-                                    )}
                                     <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(service.status)}`}>
                                         {service.status}
                                     </span>
@@ -3083,7 +3156,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                                     </div>
                                                                                 </div>
                                                                             )}
-                                                                            {getViewGeneratedReportPath(service.machineType) && (
+                                                                            {getViewGeneratedReportPath(service.machineType) && serviceReportsGenerated[service.id] && (
                                                                                 <div className="p-2 bg-white rounded border col-span-2">
                                                                                     <button
                                                                                         type="button"

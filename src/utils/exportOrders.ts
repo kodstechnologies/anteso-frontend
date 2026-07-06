@@ -11,7 +11,7 @@ import {
     WidthType,
     PageOrientation,
 } from 'docx';
-import { formatCreatedAtDisplay } from './tableDateFilter';
+import { formatDateForExport, formatGeneratedAtForExport, getExportFileNameDateStamp } from './tableDateFilter';
 
 export type OrderExportRow = {
     srfNumber: string;
@@ -64,16 +64,7 @@ const ORDER_EXPORT_HEADERS = [
     'Created At',
 ] as const;
 
-const formatProcExpiryDate = (value?: string) => {
-    if (!value) return '-';
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return '-';
-    return date.toLocaleDateString('en-GB', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-    });
-};
+const formatProcExpiryDate = (value?: string) => formatDateForExport(value);
 
 export const mapOrderToExportRow = (order: Record<string, any>): OrderExportRow => ({
     srfNumber: order.srfNumber || '-',
@@ -92,7 +83,7 @@ export const mapOrderToExportRow = (order: Record<string, any>): OrderExportRow 
     emailAddress: order.emailAddress || '-',
     contactNumber: order.contactNumber || '-',
     status: order.status || '-',
-    createdAt: formatCreatedAtDisplay(order.createdAt),
+    createdAt: formatDateForExport(order.createdAt),
 });
 
 const rowsToMatrix = (rows: OrderExportRow[]) =>
@@ -119,7 +110,7 @@ const rowsToMatrix = (rows: OrderExportRow[]) =>
 const buildFilterSummary = (filters: OrderExportFilters, totalRecords: number) => {
     const summary: string[][] = [
         ['Orders Export'],
-        ['Generated At', new Date().toLocaleString('en-GB')],
+        ['Generated At', formatGeneratedAtForExport()],
         ['Total Records', String(totalRecords)],
     ];
 
@@ -129,8 +120,8 @@ const buildFilterSummary = (filters: OrderExportFilters, totalRecords: number) =
         ['District', filters.district],
         ['Customer Email', filters.emailAddress],
         ['Customer Mobile', filters.contactNumber],
-        ['From Date', filters.dateFrom],
-        ['To Date', filters.dateTo],
+        ['From Date', filters.dateFrom ? formatDateForExport(filters.dateFrom) : undefined],
+        ['To Date', filters.dateTo ? formatDateForExport(filters.dateTo) : undefined],
         ['Search', filters.search],
     ];
 
@@ -145,10 +136,7 @@ const buildFilterSummary = (filters: OrderExportFilters, totalRecords: number) =
     return summary;
 };
 
-const getExportFileName = (extension: string) => {
-    const dateStamp = new Date().toISOString().slice(0, 10);
-    return `orders-export-${dateStamp}.${extension}`;
-};
+const getExportFileName = (extension: string) => `orders-export-${getExportFileNameDateStamp()}.${extension}`;
 
 const PDF_MARGIN = 14;
 const CARD_GAP = 8;
