@@ -1,4 +1,5 @@
 import XLSX from "xlsx";
+import fs from "fs";
 
 const rows = [];
 function sec(title, header, data) {
@@ -10,7 +11,7 @@ function sec(title, header, data) {
 
 sec(
   "ACCURACY OF IRRADIATION TIME",
-  ["FCD", "kV", "mA", "Set Time (ms)", "Measured Time (ms)", "Tol Operator", "Tol Value"],
+  ["FDD (cm)", "kV", "mA", "Set Time (sec)", "Measured Time (sec)", "Tol Operator", "Tol Value"],
   [
     ["100", "80", "100", "100", "98.5", "<=", "10"],
     ["", "", "", "200", "199", "", ""],
@@ -20,38 +21,97 @@ sec(
 
 sec(
   "TOTAL FILTRATION",
-  ["mA Station", "Applied kV", "Meas 1", "Meas 2", "Meas 3", "Avg kV", "Tolerance Sign", "Tolerance Value", "TF Measured", "TF Required"],
   [
-    ["50 mA", "50", "50.1", "50.2", "", "", "±", "2.0", "1.2", "1.5"],
-    ["100 mA", "70", "70.1", "70.0", "", "", "", "", "", ""],
-    ["100 mA", "90", "90.2", "90.1", "", "", "", "", "", ""],
+    "Tolerance Sign",
+    "Tolerance Value",
+    "TF Measured",
+    "TF Required",
+    "Header 1",
+    "Header 2",
+    "Header 3",
+    "Applied kVp",
+    "Meas 1",
+    "Meas 2",
+    "Meas 3",
+  ],
+  [
+    ["±", "2.0", "1.2", "1.5", "50 mA", "100 mA", "200 mA", "60", "60.1", "60.2", "60.0"],
+    ["", "", "", "", "", "", "", "80", "80.1", "80.2", "80.0"],
+    ["", "", "", "", "", "", "", "100", "100.1", "100.2", "100.0"],
+    ["", "", "", "", "", "", "", "120", "120.1", "120.2", "120.0"],
   ],
 );
 
 sec(
   "CONSISTENCY OF RADIATION OUTPUT",
-  ["FFD", "Time", "Tolerance", "Header 1", "Header 2", "Header 3", "Header 4", "Header 5", "kV", "mA", "Meas 1", "Meas 2", "Meas 3", "Meas 4", "Meas 5"],
   [
-    ["100", "100", "0.02", "Meas 1", "Meas 2", "Meas 3", "Meas 4", "Meas 5", "50", "2", "0.10", "0.11", "0.10", "0.09", "0.10"],
-    ["", "", "", "", "", "", "", "", "70", "4", "0.20", "0.21", "0.20", "", ""],
+    "FDD (cm)",
+    "Time (s)",
+    "Tolerance",
+    "Header 1",
+    "Header 2",
+    "Header 3",
+    "Header 4",
+    "Header 5",
+    "kVp",
+    "mA",
+    "Meas 1",
+    "Meas 2",
+    "Meas 3",
+    "Meas 4",
+    "Meas 5",
+  ],
+  [
+    ["100", "100", "0.02", "Meas 1", "Meas 2", "Meas 3", "Meas 4", "Meas 5", "80", "100", "10.5", "10.4", "10.6", "10.5", "10.5"],
+    ["", "", "", "", "", "", "", "", "100", "100", "12.1", "12.0", "12.2", "12.1", "12.0"],
   ],
 );
 
-sec("LOW CONTRAST RESOLUTION", ["Hole Size", "Standard"], [["1.0", ">= 1.0 mm"]]);
-sec("HIGH CONTRAST RESOLUTION", ["lp/mm", "Standard"], [["2.0", ">= 2.0 lp/mm"]]);
+sec(
+  "LOW CONTRAST RESOLUTION",
+  ["Smallest Hole Size (mm)", "Recommended Standard"],
+  [["1.0", ">= 1.0 mm"]],
+);
+sec(
+  "HIGH CONTRAST RESOLUTION",
+  ["Measured Resolution (lp/mm)", "Recommended Standard (lp/mm)"],
+  [["2.0", ">= 2.0 lp/mm"]],
+);
 
 sec(
   "EXPOSURE RATE AT TABLE TOP",
-  ["AEC Tolerance", "Non-AEC Tolerance", "Min Focus Distance", "Distance", "kVp", "mA", "Exposure", "Mode"],
   [
-    ["10", "5", "30", "100", "80", "100", "0.5", "AEC Mode"],
-    ["", "", "", "100", "80", "100", "0.6", "Manual Mode"],
+    "Max Exposure (AEC Mode) (cGy/Min)",
+    "Max Exposure (Manual Mode) (cGy/Min)",
+    "Min. Focus to Tabletop Distance",
+    "Distance (cm)",
+    "Applied kV",
+    "Applied mA",
+    "Exposure (cGy/Min)",
+  ],
+  [
+    ["10", "5", "30", "100", "80", "100", "0.5"],
+    ["", "", "", "100", "80", "100", "0.6"],
   ],
 );
 
 sec(
   "TUBE HOUSING LEAKAGE",
-  ["FCD", "kV", "mA", "Time", "Workload", "Tol Value", "Tol Operator", "Location", "Front", "Back", "Left", "Right", "Top"],
+  [
+    "FDD (cm)",
+    "kV",
+    "mA",
+    "Time (sec)",
+    "Workload (mA·min/week)",
+    "Tol Value",
+    "Tol Operator",
+    "Location",
+    "Front",
+    "Back",
+    "Left",
+    "Right",
+    "Top",
+  ],
   [
     ["100", "80", "100", "1", "1000", "1.0", "less than or equal to", "Tube", "0.05", "0.03", "0.06", "0.04", "0.02"],
     ["", "", "", "", "", "", "", "Collimator", "0.02", "0.02", "0.03", "0.01", ""],
@@ -60,25 +120,39 @@ sec(
 
 sec(
   "LINEARITY OF MA LOADING",
-  ["FCD", "kV", "Time", "Tolerance", "Header 1", "Header 2", "Header 3", "mA", "Meas 1", "Meas 2", "Meas 3"],
+  ["FDD (cm)", "kV", "Time (sec)", "Tolerance", "Header 1", "Header 2", "Header 3", "mA", "Meas 1", "Meas 2", "Meas 3"],
   [
-    ["100", "70", "100", "0.1", "Meas 1", "Meas 2", "Meas 3", "1", "0.10", "0.11", "0.09"],
-    ["", "", "", "", "", "", "", "2", "0.20", "0.21", "0.19"],
+    ["100", "70", "100", "0.1", "Meas 1", "Meas 2", "Meas 3", "50", "0.10", "0.11", "0.09"],
+    ["", "", "", "", "", "", "", "100", "0.20", "0.21", "0.19"],
+    ["", "", "", "", "", "", "", "200", "0.40", "0.41", "0.39"],
   ],
 );
 
 sec(
   "LINEARITY OF MAS LOADING",
-  ["FCD", "kV", "Tol Operator", "Tol Value", "Header 1", "Header 2", "Header 3", "mAs", "Meas 1", "Meas 2", "Meas 3"],
+  ["FDD (cm)", "kV", "Tol Operator", "Tol Value", "Header 1", "Header 2", "Header 3", "mAs Range", "Meas 1", "Meas 2", "Meas 3"],
   [
-    ["100", "80", "<=", "0.1", "Meas 1", "Meas 2", "Meas 3", "5", "0.10", "0.11", "0.09"],
-    ["", "", "", "", "", "", "", "10", "0.20", "0.21", "0.19"],
+    ["100", "80", "<", "0.1", "Meas 1", "Meas 2", "Meas 3", "5 - 10", "0.50", "0.51", "0.49"],
+    ["", "", "", "", "", "", "", "10 - 20", "1.00", "1.01", "0.99"],
+    ["", "", "", "", "", "", "", "20 - 50", "2.50", "2.51", "2.49"],
+    ["", "", "", "", "", "", "", "50 - 100", "5.00", "5.01", "4.99"],
   ],
 );
 
 const ws = XLSX.utils.aoa_to_sheet(rows);
 const wb = XLSX.utils.book_new();
 XLSX.utils.book_append_sheet(wb, ws, "Test Data");
-XLSX.writeFile(wb, "public/templates/CArm_Template.xlsx");
-console.log(`Wrote public/templates/CArm_Template.xlsx (${rows.length} rows)`);
 
+const outPaths = [
+  "public/templates/CArm_Template.xlsx",
+  "public/templates/CArm_Template.tmp.xlsx",
+];
+
+for (const outPath of outPaths) {
+  try {
+    XLSX.writeFile(wb, outPath);
+    console.log(`Wrote ${outPath} (${rows.length} rows)`);
+  } catch (err) {
+    console.warn(`Could not write ${outPath}: ${err.message}`);
+  }
+}

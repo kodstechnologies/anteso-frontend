@@ -52,7 +52,9 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [ffd, setFFD] = useState<FCDData>({ value: '' });
-  const [measurementCount, setMeasurementCount] = useState<number>(5);
+  const [headers, setHeaders] = useState<string[]>([
+    'Meas 1', 'Meas 2', 'Meas 3', 'Meas 4', 'Meas 5',
+  ]);
 
   const [tolerance, setTolerance] = useState<Tolerance>({
     operator: '<=',
@@ -76,19 +78,34 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
     if (initialData.ffd) setFFD({ value: String(initialData.ffd) });
     if (initialData.tolerance?.operator) setTolerance(prev => ({ ...prev, operator: initialData.tolerance.operator }));
     if (initialData.tolerance?.value) setTolerance(prev => ({ ...prev, value: initialData.tolerance.value }));
-    if (initialData.outputRows?.length) {
-      const rows = initialData.outputRows.map((r: any, i: number) => ({
-        id: String(i + 1),
-        kv: r.kv ?? '80',
-        mas: r.mAs ?? '100',
-        outputs: (r.meas || []).map((v: string) => ({ value: v })),
-        avg: r.avg ?? '',
-        cv: r.cv ?? '',
-        remark: r.remark ?? '',
-      }));
-      setOutputRows(rows);
-      if (rows[0]?.outputs?.length) setMeasurementCount(rows[0].outputs.length);
+    const importedHeaders = (initialData.headers?.length
+      ? initialData.headers
+      : initialData.measHeaders) as string[] | undefined;
+    if (importedHeaders && importedHeaders.length > 0) {
+      setHeaders(importedHeaders);
     }
+    if (initialData.outputRows?.length) {
+      const numCols = importedHeaders?.length || initialData.outputRows[0]?.meas?.length || initialData.outputRows[0]?.outputs?.length || 5;
+      if (!importedHeaders?.length) {
+        setHeaders(Array.from({ length: numCols }, (_, i) => `Meas ${i + 1}`));
+      }
+      const rows = initialData.outputRows.map((r: any, i: number) => {
+        const rawMeas = r.meas ?? r.outputs?.map((o: any) => (typeof o === 'object' ? o.value : o)) ?? [];
+        const outputs = Array.from({ length: numCols }, (_, j) => ({ value: String(rawMeas[j] ?? '') }));
+        return {
+          id: String(i + 1),
+          kv: r.kv ?? '80',
+          mas: r.mAs ?? r.mas ?? '100',
+          outputs,
+          avg: r.avg ?? '',
+          cv: r.cv ?? '',
+          remark: r.remark ?? '',
+        };
+      });
+      setOutputRows(rows);
+    }
+    setIsEditing(true);
+    setIsLoading(false);
   }, [initialData]);
 
   // Calculate avg, CoV and remark – CoV as decimal (no %), same formula as Radiography Fixed
@@ -132,61 +149,47 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
     setIsSaved(false);
   };
 
-  const updateMeasurementCount = (count: number) => {
-    if (count < 3 || count > 10) return;
-    setMeasurementCount(count);
-
-    setOutputRows(prev =>
-      prev.map(row => {
-        const diff = count - row.outputs.length;
-        if (diff > 0) {
-          return {
-            ...row,
-            outputs: [...row.outputs, ...Array(diff).fill({ value: '' })],
-          };
-        }
-        if (diff < 0) {
-          return { ...row, outputs: row.outputs.slice(0, count) };
-        }
-        return row;
-      })
-    );
-    setIsSaved(false);
-  };
-
   const addMeasurementColumn = (afterIndex: number) => {
-    if (measurementCount >= 10) {
+    if (headers.length >= 10) {
       toast.error('Maximum 10 measurements allowed');
       return;
     }
-    const newCount = measurementCount + 1;
-    setMeasurementCount(newCount);
+    setHeaders(prev => {
+      const next = [...prev];
+      next.splice(afterIndex + 1, 0, `Meas ${next.length + 1}`);
+      return next;
+    });
     setOutputRows(prev =>
       prev.map(row => {
         const newOutputs = [...row.outputs];
         newOutputs.splice(afterIndex + 1, 0, { value: '' });
-        return {
-          ...row,
-          outputs: newOutputs,
-        };
+        return { ...row, outputs: newOutputs };
       })
     );
     setIsSaved(false);
   };
 
   const removeMeasurementColumn = (index: number) => {
-    if (measurementCount <= 3) {
+    if (headers.length <= 3) {
       toast.error('Minimum 3 measurements required');
       return;
     }
-    const newCount = measurementCount - 1;
-    setMeasurementCount(newCount);
+    setHeaders(prev => prev.filter((_, i) => i !== index));
     setOutputRows(prev =>
       prev.map(row => ({
         ...row,
         outputs: row.outputs.filter((_, i) => i !== index),
       }))
     );
+    setIsSaved(false);
+  };
+
+  const updateHeader = (index: number, value: string) => {
+    setHeaders(prev => {
+      const next = [...prev];
+      next[index] = value;
+      return next;
+    });
     setIsSaved(false);
   };
 
@@ -197,7 +200,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
         id: Date.now().toString(),
         kv: '',
         mas: '',
-        outputs: Array(measurementCount).fill({ value: '' }),
+        outputs: Array(headers.length).fill({ value: '' }),
         avg: '',
         cv: '',
         remark: '',
@@ -233,7 +236,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
 
   // Load existing test data
   useEffect(() => {
-    if (!serviceId) {
+    if (!serviceId || initialData) {
       setIsLoading(false);
       return;
     }
@@ -248,19 +251,29 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
           if (testData.ffd?.value) {
             setFFD({ value: testData.ffd.value });
           }
+          const savedHeaders = Array.isArray(testData.headers) && testData.headers.length > 0
+            ? testData.headers
+            : null;
           if (testData.outputRows && testData.outputRows.length > 0) {
             const firstRow = testData.outputRows[0];
-            const numMeas = firstRow.outputs?.length || 5;
-            setMeasurementCount(numMeas);
+            const numMeas = savedHeaders?.length || firstRow.outputs?.length || 5;
+            if (savedHeaders) {
+              setHeaders(savedHeaders);
+            } else {
+              setHeaders(Array.from({ length: numMeas }, (_, i) => `Meas ${i + 1}`));
+            }
             setOutputRows(testData.outputRows.map((r: any) => ({
               id: Date.now().toString() + Math.random(),
               kv: r.kv || '',
               mas: r.mas || '',
-              outputs: r.outputs?.map((o: any) => ({ value: o.value || '' })) || Array(numMeas).fill({ value: '' }),
+              outputs: r.outputs?.map((o: any) => ({ value: o.value || '' }))
+                || Array(numMeas).fill({ value: '' }),
               avg: r.avg || '',
               cv: '',
               remark: r.remark || '',
             })));
+          } else if (savedHeaders) {
+            setHeaders(savedHeaders);
           }
           if (testData.tolerance) {
             setTolerance({
@@ -280,7 +293,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
     };
 
     loadTest();
-  }, [serviceId]);
+  }, [serviceId, initialData]);
 
   const handleSave = async () => {
     if (!serviceId) {
@@ -292,6 +305,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
     try {
       const payload = {
         ffd,
+        headers,
         outputRows: rowsWithCalc.map(r => ({
           kv: r.kv,
           mas: r.mas,
@@ -408,15 +422,21 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
                 <th className="px-5 py-3 text-left text-xs font-medium text-gray-600  border-r">
                   mAs
                 </th>
-                {Array.from({ length: measurementCount }, (_, i) => (
+                {headers.map((header, i) => (
                   <th
                     key={i}
                     className="px-3 py-3 text-center text-xs font-medium text-gray-600 border-r relative"
                   >
                     <div className="flex flex-col items-center gap-1">
                       <div className="flex items-center gap-1">
-                        <span>Meas {i + 1}</span>
-                        {!isViewMode && measurementCount < 10 && (
+                        <input
+                          type="text"
+                          value={header}
+                          onChange={e => updateHeader(i, e.target.value)}
+                          disabled={isViewMode}
+                          className={`w-20 px-1 py-0.5 text-xs border rounded text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'}`}
+                        />
+                        {!isViewMode && headers.length < 10 && (
                           <button
                             onClick={() => addMeasurementColumn(i)}
                             className="text-green-600 hover:bg-green-100 p-0.5 rounded transition"
@@ -426,7 +446,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
                           </button>
                         )}
                       </div>
-                      {!isViewMode && measurementCount > 3 && (
+                      {!isViewMode && headers.length > 3 && (
                         <button
                           onClick={() => removeMeasurementColumn(i)}
                           className="text-red-600 hover:bg-red-100 p-1 rounded transition"

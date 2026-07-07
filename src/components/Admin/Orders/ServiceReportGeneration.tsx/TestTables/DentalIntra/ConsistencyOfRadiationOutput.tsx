@@ -210,6 +210,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
 
   useEffect(() => {
     if (csvData && csvData.length > 0) {
+      const csvMeasLabels = csvData.find(r => r['Field Name'] === 'MeasColumnLabels')?.['Value'];
       const ffdVal = csvData.find(r => r['Field Name'] === 'FFD')?.['Value'];
       if (ffdVal) {
         setFfd(ffdVal);
@@ -248,10 +249,16 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
         setOutputRows(newRows);
 
         const maxMeas = Math.max(...newRows.map(r => r.outputs.length));
-        if (maxMeas > headers.length) {
-          const newCols = Array.from({ length: maxMeas - headers.length }, (_, i) => `Meas ${headers.length + i + 1}`);
-          setHeaders(prev => [...prev, ...newCols]);
-        }
+        setHeaders(prev => {
+          const targetCount = Math.max(maxMeas, 3);
+          const base = (csvMeasLabels
+            ? String(csvMeasLabels).split(',').map((h: string) => h.trim()).filter(Boolean)
+            : prev).slice(0, targetCount);
+          while (base.length < targetCount) {
+            base.push(`Meas ${base.length + 1}`);
+          }
+          return base;
+        });
       }
 
       if (!testId && (rowIndices.length > 0 || ffdVal)) setIsSaved(false);

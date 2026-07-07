@@ -1293,7 +1293,7 @@ const ViewServiceReportMammography: React.FC = () => {
             {/* 4. Linearity of mA Loading Stations */}
             {testData.maLoadingStations && (
               <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
-                <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>{nextDetailedSectionNumber()}. Linearity of mA Loading Stations</h3>
+                <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>{nextDetailedSectionNumber()}. Linearity of mA Loading</h3>
                 
                 {/* Test Conditions as table */}
                 {testData.maLoadingStations.table1 && testData.maLoadingStations.table1.length > 0 && (

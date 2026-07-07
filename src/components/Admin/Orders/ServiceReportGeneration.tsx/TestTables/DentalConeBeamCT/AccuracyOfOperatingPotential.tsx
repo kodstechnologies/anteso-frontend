@@ -153,6 +153,14 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
     // CSV Data Injection
     useEffect(() => {
         if (csvData && csvData.length > 0) {
+            const labelsMeta = csvData.find(r => r['Field Name'] === 'MeasColumnLabels')?.['Value'];
+            const labelsFromMeta = labelsMeta
+                ? String(labelsMeta).split(',').map((s: string) => s.trim()).filter(Boolean)
+                : [];
+            if (labelsFromMeta.length > 0) {
+                setMAStations(labelsFromMeta);
+            }
+
             // Total Filtration
             const tfMeasured = csvData.find(r => r['Field Name'] === 'Measured')?.['Value'];
             const tfRequired = csvData.find(r => r['Field Name'] === 'Required')?.['Value'];
@@ -201,7 +209,7 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
 
                 // Update mA headers count to match max measured values
                 const maxMeas = Math.max(...newRows.map(r => r.measuredValues.length));
-                if (maxMeas > mAStations.length) {
+                if (labelsFromMeta.length === 0 && maxMeas > mAStations.length) {
                     const newCols = Array.from({ length: maxMeas - mAStations.length }, (_, i) => `mA ${mAStations.length + i + 1}`);
                     setMAStations(prev => [...prev, ...newCols]);
                 }

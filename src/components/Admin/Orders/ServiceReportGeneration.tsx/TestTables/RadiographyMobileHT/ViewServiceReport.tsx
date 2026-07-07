@@ -1117,7 +1117,11 @@ const ViewServiceReportRadiographyMobileHT: React.FC = () => {
                 )}
                 {testData.outputConsistency.outputRows?.length > 0 && (() => {
                   const rows = testData.outputConsistency.outputRows;
-                  const measCount = Math.max(...rows.map((r: any) => (r.outputs ?? []).length), 1);
+                  const savedHeaders = Array.isArray(testData.outputConsistency.headers) && testData.outputConsistency.headers.length > 0
+                    ? testData.outputConsistency.headers
+                    : null;
+                  const measCount = savedHeaders?.length ?? Math.max(...rows.map((r: any) => (r.outputs ?? []).length), 1);
+                  const headerLabels = savedHeaders ?? Array.from({ length: measCount }, (_, i) => `Meas ${i + 1}`);
                   const tolVal = parseFloat(testData.outputConsistency.tolerance?.value ?? '0.05') || 0.05;
                   const tolOp = testData.outputConsistency.tolerance?.operator ?? '<=';
 
@@ -1136,8 +1140,8 @@ const ViewServiceReportRadiographyMobileHT: React.FC = () => {
                           <tr>
                             <th className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>kV</th>
                             <th className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>mAs</th>
-                            {Array.from({ length: measCount }, (_, i) => (
-                              <th key={i} className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>Meas {i + 1}</th>
+                            {headerLabels.map((label: string, i: number) => (
+                              <th key={i} className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{label}</th>
                             ))}
                             <th className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>Avg (X̄)</th>
                             <th className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>CoV</th>

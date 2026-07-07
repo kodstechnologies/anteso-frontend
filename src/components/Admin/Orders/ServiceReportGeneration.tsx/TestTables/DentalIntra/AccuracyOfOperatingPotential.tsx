@@ -80,62 +80,69 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
         const loadTest = async () => {
             if (!serviceId) return;
             setIsLoading(true);
+            const hasCsvImport = csvData && csvData.length > 0;
             try {
                 const res = await getAccuracyOfOperatingPotentialByServiceIdForDentalIntra(serviceId);
                 const data = res?.data;
                 if (data) {
                     setTestId(data._id || null);
-                    const maxCols = data.rows?.length ? Math.max(...data.rows.map((m: any) => (m.maStations?.length || m.measuredValues?.length || 0)), 2) : 2;
-                    const defaultHeaders = Array.from({ length: maxCols }, (_, i) => data.mAStations?.[i] || `mA Station ${i + 1}`);
-                    setMAStations(data.mAStations?.length >= maxCols ? data.mAStations : defaultHeaders);
-                    setFfd(data.ffd || "");
-                    setRows(
-                        data.rows?.map((m: any, i: number) => {
-                            const measuredValues = (m.maStations && Array.isArray(m.maStations))
-                                ? m.maStations.map((s: any) => s?.kvp ?? "")
-                                : (m.measuredValues || []);
-                                
-                            const rowApplied = parseFloat(m.appliedKvp || "0");
-                            const tol = parseFloat(data.kvpToleranceValue || "2.0");
-                            const sign = (data.kvpToleranceSign || "±") as "+" | "-" | "±";
-                            const avgNum = parseFloat(m.avgKvp || m.averageKvp || "0");
-                            
-                            const measuredStatus = measuredValues.map((val: string) => {
-                                const measured = parseFloat(val || "0");
-                                return checkTolerance(measured, rowApplied, tol, sign);
-                            });
-                            
-                            const avgStatus = checkTolerance(avgNum, rowApplied, tol, sign);
-                                
-                            return {
-                                id: String(i + 1),
-                                appliedKvp: m.appliedKvp || "",
-                                measuredValues,
-                                measuredValuesStatus: measuredStatus,
-                                averageKvp: m.avgKvp || m.averageKvp || "",
-                                averageKvpStatus: avgStatus,
-                                remarks: (m.remark || m.remarks || "-") as "PASS" | "FAIL" | "-",
-                            };
-                        }) || rows
-                    );
-                    setToleranceSign(data.kvpToleranceSign || "±");
-                    setToleranceValue(data.kvpToleranceValue || "2.0");
-                    setTotalFiltration({
-                        measured: data.totalFiltration?.measured1 ?? data.totalFiltration?.measured ?? "",
-                        required: data.totalFiltration?.measured2 ?? data.totalFiltration?.required ?? "",
-                        atKvp: data.totalFiltration?.atKvp ?? "",
-                    });
-                    if (data.filtrationTolerance) {
-                        setFiltrationTolerance({
-                            forKvGreaterThan70: data.filtrationTolerance.forKvGreaterThan70 || "1.5",
-                            forKvBetween70And100: data.filtrationTolerance.forKvBetween70And100 || "2.0",
-                            forKvGreaterThan100: data.filtrationTolerance.forKvGreaterThan100 || "2.5",
-                            kvThreshold1: data.filtrationTolerance.kvThreshold1 || "70",
-                            kvThreshold2: data.filtrationTolerance.kvThreshold2 || "100",
+                    if (!hasCsvImport) {
+                        const maxCols = data.rows?.length ? Math.max(...data.rows.map((m: any) => (m.maStations?.length || m.measuredValues?.length || 0)), 2) : 2;
+                        const defaultHeaders = Array.from({ length: maxCols }, (_, i) => data.mAStations?.[i] || `mA Station ${i + 1}`);
+                        setMAStations(data.mAStations?.length >= maxCols ? data.mAStations : defaultHeaders);
+                        setFfd(data.ffd || "");
+                        setRows(
+                            data.rows?.map((m: any, i: number) => {
+                                const measuredValues = (m.maStations && Array.isArray(m.maStations))
+                                    ? m.maStations.map((s: any) => s?.kvp ?? "")
+                                    : (m.measuredValues || []);
+
+                                const rowApplied = parseFloat(m.appliedKvp || "0");
+                                const tol = parseFloat(data.kvpToleranceValue || "2.0");
+                                const sign = (data.kvpToleranceSign || "±") as "+" | "-" | "±";
+                                const avgNum = parseFloat(m.avgKvp || m.averageKvp || "0");
+
+                                const measuredStatus = measuredValues.map((val: string) => {
+                                    const measured = parseFloat(val || "0");
+                                    return checkTolerance(measured, rowApplied, tol, sign);
+                                });
+
+                                const avgStatus = checkTolerance(avgNum, rowApplied, tol, sign);
+
+                                return {
+                                    id: String(i + 1),
+                                    appliedKvp: m.appliedKvp || "",
+                                    measuredValues,
+                                    measuredValuesStatus: measuredStatus,
+                                    averageKvp: m.avgKvp || m.averageKvp || "",
+                                    averageKvpStatus: avgStatus,
+                                    remarks: (m.remark || m.remarks || "-") as "PASS" | "FAIL" | "-",
+                                };
+                            }) || rows
+                        );
+                        setToleranceSign(data.kvpToleranceSign || "±");
+                        setToleranceValue(data.kvpToleranceValue || "2.0");
+                        setTotalFiltration({
+                            measured: data.totalFiltration?.measured1 ?? data.totalFiltration?.measured ?? "",
+                            required: data.totalFiltration?.measured2 ?? data.totalFiltration?.required ?? "",
+                            atKvp: data.totalFiltration?.atKvp ?? "",
                         });
+                        if (data.filtrationTolerance) {
+                            setFiltrationTolerance({
+                                forKvGreaterThan70: data.filtrationTolerance.forKvGreaterThan70 || "1.5",
+                                forKvBetween70And100: data.filtrationTolerance.forKvBetween70And100 || "2.0",
+                                forKvGreaterThan100: data.filtrationTolerance.forKvGreaterThan100 || "2.5",
+                                kvThreshold1: data.filtrationTolerance.kvThreshold1 || "70",
+                                kvThreshold2: data.filtrationTolerance.kvThreshold2 || "100",
+                            });
+                        }
+                        setIsSaved(true);
+                        setIsEditing(false);
+                    } else {
+                        // Preserve CSV-imported dynamic headers/rows instead of overwriting from server.
+                        setIsSaved(false);
+                        setIsEditing(true);
                     }
-                    setIsSaved(true);
-                    setIsEditing(false);
                     if (data._id && !initialTestId) {
                         onTestSaved?.(data._id);
                     }
@@ -154,11 +161,18 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
             }
         };
         loadTest();
-    }, [serviceId]);
+    }, [serviceId, csvData]);
 
     // CSV Data Injection
     useEffect(() => {
         if (csvData && csvData.length > 0) {
+            const csvMeasLabels = csvData.find(r => r['Field Name'] === 'MeasColumnLabels')?.['Value'];
+            if (csvMeasLabels) {
+                const labels = String(csvMeasLabels).split(',').map((h: string) => h.trim()).filter(Boolean);
+                if (labels.length > 0) {
+                    setMAStations(labels);
+                }
+            }
             // Total Filtration
             const tfMeasured = csvData.find(r => r['Field Name'] === 'Measured')?.['Value'];
             const tfRequired = csvData.find(r => r['Field Name'] === 'Required')?.['Value'];
@@ -206,10 +220,16 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
                 setRows(newRows);
 
                 const maxMeas = Math.max(...newRows.map(r => r.measuredValues.length));
-                if (maxMeas > mAStations.length) {
-                    const newCols = Array.from({ length: maxMeas - mAStations.length }, (_, i) => `mA ${mAStations.length + i + 1}`);
-                    setMAStations(prev => [...prev, ...newCols]);
-                }
+                setMAStations(prev => {
+                    const targetCount = Math.max(maxMeas, 2);
+                    const base = (csvMeasLabels
+                        ? String(csvMeasLabels).split(',').map((h: string) => h.trim()).filter(Boolean)
+                        : prev).slice(0, targetCount);
+                    while (base.length < targetCount) {
+                        base.push(`mA ${base.length + 1}`);
+                    }
+                    return base;
+                });
 
                 if (!testId) setIsEditing(true);
             }

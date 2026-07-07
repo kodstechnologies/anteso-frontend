@@ -174,8 +174,8 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
         }
 
         // 1. Parameter Row: FCD, 100, kV, 70, mA, 10
-        if (row.some((c: any) => ['FCD', 'fcd'].includes(c?.toString()?.trim())) && row.some((c: any) => ['kV', 'kv', 'kVp', 'kvp'].includes(c?.toString()?.trim()))) {
-          const fIndex = row.findIndex((c: any) => ['FCD', 'fcd'].includes(c?.toString()?.trim()));
+        if (row.some((c: any) => ['FCD', 'fcd', 'FDD', 'fdd', 'FFD', 'ffd'].includes(c?.toString()?.trim())) && row.some((c: any) => ['kV', 'kv', 'kVp', 'kvp'].includes(c?.toString()?.trim()))) {
+          const fIndex = row.findIndex((c: any) => ['FCD', 'fcd', 'FDD', 'fdd', 'FFD', 'ffd'].includes(c?.toString()?.trim()));
           const kIndex = row.findIndex((c: any) => ['kV', 'kv', 'kVp', 'kvp'].includes(c?.toString()?.trim()));
           const mIndex = row.findIndex((c: any) => ['mA', 'ma', 'MA'].includes(c?.toString()?.trim()));
 

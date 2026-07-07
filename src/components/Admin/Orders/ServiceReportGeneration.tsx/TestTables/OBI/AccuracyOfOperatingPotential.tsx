@@ -137,7 +137,10 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
                         return checkTolerance(measured, rowApplied, tol, sign);
                     });
                     
-                    const avgNum = parseFloat(m.averageKvp || "0");
+                    const nums = measuredValues.filter(v => v !== "" && !isNaN(Number(v))).map(Number);
+                    const computedAvg = nums.length > 0 ? (nums.reduce((a, b) => a + b, 0) / nums.length).toFixed(2) : "";
+                    const averageKvp = m.averageKvp || computedAvg;
+                    const avgNum = parseFloat(averageKvp || "0");
                     const avgStatus = checkTolerance(avgNum, rowApplied, tol, sign);
                     
                     const hasAnyFailure = measuredStatus.some((status: boolean) => status === false) || avgStatus === false;
@@ -145,14 +148,14 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
                     
                     let remark: "PASS" | "FAIL" | "-" = hasValidData ? (hasAnyFailure ? "FAIL" : "PASS") : "-";
                     
-                    console.log(`Row ${index}: appliedKvp=${m.appliedKvp}, measuredValues=${measuredValues}, averageKvp=${m.averageKvp}`);
+                    console.log(`Row ${index}: appliedKvp=${m.appliedKvp}, measuredValues=${measuredValues}, averageKvp=${averageKvp}`);
                     
                     return {
                         id: `csv-row-${Date.now()}-${index}`,
                         appliedKvp: m.appliedKvp || "",
                         measuredValues: measuredValues,
                         measuredValuesStatus: measuredStatus,
-                        averageKvp: m.averageKvp || "",
+                        averageKvp: averageKvp,
                         averageKvpStatus: avgStatus,
                         remarks: remark,
                     };

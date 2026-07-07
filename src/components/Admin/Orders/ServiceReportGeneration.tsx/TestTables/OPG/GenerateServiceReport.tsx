@@ -171,9 +171,18 @@ const OPG: React.FC<{ serviceId: string; qaTestDate?: string | null; csvFileUrl?
             if (currentSection) {
                 const headerOnlyMarkers = ['Applied kVp', 'Set Time (mSec)', 'mA Station', 'mAs Range', 'kVp', 'Location', 'LOCATION', 'Survey Date'];
                 if (firstCell && headerOnlyMarkers.includes(firstCell)) {
+                    const keepForCustomHeaders =
+                        (currentSection === 'accuracyOfOperatingPotential' && firstCell === 'Applied kVp') ||
+                        (currentSection === 'linearityOfMaLoading' && firstCell === 'mA Station') ||
+                        (currentSection === 'linearityOfMasLoading' && firstCell === 'mAs Range') ||
+                        (currentSection === 'consistencyOfRadiationOutput' && firstCell === 'kVp');
+                    if (keepForCustomHeaders) {
+                        // Keep these rows so table components can read dynamic measurement headers.
+                    } else {
                     // Keep Location header for radiation leakage import (column mapping)
                     if (!(currentSection === 'radiationLeakageLevel' && firstCell === 'Location')) {
                         return;
+                    }
                     }
                 }
                 if (row.length > 0) {

@@ -425,6 +425,7 @@ const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId, qaTestDate,
         const data: any[] = [];
         let currentTestName = '';
         let headers: string[] = [];
+        let sectionDynamicMeasCols: number[] = [];
         let isReadingTest = false;
 
         const testMarkerToInternalName: { [key: string]: string } = {
@@ -496,6 +497,44 @@ const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId, qaTestDate,
         };
 
         const sectionRowCounter: { [key: string]: number } = {};
+        const testsWithMeasLabelMeta = new Set([
+            'accuracyOfOperatingPotential',
+            'linearityOfMaLoading',
+            'linearityOfMasLoading',
+            'consistencyOfRadiationOutput',
+        ]);
+        const dynamicMeasFieldPrefixByTest: Record<string, string> = {
+            accuracyOfOperatingPotential: 'Measured_',
+            linearityOfMaLoading: 'Measured_',
+            linearityOfMasLoading: 'Measured_',
+            consistencyOfRadiationOutput: 'Measured_',
+        };
+        const fixedHeadersByTest: Record<string, Set<string>> = {
+            accuracyOfOperatingPotential: new Set([
+                'Applied kVp', 'applied kvp', 'Applied KVp',
+                'Measured 1', 'Measured 2', 'Measurement 1', 'Measurement 2',
+                'Measured (mm Al)', 'Required (mm Al)', 'At kVp', 'kV', 'kVp',
+            ]),
+            linearityOfMaLoading: new Set([
+                'mA Station', 'kV', 'Time', 'FCD',
+                'Measured mR 1', 'Measured mR 2', 'Measured mR 3', 'Measured mR 4', 'Measured mR 5',
+            ]),
+            linearityOfMasLoading: new Set([
+                'mAs Range', 'kV', 'FCD',
+                'Measured mR 1', 'Measured mR 2', 'Measured mR 3', 'Measured mR 4', 'Measured mR 5',
+            ]),
+            consistencyOfRadiationOutput: new Set([
+                'FFD', 'Test kV', 'Test mAs',
+                'Meas 1', 'Meas 2', 'Meas 3', 'Meas 4', 'Meas 5',
+            ]),
+        };
+        const isDynamicMeasHeader = (testName: string, header: string, map: Record<string, string>) => {
+            const h = String(header || '').trim();
+            if (!h) return false;
+            if (map[h]) return false;
+            if (!dynamicMeasFieldPrefixByTest[testName]) return false;
+            return !fixedHeadersByTest[testName]?.has(h);
+        };
 
         for (let i = 0; i < rows.length; i++) {
             if (!rows[i] || !Array.isArray(rows[i])) continue;
@@ -516,6 +555,7 @@ const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId, qaTestDate,
                 currentTestName = matchedInternalName;
                 isReadingTest = true;
                 headers = [];
+                sectionDynamicMeasCols = [];
                 if (currentTestName) {
                     if (sectionRowCounter[currentTestName] === undefined) {
                         sectionRowCounter[currentTestName] = 0;
@@ -527,6 +567,7 @@ const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId, qaTestDate,
             // If empty row, reset headers so next table within same section can be detected
             if (isReadingTest && row.every(c => !c)) {
                 headers = [];
+                sectionDynamicMeasCols = [];
                 continue;
             }
 
@@ -590,6 +631,26 @@ const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId, qaTestDate,
                 const matches = row.filter(c => (headerMap[currentTestName] || {})[c]).length;
                 if (matches >= 2 || (matches === 1 && row.filter(c => c).length > 2)) {
                     headers = row;
+                    sectionDynamicMeasCols = [];
+                    const map = headerMap[currentTestName] || {};
+                    headers.forEach((headerCell, idx) => {
+                        if (isDynamicMeasHeader(currentTestName, headerCell, map)) {
+                            sectionDynamicMeasCols.push(idx);
+                        }
+                    });
+                    if (testsWithMeasLabelMeta.has(currentTestName)) {
+                        const measLabels = sectionDynamicMeasCols
+                            .map((idx) => String(row[idx] || '').trim())
+                            .filter(Boolean);
+                        if (measLabels.length > 0) {
+                            data.push({
+                                'Field Name': 'MeasColumnLabels',
+                                'Value': measLabels.join(','),
+                                'Row Index': 0,
+                                'Test Name': currentTestName,
+                            });
+                        }
+                    }
                     continue;
                 } else if (matches === 1 && row.filter(c => c).length === 1) {
                     headers = row;
@@ -602,7 +663,13 @@ const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId, qaTestDate,
                 const rowIdx = sectionRowCounter[currentTestName];
                 row.forEach((value, cellIdx) => {
                     const header = headers[cellIdx];
-                    const internalField = (headerMap[currentTestName] || {})[header];
+                    let internalField = (headerMap[currentTestName] || {})[header];
+                    if (!internalField && dynamicMeasFieldPrefixByTest[currentTestName]) {
+                        const dynIdx = sectionDynamicMeasCols.indexOf(cellIdx);
+                        if (dynIdx >= 0) {
+                            internalField = `${dynamicMeasFieldPrefixByTest[currentTestName]}${dynIdx}`;
+                        }
+                    }
                     if (internalField && value) {
                         data.push({
                             'Field Name': internalField,

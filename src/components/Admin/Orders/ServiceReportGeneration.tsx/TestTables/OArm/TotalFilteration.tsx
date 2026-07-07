@@ -54,8 +54,40 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
         kvThreshold2: "100",
     });
 
+    const computeRowMetrics = (
+        appliedKvp: string,
+        measuredValues: string[],
+        tolSign: "+" | "-" | "±",
+        tolVal: string
+    ): Pick<RowData, "averageKvp" | "remarks"> => {
+        const nums = measuredValues.filter(v => v !== "" && !isNaN(Number(v))).map(Number);
+        const avg = nums.length > 0 ? (nums.reduce((a, b) => a + b, 0) / nums.length).toFixed(2) : "";
+        const applied = parseFloat(appliedKvp || "0");
+        const avgNum = parseFloat(avg || "0");
+        const tol = parseFloat(tolVal || "0");
+        let remark: "PASS" | "FAIL" | "-" = "-";
+
+        if (!isNaN(applied) && !isNaN(avgNum) && !isNaN(tol) && tol > 0) {
+            const diff = Math.abs(avgNum - applied);
+            remark = tolSign === "+"
+                ? (avgNum <= applied + tol ? "PASS" : "FAIL")
+                : tolSign === "-"
+                    ? (avgNum >= applied - tol ? "PASS" : "FAIL")
+                    : diff <= tol ? "PASS" : "FAIL";
+        }
+
+        return { averageKvp: avg, remarks: remark };
+    };
+
     useEffect(() => {
         const loadTestData = async () => {
+            if (!serviceId || (csvData && csvData.length > 0)) {
+                if (csvData && csvData.length > 0) {
+                    setIsSaved(false);
+                }
+                setIsLoading(false);
+                return;
+            }
             setIsLoading(true);
             try {
                 let data = null;
@@ -114,38 +146,77 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
         if (!csvData || csvData.length === 0) return;
         console.log('TotalFilteration: Processing CSV data', csvData);
         try {
-            // Group by row index
+            const stations: string[] = [];
             const rowMap: { [idx: number]: any } = {};
+            let tfAtKvp = '';
+            let tfRequired = '';
+            let tolSign: '+' | '-' | '±' = toleranceSign;
+            let tolVal = toleranceValue;
+
             csvData.forEach((item: any) => {
-                const idx = item['Row Index'];
-                if (!rowMap[idx]) rowMap[idx] = {};
-                rowMap[idx][item['Field Name']] = item['Value'];
+                const field = item['Field Name'];
+                const val = item['Value'];
+                if (field === 'TotalFiltration_AtKvp' && val) tfAtKvp = String(val);
+                if (field === 'TotalFiltration_Required' && val) tfRequired = String(val);
+                if (field === 'Tolerance_Sign' && val) tolSign = val as '+' | '-' | '±';
+                if (field === 'Tolerance_Value' && val) tolVal = String(val);
+                if (field?.startsWith('Header_')) {
+                    const idx = parseInt(field.replace('Header_', ''), 10) - 1;
+                    while (stations.length <= idx) stations.push(`Meas ${stations.length + 1}`);
+                    stations[idx] = val != null ? String(val) : '';
+                }
+                const rowIdx = item['Row Index'];
+                if (!rowMap[rowIdx]) rowMap[rowIdx] = {};
+                rowMap[rowIdx][field] = val;
             });
+
+            const collectMeas = (r: Record<string, any>) => {
+                let maxIdx = -1;
+                Object.keys(r).forEach((k) => {
+                    const m = k.match(/^Table2_Meas_(\d+)$/);
+                    if (m) maxIdx = Math.max(maxIdx, parseInt(m[1], 10));
+                });
+                if (maxIdx < 0) return [];
+                return Array.from({ length: maxIdx + 1 }, (_, i) => (r[`Table2_Meas_${i}`] != null ? String(r[`Table2_Meas_${i}`]) : ''));
+            };
 
             const newRows: any[] = [];
             Object.keys(rowMap).forEach(idxStr => {
-                const r = rowMap[parseInt(idxStr)];
-                const measuredValues: string[] = [];
-                for (let m = 0; m < 5; m++) {
-                    const val = r[`Table2_Meas_${m}`];
-                    if (val !== undefined) measuredValues.push(val);
-                }
-                if (r['Table2_AppliedKvp'] || measuredValues.length > 0) {
+                const idx = parseInt(idxStr, 10);
+                if (idx === 0) return;
+                const r = rowMap[idx];
+                const measuredValues = collectMeas(r);
+                if (r['Table2_AppliedKvp'] || measuredValues.some(v => v !== '')) {
+                    const appliedKvp = r['Table2_AppliedKvp'] != null ? String(r['Table2_AppliedKvp']) : '';
+                    const values = measuredValues.length > 0 ? measuredValues : ['', ''];
                     newRows.push({
                         id: Date.now().toString() + Math.random(),
-                        appliedKvp: r['Table2_AppliedKvp'] || '',
-                        measuredValues: measuredValues.length > 0 ? measuredValues : ['', ''],
-                        averageKvp: '',
-                        remarks: '-' as const,
+                        appliedKvp,
+                        measuredValues: values,
+                        ...computeRowMetrics(appliedKvp, values, tolSign, tolVal),
                     });
                 }
             });
 
             if (newRows.length > 0) {
-                // Determine number of mA stations from first row's measured values count
-                const numStations = newRows[0].measuredValues.length;
-                setMAStations(Array.from({ length: numStations }, (_, i) => `Meas ${i + 1}`));
+                const numStations = stations.length > 0
+                    ? stations.length
+                    : newRows[0].measuredValues.length;
+                setMAStations(
+                    stations.length > 0
+                        ? stations
+                        : Array.from({ length: numStations }, (_, i) => `Meas ${i + 1}`)
+                );
                 setRows(newRows);
+                if (tfAtKvp || tfRequired) {
+                    setTotalFiltration(prev => ({
+                        ...prev,
+                        atKvp: tfAtKvp || prev.atKvp,
+                        required: tfRequired || prev.required,
+                    }));
+                }
+                setToleranceSign(tolSign);
+                setToleranceValue(tolVal);
                 setIsSaved(false);
                 toast.success('Total Filtration: CSV data loaded');
             }

@@ -220,12 +220,20 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
   // CSV Data Injection
   useEffect(() => {
     if (csvData && csvData.length > 0) {
+      const consistencyHeaderRow = csvData.find(r => String(r?.[0] || '').trim().toLowerCase() === 'kvp');
+      let customHeadersFromCsv: string[] = [];
+      if (consistencyHeaderRow) {
+        customHeadersFromCsv = consistencyHeaderRow
+          .slice(2)
+          .map((c: any) => String(c || '').trim())
+          .filter((s: string) => s && !/^mean$/i.test(s) && !/^cov$/i.test(s) && !/^remarks$/i.test(s));
+      }
 
       // Filter valid rows (must have kVp and be numeric)
       // Check for FFD row
-      const ffdRow = csvData.find(r => r.some((c: any) => c?.toString().toLowerCase() === 'ffd' || c?.toString().toLowerCase() === 'fcd'));
+      const ffdRow = csvData.find(r => r.some((c: any) => ['ffd', 'fcd', 'fdd'].includes(c?.toString().toLowerCase())));
       if (ffdRow) {
-        const fIdx = ffdRow.findIndex((c: any) => c?.toString().toLowerCase() === 'ffd' || c?.toString().toLowerCase() === 'fcd');
+        const fIdx = ffdRow.findIndex((c: any) => ['ffd', 'fcd', 'fdd'].includes(c?.toString().toLowerCase()));
         if (fIdx !== -1 && ffdRow[fIdx + 1]) setFfd(ffdRow[fIdx + 1].toString());
       }
 
@@ -283,9 +291,13 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
         const maxMeasFromImport = Math.max(...newRows.map(r => r.outputs.length));
         const finalHeaderCount = maxMeasFromImport || 3;
 
-        if (finalHeaderCount !== headers.length) {
-          setHeaders(Array.from({ length: finalHeaderCount }, (_, i) => `Measured mR ${i + 1}`));
-        }
+        setHeaders(prev => {
+          const base = (customHeadersFromCsv.length > 0 ? customHeadersFromCsv : prev).slice(0, finalHeaderCount);
+          while (base.length < finalHeaderCount) {
+            base.push(`Measured mR ${base.length + 1}`);
+          }
+          return base;
+        });
 
         // Pad all rows to match finalHeaderCount
         const paddedRows = refinedRows.map(row => {

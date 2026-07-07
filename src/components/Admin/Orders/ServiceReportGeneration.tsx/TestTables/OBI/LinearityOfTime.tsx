@@ -233,13 +233,19 @@ const LinearityOfTime: React.FC<Props> = ({ serviceId, testId: propTestId, onRef
       if (initialData.measurementRows && initialData.measurementRows.length > 0) {
         const numCols = initialData.headers?.length || initialData.measurementRows[0]?.radiationOutputs?.length || 3;
         setMeasurementRows(
-          initialData.measurementRows.map((r, i) => ({
-            id: `csv-row-${Date.now()}-${i}`,
-            maApplied: r.maApplied || '',
-            measuredOutputs: r.radiationOutputs || Array(numCols).fill(''),
-            averageOutput: r.averageOutput || '',
-            mGyPerMAs: r.mGyPerMAs || '',
-          }))
+          initialData.measurementRows.map((r, i) => {
+            const outputs = Array.isArray(r.radiationOutputs) && r.radiationOutputs.length > 0
+              ? [...r.radiationOutputs]
+              : Array(numCols).fill('');
+            while (outputs.length < numCols) outputs.push('');
+            return {
+              id: `csv-row-${Date.now()}-${i}`,
+              maApplied: r.maApplied || '',
+              measuredOutputs: outputs,
+              averageOutput: r.averageOutput || '',
+              mGyPerMAs: r.mGyPerMAs || '',
+            };
+          })
         );
       }
       setIsEditing(true);

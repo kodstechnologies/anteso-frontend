@@ -107,6 +107,13 @@ const OutputConsistencyForOArm: React.FC<Props> = ({
   // Load test data
   useEffect(() => {
     const loadTest = async () => {
+      if (!serviceId || (csvData && csvData.length > 0)) {
+        if (csvData && csvData.length > 0) {
+          setIsSaved(false);
+        }
+        setIsLoading(false);
+        return;
+      }
       setIsLoading(true);
       try {
         let data = null;
@@ -179,12 +186,30 @@ const OutputConsistencyForOArm: React.FC<Props> = ({
     if (!csvData || csvData.length === 0) return;
     console.log('OutputConsistency: Processing CSV data', csvData);
     try {
+      const h: string[] = [];
       const rowMap: { [idx: number]: any } = {};
       csvData.forEach((item: any) => {
-        const idx = item['Row Index'];
-        if (!rowMap[idx]) rowMap[idx] = {};
-        rowMap[idx][item['Field Name']] = item['Value'];
+        const field = item['Field Name'];
+        const val = item['Value'];
+        if (field?.startsWith('Header_')) {
+          const idx = parseInt(field.replace('Header_', ''), 10) - 1;
+          while (h.length <= idx) h.push(`Meas ${h.length + 1}`);
+          h[idx] = val != null ? String(val) : '';
+        }
+        const rowIdx = item['Row Index'];
+        if (!rowMap[rowIdx]) rowMap[rowIdx] = {};
+        rowMap[rowIdx][field] = val;
       });
+
+      const collectOutputs = (r: Record<string, any>) => {
+        let maxIdx = -1;
+        Object.keys(r).forEach((k) => {
+          const m = k.match(/^Row_Output_(\d+)$/);
+          if (m) maxIdx = Math.max(maxIdx, parseInt(m[1], 10));
+        });
+        if (maxIdx < 0) return [];
+        return Array.from({ length: maxIdx + 1 }, (_, i) => (r[`Row_Output_${i}`] != null ? String(r[`Row_Output_${i}`]) : ''));
+      };
 
       // Extract parameters from first row
       const firstRow = rowMap[1] || {};
@@ -193,13 +218,11 @@ const OutputConsistencyForOArm: React.FC<Props> = ({
 
       const newRows: any[] = [];
       Object.keys(rowMap).forEach(idxStr => {
-        const r = rowMap[parseInt(idxStr)];
-        const outputs: string[] = [];
-        for (let m = 0; m < 10; m++) { // Allow up to 10 columns
-          const val = r[`Row_Output_${m}`];
-          if (val !== undefined) outputs.push(val);
-        }
-        if (r['Row_kvp'] || outputs.length > 0) {
+        const idx = parseInt(idxStr, 10);
+        if (idx === 0) return;
+        const r = rowMap[idx];
+        const outputs = collectOutputs(r);
+        if (r['Row_kvp'] || r['Row_ma'] || outputs.some(v => v !== '')) {
           newRows.push({
             id: Date.now().toString() + Math.random(),
             kvp: r['Row_kvp'] || '',
@@ -213,16 +236,22 @@ const OutputConsistencyForOArm: React.FC<Props> = ({
       });
 
       if (newRows.length > 0) {
-        const numHeaders = Math.max(newRows[0].outputs.length, INITIAL_HEADERS.length);
-        const finalHeaders = Array.from({ length: numHeaders }, (_, i) => `Meas ${i + 1}`);
+        const numHeaders = Math.max(
+          h.length,
+          newRows[0].outputs.length,
+          INITIAL_HEADERS.length
+        );
+        const finalHeaders = h.length > 0
+          ? h
+          : Array.from({ length: numHeaders }, (_, i) => `Meas ${i + 1}`);
         setHeaders(finalHeaders);
         
         // Normalize all rows to have the same number of outputs
         const normalizedRows = newRows.map(row => ({
           ...row,
-          outputs: row.outputs.length === numHeaders 
+          outputs: row.outputs.length === finalHeaders.length 
             ? row.outputs 
-            : Array(numHeaders).fill('')
+            : Array(finalHeaders.length).fill('')
         }));
         setOutputRows(normalizedRows);
         setIsSaved(false);

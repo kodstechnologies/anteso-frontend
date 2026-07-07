@@ -68,17 +68,16 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
     if (initialData && initialData.length > 0) {
       try {
         const s: SettingsRow = { fcd: "100", kv: "120", ma: "21", time: "2.0" };
-        const rows: LeakageRow[] = [
-          { location: 'Tube', left: '', right: '', front: '', back: '', top: '' },
-        ];
         let w = "";
         let tVal = "1.0";
         let tOp: any = "less than or equal to";
 
+        const rowMap: Record<number, Partial<LeakageRow> & { location?: LeakageRow['location'] }> = {};
+
         initialData.forEach(row => {
           const field = row['Field Name'];
           const val = row['Value'];
-          const rowIndex = row['Row Index'];
+          const rowIndex = parseInt(row['Row Index']) || 0;
 
           if (field === 'Leakage_FCD') s.fcd = val;
           if (field === 'Leakage_kV') s.kv = val;
@@ -88,22 +87,54 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
           if (field === 'Leakage_ToleranceValue') tVal = val;
           if (field === 'Leakage_ToleranceOperator') tOp = val;
 
-          if (field.startsWith('Leakage_')) {
-            const loc = field.includes('Tube') ? 0 : field.includes('Collimator') ? 1 : -1;
-            if (loc !== -1) {
-              while (rows.length <= loc) {
-                rows.push({ location: loc === 0 ? 'Tube' : 'Collimator', left: '', right: '', front: '', back: '', top: '' });
-              }
-              const subField = field.split('_')[1].toLowerCase() as keyof Omit<LeakageRow, 'location'>;
-              if (['left', 'right', 'front', 'back', 'top'].includes(subField)) {
-                rows[loc][subField] = val;
-              }
+          if (field === 'Leakage_Location') {
+            if (!rowMap[rowIndex]) {
+              rowMap[rowIndex] = { left: '', right: '', front: '', back: '', top: '' };
             }
+            const loc = String(val).trim();
+            rowMap[rowIndex].location =
+              loc.toLowerCase() === 'collimator' ? 'Collimator' : 'Tube';
+          } else if (
+            field === 'Leakage_Left' ||
+            field === 'Leakage_Right' ||
+            field === 'Leakage_Front' ||
+            field === 'Leakage_Back' ||
+            field === 'Leakage_Top'
+          ) {
+            if (!rowMap[rowIndex]) {
+              rowMap[rowIndex] = {
+                location: rowIndex === 0 ? 'Tube' : 'Collimator',
+                left: '',
+                right: '',
+                front: '',
+                back: '',
+                top: '',
+              };
+            }
+            const subField = field.replace('Leakage_', '').toLowerCase() as keyof Omit<LeakageRow, 'location'>;
+            rowMap[rowIndex][subField] = val;
           }
         });
 
+        const parsedRows: LeakageRow[] = Object.keys(rowMap)
+          .map(Number)
+          .sort((a, b) => a - b)
+          .map((idx) => {
+            const r = rowMap[idx]!;
+            return {
+              location: r.location || (idx === 0 ? 'Tube' : 'Collimator'),
+              left: r.left ?? '',
+              right: r.right ?? '',
+              front: r.front ?? '',
+              back: r.back ?? '',
+              top: r.top ?? '',
+            };
+          });
+
         setSettings(s);
-        setLeakageRows(rows);
+        setLeakageRows(parsedRows.length > 0 ? parsedRows : [
+          { location: 'Tube', left: '', right: '', front: '', back: '', top: '' },
+        ]);
         setWorkload(w);
         setToleranceValue(tVal);
         setToleranceOperator(tOp);

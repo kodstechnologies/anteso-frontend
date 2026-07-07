@@ -122,7 +122,14 @@ const LinearityOfMasLoadingStationsForOArm: React.FC<Props> = ({ serviceId, test
   // Load from backend
   useEffect(() => {
     const load = async () => {
-      if (!serviceId) { setIsLoading(false); return; }
+      if (!serviceId || (csvData && csvData.length > 0)) {
+        if (csvData && csvData.length > 0) {
+          setHasSaved(false);
+          setIsEditing(true);
+        }
+        setIsLoading(false);
+        return;
+      }
       try {
         const data = await getLinearityOfMasLoadingStationByServiceIdForOArm(serviceId);
         if (data) {
@@ -192,12 +199,30 @@ const LinearityOfMasLoadingStationsForOArm: React.FC<Props> = ({ serviceId, test
   useEffect(() => {
     if (!csvData || csvData.length === 0) return;
     try {
+      const h: string[] = [];
       const rowMap: { [idx: number]: any } = {};
       csvData.forEach((item: any) => {
-        const idx = item['Row Index'];
-        if (!rowMap[idx]) rowMap[idx] = {};
-        rowMap[idx][item['Field Name']] = item['Value'];
+        const field = item['Field Name'];
+        const val = item['Value'];
+        if (field?.startsWith('Header_')) {
+          const idx = parseInt(field.replace('Header_', ''), 10) - 1;
+          while (h.length <= idx) h.push(`Meas ${h.length + 1}`);
+          h[idx] = val != null ? String(val) : '';
+        }
+        const rowIdx = item['Row Index'];
+        if (!rowMap[rowIdx]) rowMap[rowIdx] = {};
+        rowMap[rowIdx][field] = val;
       });
+
+      const collectMeas = (r: Record<string, any>) => {
+        let maxIdx = -1;
+        Object.keys(r).forEach((k) => {
+          const m = k.match(/^Row_Meas_(\d+)$/);
+          if (m) maxIdx = Math.max(maxIdx, parseInt(m[1], 10));
+        });
+        if (maxIdx < 0) return [];
+        return Array.from({ length: maxIdx + 1 }, (_, i) => (r[`Row_Meas_${i}`] != null ? String(r[`Row_Meas_${i}`]) : ''));
+      };
       
       const firstRow = rowMap[1] || {};
       if (firstRow['Exposure_FCD'] || firstRow['Exposure_KV'] || firstRow['Exposure_Time']) {
@@ -211,18 +236,16 @@ const LinearityOfMasLoadingStationsForOArm: React.FC<Props> = ({ serviceId, test
       
       const newRows: Table2Row[] = [];
       Object.keys(rowMap).forEach(idxStr => {
-        const r = rowMap[parseInt(idxStr)];
-        const measuredOutputs: string[] = [];
-        for (let m = 0; m < 10; m++) { 
-          const val = r[`Row_Meas_${m}`]; 
-          if (val !== undefined && val !== '') measuredOutputs.push(String(val)); 
-        }
-        if (r['Row_mAsRange'] || measuredOutputs.length > 0) {
-          const colCount = Math.max(measuredOutputs.length, measHeaders.length, 3);
+        const idx = parseInt(idxStr, 10);
+        if (idx === 0) return;
+        const r = rowMap[idx];
+        const measuredOutputs = collectMeas(r);
+        if (r['Row_mAsRange'] || measuredOutputs.some(v => v !== '')) {
+          const colCount = Math.max(measuredOutputs.length, h.length, measHeaders.length, 3);
           const paddedOutputs = padOutputsToLen(measuredOutputs, colCount);
           newRows.push({ 
             id: Date.now().toString() + Math.random() + idxStr, 
-            mAsRange: r['Row_mAsRange'] || '',
+            mAsRange: r['Row_mAsRange'] != null ? String(r['Row_mAsRange']) : '',
             measuredOutputs: paddedOutputs,
             measuredOutputsStatus: Array(paddedOutputs.length).fill(true), 
             average: '', x: '', xMax: '', xMin: '', col: '', remarks: '' 
@@ -232,16 +255,20 @@ const LinearityOfMasLoadingStationsForOArm: React.FC<Props> = ({ serviceId, test
       
       if (newRows.length > 0) {
         const colCount = Math.max(
+          h.length,
           ...newRows.map(r => r.measuredOutputs.length),
           measHeaders.length,
           3
         );
-        setMeasHeaders(Array.from({ length: colCount }, (_, i) => `Meas ${i + 1}`));
+        const finalHeaders = h.length > 0
+          ? h
+          : Array.from({ length: colCount }, (_, i) => `Meas ${i + 1}`);
+        setMeasHeaders(finalHeaders);
         setTable2Rows(
           newRows.map(r => ({
             ...r,
-            measuredOutputs: padOutputsToLen(r.measuredOutputs, colCount),
-            measuredOutputsStatus: Array(colCount).fill(true),
+            measuredOutputs: padOutputsToLen(r.measuredOutputs, finalHeaders.length),
+            measuredOutputsStatus: Array(finalHeaders.length).fill(true),
           }))
         );
         setHasSaved(false);

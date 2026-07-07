@@ -74,17 +74,24 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
     'Meas 1', 'Meas 2', 'Meas 3', 'Meas 4', 'Meas 5',
   ]);
 
-  const addColumn = () => {
+  const addColumn = (afterIndex?: number) => {
     if (hasSaved && !isEditing) return;
     if (headers.length >= 10) {
       toast.error('Maximum 10 measurements allowed');
       return;
     }
-    setHeaders(prev => [...prev, `Meas ${prev.length + 1}`]);
-    setOutputRows(prev => prev.map(row => ({
-      ...row,
-      outputs: [...row.outputs, { value: '' }]
-    })));
+    setHeaders(prev => {
+      const next = [...prev];
+      const insertAt = afterIndex === undefined ? next.length : afterIndex + 1;
+      next.splice(insertAt, 0, `Meas ${insertAt + 1}`);
+      return next;
+    });
+    setOutputRows(prev => prev.map(row => {
+      const outputs = [...row.outputs];
+      const insertAt = afterIndex === undefined ? outputs.length : afterIndex + 1;
+      outputs.splice(insertAt, 0, { value: '' });
+      return { ...row, outputs };
+    }));
     setHasSaved(false);
   };
 
@@ -232,13 +239,16 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
             if (initialData.tolerance) {
                 setTolerance(initialData.tolerance);
             }
-            if (initialData.headers && initialData.headers.length > 0) {
-                setHeaders(initialData.headers);
+            const importedHeaders = (initialData.headers?.length
+                ? initialData.headers
+                : (initialData as any).measurementHeaders) as string[] | undefined;
+            if (importedHeaders && importedHeaders.length > 0) {
+                setHeaders(importedHeaders);
             }
             if (initialData.outputRows && initialData.outputRows.length > 0) {
                 const firstRow = initialData.outputRows[0];
                 const numCols = firstRow.outputs?.length || 5;
-                if (!initialData.headers || initialData.headers.length === 0) {
+                if (!importedHeaders || importedHeaders.length === 0) {
                     setHeaders(Array.from({ length: numCols }, (_, i) => `Meas ${i + 1}`));
                 }
                 setOutputRows(
@@ -282,14 +292,14 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
                         setFFD({ value: testData.ffd.value });
                     }
                     if (testData.outputRows && testData.outputRows.length > 0) {
-                        // Determine headers from max outputs length
                         const maxCols = Math.max(
                             ...testData.outputRows.map((r: any) => r.outputs?.length || 0),
                             5
                         );
-                        // If headers were saved, we'd use them. But OBI model doesn't support headers yet.
-                        // We generated generic headers.
-                        const loadedHeaders = Array.from({ length: maxCols }, (_, i) => `Meas ${i + 1}`);
+                        const savedHeaders = Array.isArray(testData.headers) ? testData.headers : [];
+                        const loadedHeaders = savedHeaders.length > 0
+                            ? savedHeaders
+                            : Array.from({ length: maxCols }, (_, i) => `Meas ${i + 1}`);
                         setHeaders(loadedHeaders);
 
                         setOutputRows(testData.outputRows.map((r: any) => ({
@@ -333,6 +343,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
         try {
             const payload = {
                 ffd,
+                headers,
                 outputRows: rowsWithCalc.map(r => ({
                     kv: r.kv,
                     mas: r.mas,
@@ -448,17 +459,23 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
                                 <th className="px-5 py-3 text-left text-xs font-medium text-gray-600  border-r">
                                     mAs
                                 </th>
-                                {Array.from({ length: headers.length }, (_, i) => (
+                                {headers.map((header, i) => (
                                     <th
                                         key={i}
                                         className="px-3 py-3 text-center text-xs font-medium text-gray-600 border-r relative"
                                     >
                                         <div className="flex flex-col items-center gap-1">
                                             <div className="flex items-center gap-1">
-                                                <span>Meas {i + 1}</span>
+                                                <input
+                                                    type="text"
+                                                    value={header || `Meas ${i + 1}`}
+                                                    onChange={e => updateHeader(i, e.target.value)}
+                                                    disabled={isViewMode}
+                                                    className={`w-24 px-1 py-0.5 text-xs border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+                                                />
                                                 {!isViewMode && headers.length < 10 && (
                                                     <button
-                                                        onClick={() => addColumn()}
+                                                        onClick={() => addColumn(i)}
                                                         className="text-green-600 hover:bg-green-100 p-0.5 rounded transition"
                                                         title="Add column after this"
                                                     >

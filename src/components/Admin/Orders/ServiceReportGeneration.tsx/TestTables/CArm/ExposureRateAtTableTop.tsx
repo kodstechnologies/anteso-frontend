@@ -76,7 +76,7 @@ const ExposureRateTableTopForCArm: React.FC<Props> = ({
     }, {});
   }, [rows, hasValidMinFocus, minFocus, minFocusDistance]);
 
-  // Handle CSV initial data
+  // Handle CSV initial data — Distance, Applied kV, Applied mA, Exposure from Excel; Mode auto-assigned; Result calculated
   useEffect(() => {
     if (initialData && initialData.length > 0) {
       try {
@@ -85,29 +85,51 @@ const ExposureRateTableTopForCArm: React.FC<Props> = ({
         let nonAecTol = "5";
         let minFocus = "30";
 
+        const defaultMode = (idx: number): Row["remark"] => {
+          if (idx === 0) return "AEC Mode";
+          if (idx === 1) return "Manual Mode";
+          return "";
+        };
+
         initialData.forEach(row => {
           const field = row['Field Name'];
           const val = row['Value'];
-          const rowIndex = row['Row Index'];
+          const rowIndex = parseInt(row['Row Index']) || 0;
 
           if (field === 'ExposureRate_AecTolerance') aecTol = val;
           if (field === 'ExposureRate_NonAecTolerance') nonAecTol = val;
           if (field === 'ExposureRate_MinFocusDistance') minFocus = val;
 
           if (field.startsWith('ExposureRate_')) {
-            while (r.length <= rowIndex) {
-              r.push({ id: (r.length + 1).toString(), distance: "", appliedKv: "", appliedMa: "", exposure: "", remark: "" });
-            }
             const subField = field.replace('ExposureRate_', '');
-            if (subField === 'Distance') r[rowIndex].distance = val;
-            if (subField === 'kVp') r[rowIndex].appliedKv = val;
-            if (subField === 'mA') r[rowIndex].appliedMa = val;
-            if (subField === 'Exposure') r[rowIndex].exposure = val;
-            if (subField === 'Mode') r[rowIndex].remark = val as any;
+            if (subField === 'Distance' || subField === 'kVp' || subField === 'mA' || subField === 'Exposure') {
+              while (r.length <= rowIndex) {
+                r.push({
+                  id: (r.length + 1).toString(),
+                  distance: "",
+                  appliedKv: "",
+                  appliedMa: "",
+                  exposure: "",
+                  remark: "",
+                });
+              }
+              if (subField === 'Distance') r[rowIndex].distance = val;
+              if (subField === 'kVp') r[rowIndex].appliedKv = val;
+              if (subField === 'mA') r[rowIndex].appliedMa = val;
+              if (subField === 'Exposure') r[rowIndex].exposure = val;
+            }
           }
         });
 
-        if (r.length > 0) setRows(r);
+        if (r.length > 0) {
+          setRows(
+            r.map((row, idx) => ({
+              ...row,
+              id: (idx + 1).toString(),
+              remark: defaultMode(idx),
+            }))
+          );
+        }
         setAecTolerance(aecTol);
         setNonAecTolerance(nonAecTol);
         setMinFocusDistance(minFocus);

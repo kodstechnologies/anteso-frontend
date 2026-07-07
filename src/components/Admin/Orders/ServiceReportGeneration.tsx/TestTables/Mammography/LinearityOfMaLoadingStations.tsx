@@ -418,14 +418,9 @@ const LinearityOfMaLoadingStations: React.FC<Props> = ({ serviceId, testId: prop
   const isViewMode = hasSaved && !isEditing;
   const buttonText = isViewMode ? 'Edit' : testId ? 'Update' : 'Save';
   const ButtonIcon = isViewMode ? Edit3 : Save;
-  const isTimerSelected = String(table1Row.time || '').trim() !== '';
-  const tableTitle = isTimerSelected
-    ? 'Linearity of mAs Loading'
-    : 'Linearity of mA Loading Stations';
-  const sectionTitle = isTimerSelected
-    ? 'Linearity of mAs Loading and Accuracy of Irradiation Time'
-    : 'Linearity of mA Loading Stations';
-  const xUnitLabel = isTimerSelected ? 'mGy/(mA*s)' : 'mGy/mA';
+  const tableTitle = 'Linearity of mA Loading';
+  const sectionTitle = 'Linearity of mA Loading';
+  const xUnitLabel = 'mGy/mA';
 
   if (isLoading) {
     return (
@@ -686,7 +681,7 @@ const LinearityOfMaLoadingStations: React.FC<Props> = ({ serviceId, testId: prop
           ) : (
             <>
               <ButtonIcon className="w-4 h-4" />
-              {buttonText} {isTimerSelected ? 'mAs' : 'mA'} Linearity
+              {buttonText} mA Linearity
             </>
           )}
         </button>

@@ -163,6 +163,14 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
   // CSV Data Injection
   useEffect(() => {
     if (csvData && csvData.length > 0) {
+      const labelsMeta = csvData.find(r => r['Field Name'] === 'MeasColumnLabels')?.['Value'];
+      const labelsFromMeta = labelsMeta
+        ? String(labelsMeta).split(',').map((s: string) => s.trim()).filter(Boolean)
+        : [];
+      if (labelsFromMeta.length > 0) {
+        setMeasHeaders(labelsFromMeta);
+      }
+
       // Exposure Conditions
       const fcd = csvData.find(r => r['Field Name'] === 'FCD')?.['Value'];
       const kv = csvData.find(r => r['Field Name'] === 'kV')?.['Value'];
@@ -206,7 +214,7 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
 
         // Update headers
         const maxMeas = Math.max(...newRows.map(r => r.measuredOutputs.length));
-        if (maxMeas > measHeaders.length) {
+        if (labelsFromMeta.length === 0 && maxMeas > measHeaders.length) {
           const newCols = Array.from({ length: maxMeas - measHeaders.length }, (_, i) => `Measured mR ${measHeaders.length + i + 1}`);
           setMeasHeaders(prev => [...prev, ...newCols]);
         }

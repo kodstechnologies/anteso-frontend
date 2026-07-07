@@ -108,6 +108,7 @@ const DentalConeBeamCT: React.FC<{ serviceId: string; qaTestDate?: string | null
         const data: any[] = [];
         let currentTestName = '';
         let headers: string[] = [];
+        let sectionDynamicMeasCols: number[] = [];
         let isReadingTest = false;
 
         const testMarkerToInternalName: { [key: string]: string } = {
@@ -135,7 +136,7 @@ const DentalConeBeamCT: React.FC<{ serviceId: string; qaTestDate?: string | null
                 'kV': 'kV', 'kv': 'kV', 'KV': 'kV',
                 'kVp': 'kV', 'kvp': 'kV', 'KVp': 'kV', 'KVP': 'kV',
                 'mA': 'mA', 'ma': 'mA', 'MA': 'mA',
-                'FCD': 'FCD', 'fcd': 'FCD', 'FFD': 'FFD', 'ffd': 'FFD'
+                'FCD': 'FCD', 'fcd': 'FCD', 'FDD': 'FCD', 'fdd': 'FCD', 'FFD': 'FFD', 'ffd': 'FFD'
             },
             'accuracyOfIrradiationTime': {
                 'Set Time (mSec)': 'Set_Time', 'set time (msec)': 'Set_Time',
@@ -146,7 +147,7 @@ const DentalConeBeamCT: React.FC<{ serviceId: string; qaTestDate?: string | null
                 'kV': 'kV', 'kv': 'kV', 'KV': 'kV',
                 'kVp': 'kV', 'kvp': 'kV', 'KVp': 'kV', 'KVP': 'kV',
                 'mA': 'mA', 'ma': 'mA', 'MA': 'mA',
-                'FCD': 'FCD', 'fcd': 'FCD', 'FFD': 'FFD', 'ffd': 'FFD'
+                'FCD': 'FCD', 'fcd': 'FCD', 'FDD': 'FCD', 'fdd': 'FCD', 'FFD': 'FFD', 'ffd': 'FFD'
             },
             'linearityOfMaLoading': {
                 'mA Station': 'mA_Station', 'ma station': 'mA_Station', 'MA Station': 'mA_Station',
@@ -158,7 +159,7 @@ const DentalConeBeamCT: React.FC<{ serviceId: string; qaTestDate?: string | null
                 'kVp': 'kV', 'kvp': 'kV', 'KVp': 'kV', 'KVP': 'kV',
                 'mA': 'mA', 'ma': 'mA', 'MA': 'mA',
                 'time': 'time', 'Time': 'time', 'Timer': 'time', 'timer': 'time',
-                'FCD': 'FCD', 'fcd': 'FCD', 'FFD': 'FFD', 'ffd': 'FFD'
+                'FCD': 'FCD', 'fcd': 'FCD', 'FDD': 'FCD', 'fdd': 'FCD', 'FFD': 'FFD', 'ffd': 'FFD'
             },
             'linearityOfMasLoading': {
                 'mAs Range': 'mAs_Range', 'mas range': 'mAs_Range',
@@ -169,7 +170,7 @@ const DentalConeBeamCT: React.FC<{ serviceId: string; qaTestDate?: string | null
                 'kV': 'kV', 'kv': 'kV', 'KV': 'kV',
                 'kVp': 'kV', 'kvp': 'kV', 'KVp': 'kV', 'KVP': 'kV',
                 'mA': 'mA', 'ma': 'mA', 'MA': 'mA',
-                'FCD': 'FCD', 'fcd': 'FCD', 'FFD': 'FFD', 'ffd': 'FFD'
+                'FCD': 'FCD', 'fcd': 'FCD', 'FDD': 'FCD', 'fdd': 'FCD', 'FFD': 'FFD', 'ffd': 'FFD'
             },
             'consistencyOfRadiationOutput': {
                 'kVp': 'kVp', 'kvp': 'kVp', 'Kvp': 'kVp',
@@ -227,6 +228,72 @@ const DentalConeBeamCT: React.FC<{ serviceId: string; qaTestDate?: string | null
         };
 
         const sectionRowCounter: { [key: string]: number } = {};
+        const testsWithMeasLabelMeta = new Set([
+            'accuracyOfOperatingPotential',
+            'linearityOfMaLoading',
+            'linearityOfMasLoading',
+            'consistencyOfRadiationOutput',
+        ]);
+        const dynamicMeasFieldPrefixByTest: Record<string, string> = {
+            accuracyOfOperatingPotential: 'Measured_',
+            linearityOfMaLoading: 'Measured_',
+            linearityOfMasLoading: 'Measured_',
+            consistencyOfRadiationOutput: 'Measured_',
+        };
+        const fixedHeadersByTest: Record<string, Set<string>> = {
+            accuracyOfOperatingPotential: new Set([
+                'Applied kVp', 'applied kvp', 'Applied KVp',
+                'Average kVp', 'average kvp', 'Average KVp',
+                'Remarks', 'remarks',
+                'mA 1', 'mA 2', 'mA 3', 'mA 4', 'mA 5',
+                'ma 1', 'ma 2', 'ma 3', 'ma 4', 'ma 5',
+                'Parameter', 'parameter',
+                'Measured (mm Al)', 'measured (mm al)',
+                'Required (mm Al)', 'required (mm al)',
+                'At kVp', 'at kvp', 'at kVp',
+                'kV', 'kv', 'KV', 'kVp', 'kvp', 'KVp', 'KVP',
+                'mA', 'ma', 'MA',
+                'FCD', 'fcd', 'FDD', 'fdd', 'FFD', 'ffd',
+            ]),
+            linearityOfMaLoading: new Set([
+                'mA Station', 'ma station', 'MA Station',
+                'Average', 'average',
+                'mR/mAs', 'mr/mas', 'mR/mAs ',
+                'Measured mR 1', 'Measured mR 2', 'Measured mR 3', 'Measured mR 4', 'Measured mR 5',
+                'measured mr 1', 'measured mr 2', 'measured mr 3', 'measured mr 4', 'measured mr 5',
+                'kV', 'kv', 'KV', 'kVp', 'kvp', 'KVp', 'KVP',
+                'mA', 'ma', 'MA',
+                'time', 'Time', 'Timer', 'timer',
+                'FCD', 'fcd', 'FDD', 'fdd', 'FFD', 'ffd',
+            ]),
+            linearityOfMasLoading: new Set([
+                'mAs Range', 'mas range',
+                'Average', 'average',
+                'mR/mAs', 'mr/mas',
+                'Measured mR 1', 'Measured mR 2', 'Measured mR 3', 'Measured mR 4', 'Measured mR 5',
+                'measured mr 1', 'measured mr 2', 'measured mr 3', 'measured mr 4', 'measured mr 5',
+                'kV', 'kv', 'KV', 'kVp', 'kvp', 'KVp', 'KVP',
+                'mA', 'ma', 'MA',
+                'FCD', 'fcd', 'FDD', 'fdd', 'FFD', 'ffd',
+            ]),
+            consistencyOfRadiationOutput: new Set([
+                'kVp', 'kvp', 'Kvp',
+                'mAs', 'mas',
+                'Mean', 'mean',
+                'CoV', 'cov', 'COV',
+                'Remarks', 'remarks',
+                'Meas 1', 'Meas 2', 'Meas 3', 'Meas 4', 'Meas 5',
+                'meas 1', 'meas 2', 'meas 3', 'meas 4', 'meas 5',
+                'FFD', 'ffd',
+            ]),
+        };
+        const isDynamicMeasHeader = (testName: string, header: string, map: Record<string, string>) => {
+            const h = String(header || '').trim();
+            if (!h) return false;
+            if (map[h]) return false;
+            if (!dynamicMeasFieldPrefixByTest[testName]) return false;
+            return !fixedHeadersByTest[testName]?.has(h);
+        };
 
         // Computed columns — leave empty in Excel; UI calculates these from raw inputs
         const computedFields: Record<string, Set<string>> = {
@@ -258,6 +325,7 @@ const DentalConeBeamCT: React.FC<{ serviceId: string; qaTestDate?: string | null
                 currentTestName = matchedInternalName;
                 isReadingTest = true;
                 headers = [];
+                sectionDynamicMeasCols = [];
                 if (currentTestName) {
                     if (sectionRowCounter[currentTestName] === undefined) {
                         sectionRowCounter[currentTestName] = 0;
@@ -269,6 +337,7 @@ const DentalConeBeamCT: React.FC<{ serviceId: string; qaTestDate?: string | null
             // If empty row, reset headers so next table within same section can be detected
             if (isReadingTest && row.every(c => !c)) {
                 headers = [];
+                sectionDynamicMeasCols = [];
                 continue;
             }
 
@@ -277,6 +346,15 @@ const DentalConeBeamCT: React.FC<{ serviceId: string; qaTestDate?: string | null
                 const map = headerMap[currentTestName] || {};
                 const allowsMultiPair = ['linearityOfMaLoading', 'radiationLeakageLevel', 'radiationProtectionSurvey', 'accuracyOfIrradiationTime'].includes(currentTestName);
                 if (allowsMultiPair) {
+                    // In mA linearity section, rows like
+                    // "mA Station,33,12,123,,mR/mAs" are table headers,
+                    // not key-value settings rows.
+                    const hasMaLoadingHeaderSignature =
+                        currentTestName === 'linearityOfMaLoading' &&
+                        row.some((c) => String(c || '').trim() === 'mA Station');
+                    if (hasMaLoadingHeaderSignature) {
+                        // Let the header-detection logic below handle this row.
+                    } else {
                     const pairs: { field: string; value: string }[] = [];
                     let hasHeaderLikeValue = false;
                     for (let idx = 0; idx < row.length - 1; idx += 2) {
@@ -306,6 +384,7 @@ const DentalConeBeamCT: React.FC<{ serviceId: string; qaTestDate?: string | null
                         });
                         continue;
                     }
+                    }
                 }
             }
 
@@ -327,14 +406,17 @@ const DentalConeBeamCT: React.FC<{ serviceId: string; qaTestDate?: string | null
                 const matches = row.filter(c => (headerMap[currentTestName] || {})[c]).length;
                 if (matches >= 2 || (matches === 1 && row.filter(c => c).length > 2)) {
                     headers = row;
-                    if (currentTestName === 'consistencyOfRadiationOutput') {
-                        const map = headerMap[currentTestName] || {};
-                        const measLabels = row
-                            .map((h) => String(h || '').trim())
-                            .filter((h) => {
-                                if (map[h]?.startsWith('Measured_')) return true;
-                                return /^Meas\s+\d+$/i.test(h);
-                            });
+                    sectionDynamicMeasCols = [];
+                    const map = headerMap[currentTestName] || {};
+                    headers.forEach((headerCell, idx) => {
+                        if (isDynamicMeasHeader(currentTestName, headerCell, map)) {
+                            sectionDynamicMeasCols.push(idx);
+                        }
+                    });
+                    if (testsWithMeasLabelMeta.has(currentTestName)) {
+                        const measLabels = sectionDynamicMeasCols
+                            .map((idx) => String(row[idx] || '').trim())
+                            .filter(Boolean);
                         if (measLabels.length > 0) {
                             data.push({
                                 'Field Name': 'MeasColumnLabels',
@@ -369,6 +451,12 @@ const DentalConeBeamCT: React.FC<{ serviceId: string; qaTestDate?: string | null
                         const measMatch = String(header || '').trim().match(/^Meas\s+(\d+)$/i);
                         if (measMatch) {
                             internalField = `Measured_${parseInt(measMatch[1], 10) - 1}`;
+                        }
+                    }
+                    if (!internalField && dynamicMeasFieldPrefixByTest[currentTestName]) {
+                        const dynIdx = sectionDynamicMeasCols.indexOf(cellIdx);
+                        if (dynIdx >= 0) {
+                            internalField = `${dynamicMeasFieldPrefixByTest[currentTestName]}${dynIdx}`;
                         }
                     }
                     if (!internalField || !value) return;

@@ -158,32 +158,29 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl, qaTes
     }
   }, [serviceId]);
 
-  // Parse CSV text into structured data
-  const parseCSV = (text: string): any[] => {
-    const lines = text.split('\n').filter(line => line.trim());
-    if (lines.length === 0) return [];
+  const parseLine = (line: string): string[] => {
+    const result: string[] = [];
+    let current = '';
+    let inQuotes = false;
 
-    const parseLine = (line: string): string[] => {
-      const result: string[] = [];
-      let current = '';
-      let inQuotes = false;
-
-      for (let i = 0; i < line.length; i++) {
-        const char = line[i];
-        if (char === '"') {
-          inQuotes = !inQuotes;
-        } else if (char === ',' && !inQuotes) {
-          result.push(current.trim());
-          current = '';
-        } else {
-          current += char;
-        }
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i];
+      if (char === '"') {
+        inQuotes = !inQuotes;
+      } else if (char === ',' && !inQuotes) {
+        result.push(current.trim());
+        current = '';
+      } else {
+        current += char;
       }
-      result.push(current.trim());
-      return result;
-    };
+    }
+    result.push(current.trim());
+    return result;
+  };
 
-    const headers = parseLine(lines[0]);
+  const parseFieldValueData = (rows: string[][]): any[] => {
+    if (rows.length === 0) return [];
+    const headers = rows[0];
     const data: any[] = [];
 
     const sectionToTestName: { [key: string]: string } = {
@@ -197,56 +194,178 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl, qaTes
     };
 
     let currentTestName = '';
-
-    for (let i = 1; i < lines.length; i++) {
-      const values = parseLine(lines[i]);
+    for (let i = 1; i < rows.length; i++) {
+      const values = rows[i];
       const row: any = {};
-      headers.forEach((header, index) => {
-        row[header] = values[index] || '';
-      });
+      headers.forEach((header, index) => { row[header] = values[index] || ''; });
 
       const fieldName = (row['Field Name'] || '').trim();
       const firstColumn = (row[headers[0]] || '').trim();
-
-      // Check if this is a section header (in Field Name column or first column)
       const potentialSectionHeader = fieldName || firstColumn;
+
       if (potentialSectionHeader.startsWith('==========') && potentialSectionHeader.endsWith('==========')) {
-        // Try exact match first
         currentTestName = sectionToTestName[potentialSectionHeader] || '';
-
-        // If no exact match, try to find a matching key
-        if (!currentTestName) {
-          const matchingKey = Object.keys(sectionToTestName).find(key =>
-            potentialSectionHeader.includes(key.replace(/==========/g, '').trim()) ||
-            key.includes(potentialSectionHeader.replace(/==========/g, '').trim())
-          );
-          if (matchingKey) {
-            currentTestName = sectionToTestName[matchingKey];
-          }
-        }
-
-        console.log(`ParseCSV: Found section header: "${potentialSectionHeader}", mapped to test: "${currentTestName}"`);
         continue;
       }
+      if (firstColumn.startsWith('---') || firstColumn === '' || !fieldName) continue;
 
-      if (firstColumn.startsWith('---') || firstColumn === '' || !fieldName) {
-        continue;
-      }
-
-      const isKnownField = fieldName.match(/^(Table|Tolerance|TestConditions|IrradiationTime|Measurement|Row|OutputRow|Settings|Workload|LeakageMeasurement|Location|SurveyDate|AppliedCurrent|AppliedVoltage|ExposureTime|mAStations|TotalFiltration|FiltrationTolerance|FCD|FFD|MeasurementCount)/);
-      if (!isKnownField) {
-        continue;
-      }
+      const isKnownField = fieldName.match(/^(Table|Tolerance|TestConditions|IrradiationTime|Measurement|Row|OutputRow|Settings|Workload|LeakageMeasurement|Location|SurveyDate|AppliedCurrent|AppliedVoltage|ExposureTime|mAStations|TotalFiltration|FiltrationTolerance|FCD|FFD|MeasurementCount|MeasColumnLabels)/);
+      if (!isKnownField) continue;
 
       if (currentTestName) {
         row['Test Name'] = currentTestName;
         data.push(row);
-      } else {
-        console.warn(`ParseCSV: Found field "${fieldName}" but no current test name is set`);
+      }
+    }
+    return data;
+  };
+
+  const parseHorizontalBmdTemplate = (rows: string[][]): any[] => {
+    const data: any[] = [];
+    let i = 0;
+    const pushRow = (field: string, value: string, rowIndex: number, testName: string) => {
+      if (String(value ?? '').trim() === '') return;
+      data.push({ 'Field Name': field, 'Value': String(value).trim(), 'Row Index': String(rowIndex), 'Test Name': testName });
+    };
+
+    const isTestHeader = (r: string[]) => /^TEST\s*:/i.test((r[0] || '').trim());
+    while (i < rows.length) {
+      const row = rows[i] || [];
+      const titleCell = (row[0] || '').trim();
+      if (!isTestHeader(row)) { i++; continue; }
+      const title = titleCell.replace(/^TEST\s*:/i, '').trim().toUpperCase();
+      i++;
+      while (i < rows.length && rows[i].every((c) => !String(c || '').trim())) i++;
+      if (i >= rows.length) break;
+      const header = rows[i] || [];
+      i++;
+
+      const sectionRows: string[][] = [];
+      while (i < rows.length && !isTestHeader(rows[i])) {
+        if (rows[i].some((c) => String(c || '').trim())) sectionRows.push(rows[i]);
+        i++;
+      }
+
+      if (title.includes('ACCURACY OF IRRADIATION TIME')) {
+        sectionRows.forEach((r, idx) => {
+          if (idx === 0) {
+            pushRow('TestConditions_FCD', r[0], 0, 'Accuracy of Irradiation Time');
+            pushRow('TestConditions_kV', r[1], 0, 'Accuracy of Irradiation Time');
+            pushRow('TestConditions_ma', r[2], 0, 'Accuracy of Irradiation Time');
+            pushRow('Tolerance_Operator', r[5], 0, 'Accuracy of Irradiation Time');
+            pushRow('Tolerance_Value', r[6], 0, 'Accuracy of Irradiation Time');
+          }
+          pushRow('IrradiationTime_SetTime', r[3], idx, 'Accuracy of Irradiation Time');
+          pushRow('IrradiationTime_MeasuredTime', r[4], idx, 'Accuracy of Irradiation Time');
+        });
+      } else if (title.includes('ACCURACY OF OPERATING POTENTIAL')) {
+        if (sectionRows.length > 0) {
+          const first = sectionRows[0];
+          const labels = [first[2], first[3], first[4]].map((x) => String(x || '').trim()).filter(Boolean);
+          if (labels.length) pushRow('MeasColumnLabels', labels.join(','), 0, 'Accuracy of Operating Potential');
+          pushRow('Tolerance_Sign', first[0], 0, 'Accuracy of Operating Potential');
+          pushRow('Tolerance_Value', first[1], 0, 'Accuracy of Operating Potential');
+        }
+        sectionRows.forEach((r, idx) => {
+          pushRow('Table2_SetKV', r[5], idx, 'Accuracy of Operating Potential');
+          pushRow('Table2_Meas1', r[6], idx, 'Accuracy of Operating Potential');
+          pushRow('Table2_Meas2', r[7], idx, 'Accuracy of Operating Potential');
+          pushRow('Table2_Meas3', r[8], idx, 'Accuracy of Operating Potential');
+        });
+      } else if (title.includes('TOTAL FILTRATION')) {
+        if (sectionRows.length > 0) {
+          pushRow('TotalFiltration_Measured', sectionRows[0][0], 0, 'Total Filtration');
+          pushRow('TotalFiltration_Required', sectionRows[0][1], 0, 'Total Filtration');
+          pushRow('TotalFiltration_AtKvp', sectionRows[0][2], 0, 'Total Filtration');
+        }
+      } else if (title.includes('LINEARITY OF MA LOADING')) {
+        if (sectionRows.length > 0) {
+          const first = sectionRows[0];
+          pushRow('Table1_FCD', first[0], 0, 'Linearity of mA Loading');
+          pushRow('Table1_kV', first[1], 0, 'Linearity of mA Loading');
+          pushRow('Table1_Time', first[2], 0, 'Linearity of mA Loading');
+          pushRow('ToleranceOperator', first[3], 0, 'Linearity of mA Loading');
+          pushRow('Tolerance', first[4], 0, 'Linearity of mA Loading');
+          const labels = [first[5], first[6], first[7]].map((x) => String(x || '').trim()).filter(Boolean);
+          if (labels.length) pushRow('MeasColumnLabels', labels.join(','), 0, 'Linearity of mA Loading');
+        }
+        sectionRows.forEach((r, idx) => {
+          pushRow('Table2_ma', r[8], idx, 'Linearity of mA Loading');
+          pushRow('Table2_Meas1', r[9], idx, 'Linearity of mA Loading');
+          pushRow('Table2_Meas2', r[10], idx, 'Linearity of mA Loading');
+          pushRow('Table2_Meas3', r[11], idx, 'Linearity of mA Loading');
+        });
+      } else if (title.includes('REPRODUCIBILITY OF RADIATION OUTPUT')) {
+        if (sectionRows.length > 0) {
+          const first = sectionRows[0];
+          pushRow('FCD_Value', first[0], 0, 'Reproducibility of Radiation Output');
+          pushRow('Tolerance_Operator', first[1], 0, 'Reproducibility of Radiation Output');
+          pushRow('Tolerance_Value', first[2], 0, 'Reproducibility of Radiation Output');
+          const labels = [first[3], first[4], first[5], first[6], first[7]].map((x) => String(x || '').trim()).filter(Boolean);
+          if (labels.length) pushRow('MeasColumnLabels', labels.join(','), 0, 'Reproducibility of Radiation Output');
+        }
+        sectionRows.forEach((r, idx) => {
+          pushRow('OutputRow_kV', r[8], idx, 'Reproducibility of Radiation Output');
+          pushRow('OutputRow_mas', r[9], idx, 'Reproducibility of Radiation Output');
+          pushRow('OutputRow_Meas1', r[10], idx, 'Reproducibility of Radiation Output');
+          pushRow('OutputRow_Meas2', r[11], idx, 'Reproducibility of Radiation Output');
+          pushRow('OutputRow_Meas3', r[12], idx, 'Reproducibility of Radiation Output');
+          pushRow('OutputRow_Meas4', r[13], idx, 'Reproducibility of Radiation Output');
+          pushRow('OutputRow_Meas5', r[14], idx, 'Reproducibility of Radiation Output');
+        });
+      } else if (title.includes('RADIATION LEAKAGE LEVEL')) {
+        if (sectionRows.length > 0) {
+          const first = sectionRows[0];
+          pushRow('Settings_FCD', first[0], 0, 'Tube Housing Leakage');
+          pushRow('Settings_kV', first[1], 0, 'Tube Housing Leakage');
+          pushRow('Settings_ma', first[2], 0, 'Tube Housing Leakage');
+          pushRow('Settings_Time', first[3], 0, 'Tube Housing Leakage');
+          pushRow('Workload', first[4], 0, 'Tube Housing Leakage');
+          pushRow('ToleranceValue', first[5], 0, 'Tube Housing Leakage');
+          pushRow('ToleranceOperator', first[6], 0, 'Tube Housing Leakage');
+          const labels = [header[8], header[9], header[10], header[11], header[12]].map((x) => String(x || '').trim()).filter(Boolean);
+          if (labels.length) pushRow('MeasColumnLabels', labels.join(','), 0, 'Tube Housing Leakage');
+        }
+        sectionRows.forEach((r, idx) => {
+          pushRow('LeakageMeasurement_Location', r[7], idx, 'Tube Housing Leakage');
+          pushRow('LeakageMeasurement_Front', r[8], idx, 'Tube Housing Leakage');
+          pushRow('LeakageMeasurement_Back', r[9], idx, 'Tube Housing Leakage');
+          pushRow('LeakageMeasurement_Left', r[10], idx, 'Tube Housing Leakage');
+          pushRow('LeakageMeasurement_Right', r[11], idx, 'Tube Housing Leakage');
+          pushRow('LeakageMeasurement_Top', r[12], idx, 'Tube Housing Leakage');
+        });
+      } else if (title.includes('RADIATION PROTECTION SURVEY')) {
+        if (sectionRows.length > 0) {
+          const first = sectionRows[0];
+          pushRow('AppliedCurrent', first[0], 0, 'Radiation Protection Survey');
+          pushRow('AppliedVoltage', first[1], 0, 'Radiation Protection Survey');
+          pushRow('ExposureTime', first[2], 0, 'Radiation Protection Survey');
+          pushRow('Workload', first[3], 0, 'Radiation Protection Survey');
+        }
+        let locationRow = 0;
+        sectionRows.slice(1).forEach((r) => {
+          const location = String(r[0] || '').trim();
+          if (!location || /^LOCATION$/i.test(location)) return;
+          pushRow('Location_Location', r[0], locationRow, 'Radiation Protection Survey');
+          pushRow('Location_mRPerHr', r[1], locationRow, 'Radiation Protection Survey');
+          pushRow('Location_Category', r[2], locationRow, 'Radiation Protection Survey');
+          locationRow++;
+        });
       }
     }
 
     return data;
+  };
+
+  // Parse CSV text into structured data
+  const parseCSV = (text: string): any[] => {
+    const rows = text.split('\n').map((line) => parseLine(line)).filter((r) => r.some((c) => String(c || '').trim()));
+    if (rows.length === 0) return [];
+    const first = (rows[0][0] || '').trim().toLowerCase();
+    if (first === 'field name' || first === 'fieldname') {
+      return parseFieldValueData(rows);
+    }
+    return parseHorizontalBmdTemplate(rows);
   };
 
   // Process CSV data and fill test tables
@@ -292,6 +411,7 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl, qaTes
           const table1Row = { time: '', sliceThickness: '' };
           const table2Rows: any[] = [];
           let tolerance = { value: '5', type: 'percent' as const, sign: 'both' as const };
+          let measColumnLabels: string[] = [];
 
           data.forEach((row) => {
             const field = (row['Field Name'] || '').trim();
@@ -311,23 +431,47 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl, qaTes
               if (fieldName === 'ma10') table2Rows[rowIndex].ma10 = value;
               if (fieldName === 'ma100') table2Rows[rowIndex].ma100 = value;
               if (fieldName === 'ma200') table2Rows[rowIndex].ma200 = value;
+              const measMatch = fieldName.match(/^Meas(\d+)$/i);
+              if (measMatch) {
+                table2Rows[rowIndex][`meas${measMatch[1]}`] = value;
+              }
             }
 
             if (field === 'Tolerance_Value') tolerance.value = value;
             if (field === 'Tolerance_Type') tolerance.type = value as any;
             if (field === 'Tolerance_Sign') tolerance.sign = value as any;
+            if (field === 'MeasColumnLabels') {
+              measColumnLabels = value.split(',').map((v: string) => v.trim()).filter(Boolean);
+            }
           });
 
           if (table1Row.time || table1Row.sliceThickness || table2Rows.length > 0) {
             const opMeasurements = table2Rows
               .filter((r: any) => r.setKV)
-              .map((r: any) => ({
-                appliedKvp: r.setKV,
-                measuredValues: [r.ma10, r.ma100, r.ma200].filter((v: string) => v !== ''),
-                averageKvp: r.avgKvp || '',
-                remarks: r.remarks || '-',
-              }));
-            const opMAStations = ['10 mA', '100 mA', '200 mA'];
+              .map((r: any) => {
+                const measuredValues = Object.keys(r)
+                  .filter((k) => /^meas\d+$/i.test(k))
+                  .sort((a, b) => parseInt(a.replace(/[^0-9]/g, ''), 10) - parseInt(b.replace(/[^0-9]/g, ''), 10))
+                  .map((k) => r[k])
+                  .filter((v: string) => String(v || '').trim() !== '');
+                const fallbackMeasured = [r.ma10, r.ma100, r.ma200].filter((v: string) => String(v || '').trim() !== '');
+                const valuesForAvg = (measuredValues.length > 0 ? measuredValues : fallbackMeasured)
+                  .map((v: string) => parseFloat(String(v)))
+                  .filter((n: number) => !isNaN(n));
+                const computedAverageKvp = valuesForAvg.length > 0
+                  ? (valuesForAvg.reduce((sum: number, n: number) => sum + n, 0) / valuesForAvg.length).toFixed(2)
+                  : '';
+                return {
+                  appliedKvp: r.setKV,
+                  measuredValues: measuredValues.length > 0 ? measuredValues : fallbackMeasured,
+                  averageKvp: r.avgKvp || computedAverageKvp,
+                  remarks: r.remarks || '-',
+                };
+              });
+            const derivedMeasCount = Math.max(0, ...opMeasurements.map((m: any) => m.measuredValues?.length || 0));
+            const opMAStations = measColumnLabels.length > 0
+              ? measColumnLabels
+              : (derivedMeasCount > 0 ? Array.from({ length: derivedMeasCount }, (_, i) => `mA Station ${i + 1}`) : ['10 mA', '100 mA', '200 mA']);
             const opTolerance = {
               sign: tolerance.sign === 'both' ? '±' : tolerance.sign === 'plus' ? '+' : tolerance.sign === 'minus' ? '-' : tolerance.sign,
               value: tolerance.value,
@@ -489,15 +633,54 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl, qaTes
             }
           });
 
-          if (measurements.length > 0 || mAStations.length > 0) {
+          const hasTotalFiltrationValues =
+            String(totalFiltration.measured || '').trim() !== '' ||
+            String(totalFiltration.required || '').trim() !== '' ||
+            String(totalFiltration.atKvp || '').trim() !== '';
+
+          if (measurements.length > 0 || mAStations.length > 0 || hasTotalFiltrationValues) {
             setCsvDataForComponents((prev: any) => ({
               ...prev,
               totalFiltration: {
-                mAStations: mAStations.length > 0 ? mAStations : ['50 mA', '100 mA'],
-                measurements,
+                mAStations:
+                  mAStations.length > 0
+                    ? mAStations
+                    : (prev.totalFiltration?.mAStations?.length
+                      ? prev.totalFiltration.mAStations
+                      : ['50 mA', '100 mA']),
+                measurements:
+                  measurements.length > 0
+                    ? measurements
+                    : (prev.totalFiltration?.measurements || []),
                 tolerance: { sign: toleranceSign, value: toleranceValue },
-                totalFiltration,
-                filtrationTolerance,
+                totalFiltration: {
+                  measured: String(totalFiltration.measured || '').trim() !== ''
+                    ? totalFiltration.measured
+                    : (prev.totalFiltration?.totalFiltration?.measured || ''),
+                  required: String(totalFiltration.required || '').trim() !== ''
+                    ? totalFiltration.required
+                    : (prev.totalFiltration?.totalFiltration?.required || ''),
+                  atKvp: String(totalFiltration.atKvp || '').trim() !== ''
+                    ? totalFiltration.atKvp
+                    : (prev.totalFiltration?.totalFiltration?.atKvp || ''),
+                },
+                filtrationTolerance: {
+                  forKvGreaterThan70: String(filtrationTolerance.forKvGreaterThan70 || '').trim() !== ''
+                    ? filtrationTolerance.forKvGreaterThan70
+                    : (prev.totalFiltration?.filtrationTolerance?.forKvGreaterThan70 || '1.5'),
+                  forKvBetween70And100: String(filtrationTolerance.forKvBetween70And100 || '').trim() !== ''
+                    ? filtrationTolerance.forKvBetween70And100
+                    : (prev.totalFiltration?.filtrationTolerance?.forKvBetween70And100 || '2.0'),
+                  forKvGreaterThan100: String(filtrationTolerance.forKvGreaterThan100 || '').trim() !== ''
+                    ? filtrationTolerance.forKvGreaterThan100
+                    : (prev.totalFiltration?.filtrationTolerance?.forKvGreaterThan100 || '2.5'),
+                  kvThreshold1: String(filtrationTolerance.kvThreshold1 || '').trim() !== ''
+                    ? filtrationTolerance.kvThreshold1
+                    : (prev.totalFiltration?.filtrationTolerance?.kvThreshold1 || '70'),
+                  kvThreshold2: String(filtrationTolerance.kvThreshold2 || '').trim() !== ''
+                    ? filtrationTolerance.kvThreshold2
+                    : (prev.totalFiltration?.filtrationTolerance?.kvThreshold2 || '100'),
+                },
               }
             }));
             setCsvDataVersion(prev => prev + 1);
@@ -517,6 +700,7 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl, qaTes
           const table2Rows: any[] = [];
           let tolerance = '0.1';
           let toleranceOperator = '<=';
+          let measHeaders: string[] = [];
           let currentRow: any = null;
           let currentRowIdx = -1;
 
@@ -531,6 +715,9 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl, qaTes
             if (field === 'Table1_Time' || field === 'ExposureCondition_time') table1Row.time = value;
             if (field === 'Tolerance' || field === 'Tolerance_value') tolerance = value;
             if (field === 'ToleranceOperator' || field === 'Tolerance_operator') toleranceOperator = value || '<=';
+            if (field === 'MeasColumnLabels') {
+              measHeaders = value.split(',').map((v: string) => v.trim()).filter(Boolean);
+            }
 
             if (field === 'Table2_mAApplied' || field === 'Table2_mAsApplied' || field === 'Table2_ma') {
               currentRowIdx++;
@@ -572,6 +759,7 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl, qaTes
                 table2: table2Rows,
                 tolerance,
                 toleranceOperator,
+                measHeaders,
               }
             }));
             setCsvDataVersion(prev => prev + 1);
@@ -593,6 +781,7 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl, qaTes
           const data = groupedData['Reproducibility of Radiation Output'];
           console.log('Processing Reproducibility of Radiation Output, data rows:', data.length);
           const outputRows: any[] = [];
+          let measurementHeaders: string[] = [];
           let tolerance = { operator: '<=', value: '5.0' };
           let fcdValue = '';
           let outputRowIdx = -1;
@@ -636,6 +825,9 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl, qaTes
 
             if (field === 'Tolerance' || field === 'Tolerance_Value') tolerance.value = value;
             if (field === 'Tolerance_Operator') tolerance.operator = value;
+            if (field === 'MeasColumnLabels') {
+              measurementHeaders = value.split(',').map((v: string) => v.trim()).filter(Boolean);
+            }
             if (field === 'FCD_Value' || field === 'FCD' || field === 'FFD' || field === 'FFD_Value' || field === 'Row_FCD' || field === 'Row_FFD') {
               fcdValue = value;
             }
@@ -666,6 +858,7 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl, qaTes
             const dataToSet = {
               outputRows: validOutputRows,
               tolerance,
+              measurementHeaders,
               ...(fcdValue ? { fcd: { value: fcdValue } } : {}),
             };
             console.log('Setting Reproducibility of Radiation Output data:', JSON.stringify(dataToSet, null, 2));
@@ -691,6 +884,7 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl, qaTes
           const measurementSettings = { distance: '', kv: '', ma: '', time: '' };
           const leakageMeasurements: any[] = [];
           let workload = '';
+          let leakageHeaders: string[] = [];
           let toleranceValue = '1';
           let toleranceOperator: 'less than or equal to' | 'greater than or equal to' | '=' = 'less than or equal to';
           let toleranceTime = '1';
@@ -717,6 +911,9 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl, qaTes
             if (field === 'Settings_ma' || field === 'Settings_mA') measurementSettings.ma = value;
             if (field === 'Settings_time' || field === 'Settings_Time') measurementSettings.time = value;
             if (field === 'Workload') workload = value;
+            if (field === 'MeasColumnLabels') {
+              leakageHeaders = value.split(',').map((v: string) => v.trim()).filter(Boolean);
+            }
             if (field === 'ToleranceValue') toleranceValue = value;
             if (field === 'ToleranceOperator') toleranceOperator = value as any;
             if (field === 'ToleranceTime') toleranceTime = value;
@@ -757,6 +954,7 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl, qaTes
                 measurementSettings,
                 workload,
                 leakageMeasurements: leakageMeasurements,
+                leakageHeaders,
                 toleranceValue,
                 toleranceOperator,
                 toleranceTime,
@@ -883,92 +1081,19 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl, qaTes
     }
   };
 
-  // Convert Excel file to CSV format (Field Name, Value, Row Index)
+  // Convert Excel file to CSV format (supports Field-Value and TEST: templates)
   const parseExcelToCSVFormat = (workbook: XLSX.WorkBook): any[] => {
-    const data: any[] = [];
-
-    // Get the first sheet
     const firstSheetName = workbook.SheetNames[0];
     const worksheet = workbook.Sheets[firstSheetName];
-
-    // Convert to JSON with header row
     const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' }) as any[][];
-
-    if (jsonData.length === 0) return data;
-
-    // Find header row (should contain "Field Name", "Value", "Row Index")
-    let headerRowIndex = -1;
-    let fieldNameCol = -1;
-    let valueCol = -1;
-    let rowIndexCol = -1;
-
-    for (let i = 0; i < Math.min(10, jsonData.length); i++) {
-      const row = jsonData[i];
-      for (let j = 0; j < row.length; j++) {
-        const cell = String(row[j] || '').trim().toLowerCase();
-        if (cell === 'field name' || cell === 'fieldname') {
-          headerRowIndex = i;
-          fieldNameCol = j;
-        } else if (cell === 'value') {
-          valueCol = j;
-        } else if (cell === 'row index' || cell === 'rowindex') {
-          rowIndexCol = j;
-        }
-      }
-      if (headerRowIndex !== -1 && valueCol !== -1) break;
+    if (jsonData.length === 0) return [];
+    const rows = jsonData.map((r) => r.map((c) => String(c ?? '').trim())).filter((r) => r.some((c) => c));
+    if (rows.length === 0) return [];
+    const first = (rows[0][0] || '').trim().toLowerCase();
+    if (first === 'field name' || first === 'fieldname') {
+      return parseFieldValueData(rows);
     }
-
-    // If headers not found, assume first row is headers
-    if (headerRowIndex === -1) {
-      headerRowIndex = 0;
-      fieldNameCol = 0;
-      valueCol = 1;
-      rowIndexCol = 2;
-    }
-
-    const sectionToTestName: { [key: string]: string } = {
-      '========== ACCURACY OF OPERATING POTENTIAL (KVP) ==========': 'Accuracy of Operating Potential',
-      '========== ACCURACY OF IRRADIATION TIME ==========': 'Accuracy of Irradiation Time',
-      '========== TOTAL FILTRATION ==========': 'Total Filtration',
-      '========== LINEARITY OF MA LOADING ==========': 'Linearity of mA Loading',
-      '========== REPRODUCIBILITY OF RADIATION OUTPUT ==========': 'Reproducibility of Radiation Output',
-      '========== RADIATION LEAKAGE LEVEL AT 1M FROM TUBE HOUSING ==========': 'Tube Housing Leakage',
-      '========== RADIATION PROTECTION SURVEY ==========': 'Radiation Protection Survey',
-    };
-
-    let currentTestName = '';
-
-    // Process rows after header
-    for (let i = headerRowIndex + 1; i < jsonData.length; i++) {
-      const row = jsonData[i];
-      const fieldName = String(row[fieldNameCol] || '').trim();
-      const value = String(row[valueCol] || '').trim();
-      const rowIndex = String(row[rowIndexCol] || '').trim();
-
-      // Check if this is a section header
-      if (fieldName.startsWith('==========') && fieldName.endsWith('==========')) {
-        currentTestName = sectionToTestName[fieldName] || '';
-        continue;
-      }
-
-      // Skip empty rows or separator rows
-      if (!fieldName || fieldName.startsWith('---')) continue;
-
-      // Check if field name matches known patterns
-      const isKnownField = fieldName.match(/^(Table|Tolerance|TestConditions|IrradiationTime|Measurement|Row|OutputRow|Settings|Workload|LeakageMeasurement|Location|SurveyDate|AppliedCurrent|AppliedVoltage|ExposureTime|mAStations|TotalFiltration|FiltrationTolerance|FCD|FFD|MeasurementCount)/);
-      if (!isKnownField) continue;
-
-      if (currentTestName) {
-        data.push({
-          'Field Name': fieldName,
-          'Value': value,
-          'Row Index': rowIndex,
-          'Test Name': currentTestName,
-        });
-      }
-    }
-
-    return data;
+    return parseHorizontalBmdTemplate(rows);
   };
 
   // Fetch and process CSV/Excel file from URL (passed from ServiceDetails2)

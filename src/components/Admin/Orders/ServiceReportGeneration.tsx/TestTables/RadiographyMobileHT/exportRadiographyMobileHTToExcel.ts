@@ -197,28 +197,41 @@ export const createRadiographyMobileHTUploadableExcel = (
     addBlank();
   }
 
-  // 8. Output Consistency
+  // 8. Output Consistency (C-Arm horizontal layout with dynamic headers)
   const oc = unwrap(data.outputConsistency);
   if (oc) {
     const ffdVal = oc.ffd?.value ?? oc.ffd ?? "";
-    allData.push(["TEST: CONSISTENCY OF RADIATION OUTPUT"]);
-    allData.push(["FFD", ffdVal]);
+    const savedHeaders = Array.isArray(oc.headers) && oc.headers.length > 0
+      ? oc.headers
+      : (() => {
+          const rows = Array.isArray(oc.outputRows) ? oc.outputRows : [];
+          const colCount = Math.max(0, ...rows.map((r: any) => (r.outputs ?? []).length));
+          return Array.from({ length: colCount || 5 }, (_, i) => `Meas ${i + 1}`);
+        })();
+    const tol = oc.tolerance || {};
+    const headerCols = savedHeaders.map((_, i) => `Header ${i + 1}`);
+    const measCols = savedHeaders.map((_, i) => `Meas ${i + 1}`);
+    allData.push(["TEST: OUTPUT CONSISTENCY"]);
     allData.push([
-      "kVp",
+      "FFD (cm)",
+      "Tol Operator",
+      "Tol Value",
+      ...headerCols,
+      "kV",
       "mAs",
-      "Reading (mR) 1",
-      "Reading (mR) 2",
-      "Reading (mR) 3",
+      ...measCols,
     ]);
     const rows = Array.isArray(oc.outputRows) ? oc.outputRows : [];
-    rows.forEach((r: any) => {
-      const outs = r.outputs || [];
+    rows.forEach((r: any, idx: number) => {
+      const outs = (r.outputs ?? []).map((o: any) => (typeof o === "object" && o != null ? o.value ?? "" : o ?? ""));
+      const prefix = idx === 0
+        ? [ffdVal, tol.operator ?? "<=", tol.value ?? "0.05", ...savedHeaders]
+        : ["", "", "", ...Array(savedHeaders.length).fill("")];
       allData.push([
+        ...prefix,
         r.kv ?? "",
         r.mas ?? "",
-        outs[0]?.value ?? outs[0] ?? "",
-        outs[1]?.value ?? outs[1] ?? "",
-        outs[2]?.value ?? outs[2] ?? "",
+        ...savedHeaders.map((_, i) => outs[i] ?? ""),
       ]);
     });
     addBlank();

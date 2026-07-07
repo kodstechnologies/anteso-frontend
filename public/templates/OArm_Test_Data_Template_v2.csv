@@ -1,9 +1,9 @@
 TEST: TOTAL FILTRATION
-Applied kVp,50 mA,100 mA
-60,60.2,60.1
-80,80.5,80.3
-100,100.1,100.3
-120,120.4,120.5
+Tolerance Sign,Tolerance Value,Total Filtration At kVp,Total Filtration (mm Al),Applied kVp,50 mA,100 mA
+±,2.0,80,2.5,60,60.2,60.1
+,,,,80,80.5,80.3
+,,,,100,100.1,100.3
+,,,,120,120.4,120.5
 
 TEST: OUTPUT CONSISTENCY
 FDD (cm),Time (s),kVp,mA,Meas 1,Meas 2,Meas 3,Meas 4,Meas 5

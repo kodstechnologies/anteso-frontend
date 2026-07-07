@@ -271,7 +271,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
 
   const isFcdLabel = (c: unknown) => {
     const s = c?.toString()?.trim().toLowerCase() || '';
-    return s === 'fcd' || s === 'fdd';
+    return s === 'fcd' || s === 'fdd' || s === 'ffd';
   };
   const isKvLabel = (c: unknown) => (c?.toString()?.trim().toLowerCase() || '').includes('kv');
   const isTimeLabel = (c: unknown) => {
@@ -285,6 +285,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
 
     let newTable2Rows: Table2Row[] = [];
     let foundSettings = false;
+    let customMeasHeaders: string[] = [];
 
     csvData.forEach((row, idx) => {
         const firstCell = row[0]?.toString()?.trim();
@@ -303,6 +304,16 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
             time: row[tIndex + 1] != null ? String(row[tIndex + 1]) : '',
           });
           foundSettings = true;
+        }
+        // Header row: mA Station,<custom headers>,...,mR/mAs
+        else if (String(firstCell || '').toLowerCase() === 'ma station') {
+          const parsed = row
+            .slice(1)
+            .map((c: any) => String(c || '').trim())
+            .filter((s: string) => s && !/^mr\/mas$/i.test(s));
+          if (parsed.length > 0) {
+            customMeasHeaders = parsed;
+          }
         }
         // 2. Data Rows
         else if (firstCell && !isNaN(parseFloat(firstCell))) {
@@ -352,9 +363,13 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
         const maxMeasFromImport = Math.max(...newTable2Rows.map(r => r.measuredOutputs.length));
         const finalHeaderCount = maxMeasFromImport || 3;
 
-        if (finalHeaderCount !== measHeaders.length) {
-          setMeasHeaders(Array.from({ length: finalHeaderCount }, (_, i) => `Measured mR ${i + 1}`));
-        }
+        setMeasHeaders(prev => {
+          const base = (customMeasHeaders.length > 0 ? customMeasHeaders : prev).slice(0, finalHeaderCount);
+          while (base.length < finalHeaderCount) {
+            base.push(`Measured mR ${base.length + 1}`);
+          }
+          return base;
+        });
 
         // Pad all rows to match finalHeaderCount
         const paddedRows = newTable2Rows.map(row => {

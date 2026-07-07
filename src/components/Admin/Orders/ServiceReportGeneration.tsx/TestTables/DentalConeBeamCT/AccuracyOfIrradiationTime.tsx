@@ -158,7 +158,7 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
   useEffect(() => {
     if (csvData && csvData.length > 0) {
       // Test Conditions
-      const fcd = csvData.find(r => r['Field Name'] === 'FCD')?.['Value'];
+      const fcd = csvData.find(r => ['FCD', 'FDD', 'FFD'].includes(r['Field Name']))?.['Value'];
       const kv = csvData.find(r => r['Field Name'] === 'kV')?.['Value'];
       const ma = csvData.find(r => r['Field Name'] === 'mA')?.['Value'];
 
@@ -301,7 +301,7 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700  tracking-wider">FDD (cm)</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700  tracking-wider">FCD (cm)</th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700  tracking-wider">kV</th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700  tracking-wider">mA</th>
             </tr>

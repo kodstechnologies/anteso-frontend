@@ -66,6 +66,7 @@ const ReproducibilityOfOutput: React.FC<{
   initialData?: {
     fdd?: string;
     outputRows?: Array<{ kv: string; mas: string; outputs: string[] }>;
+    outputHeaders?: string[];
     tolerance?: string;
     toleranceOperator?: string;
   };
@@ -187,7 +188,10 @@ const ReproducibilityOfOutput: React.FC<{
       if (initialData.outputRows && initialData.outputRows.length > 0) {
         const firstRow = initialData.outputRows[0];
         const numCols = firstRow.outputs?.length || 5;
-        setOutputHeaders(Array.from({ length: numCols }, (_, i) => `Meas ${i + 1}`));
+        const headersFromCsv = initialData.outputHeaders?.length
+          ? initialData.outputHeaders
+          : Array.from({ length: numCols }, (_, i) => `Meas ${i + 1}`);
+        setOutputHeaders(headersFromCsv);
         setOutputRows(
           initialData.outputRows.map((r, i) => ({
             id: `csv-row-${Date.now()}-${i}`,

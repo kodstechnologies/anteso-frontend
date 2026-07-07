@@ -1499,42 +1499,221 @@ const ViewServiceReportCArm: React.FC = () => {
 
             {/* 10. Linearity of mAs Loading */}
             {showMasLinearity && testData.linearityOfMasLoading && (
-              <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
-                <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>10. Linearity of mA Loading</h3>
-                {testData.linearityOfMasLoading.table2?.length > 0 && (
-                  <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
-                    <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
-                      <thead className="bg-gray-100">
-                        <tr>
-                          <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>mAs Applied</th>
-                          <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center', backgroundColor: 'rgba(191, 219, 254, 0.5)' }}>Average Output</th>
-                          <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>X (mGy/mAs)</th>
-                          <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>X Max</th>
-                          <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>X Min</th>
-                          <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>CoL</th>
-                          <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center', backgroundColor: 'rgba(220, 252, 231, 0.5)' }}>Remarks</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {testData.linearityOfMasLoading.table2.map((row: any, i: number) => (
-                          <tr key={i} className="text-center" style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
-                            <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.mAsApplied || "-"}</td>
-                            <td className="border border-black p-2 print:p-1 font-semibold text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center', backgroundColor: 'rgba(191, 219, 254, 0.3)' }}>{row.average || "-"}</td>
-                            <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.x || "-"}</td>
-                            <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.xMax || "-"}</td>
-                            <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.xMin || "-"}</td>
-                            <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.col || "-"}</td>
-                            <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center', backgroundColor: 'rgba(220, 252, 231, 0.3)' }}>
-                              <span className={row.remarks === "Pass" ? "text-green-600" : row.remarks === "Fail" ? "text-red-600" : ""}>
-                                {row.remarks || "-"}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
+              <div className="mb-4 test-section">
+                <TestSectionTitle num={10} title="Linearity of mAs Loading" />
+                {testData.linearityOfMasLoading.table1 &&
+                  (() => {
+                    const t1 = Array.isArray(testData.linearityOfMasLoading.table1)
+                      ? testData.linearityOfMasLoading.table1[0]
+                      : testData.linearityOfMasLoading.table1;
+                    if (!t1) return null;
+                    return (
+                      <div style={{ marginBottom: "20px" }}>
+                        <p style={{ fontSize: "11px", fontWeight: "bold", marginBottom: "10px" }}>Test Conditions:</p>
+                        <table style={{ ...tableStyle, width: "100%" }}>
+                          <thead>
+                            <tr>
+                              <th style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", padding: "1px 12px" })}>
+                                FDD (cm)
+                              </th>
+                              <th style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", padding: "1px 12px" })}>
+                                kV
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              <td style={cellStyle({ border: "0.1px solid #666", padding: "1px 12px" })}>
+                                {t1?.fcd || "-"}
+                              </td>
+                              <td style={cellStyle({ border: "0.1px solid #666", padding: "1px 12px" })}>
+                                {t1?.kv || "-"}
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    );
+                  })()}
+                {testData.linearityOfMasLoading.table2?.length > 0 &&
+                  (() => {
+                    const rows = testData.linearityOfMasLoading.table2;
+                    const tolVal = parseFloat(testData.linearityOfMasLoading.tolerance ?? "0.1") || 0.1;
+                    const tolOp = testData.linearityOfMasLoading.toleranceOperator ?? "<";
+                    const fmtV = (val: any) => {
+                      if (val === undefined || val === null) return "-";
+                      const s = String(val).trim();
+                      return s === "" || s === "—" || s === "undefined" || s === "null" ? "-" : s;
+                    };
+                    const xValues: number[] = [];
+                    const processedRows = rows.map((row: any) => {
+                      const outputs = (row.measuredOutputs ?? [])
+                        .map((v: any) => parseFloat(v))
+                        .filter((v: number) => !isNaN(v) && v > 0);
+                      const avg =
+                        outputs.length > 0 ? outputs.reduce((a: number, b: number) => a + b, 0) / outputs.length : null;
+                      const avgDisplay = avg !== null ? parseFloat(avg.toFixed(4)).toFixed(4) : "—";
+                      const mAsLabel = String(row.mAsApplied ?? row.mAsRange ?? "");
+                      const match = mAsLabel.match(/(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)/);
+                      const midMas = match ? (parseFloat(match[1]) + parseFloat(match[2])) / 2 : parseFloat(mAsLabel) || 0;
+                      const x = avg !== null && midMas > 0 ? avg / midMas : null;
+                      const xDisplay = x !== null ? parseFloat(x.toFixed(4)).toFixed(4) : "—";
+                      if (x !== null) xValues.push(parseFloat(x.toFixed(4)));
+                      return { ...row, _avgDisplay: avgDisplay, _xDisplay: xDisplay };
+                    });
+                    const hasData = xValues.length > 0;
+                    const xMax = hasData ? parseFloat(Math.max(...xValues).toFixed(4)).toFixed(4) : "—";
+                    const xMin = hasData ? parseFloat(Math.min(...xValues).toFixed(4)).toFixed(4) : "—";
+                    const colNum =
+                      hasData && xMax !== "—" && xMin !== "—" && parseFloat(xMax) + parseFloat(xMin) > 0
+                        ? Math.abs(parseFloat(xMax) - parseFloat(xMin)) / (parseFloat(xMax) + parseFloat(xMin))
+                        : 0;
+                    const col = hasData && colNum > 0 ? parseFloat(colNum.toFixed(4)).toFixed(4) : "—";
+                    let pass = false;
+                    if (hasData && col !== "—") {
+                      const cv = parseFloat(col);
+                      switch (tolOp) {
+                        case "<":
+                          pass = cv < tolVal;
+                          break;
+                        case ">":
+                          pass = cv > tolVal;
+                          break;
+                        case "<=":
+                          pass = cv <= tolVal;
+                          break;
+                        case ">=":
+                          pass = cv >= tolVal;
+                          break;
+                        default:
+                          pass = cv <= tolVal;
+                      }
+                    }
+                    const remarks = hasData && col !== "—" ? (pass ? "Pass" : "Fail") : "—";
+                    const measHeaders = testData.linearityOfMasLoading.measHeaders || [];
+                    return (
+                      <div style={{ marginBottom: "4px" }}>
+                        <table style={{ ...tableStyle, fontSize: "10px" }}>
+                          <thead>
+                            <tr>
+                              <th style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px" })}>
+                                mAs Range
+                              </th>
+                              <th
+                                colSpan={measHeaders.length}
+                                style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px" })}
+                              >
+                                Output (mGy)
+                              </th>
+                              <th style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px" })}>
+                                Avg Output
+                              </th>
+                              <th style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px" })}>
+                                X (mGy/mAs)
+                              </th>
+                              <th style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px" })}>
+                                X MAX
+                              </th>
+                              <th style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px" })}>
+                                X MIN
+                              </th>
+                              <th style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px" })}>
+                                CoL
+                              </th>
+                              <th style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px" })}>
+                                Remarks
+                              </th>
+                            </tr>
+                            <tr>
+                              <th style={cellStyle({ border: "0.1px solid #666", fontSize: "10px" })}></th>
+                              {measHeaders.map((h: string, idx: number) => (
+                                <th
+                                  key={idx}
+                                  style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px" })}
+                                >
+                                  {h || `Meas ${idx + 1}`}
+                                </th>
+                              ))}
+                              <th style={cellStyle({ border: "0.1px solid #666", fontSize: "10px" })}></th>
+                              <th style={cellStyle({ border: "0.1px solid #666", fontSize: "10px" })}></th>
+                              <th style={cellStyle({ border: "0.1px solid #666", fontSize: "10px" })}></th>
+                              <th style={cellStyle({ border: "0.1px solid #666", fontSize: "10px" })}></th>
+                              <th style={cellStyle({ border: "0.1px solid #666", fontSize: "10px" })}></th>
+                              <th style={cellStyle({ border: "0.1px solid #666", fontSize: "10px" })}></th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {processedRows.map((row: any, i: number) => (
+                              <tr key={i}>
+                                <td style={cellStyle({ border: "0.1px solid #666", fontSize: "10px" })}>
+                                  {fmtV(row.mAsApplied ?? row.mAsRange)}
+                                </td>
+                                {measHeaders.map((_: string, idx: number) => (
+                                  <td key={idx} style={cellStyle({ border: "0.1px solid #666", fontSize: "10px" })}>
+                                    {fmtV(row.measuredOutputs?.[idx])}
+                                  </td>
+                                ))}
+                                <td style={cellStyle({ border: "0.1px solid #666", fontSize: "10px" })}>
+                                  {row._avgDisplay}
+                                </td>
+                                <td style={cellStyle({ border: "0.1px solid #666", fontSize: "10px" })}>
+                                  {row._xDisplay}
+                                </td>
+                                {i === 0 ? (
+                                  <>
+                                    <td
+                                      rowSpan={rows.length}
+                                      style={cellStyle({
+                                        border: "0.1px solid #666",
+                                        fontSize: "10px",
+                                        verticalAlign: "middle",
+                                      })}
+                                    >
+                                      {xMax}
+                                    </td>
+                                    <td
+                                      rowSpan={rows.length}
+                                      style={cellStyle({
+                                        border: "0.1px solid #666",
+                                        fontSize: "10px",
+                                        verticalAlign: "middle",
+                                      })}
+                                    >
+                                      {xMin}
+                                    </td>
+                                    <td
+                                      rowSpan={rows.length}
+                                      style={cellStyle({
+                                        border: "0.1px solid #666",
+                                        fontSize: "10px",
+                                        verticalAlign: "middle",
+                                      })}
+                                    >
+                                      {col}
+                                    </td>
+                                    <td
+                                      rowSpan={rows.length}
+                                      style={cellStyle({
+                                        border: "0.1px solid #666",
+                                        fontSize: "10px",
+                                        verticalAlign: "middle",
+                                      })}
+                                    >
+                                      {remarks}
+                                    </td>
+                                  </>
+                                ) : null}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                        <p style={{ fontSize: "10px", marginTop: "2px" }}>
+                          <strong>Tolerance (CoL):</strong> {testData.linearityOfMasLoading.toleranceOperator || "≤"}{" "}
+                          {testData.linearityOfMasLoading.tolerance || "0.1"}
+                        </p>
+                      </div>
+                    );
+                  })()}
               </div>
             )}
 

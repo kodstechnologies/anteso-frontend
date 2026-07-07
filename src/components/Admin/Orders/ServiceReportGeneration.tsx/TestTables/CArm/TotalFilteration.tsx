@@ -56,6 +56,31 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
         kvThreshold2: "100",
     });
 
+    const computeRowMetrics = (
+        appliedKvp: string,
+        measuredValues: string[],
+        tolSign: "+" | "-" | "±",
+        tolVal: string
+    ): Pick<RowData, "averageKvp" | "remarks"> => {
+        const nums = measuredValues.filter(v => v !== "" && !isNaN(Number(v))).map(Number);
+        const avg = nums.length > 0 ? (nums.reduce((a, b) => a + b, 0) / nums.length).toFixed(2) : "";
+        const applied = parseFloat(appliedKvp || "0");
+        const avgNum = parseFloat(avg || "0");
+        const tol = parseFloat(tolVal || "0");
+        let remark: "PASS" | "FAIL" | "-" = "-";
+
+        if (!isNaN(applied) && !isNaN(avgNum) && !isNaN(tol) && tol > 0) {
+            const diff = Math.abs(avgNum - applied);
+            remark = tolSign === "+"
+                ? (avgNum <= applied + tol ? "PASS" : "FAIL")
+                : tolSign === "-"
+                    ? (avgNum >= applied - tol ? "PASS" : "FAIL")
+                    : diff <= tol ? "PASS" : "FAIL";
+        }
+
+        return { averageKvp: avg, remarks: remark };
+    };
+
     // Handle CSV initial data
     useEffect(() => {
         if (initialData && initialData.length > 0) {
@@ -70,8 +95,13 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
                 initialData.forEach(row => {
                     const field = row['Field Name'];
                     const val = row['Value'];
-                    const rowIndex = row['Row Index'];
+                    const rowIndex = parseInt(row['Row Index']) || 0;
 
+                    if (field.startsWith('Header_')) {
+                        const idx = parseInt(field.replace('Header_', '')) - 1;
+                        while (stations.length <= idx) stations.push(`Meas ${stations.length + 1}`);
+                        stations[idx] = val;
+                    }
                     if (field === 'mAStations') {
                         if (!stations.includes(val)) stations.push(val);
                     }
@@ -97,8 +127,26 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
                     }
                 });
 
+                const stationCount = stations.length > 0
+                    ? stations.length
+                    : Math.max(...measurements.map(m => m.measuredValues.length), 1);
+
                 if (stations.length > 0) setMAStations(stations);
-                if (measurements.length > 0) setRows(measurements);
+                if (measurements.length > 0) {
+                    setRows(
+                        measurements.map((m, i) => {
+                            const measuredValues = [...m.measuredValues];
+                            while (measuredValues.length < stationCount) measuredValues.push("");
+                            const metrics = computeRowMetrics(m.appliedKvp, measuredValues, tSign, tVal);
+                            return {
+                                ...m,
+                                id: (i + 1).toString(),
+                                measuredValues,
+                                ...metrics,
+                            };
+                        })
+                    );
+                }
                 setToleranceSign(tSign);
                 setToleranceValue(tVal);
                 setTotalFiltration({ measured: tfMeas, required: tfReq });
@@ -265,28 +313,14 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
         setRows(prev => prev.map(row => {
             if (row.id !== rowId) return row;
             if (field === "appliedKvp") {
-                return { ...row, appliedKvp: value };
+                const metrics = computeRowMetrics(value, row.measuredValues, toleranceSign, toleranceValue);
+                return { ...row, appliedKvp: value, ...metrics };
             }
 
             const newMeasured = [...row.measuredValues];
             newMeasured[field] = value;
-
-            const nums = newMeasured.filter(v => v !== "" && !isNaN(Number(v))).map(Number);
-            const avg = nums.length > 0 ? (nums.reduce((a, b) => a + b, 0) / nums.length).toFixed(2) : "";
-
-            const applied = parseFloat(row.appliedKvp || "0");
-            const avgNum = parseFloat(avg || "0");
-            const tol = parseFloat(toleranceValue || "0");
-            let remark: "PASS" | "FAIL" | "-" = "-";
-
-            if (!isNaN(applied) && !isNaN(avgNum) && !isNaN(tol) && tol > 0) {
-                const diff = Math.abs(avgNum - applied);
-                remark = toleranceSign === "+" ? (avgNum <= applied + tol ? "PASS" : "FAIL")
-                    : toleranceSign === "-" ? (avgNum >= applied - tol ? "PASS" : "FAIL")
-                        : diff <= tol ? "PASS" : "FAIL";
-            }
-
-            return { ...row, measuredValues: newMeasured, averageKvp: avg, remarks: remark };
+            const metrics = computeRowMetrics(row.appliedKvp, newMeasured, toleranceSign, toleranceValue);
+            return { ...row, measuredValues: newMeasured, ...metrics };
         }));
     };
 

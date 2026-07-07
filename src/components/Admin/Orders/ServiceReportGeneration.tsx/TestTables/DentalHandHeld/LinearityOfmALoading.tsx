@@ -266,6 +266,7 @@ const LinearityOfMaLoading: React.FC<LinearityOfMaLoadingProps> = ({
 
     useEffect(() => {
         if (csvData && csvData.length > 0) {
+            const csvMeasLabels = csvData.find(r => r['Field Name'] === 'MeasColumnLabels')?.['Value'];
             const fcd = csvData.find(r => r['Field Name'] === 'FCD')?.['Value'];
             const kv = csvData.find(r => r['Field Name'] === 'kV')?.['Value'];
             const time = csvData.find(r => r['Field Name'] === 'time')?.['Value'];
@@ -308,15 +309,21 @@ const LinearityOfMaLoading: React.FC<LinearityOfMaLoadingProps> = ({
                 setTable2Rows(newTable2Rows);
 
                 const maxMeas = Math.max(...newTable2Rows.map(r => r.measuredOutputs.length));
-                if (maxMeas > measHeaders.length) {
-                    const newCols = Array.from({ length: maxMeas - measHeaders.length }, (_, i) => `Measured mR ${measHeaders.length + i + 1}`);
-                    setMeasHeaders(prev => [...prev, ...newCols]);
-                }
+                setMeasHeaders(prev => {
+                    const targetCount = Math.max(maxMeas, 3);
+                    const base = (csvMeasLabels
+                        ? String(csvMeasLabels).split(',').map((h: string) => h.trim()).filter(Boolean)
+                        : prev).slice(0, targetCount);
+                    while (base.length < targetCount) {
+                        base.push(`Measured mR ${base.length + 1}`);
+                    }
+                    return base;
+                });
             }
 
             if (!testId && (rowIndices.length > 0 || fcd || kv || time)) setIsEditing(true);
         }
-    }, [csvData, testId, measHeaders.length]);
+    }, [csvData, testId]);
 
     const handleSave = async () => {
         if (!serviceId) {

@@ -49,6 +49,7 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
   const [leakageRows, setLeakageRows] = useState<LeakageRow[]>([
     { location: 'Tube', left: '', right: '', front: '', back: '', top: '', max: '', result: '', unit: 'mR/h', mgy: '' },
   ]);
+  const [leakageHeaders, setLeakageHeaders] = useState<string[]>(['Left', 'Right', 'Front', 'Back', 'Top']);
 
   const locationOptions = ['Tube', 'Collimator'];
 
@@ -328,6 +329,11 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
       if (initialData.toleranceValue) setToleranceValue(initialData.toleranceValue);
       if (initialData.toleranceOperator) setToleranceOperator(initialData.toleranceOperator);
       if (initialData.toleranceTime) setToleranceTime(initialData.toleranceTime);
+      if (Array.isArray(initialData.leakageHeaders) && initialData.leakageHeaders.length > 0) {
+        const normalized = [...initialData.leakageHeaders];
+        while (normalized.length < 5) normalized.push(['Left', 'Right', 'Front', 'Back', 'Top'][normalized.length]);
+        setLeakageHeaders(normalized.slice(0, 5));
+      }
       if (initialData.leakageMeasurements?.length > 0) {
         const sortedMeasurements = [...initialData.leakageMeasurements].sort((a: any, b: any) => {
           const aLoc = (a.location || '').toLowerCase();
@@ -483,7 +489,7 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
               <th rowSpan={2} className="px-4 py-3 font-medium">Remarks</th>
             </tr>
             <tr>
-              {['Left', 'Right', 'Front', 'Back', 'Top'].map(dir => (
+              {leakageHeaders.map(dir => (
                 <th key={dir} className="px-2 py-2 border-r font-medium">{dir}</th>
               ))}
             </tr>

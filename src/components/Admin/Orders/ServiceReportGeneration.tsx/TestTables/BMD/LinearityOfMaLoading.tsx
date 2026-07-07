@@ -285,7 +285,14 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
         if (initialData.table2 && initialData.table2.length > 0) {
           const firstRow = initialData.table2[0];
           const numCols = firstRow.measuredOutputs?.length || 3;
-          setMeasHeaders(Array.from({ length: numCols }, (_, i) => `Meas ${i + 1}`));
+          const importedHeaders = Array.isArray(initialData.measHeaders) ? initialData.measHeaders : [];
+          if (importedHeaders.length > 0) {
+            const normalized = importedHeaders.slice(0, Math.max(numCols, importedHeaders.length));
+            while (normalized.length < numCols) normalized.push(`Meas ${normalized.length + 1}`);
+            setMeasHeaders(normalized);
+          } else {
+            setMeasHeaders(Array.from({ length: numCols }, (_, i) => `Meas ${i + 1}`));
+          }
           setTable2Rows(initialData.table2.map((r: any) => ({
             id: Date.now().toString() + Math.random(),
             ma: r.ma || '',

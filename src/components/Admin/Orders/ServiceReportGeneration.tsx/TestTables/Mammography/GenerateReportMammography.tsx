@@ -29,6 +29,55 @@ import {
 import * as XLSX from "xlsx";
 import { createMammographySavedExcel, MammographySavedExportData } from "./exportMammographySavedToExcel";
 
+/** Tests whose CSV columns after fixed fields are dynamic measurement columns (custom headers like "22", "400 mA"). */
+const MAMMOGRAPHY_MEAS_FIELD_PREFIX_BY_TEST: Record<string, string> = {
+    'Accuracy of Operating Potential': 'Measurement_Meas',
+    'Linearity of mAs Loading Stations': 'Table2_Meas',
+    'Linearity of mA Loading Stations': 'Table2_Meas',
+    'Reproducibility of Output': 'OutputRow_Meas',
+};
+
+const MAMMOGRAPHY_DISTANCE_HEADER_ALIASES = ['FCD', 'FCD (cm)', 'FDD', 'FDD (cm)', 'FFD', 'FFD (cm)'];
+
+const MAMMOGRAPHY_FIXED_HEADERS_BY_TEST: Record<string, Set<string>> = {
+    'Accuracy of Operating Potential': new Set([
+        'Time', 'Time (ms)', 'Slice Thickness', 'Slice Thickness (mm)', 'Set kV', 'Applied kV', 'Applied KV',
+        'Avg kV', 'Avg kVp', 'Tol Value', 'Tol Type', 'Tol Sign',
+        'TF at kVp', 'TF Required', 'TF Measured',
+        'Filt Tol >70', 'Filt Tol 70-100', 'Filt Tol >100', 'kV Threshold 1', 'kV Threshold 2',
+    ]),
+    'Linearity of mAs Loading Stations': new Set([
+        ...MAMMOGRAPHY_DISTANCE_HEADER_ALIASES,
+        'kV', 'mAs Range', 'mAs Applied', 'Tolerance', 'Tolerance Operator', 'Tol Operator',
+    ]),
+    'Linearity of mA Loading Stations': new Set([
+        ...MAMMOGRAPHY_DISTANCE_HEADER_ALIASES,
+        'kV', 'Time', 'Time (sec)', 'Time (Sec)', 'ma', 'mA', 'Tolerance', 'Tolerance Operator', 'Tol Operator',
+    ]),
+    'Reproducibility of Output': new Set([
+        ...MAMMOGRAPHY_DISTANCE_HEADER_ALIASES,
+        'kV', 'mAs', 'Tolerance', 'Tolerance Operator', 'Tol Operator',
+    ]),
+};
+
+const isMammographyMeasColumn = (testName: string, header: string): boolean => {
+    const trimmed = (header || '').trim();
+    if (!trimmed || !MAMMOGRAPHY_MEAS_FIELD_PREFIX_BY_TEST[testName]) return false;
+    const fixed = MAMMOGRAPHY_FIXED_HEADERS_BY_TEST[testName];
+    return fixed ? !fixed.has(trimmed) : false;
+};
+
+/** Convert CSV measurement column label to table2 ma key (e.g. "10 mA" → ma10, "400 mA" → ma400). */
+const mammographyHeaderToMaKey = (label: string): string => {
+    const t = (label || '').trim();
+    const m = t.match(/^(\d+)\s*mA$/i) || t.match(/^mA\s*(\d+)$/i) || t.match(/^mA(\d+)$/i);
+    if (m) return `ma${m[1]}`;
+    if (/^\d+$/.test(t)) return `ma${t}`;
+    const measN = t.match(/^Meas\s+(\d+)$/i);
+    if (measN) return `ma${measN[1]}`;
+    return `ma${t.replace(/\s+/g, '')}`;
+};
+
 // Mammography Test Components
 import AccuracyOfOperatingPotential from "../Mammography/AccuracyOfOperatingPotential";
 import LinearityOfMasLoadingAcrossRanges from "../Mammography/LinearityOfMasLoadingAcrossRanges";
@@ -236,6 +285,7 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
         const data: any[] = [];
         let currentTestName = '';
         let headers: string[] = [];
+        let sectionMeasColIndices: number[] = [];
         let isReadingTest = false;
         const sectionRowCounter: { [key: string]: number } = {};
 
@@ -245,9 +295,11 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
             'LINEARITY OF MAS LOADING': 'Linearity of mAs Loading Stations',
             'LINEARITY OF MAS LOADING STATIONS': 'Linearity of mAs Loading Stations',
             'LINEARITY OF MA LOADING STATIONS': 'Linearity of mA Loading Stations',
+            'LINEARITY OF MA LOADING': 'Linearity of mA Loading Stations',
             'TOTAL FILTRATION & ALUMINIUM': 'Total Filtration & Aluminium',
             'TOTAL FILTRATION AND ALUMINIUM': 'Total Filtration & Aluminium',
             'REPRODUCIBILITY OF OUTPUT': 'Reproducibility of Output',
+            'REPRODUCIBILITY OF RADIATION OUTPUT': 'Reproducibility of Output',
             'RADIATION LEAKAGE LEVEL': 'Radiation Leakage Level',
             'IMAGING PHANTOM': 'Imaging Phantom',
             'RADIATION PROTECTION SURVEY': 'Radiation Protection Survey',
@@ -260,31 +312,36 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
             'Accuracy of Operating Potential': {
                 'Time': 'Table1_Time', 'Time (ms)': 'Table1_Time', 'Slice Thickness': 'Table1_SliceThickness', 'Slice Thickness (mm)': 'Table1_SliceThickness',
                 'Set kV': 'Measurement_AppliedKvp', 'Applied kV': 'Measurement_AppliedKvp', 'Applied KV': 'Measurement_AppliedKvp',
-                '10 mA': 'Measurement_Meas1', '100 mA': 'Measurement_Meas2', '200 mA': 'Measurement_Meas3',
-                'Meas 1': 'Measurement_Meas1', 'Meas 2': 'Measurement_Meas2', 'Meas 3': 'Measurement_Meas3',
                 'Avg kV': 'Measurement_AvgKvp', 'Tol Value': 'Tolerance_Value', 'Tol Type': 'Tolerance_Type', 'Tol Sign': 'Tolerance_Sign',
                 'TF at kVp': 'TotalFiltration_atKvp', 'TF Required': 'TotalFiltration_Required', 'TF Measured': 'TotalFiltration_Measured',
                 'Filt Tol >70': 'FiltrationTolerance_forKvGreaterThan70', 'Filt Tol 70-100': 'FiltrationTolerance_forKvBetween70And100', 'Filt Tol >100': 'FiltrationTolerance_forKvGreaterThan100',
                 'kV Threshold 1': 'FiltrationTolerance_kvThreshold1', 'kV Threshold 2': 'FiltrationTolerance_kvThreshold2',
             },
             'Accuracy of Irradiation Time': {
-                'FCD': 'TestConditions_FCD', 'kV': 'TestConditions_kV', 'ma': 'TestConditions_ma',
+                'FCD': 'TestConditions_FCD', 'FCD (cm)': 'TestConditions_FCD',
+                'FDD': 'TestConditions_FCD', 'FDD (cm)': 'TestConditions_FCD',
+                'FFD': 'TestConditions_FCD', 'FFD (cm)': 'TestConditions_FCD',
+                'kV': 'TestConditions_kV', 'ma': 'TestConditions_ma', 'mA': 'TestConditions_ma',
                 'Set Time (ms)': 'IrradiationTime_SetTime', 'Measured Time (ms)': 'IrradiationTime_MeasuredTime',
                 'Tol Operator': 'Tolerance_Operator', 'Tol Value': 'Tolerance_Value',
             },
             'Linearity of mAs Loading Stations': {
-                'FCD': 'Table1_FCD',
+                'FCD': 'Table1_FCD', 'FCD (cm)': 'Table1_FCD',
+                'FDD': 'Table1_FCD', 'FDD (cm)': 'Table1_FCD',
+                'FFD': 'Table1_FCD', 'FFD (cm)': 'Table1_FCD',
                 'kV': 'Table1_kV',
                 'mAs Applied': 'Table2_mAsApplied',
-                'Meas 1': 'Table2_Meas1',
-                'Meas 2': 'Table2_Meas2',
-                'Meas 3': 'Table2_Meas3',
+                'mAs Range': 'Table2_mAsApplied',
                 'Tolerance Operator': 'ToleranceOperator',
                 'Tolerance': 'Tolerance',
             },
             'Linearity of mA Loading Stations': {
-                'FCD': 'Table1_FCD', 'kV': 'Table1_kV', 'Time': 'Table1_Time',
-                'ma': 'Table2_ma', 'mA': 'Table2_ma', 'Meas 1': 'Table2_Meas1', 'Meas 2': 'Table2_Meas2', 'Meas 3': 'Table2_Meas3',
+                'FCD': 'Table1_FCD', 'FCD (cm)': 'Table1_FCD',
+                'FDD': 'Table1_FCD', 'FDD (cm)': 'Table1_FCD',
+                'FFD': 'Table1_FCD', 'FFD (cm)': 'Table1_FCD',
+                'kV': 'Table1_kV',
+                'Time': 'Table1_Time', 'Time (sec)': 'Table1_Time', 'Time (Sec)': 'Table1_Time',
+                'ma': 'Table2_ma', 'mA': 'Table2_ma',
                 'Tolerance': 'Tolerance', 'Tol Operator': 'ToleranceOperator',
             },
             'Total Filtration & Aluminium': {
@@ -293,12 +350,20 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
                 'Rec Min': 'Table_RecommendedValue_Min', 'Rec Max': 'Table_RecommendedValue_Max', 'Rec kVp': 'Table_RecommendedValue_kVp',
             },
             'Reproducibility of Output': {
-                'kV': 'OutputRow_kV', 'mAs': 'OutputRow_mAs', 'Meas 1': 'OutputRow_Meas1', 'Meas 2': 'OutputRow_Meas2', 'Meas 3': 'OutputRow_Meas3',
+                'FCD': 'FDD', 'FCD (cm)': 'FDD',
+                'FDD': 'FDD', 'FDD (cm)': 'FDD',
+                'FFD': 'FDD', 'FFD (cm)': 'FDD',
+                'kV': 'OutputRow_kV', 'mAs': 'OutputRow_mAs',
                 'Tolerance': 'Tolerance',
                 'Tolerance Operator': 'ToleranceOperator',
+                'Tol Operator': 'ToleranceOperator',
             },
             'Radiation Leakage Level': {
-                'FCD': 'Settings_FCD', 'kV': 'Settings_kV', 'ma': 'Settings_ma', 'Time': 'Settings_time',
+                'FCD': 'Settings_FCD', 'FCD (cm)': 'Settings_FCD',
+                'FDD': 'Settings_FCD', 'FDD (cm)': 'Settings_FCD',
+                'FFD': 'Settings_FCD', 'FFD (cm)': 'Settings_FCD',
+                'kV': 'Settings_kV', 'ma': 'Settings_ma', 'mA': 'Settings_ma',
+                'Time': 'Settings_time', 'Time (sec)': 'Settings_time', 'Time (Sec)': 'Settings_time',
                 'Workload': 'Workload', 'Tol Value': 'ToleranceValue', 'Tol Operator': 'ToleranceOperator', 'Tol Time': 'ToleranceTime',
                 'Location': 'LeakageMeasurement_Location', 'Left': 'LeakageMeasurement_Left', 'Right': 'LeakageMeasurement_Right',
                 'Front': 'LeakageMeasurement_Front', 'Back': 'LeakageMeasurement_Back', 'Top': 'LeakageMeasurement_Top',
@@ -323,17 +388,33 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
                 currentTestName = markerUpperToInternal[key] || '';
                 isReadingTest = true;
                 headers = [];
+                sectionMeasColIndices = [];
                 if (currentTestName) sectionRowCounter[currentTestName] = 0;
                 continue;
             }
 
             if (isReadingTest && headers.length === 0 && row.some(c => c !== '')) {
                 headers = row;
+                sectionMeasColIndices = [];
+                if (currentTestName && MAMMOGRAPHY_MEAS_FIELD_PREFIX_BY_TEST[currentTestName]) {
+                    headers.forEach((headerCell, colIdx) => {
+                        const trimmed = (headerCell || '').trim();
+                        if (!isMammographyMeasColumn(currentTestName, trimmed)) return;
+                        sectionMeasColIndices.push(colIdx);
+                        data.push({
+                            'Field Name': 'MeasHeader',
+                            'Value': trimmed,
+                            'Row Index': '0',
+                            'Test Name': currentTestName,
+                        });
+                    });
+                }
                 continue;
             }
 
             if (isReadingTest && row.every(c => c === '')) {
                 isReadingTest = false;
+                sectionMeasColIndices = [];
                 continue;
             }
 
@@ -343,9 +424,17 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
                 sectionRowCounter[currentTestName] = (sectionRowCounter[currentTestName] ?? 0);
                 const rowIdx = sectionRowCounter[currentTestName];
                 sectionRowCounter[currentTestName] = rowIdx + 1;
+                const measPrefix = MAMMOGRAPHY_MEAS_FIELD_PREFIX_BY_TEST[currentTestName];
                 row.forEach((value, cellIdx) => {
                     const header = (headers[cellIdx] || '').trim();
-                    const internalField = map[header];
+                    if (!header) return;
+                    let internalField = map[header];
+                    if (!internalField && measPrefix) {
+                        const measIdx = sectionMeasColIndices.indexOf(cellIdx);
+                        if (measIdx >= 0) {
+                            internalField = `${measPrefix}${measIdx + 1}`;
+                        }
+                    }
                     if (internalField && value !== '') {
                         data.push({
                             'Field Name': internalField,
@@ -558,11 +647,22 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
             });
 
             if (applyConfigFromExcel && Object.keys(groupedData).length > 0) {
-                const hasTimerSection = !!(groupedData['Accuracy of Irradiation Time']?.length);
+                const hasTimerSection = !!(
+                    groupedData['Accuracy of Irradiation Time']?.length ||
+                    groupedData['Linearity of mA Loading Stations']?.length
+                );
                 setHasTimer(hasTimerSection);
                 setShowTimerModal(false);
                 if (serviceId) {
                     localStorage.setItem(`mammography-timer-${serviceId}`, String(hasTimerSection));
+                }
+            } else if (
+                groupedData['Accuracy of Irradiation Time']?.length ||
+                groupedData['Linearity of mA Loading Stations']?.length
+            ) {
+                setHasTimer(true);
+                if (serviceId) {
+                    localStorage.setItem(`mammography-timer-${serviceId}`, 'true');
                 }
             }
 
@@ -599,10 +699,11 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
 
                     // Convert measurement blocks into the table2 format expected by AccuracyOfOperatingPotential
                     const table2 = kVpMeasurements.map(block => {
-                        const row: any = { setKV: block.setKV, ma10: '', ma100: '', ma200: '' };
-                        if (block.measurements[0] !== undefined) row.ma10 = block.measurements[0];
-                        if (block.measurements[1] !== undefined) row.ma100 = block.measurements[1];
-                        if (block.measurements[2] !== undefined) row.ma200 = block.measurements[2];
+                        const row: any = { setKV: block.setKV };
+                        block.measurements.forEach((val: string, i: number) => {
+                            const headerLabel = measHeaders[i] || `Meas ${i + 1}`;
+                            row[mammographyHeaderToMaKey(headerLabel)] = val;
+                        });
                         return row;
                     });
 
@@ -856,12 +957,19 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
                     });
 
                     if (table1Row.fcd || table1Row.kv || table1Row.time || table2Rows.length > 0) {
+                        const measHeaderCount = measurementHeaders.length > 0 ? measurementHeaders.length : 3;
                         setCsvDataForComponents(prev => ({
                             ...prev,
                             linearityOfMaLoadingStations: {
                                 table1: [table1Row],
                                 measHeaders: measurementHeaders.length > 0 ? measurementHeaders : ['Meas 1', 'Meas 2', 'Meas 3'],
-                                table2: table2Rows,
+                                table2: table2Rows.map((r) => ({
+                                    ma: r.ma,
+                                    measuredOutputs: Array.from({ length: measHeaderCount }, (_, i) => {
+                                        const v = r.measuredOutputs?.[i];
+                                        return v == null || v === '' ? '' : String(v);
+                                    }),
+                                })),
                                 tolerance,
                                 toleranceOperator,
                             }
@@ -953,6 +1061,8 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
                 try {
                     const data = groupedData['Reproducibility of Output'];
                     const outputRows: any[] = [];
+                    const outputMeasHeaders: string[] = [];
+                    let fdd = '';
                     let tolerance = '0.05';
                     let toleranceOperator = '<=';
 
@@ -961,6 +1071,11 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
                         const value = row['Value'] || '';
                         const rowIndex = parseInt(row['Row Index'] || '0');
 
+                        if (field === 'FDD' && value) fdd = value;
+
+                        if (field === 'MeasHeader' && value && !outputMeasHeaders.includes(value)) {
+                            outputMeasHeaders.push(value);
+                        }
                         if (field === 'Tolerance') tolerance = value;
                         if (field === 'ToleranceOperator') toleranceOperator = value;
 
@@ -982,11 +1097,22 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
                     });
 
                     if (outputRows.length > 0) {
-                        // Store data for component instead of saving
+                        const measHeaderCount = outputMeasHeaders.length > 0
+                            ? outputMeasHeaders.length
+                            : Math.max(...outputRows.map((r) => r.outputs?.length || 0), 3);
                         setCsvDataForComponents(prev => ({
                             ...prev,
                             reproducibilityOfOutput: {
-                                outputRows: outputRows,
+                                fdd: fdd || undefined,
+                                outputRows: outputRows.map((r) => ({
+                                    kv: r.kv,
+                                    mas: r.mas,
+                                    outputs: Array.from({ length: measHeaderCount }, (_, i) => {
+                                        const v = r.outputs?.[i];
+                                        return v == null || v === '' ? '' : String(v);
+                                    }),
+                                })),
+                                outputHeaders: outputMeasHeaders.length > 0 ? outputMeasHeaders : undefined,
                                 tolerance,
                                 toleranceOperator,
                             }

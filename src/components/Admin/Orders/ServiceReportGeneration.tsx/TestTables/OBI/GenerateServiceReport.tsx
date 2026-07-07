@@ -318,32 +318,289 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null; qaTestDate?
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
-    // CSV Parser Function - handles quoted values
+    const parseCsvLine = (line: string): string[] => {
+        const result: string[] = [];
+        let current = '';
+        let inQuotes = false;
+        for (let i = 0; i < line.length; i++) {
+            const char = line[i];
+            if (char === '"') {
+                inQuotes = !inQuotes;
+            } else if (char === ',' && !inQuotes) {
+                result.push(current.trim());
+                current = '';
+            } else {
+                current += char;
+            }
+        }
+        result.push(current.trim());
+        return result;
+    };
+
+    const parseHorizontalObiTemplate = (rows: string[][]): any[] => {
+        const data: any[] = [];
+        let i = 0;
+        const pushRow = (field: string, value: string, rowIndex: number, testName: string) => {
+            if (String(value ?? '').trim() === '') return;
+            data.push({ 'Field Name': field, 'Value': String(value).trim(), 'Row Index': String(rowIndex), 'Test Name': testName });
+        };
+        const colIdx = (header: string[], ...names: string[]) => {
+            for (const name of names) {
+                const idx = header.findIndex((h) => h.toLowerCase().includes(name.toLowerCase()));
+                if (idx >= 0) return idx;
+            }
+            return -1;
+        };
+        const isMeasCol = (h: string) => /^meas\s*\d+$/i.test(String(h || '').trim());
+        const isHeaderLabelCol = (h: string) => /^header\s*\d+$/i.test(String(h || '').trim());
+        const resolveMeasValueColumns = (hdr: string[], anchorNames: string[]) => {
+            const explicit = hdr
+                .map((h, idx) => ({ h: String(h || '').trim(), idx }))
+                .filter(({ h }) => isMeasCol(h))
+                .sort((a, b) => parseInt(a.h.replace(/^meas\s*/i, ''), 10) - parseInt(b.h.replace(/^meas\s*/i, ''), 10));
+            if (explicit.length > 0) return explicit;
+
+            const headerCount = hdr.filter((h) => isHeaderLabelCol(h)).length;
+            if (headerCount === 0) return [];
+
+            let anchorIdx = -1;
+            for (const name of anchorNames) {
+                anchorIdx = colIdx(hdr, name);
+                if (anchorIdx >= 0) break;
+            }
+            if (anchorIdx < 0) return [];
+
+            return Array.from({ length: headerCount }, (_, i) => ({
+                h: `Meas ${i + 1}`,
+                idx: anchorIdx + 1 + i,
+            }));
+        };
+        const pushMeasFields = (
+            row: string[],
+            hdr: string[],
+            rowIndex: number,
+            testName: string,
+            fieldPrefix: string,
+            anchorNames: string[],
+        ) => {
+            resolveMeasValueColumns(hdr, anchorNames).forEach(({ h, idx: ci }, mi) => {
+                const m = h.match(/^meas\s*(\d+)$/i);
+                const measNum = m ? m[1] : String(mi + 1);
+                pushRow(`${fieldPrefix}Meas${measNum}`, row[ci] ?? '', rowIndex, testName);
+            });
+        };
+
+        const isTestHeader = (r: string[]) => /^TEST\s*:/i.test((r[0] || '').trim());
+        while (i < rows.length) {
+            const titleCell = (rows[i]?.[0] || '').trim();
+            if (!isTestHeader(rows[i] || [])) { i++; continue; }
+            const title = titleCell.replace(/^TEST\s*:/i, '').trim().toUpperCase();
+            i++;
+            while (i < rows.length && rows[i].every((c) => !String(c || '').trim())) i++;
+            if (i >= rows.length) break;
+            let header = rows[i] || [];
+            i++;
+
+            if (title.includes('RADIATION PROTECTION SURVEY')) {
+                const settingsHeader = header;
+                const settingsRow = rows[i] || [];
+                i++;
+                if (settingsRow.some((c) => String(c || '').trim())) {
+                    pushRow('SurveyDate', settingsRow[colIdx(settingsHeader, 'Survey Date')] ?? '', 0, 'Radiation Protection Survey');
+                    pushRow('HasValidCalibration', settingsRow[colIdx(settingsHeader, 'Has Valid Calibration', 'Valid Calibration')] ?? '', 0, 'Radiation Protection Survey');
+                    pushRow('AppliedCurrent', settingsRow[colIdx(settingsHeader, 'Applied Current')] ?? '', 0, 'Radiation Protection Survey');
+                    pushRow('AppliedVoltage', settingsRow[colIdx(settingsHeader, 'Applied Voltage')] ?? '', 0, 'Radiation Protection Survey');
+                    pushRow('ExposureTime', settingsRow[colIdx(settingsHeader, 'Exposure Time')] ?? '', 0, 'Radiation Protection Survey');
+                    pushRow('Workload', settingsRow[colIdx(settingsHeader, 'Workload')] ?? '', 0, 'Radiation Protection Survey');
+                }
+                while (i < rows.length && rows[i].every((c) => !String(c || '').trim())) i++;
+                if (i < rows.length && !isTestHeader(rows[i])) {
+                    header = rows[i] || [];
+                    i++;
+                }
+                let locIdx = 0;
+                while (i < rows.length && !isTestHeader(rows[i])) {
+                    const r = rows[i];
+                    if (r.some((c) => String(c || '').trim())) {
+                        pushRow('Location_Location', r[colIdx(header, 'Location', 'LOCATION')] ?? '', locIdx, 'Radiation Protection Survey');
+                        pushRow('Location_mRPerHr', r[colIdx(header, 'MAX. RADIATION', 'mR/HR', 'MR/HR')] ?? '', locIdx, 'Radiation Protection Survey');
+                        pushRow('Location_Category', r[colIdx(header, 'Category', 'CATEGORY')] ?? '', locIdx, 'Radiation Protection Survey');
+                        locIdx++;
+                    }
+                    i++;
+                }
+                continue;
+            }
+
+            const sectionRows: string[][] = [];
+            while (i < rows.length && !isTestHeader(rows[i])) {
+                if (rows[i].some((c) => String(c || '').trim())) sectionRows.push(rows[i]);
+                i++;
+            }
+
+            if (title.includes('ACCURACY OF OPERATING POTENTIAL')) {
+                const hCols = header.filter((h) => /^header\s*\d+$/i.test(String(h || '').trim()));
+                sectionRows.forEach((r, idx) => {
+                    if (idx === 0) {
+                        pushRow('FFD', r[colIdx(header, 'FFD', 'FDD')] ?? '', 0, 'Accuracy of Operating Potential');
+                        pushRow('Tolerance_Sign', r[colIdx(header, 'Tolerance Sign')] ?? '', 0, 'Accuracy of Operating Potential');
+                        pushRow('Tolerance_Value', r[colIdx(header, 'Tolerance Value')] ?? '', 0, 'Accuracy of Operating Potential');
+                        hCols.forEach((_, hi) => {
+                            const label = r[colIdx(header, `Header ${hi + 1}`)] ?? '';
+                            if (label) pushRow('MeasHeader', label, 0, 'Accuracy of Operating Potential');
+                        });
+                    }
+                    pushRow('Measurement_AppliedKvp', r[colIdx(header, 'Applied kVp', 'Applied kV')] ?? '', idx, 'Accuracy of Operating Potential');
+                    pushMeasFields(r, header, idx, 'Accuracy of Operating Potential', 'Measurement_', ['Applied kVp', 'Applied kV']);
+                });
+            } else if (title.includes('TOTAL FILTRATION')) {
+                if (sectionRows.length > 0) {
+                    const r = sectionRows[0];
+                    pushRow('TotalFiltration_Measured', r[colIdx(header, 'Measured')] ?? '', 0, 'Accuracy of Operating Potential');
+                    pushRow('TotalFiltration_Required', r[colIdx(header, 'Required')] ?? '', 0, 'Accuracy of Operating Potential');
+                    pushRow('TotalFiltration_AtKvp', r[colIdx(header, 'At kVp', 'At kV')] ?? '', 0, 'Accuracy of Operating Potential');
+                }
+            } else if (title.includes('ACCURACY OF IRRADIATION TIME')) {
+                sectionRows.forEach((r, idx) => {
+                    if (idx === 0) {
+                        pushRow('TestConditions_FCD', r[colIdx(header, 'FDD', 'FCD', 'FFD')] ?? '', 0, 'Accuracy of Irradiation Time');
+                        pushRow('TestConditions_kV', r[colIdx(header, 'kV')] ?? '', 0, 'Accuracy of Irradiation Time');
+                        pushRow('TestConditions_ma', r[colIdx(header, 'mA')] ?? '', 0, 'Accuracy of Irradiation Time');
+                        pushRow('Tolerance_Operator', r[colIdx(header, 'Tol Operator', 'Tolerance Operator')] ?? '', 0, 'Accuracy of Irradiation Time');
+                        pushRow('Tolerance_Value', r[colIdx(header, 'Tol Value', 'Tolerance Value')] ?? '', 0, 'Accuracy of Irradiation Time');
+                    }
+                    pushRow('IrradiationTime_SetTime', r[colIdx(header, 'Set Time')] ?? '', idx, 'Accuracy of Irradiation Time');
+                    pushRow('IrradiationTime_MeasuredTime', r[colIdx(header, 'Measured Time')] ?? '', idx, 'Accuracy of Irradiation Time');
+                });
+            } else if (title.includes('OUTPUT CONSISTENCY')) {
+                const hCols = header.filter((h) => /^header\s*\d+$/i.test(String(h || '').trim()));
+                sectionRows.forEach((r, idx) => {
+                    if (idx === 0) {
+                        pushRow('FFD', r[colIdx(header, 'FFD', 'FDD', 'FCD')] ?? '', 0, 'Output Consistency');
+                        pushRow('Tolerance_Value', r[colIdx(header, 'Tol Value', 'Tolerance')] ?? '', 0, 'Output Consistency');
+                        hCols.forEach((_, hi) => {
+                            const label = r[colIdx(header, `Header ${hi + 1}`)] ?? '';
+                            if (label) pushRow('MeasHeader', label, 0, 'Output Consistency');
+                        });
+                    }
+                    pushRow('OutputRow_kV', r[colIdx(header, 'kV', 'kVp')] ?? '', idx, 'Output Consistency');
+                    pushRow('OutputRow_mAs', r[colIdx(header, 'mAs')] ?? '', idx, 'Output Consistency');
+                    pushMeasFields(r, header, idx, 'Output Consistency', 'OutputRow_', ['mAs']);
+                });
+            } else if (title.includes('CENTRAL BEAM ALIGNMENT')) {
+                if (sectionRows.length > 0) {
+                    const r = sectionRows[0];
+                    pushRow('TechniqueFactors_FCD', r[colIdx(header, 'FCD', 'FDD', 'FFD')] ?? '', 0, 'Central Beam Alignment');
+                    pushRow('TechniqueFactors_kV', r[colIdx(header, 'kV')] ?? '', 0, 'Central Beam Alignment');
+                    pushRow('TechniqueFactors_mAs', r[colIdx(header, 'mAs')] ?? '', 0, 'Central Beam Alignment');
+                    pushRow('ObservedTilt_Value', r[colIdx(header, 'Observed Tilt', 'Observed')] ?? '', 0, 'Central Beam Alignment');
+                    pushRow('ObservedTilt_Operator', r[colIdx(header, 'Observed Op', 'Observed Operator')] ?? '', 0, 'Central Beam Alignment');
+                    pushRow('Tolerance_Value', r[colIdx(header, 'Tol Value', 'Tolerance Value')] ?? '', 0, 'Central Beam Alignment');
+                    pushRow('Tolerance_Operator', r[colIdx(header, 'Tol Operator', 'Tolerance Operator')] ?? '', 0, 'Central Beam Alignment');
+                }
+            } else if (title.includes('CONGRUENCE OF RADIATION')) {
+                sectionRows.forEach((r, idx) => {
+                    pushRow('CongruenceMeasurement_Dimension', r[colIdx(header, 'Dimension')] ?? '', idx, 'Congruence of Radiation');
+                    pushRow('CongruenceMeasurement_ObservedShift', r[colIdx(header, 'Observed Shift')] ?? '', idx, 'Congruence of Radiation');
+                    pushRow('CongruenceMeasurement_EdgeShift', r[colIdx(header, 'Edge Shift')] ?? '', idx, 'Congruence of Radiation');
+                    pushRow('CongruenceMeasurement_PercentFED', r[colIdx(header, 'Percent FED', 'FED')] ?? '', idx, 'Congruence of Radiation');
+                    pushRow('CongruenceMeasurement_Tolerance', r[colIdx(header, 'Tolerance')] ?? '', idx, 'Congruence of Radiation');
+                });
+            } else if (title.includes('EFFECTIVE FOCAL SPOT')) {
+                sectionRows.forEach((r, idx) => {
+                    if (idx === 0) pushRow('FCD', r[colIdx(header, 'FCD', 'FDD', 'FFD')] ?? '', 0, 'Effective Focal Spot');
+                    pushRow('FocalSpot_FocusType', r[colIdx(header, 'Focus Type', 'Focus')] ?? '', idx, 'Effective Focal Spot');
+                    pushRow('FocalSpot_StatedNominal', r[colIdx(header, 'Stated Nominal', 'Stated')] ?? '', idx, 'Effective Focal Spot');
+                    pushRow('FocalSpot_MeasuredNominal', r[colIdx(header, 'Measured Nominal', 'Measured')] ?? '', idx, 'Effective Focal Spot');
+                });
+            } else if (title.includes('LINEARITY OF MAS LOADING')) {
+                const hCols = header.filter((h) => /^header\s*\d+$/i.test(String(h || '').trim()));
+                sectionRows.forEach((r, idx) => {
+                    if (idx === 0) {
+                        pushRow('Table1_FCD', r[colIdx(header, 'FDD', 'FCD', 'FFD')] ?? '', 0, 'Linearity of mAs Loading Stations');
+                        pushRow('Table1_kV', r[colIdx(header, 'kV')] ?? '', 0, 'Linearity of mAs Loading Stations');
+                        pushRow('ToleranceOperator', r[colIdx(header, 'Tol Operator', 'Tolerance Operator')] ?? '', 0, 'Linearity of mAs Loading Stations');
+                        pushRow('Tolerance', r[colIdx(header, 'Tol Value', 'Tolerance')] ?? '', 0, 'Linearity of mAs Loading Stations');
+                        hCols.forEach((_, hi) => {
+                            const label = r[colIdx(header, `Header ${hi + 1}`)] ?? '';
+                            if (label) pushRow('MeasHeader', label, 0, 'Linearity of mAs Loading Stations');
+                        });
+                    }
+                    pushRow('Table2_mAsApplied', r[colIdx(header, 'mAs', 'mAs Range', 'mAs Applied')] ?? '', idx, 'Linearity of mAs Loading Stations');
+                    pushMeasFields(r, header, idx, 'Linearity of mAs Loading Stations', 'Table2_', ['mAs', 'mAs Range', 'mAs Applied']);
+                });
+            } else if (title.includes('LINEARITY OF TIME')) {
+                const hCols = header.filter((h) => /^header\s*\d+$/i.test(String(h || '').trim()));
+                sectionRows.forEach((r, idx) => {
+                    if (idx === 0) {
+                        pushRow('TestConditions_FDD', r[colIdx(header, 'FDD', 'FCD', 'FFD')] ?? '', 0, 'Linearity of Time');
+                        pushRow('TestConditions_kV', r[colIdx(header, 'kV')] ?? '', 0, 'Linearity of Time');
+                        pushRow('TestConditions_Time', r[colIdx(header, 'Time')] ?? '', 0, 'Linearity of Time');
+                        pushRow('Tolerance', r[colIdx(header, 'Tolerance', 'Tol Value')] ?? '', 0, 'Linearity of Time');
+                        hCols.forEach((_, hi) => {
+                            const label = r[colIdx(header, `Header ${hi + 1}`)] ?? '';
+                            if (label) pushRow('MeasHeader', label, 0, 'Linearity of Time');
+                        });
+                    }
+                    pushRow('MeasurementRow_maApplied', r[colIdx(header, 'mA', 'mA Applied')] ?? '', idx, 'Linearity of Time');
+                    resolveMeasValueColumns(header, ['mA', 'mA Applied']).forEach(({ idx: ci }, mi) => {
+                        pushRow(`MeasurementRow_RadiationOutput${mi + 1}`, r[ci] ?? '', idx, 'Linearity of Time');
+                    });
+                });
+            } else if (title.includes('TUBE HOUSING LEAKAGE')) {
+                sectionRows.forEach((r, idx) => {
+                    if (idx === 0) {
+                        pushRow('Settings_FCD', r[colIdx(header, 'FDD', 'FCD', 'FFD')] ?? '', 0, 'Tube Housing Leakage');
+                        pushRow('Settings_kV', r[colIdx(header, 'kV')] ?? '', 0, 'Tube Housing Leakage');
+                        pushRow('Settings_ma', r[colIdx(header, 'mA')] ?? '', 0, 'Tube Housing Leakage');
+                        pushRow('Settings_Time', r[colIdx(header, 'Time')] ?? '', 0, 'Tube Housing Leakage');
+                        pushRow('Workload', r[colIdx(header, 'Workload')] ?? '', 0, 'Tube Housing Leakage');
+                        pushRow('ToleranceValue', r[colIdx(header, 'Tol Value', 'Tolerance Value')] ?? '', 0, 'Tube Housing Leakage');
+                        pushRow('ToleranceOperator', r[colIdx(header, 'Tol Operator', 'Tolerance Operator')] ?? '', 0, 'Tube Housing Leakage');
+                    }
+                    pushRow('LeakageMeasurement_Location', r[colIdx(header, 'Location')] ?? '', idx, 'Tube Housing Leakage');
+                    pushRow('LeakageMeasurement_Left', r[colIdx(header, 'Left')] ?? '', idx, 'Tube Housing Leakage');
+                    pushRow('LeakageMeasurement_Right', r[colIdx(header, 'Right')] ?? '', idx, 'Tube Housing Leakage');
+                    pushRow('LeakageMeasurement_Front', r[colIdx(header, 'Front')] ?? '', idx, 'Tube Housing Leakage');
+                    pushRow('LeakageMeasurement_Back', r[colIdx(header, 'Back')] ?? '', idx, 'Tube Housing Leakage');
+                    pushRow('LeakageMeasurement_Top', r[colIdx(header, 'Top')] ?? '', idx, 'Tube Housing Leakage');
+                });
+            } else if (title.includes('HIGH CONTRAST')) {
+                if (sectionRows.length > 0) {
+                    const r = sectionRows[0];
+                    pushRow('MeasuredLpPerMm', r[colIdx(header, 'Measured', 'lp/mm')] ?? '', 0, 'High Contrast Sensitivity');
+                    pushRow('RecommendedStandard', r[colIdx(header, 'Recommended', 'Standard')] ?? '', 0, 'High Contrast Sensitivity');
+                }
+            } else if (title.includes('LOW CONTRAST')) {
+                if (sectionRows.length > 0) {
+                    const r = sectionRows[0];
+                    pushRow('SmallestHoleSize', r[colIdx(header, 'Smallest Hole', 'Hole Size')] ?? '', 0, 'Low Contrast Sensitivity');
+                    pushRow('RecommendedStandard', r[colIdx(header, 'Recommended', 'Standard')] ?? '', 0, 'Low Contrast Sensitivity');
+                }
+            } else if (title.includes('ALIGNMENT TEST')) {
+                sectionRows.forEach((r, idx) => {
+                    pushRow('TestRow_TestName', r[colIdx(header, 'Test Name', 'Test')] ?? '', idx, 'Alignment Test');
+                    pushRow('TestRow_Sign', r[colIdx(header, 'Sign')] ?? '', idx, 'Alignment Test');
+                    pushRow('TestRow_Value', r[colIdx(header, 'Value')] ?? '', idx, 'Alignment Test');
+                });
+            }
+        }
+        return data;
+    };
+
+    // CSV Parser Function - handles quoted values (vertical Field Name/Value or horizontal TEST: format)
     const parseCSV = (text: string): any[] => {
         const lines = text.split('\n').filter(line => line.trim());
         if (lines.length === 0) return [];
 
-        const parseLine = (line: string): string[] => {
-            const result: string[] = [];
-            let current = '';
-            let inQuotes = false;
+        const parseLine = parseCsvLine;
 
-            for (let i = 0; i < line.length; i++) {
-                const char = line[i];
-                if (char === '"') {
-                    inQuotes = !inQuotes;
-                } else if (char === ',' && !inQuotes) {
-                    result.push(current.trim());
-                    current = '';
-                } else {
-                    current += char;
-                }
-            }
-            result.push(current.trim());
-            return result;
-        };
+        const rows = lines.map((line) => parseLine(line)).filter((r) => r.some((c) => String(c || '').trim()));
+        if (rows.length === 0) return [];
+        const isHorizontal = rows.some((r) => /^TEST\s*:/i.test((r[0] || '').trim()));
+        if (isHorizontal) return parseHorizontalObiTemplate(rows);
 
-        const headers = parseLine(lines[0]);
+        const headers = rows[0];
         const data: any[] = [];
 
         // Check if Row Index column exists
@@ -383,8 +640,8 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null; qaTestDate?
             'TestRow_TestName'
         ];
 
-        for (let i = 1; i < lines.length; i++) {
-            const values = parseLine(lines[i]);
+        for (let i = 1; i < rows.length; i++) {
+            const values = rows[i];
             const row: any = {};
             headers.forEach((header, index) => {
                 row[header] = values[index] || '';
@@ -407,7 +664,7 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null; qaTestDate?
                 continue;
             }
 
-            const isKnownField = fieldName.match(/^(Table|Tolerance|ExposureCondition|Measurement|TestConditions|IrradiationTime|TechniqueFactors|FocalSpot|LeakageMeasurement|Location|SurveyDate|HasValidCalibration|AppliedCurrent|AppliedVoltage|ExposureTime|MeasHeader|Table1|Table2|ObservedTilt|FCD|FFD|kV|mA|mAs|Time|Settings|Workload|RadiationOutput|OutputRow|TotalFiltration|CongruenceMeasurement|MeasurementRow|MeasuredLpPerMm|RecommendedStandard|SmallestHoleSize|ToleranceOperator|ToleranceValue|TestRow)/);
+            const isKnownField = fieldName.match(/^(Table|Tolerance|ExposureCondition|Measurement|TestConditions|IrradiationTime|TechniqueFactors|FocalSpot|LeakageMeasurement|Location|SurveyDate|HasValidCalibration|AppliedCurrent|AppliedVoltage|ExposureTime|MeasHeader|MeasColumnLabels|Table1|Table2|ObservedTilt|FCD|FFD|kV|mA|mAs|Time|Settings|Workload|RadiationOutput|OutputRow|TotalFiltration|CongruenceMeasurement|MeasurementRow|MeasuredLpPerMm|RecommendedStandard|SmallestHoleSize|ToleranceOperator|ToleranceValue|TestRow)/);
             if (!isKnownField) {
                 continue;
             }
@@ -542,6 +799,17 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null; qaTestDate?
                         }
                     });
 
+                    measurements.forEach((m) => {
+                        if (!String(m.averageKvp || '').trim()) {
+                            const nums = (m.measuredValues || [])
+                                .filter((v: string) => String(v || '').trim() !== '' && !isNaN(Number(v)))
+                                .map(Number);
+                            if (nums.length > 0) {
+                                m.averageKvp = (nums.reduce((sum, n) => sum + n, 0) / nums.length).toFixed(2);
+                            }
+                        }
+                    });
+
                     // Always set the data if we processed any rows, even if measurements is empty
                     // This ensures the component receives the data structure
                     const csvData = {
@@ -628,6 +896,7 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null; qaTestDate?
                     let ffd = '';
                     let toleranceValue = '0.05';
                     const outputRows: any[] = [];
+                    const headers: string[] = [];
                     let maxCols = 0;
 
                     data.forEach((row) => {
@@ -637,6 +906,14 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null; qaTestDate?
 
                         if (field === 'FFD') ffd = value;
                         if (field === 'Tolerance_Value') toleranceValue = value;
+                        if (field === 'MeasHeader' && value && !headers.includes(value)) {
+                            headers.push(value);
+                        }
+                        if (field === 'MeasColumnLabels') {
+                            value.split(',').map((v: string) => v.trim()).filter(Boolean).forEach((label) => {
+                                if (!headers.includes(label)) headers.push(label);
+                            });
+                        }
 
                         if (field.startsWith('OutputRow_')) {
                             while (outputRows.length <= rowIndex) {
@@ -658,14 +935,15 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null; qaTestDate?
                         }
                     });
 
-                    // Generate headers based on max columns found
-                    const headers = Array.from({ length: maxCols || 3 }, (_, i) => `Meas ${i + 1}`);
+                    const resolvedHeaders = headers.length > 0
+                        ? headers
+                        : Array.from({ length: maxCols || 3 }, (_, i) => `Meas ${i + 1}`);
 
                     const csvData = {
                         ffd,
                         tolerance: { operator: '<=' as const, value: toleranceValue },
                         outputRows: outputRows.length > 0 ? outputRows : [],
-                        headers: headers,
+                        headers: resolvedHeaders,
                     };
                     console.log('✓ Output Consistency data prepared for form:', csvData);
                     setCsvDataForComponents(prev => ({
@@ -909,11 +1187,14 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null; qaTestDate?
                             if (fieldName === 'AverageOutput') measurementRows[rowIndex].averageOutput = value;
                             if (fieldName === 'mGyPerMAs') measurementRows[rowIndex].mGyPerMAs = value;
                             if (fieldName.startsWith('RadiationOutput')) {
-                                const colIndex = parseInt(fieldName.replace('RadiationOutput', '')) - 1;
-                                while (measurementRows[rowIndex].radiationOutputs.length <= colIndex) {
-                                    measurementRows[rowIndex].radiationOutputs.push('');
+                                const numMatch = fieldName.match(/RadiationOutput(?:Meas)?(\d+)/i);
+                                const colIndex = numMatch ? parseInt(numMatch[1], 10) - 1 : -1;
+                                if (colIndex >= 0) {
+                                    while (measurementRows[rowIndex].radiationOutputs.length <= colIndex) {
+                                        measurementRows[rowIndex].radiationOutputs.push('');
+                                    }
+                                    measurementRows[rowIndex].radiationOutputs[colIndex] = value;
                                 }
-                                measurementRows[rowIndex].radiationOutputs[colIndex] = value;
                             }
                         }
                     });
@@ -1180,18 +1461,19 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null; qaTestDate?
         }
     };
 
-    // Convert Excel file to CSV format (Field Name, Value) - Row Index auto-generated
+    // Convert Excel file to CSV format (vertical Field Name/Value or horizontal TEST: format)
     const parseExcelToCSVFormat = (workbook: XLSX.WorkBook): any[] => {
-        const data: any[] = [];
-
-        // Get the first sheet
         const firstSheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[firstSheetName];
-
-        // Convert to JSON with header row
         const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' }) as any[][];
+        if (jsonData.length === 0) return [];
 
-        if (jsonData.length === 0) return data;
+        const rows = jsonData.map((r) => r.map((c) => String(c ?? '').trim())).filter((r) => r.some((c) => c));
+        if (rows.length === 0) return [];
+        const isHorizontal = rows.some((r) => /^TEST\s*:/i.test((r[0] || '').trim()));
+        if (isHorizontal) return parseHorizontalObiTemplate(rows);
+
+        const data: any[] = [];
 
         // Find header row (should contain "Field Name", "Value")
         let headerRowIndex = -1;
@@ -1260,7 +1542,7 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null; qaTestDate?
             if (!fieldName || fieldName.startsWith('---')) continue;
 
             // Check if field name matches known patterns
-            const isKnownField = fieldName.match(/^(Table|Tolerance|ExposureCondition|Measurement|TestConditions|IrradiationTime|TechniqueFactors|FocalSpot|LeakageMeasurement|Location|SurveyDate|HasValidCalibration|AppliedCurrent|AppliedVoltage|ExposureTime|MeasHeader|Table1|Table2|ObservedTilt|FCD|FFD|kV|mA|mAs|Time|Settings|Workload|RadiationOutput|OutputRow|TotalFiltration|CongruenceMeasurement|MeasurementRow|MeasuredLpPerMm|RecommendedStandard|SmallestHoleSize|ToleranceOperator|ToleranceValue|TestRow)/);
+            const isKnownField = fieldName.match(/^(Table|Tolerance|ExposureCondition|Measurement|TestConditions|IrradiationTime|TechniqueFactors|FocalSpot|LeakageMeasurement|Location|SurveyDate|HasValidCalibration|AppliedCurrent|AppliedVoltage|ExposureTime|MeasHeader|MeasColumnLabels|Table1|Table2|ObservedTilt|FCD|FFD|kV|mA|mAs|Time|Settings|Workload|RadiationOutput|OutputRow|TotalFiltration|CongruenceMeasurement|MeasurementRow|MeasuredLpPerMm|RecommendedStandard|SmallestHoleSize|ToleranceOperator|ToleranceValue|TestRow)/);
             if (!isKnownField) continue;
 
             if (currentTestName) {

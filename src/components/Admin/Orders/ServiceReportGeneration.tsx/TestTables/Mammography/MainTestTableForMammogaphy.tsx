@@ -153,7 +153,7 @@ const MainTestTableForMammography: React.FC<MainTestTableProps> = ({ testData })
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });
-      addRowsForTest("Linearity of mA Loading Stations (Coefficient of Linearity)", testRows);
+      addRowsForTest("Linearity of mA Loading (Coefficient of Linearity)", testRows);
     }
   }
 

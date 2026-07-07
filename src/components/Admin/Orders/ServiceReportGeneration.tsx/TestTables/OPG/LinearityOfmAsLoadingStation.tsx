@@ -107,40 +107,50 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
       try {
         const res = await getLinearityOfMaLoadingByServiceIdForOPG(serviceId);
         const data = res?.data;
+        const hasCsvImport = csvData && csvData.length > 0;
         if (data) {
           setTestId(data._id || null);
-          if (data.table1) {
-            setExposureCondition({
-              fcd: data.table1.fcd || '100',
-              kv: data.table1.kv || '80',
-            });
+          if (!hasCsvImport) {
+            if (data.table1) {
+              setExposureCondition({
+                fcd: data.table1.fcd || '100',
+                kv: data.table1.kv || '80',
+              });
+            }
+            // Note: Backend uses 'ma' field, but we need to convert it to mAsRange format for display
+            // We'll use the ma value as-is and display it as mAsRange
+            if (Array.isArray(data.table2) && data.table2.length > 0) {
+              setTable2Rows(
+                data.table2.map((r: any, i: number) => {
+                  // Convert ma back to mAsRange format (use ma value as mAsRange)
+                  const maValue = r.ma || '';
+                  const mAsRange = maValue ? `${maValue} mAs` : '';
+                  return {
+                    id: String(i + 1),
+                    mAsRange: mAsRange,
+                    measuredOutputs: (r.measuredOutputs || []).map((v: any) => (v != null ? String(v) : '')),
+                    average: r.average || '',
+                    x: r.x || '',
+                    xMax: r.xMax || '',
+                    xMin: r.xMin || '',
+                    col: r.col || '',
+                    remarks: r.remarks || '',
+                  };
+                })
+              );
+              if (data.table2[0]?.measuredOutputs?.length) {
+                const count = data.table2[0].measuredOutputs.length;
+                setMeasHeaders(Array.from({ length: count }, (_, i) => `Measured mR ${i + 1}`));
+              }
+            }
+            setTolerance(data.tolerance || '0.1');
+            setToleranceOperator(data.toleranceOperator || '<=');
+            setHasSaved(true);
+            setIsEditing(false);
+          } else {
+            setHasSaved(false);
+            setIsEditing(true);
           }
-          // Note: Backend uses 'ma' field, but we need to convert it to mAsRange format for display
-          // We'll use the ma value as-is and display it as mAsRange
-          if (Array.isArray(data.table2) && data.table2.length > 0) {
-            setTable2Rows(
-              data.table2.map((r: any, i: number) => {
-                // Convert ma back to mAsRange format (use ma value as mAsRange)
-                const maValue = r.ma || '';
-                const mAsRange = maValue ? `${maValue} mAs` : '';
-                return {
-                  id: String(i + 1),
-                  mAsRange: mAsRange,
-                  measuredOutputs: (r.measuredOutputs || []).map((v: any) => (v != null ? String(v) : '')),
-                  average: r.average || '',
-                  x: r.x || '',
-                  xMax: r.xMax || '',
-                  xMin: r.xMin || '',
-                  col: r.col || '',
-                  remarks: r.remarks || '',
-                };
-              })
-            );
-          }
-          setTolerance(data.tolerance || '0.1');
-          setToleranceOperator(data.toleranceOperator || '<=');
-          setHasSaved(true);
-          setIsEditing(false);
           if (data._id && !propTestId) {
             onTestSaved?.(data._id);
           }
@@ -157,21 +167,22 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
       }
     };
     load();
-    load();
-  }, [serviceId]);
+  }, [serviceId, csvData]);
 
   // CSV Data Injection
   useEffect(() => {
     if (csvData && csvData.length > 0) {
       let newTable2Rows: Table2Row[] = [];
       let foundSettings = false;
+      let customMeasHeaders: string[] = [];
 
       csvData.forEach((row, idx) => {
         const firstCell = row[0]?.toString()?.trim();
+        const normalizedRow = row.map((c: any) => c?.toString()?.trim().toLowerCase());
 
         // 1. Parameter Row: FCD, 100, kV, 70...
-        if ((row.includes('FCD') || row.includes('fcd')) && (row.includes('kV') || row.includes('kv'))) {
-          const fIndex = row.findIndex((c: any) => c?.toString().toLowerCase() === 'fcd');
+        if ((normalizedRow.includes('fcd') || normalizedRow.includes('fdd') || normalizedRow.includes('ffd')) && (normalizedRow.includes('kv') || normalizedRow.includes('kvp'))) {
+          const fIndex = row.findIndex((c: any) => ['fcd', 'fdd', 'ffd'].includes(c?.toString().trim().toLowerCase()));
           const kIndex = row.findIndex((c: any) => c?.toString().toLowerCase().includes('kv'));
 
           setExposureCondition({
@@ -179,6 +190,15 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
             kv: row[kIndex + 1]?.toString() || ''
           });
           foundSettings = true;
+        }
+        else if (String(firstCell || '').toLowerCase() === 'mas range') {
+          const parsed = row
+            .slice(1)
+            .map((c: any) => String(c || '').trim())
+            .filter((s: string) => s && !/^mr\/mas$/i.test(s));
+          if (parsed.length > 0) {
+            customMeasHeaders = parsed;
+          }
         }
         // 2. Data Rows
         else if (firstCell && (!isNaN(parseFloat(firstCell)) || firstCell.includes('-'))) {
@@ -218,11 +238,15 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
       if (newTable2Rows.length > 0) {
         // Update headers exactly matching the import count (min 3)
         const maxMeas = Math.max(...newTable2Rows.map(r => r.measuredOutputs.length));
-        const finalHeaderCount = maxMeas || 3;
+        const finalHeaderCount = Math.max(maxMeas || 0, customMeasHeaders.length, 3);
 
-        if (finalHeaderCount !== measHeaders.length) {
-          setMeasHeaders(Array.from({ length: finalHeaderCount }, (_, i) => `Measured mR ${i + 1}`));
-        }
+        setMeasHeaders(prev => {
+          const base = (customMeasHeaders.length > 0 ? customMeasHeaders : prev).slice(0, finalHeaderCount);
+          while (base.length < finalHeaderCount) {
+            base.push(`Measured mR ${base.length + 1}`);
+          }
+          return base;
+        });
 
         // Pad all rows to match finalHeaderCount
         const paddedRows = newTable2Rows.map(row => {

@@ -121,6 +121,20 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
     // CSV Data Injection
     useEffect(() => {
         if (csvData && csvData.length > 0) {
+            const headerRow = csvData.find(r => String(r?.[0] || '').trim() === 'Applied kVp');
+            if (headerRow) {
+                const customHeaders: string[] = [];
+                headerRow.slice(1).forEach((c: any) => {
+                    const s = String(c || '').trim();
+                    if (!s) return;
+                    if (/^average\s*kvp$/i.test(s) || /^remarks$/i.test(s)) return;
+                    customHeaders.push(s);
+                });
+                if (customHeaders.length > 0) {
+                    setMAStations(customHeaders);
+                }
+            }
+
             // Check for Total Filtration row
             const tfRow = csvData.find(r => {
                 const s = String(r[0]).trim();
@@ -192,9 +206,19 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
                 // Update mA headers count exactly matching the import count (min 2)
                 const maxMeas = Math.max(...newRows.map(r => r.measuredValues.length));
                 const finalCount = maxMeas || 2;
-                if (finalCount !== mAStations.length) {
-                    setMAStations(Array.from({ length: finalCount }, (_, i) => `mA ${i + 1}`));
-                }
+                setMAStations(prev => {
+                    const base = (headerRow
+                        ? String(headerRow[0]).trim() === 'Applied kVp'
+                            ? headerRow.slice(1)
+                                .map((c: any) => String(c || '').trim())
+                                .filter((s: string) => s && !/^average\s*kvp$/i.test(s) && !/^remarks$/i.test(s))
+                            : prev
+                        : prev).slice(0, finalCount);
+                    while (base.length < finalCount) {
+                        base.push(`mA ${base.length + 1}`);
+                    }
+                    return base;
+                });
 
                 if (!testId) setIsEditing(true);
             }

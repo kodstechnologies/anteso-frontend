@@ -375,6 +375,7 @@ const ViewServiceReportOBI: React.FC = () => {
             if (outputRows.length === 0) return null;
             return {
               ...ocData,
+              headers: Array.isArray(ocData.headers) ? ocData.headers : [],
               outputRows: outputRows.map((row: any) => {
                 // Calculate CV if missing (backward compatibility)
                 if (!row.cv && !row.cov && row.outputs && row.outputs.length > 0) {
@@ -1477,8 +1478,11 @@ const ViewServiceReportOBI: React.FC = () => {
                         <th rowSpan={2} className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Remarks</th>
                       </tr>
                       <tr>
-                        {Array.from({ length: testData.outputConsistency.outputRows[0]?.outputs?.length || 3 }, (_, i) => (
-                          <th key={i} className="border border-black p-1 print:p-0.5 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{i + 1}</th>
+                        {(testData.outputConsistency.headers?.length
+                          ? testData.outputConsistency.headers
+                          : Array.from({ length: testData.outputConsistency.outputRows[0]?.outputs?.length || 3 }, (_, i) => `Meas ${i + 1}`)
+                        ).map((header: string, i: number) => (
+                          <th key={i} className="border border-black p-1 print:p-0.5 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{header || `Meas ${i + 1}`}</th>
                         ))}
                       </tr>
                     </thead>

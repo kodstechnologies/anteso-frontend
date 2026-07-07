@@ -270,8 +270,21 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
   // CSV Data Injection
   useEffect(() => {
     if (csvData && csvData.length > 0) {
+      const csvMeasLabels = csvData
+        .find(r => r['Field Name'] === 'MeasColumnLabels')
+        ?.['Value'];
+      if (csvMeasLabels) {
+        const parsedHeaders = String(csvMeasLabels)
+          .split(',')
+          .map((h: string) => h.trim())
+          .filter(Boolean);
+        if (parsedHeaders.length > 0) {
+          setMeasHeaders(parsedHeaders);
+        }
+      }
+
       // Test Conditions
-      const fcd = csvData.find(r => r['Field Name'] === 'FCD')?.['Value'];
+      const fcd = csvData.find(r => ['FCD', 'FDD', 'FFD'].includes(r['Field Name']))?.['Value'];
       const kv = csvData.find(r => r['Field Name'] === 'kV')?.['Value'];
       const time = csvData.find(r => r['Field Name'] === 'time')?.['Value'];
 
@@ -315,10 +328,15 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
 
         // Update headers
         const maxMeas = Math.max(...newTable2Rows.map(r => r.measuredOutputs.length));
-        if (maxMeas > measHeaders.length) {
-          const newCols = Array.from({ length: maxMeas - measHeaders.length }, (_, i) => `Measured mR ${measHeaders.length + i + 1}`);
-          setMeasHeaders(prev => [...prev, ...newCols]);
-        }
+        setMeasHeaders(prev => {
+          const baseHeaders = (csvMeasLabels
+            ? String(csvMeasLabels).split(',').map((h: string) => h.trim()).filter(Boolean)
+            : prev).slice(0, maxMeas);
+          while (baseHeaders.length < maxMeas) {
+            baseHeaders.push(`Measured mR ${baseHeaders.length + 1}`);
+          }
+          return baseHeaders;
+        });
       }
 
       if (!testId && (rowIndices.length > 0 || fcd || kv || time)) setIsEditing(true);
@@ -430,14 +448,9 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
   const isViewMode = hasSaved && !isEditing;
   const buttonText = isViewMode ? 'Edit' : testId ? 'Update' : 'Save';
   const ButtonIcon = isViewMode ? Edit3 : Save;
-  const isTimerSelected = String(table1Row.time || '').trim() !== '';
-  const tableTitle = isTimerSelected
-    ? 'Linearity of mAs Loading'
-    : 'Linearity of mA Loading';
-  const sectionTitle = isTimerSelected
-    ? 'Linearity of mAs Loading and Accuracy of Irradiation Time'
-    : 'Linearity of mA Loading Stations';
-  const xUnitLabel = isTimerSelected ? 'mGy/(mA*s)' : 'mGy/mA';
+  const tableTitle = 'Linearity of mA Loading';
+  const sectionTitle = 'Linearity of mA Loading Stations';
+  const xUnitLabel = 'mGy/(mA*s)';
 
   if (isLoading) {
     return (
@@ -465,7 +478,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500  tracking-wider border-r">FDD (cm)</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500  tracking-wider border-r">FCD (cm)</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500  tracking-wider border-r">kV</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500  tracking-wider">Time (sec)</th>
             </tr>
@@ -715,7 +728,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
           ) : (
             <>
               <ButtonIcon className="w-4 h-4" />
-              {buttonText} {isTimerSelected ? 'mAs' : 'mA'} Linearity
+              {buttonText} mA Linearity
             </>
           )}
         </button>

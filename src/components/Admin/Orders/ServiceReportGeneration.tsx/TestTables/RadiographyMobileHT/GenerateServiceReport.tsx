@@ -366,6 +366,295 @@ const RadiographyMobileHT: React.FC<{ serviceId: string; qaTestDate?: string | n
     return data;
   };
 
+  // Parse CSV text into row matrix (supports quoted cells)
+  const parseTextToRows = (text: string): string[][] => {
+    const lines = text.split(/\r?\n/).filter((line) => line.trim());
+    const parseLine = (line: string): string[] => {
+      const result: string[] = [];
+      let current = "";
+      let inQuotes = false;
+      for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        if (char === '"') inQuotes = !inQuotes;
+        else if (char === "," && !inQuotes) {
+          result.push(current.trim());
+          current = "";
+        } else current += char;
+      }
+      result.push(current.trim());
+      return result;
+    };
+    return lines.map(parseLine);
+  };
+
+  const isCArmMobileHTFormat = (text: string): boolean =>
+    /^\s*TEST\s*:/im.test(text) && !/^\s*Field Name\s*,/im.test(text.split(/\r?\n/)[0] || "");
+
+  // C-Arm horizontal TEST: layout (column headers + data rows)
+  const parseHorizontalMobileHTTemplate = (rows: string[][]): any[] => {
+    const data: any[] = [];
+    let i = 0;
+    const pushRow = (field: string, value: string, rowIndex: number, testName: string) => {
+      if (String(value ?? "").trim() === "") return;
+      data.push({
+        "Field Name": field,
+        Value: String(value).trim(),
+        "Row Index": String(rowIndex),
+        "Test Name": testName,
+      });
+    };
+    const colIdx = (header: string[], ...names: string[]) => {
+      for (const name of names) {
+        const idx = header.findIndex((h) => h.toLowerCase().includes(name.toLowerCase()));
+        if (idx >= 0) return idx;
+      }
+      return -1;
+    };
+    const isMeasCol = (h: string) => /^meas\s*\d+$/i.test(String(h || "").trim());
+    const isHeaderLabelCol = (h: string) => /^header\s*\d+$/i.test(String(h || "").trim());
+    const resolveMeasValueColumns = (hdr: string[], anchorNames: string[]) => {
+      const explicit = hdr
+        .map((h, idx) => ({ h: String(h || "").trim(), idx }))
+        .filter(({ h }) => isMeasCol(h))
+        .sort((a, b) => parseInt(a.h.replace(/^meas\s*/i, ""), 10) - parseInt(b.h.replace(/^meas\s*/i, ""), 10));
+      if (explicit.length > 0) return explicit;
+      const headerCount = hdr.filter((h) => isHeaderLabelCol(h)).length;
+      if (headerCount === 0) return [];
+      let anchorIdx = -1;
+      for (const name of anchorNames) {
+        anchorIdx = colIdx(hdr, name);
+        if (anchorIdx >= 0) break;
+      }
+      if (anchorIdx < 0) return [];
+      return Array.from({ length: headerCount }, (_, n) => ({
+        h: `Meas ${n + 1}`,
+        idx: anchorIdx + 1 + n,
+      }));
+    };
+    const pushMeasFields = (
+      row: string[],
+      hdr: string[],
+      rowIndex: number,
+      testName: string,
+      fieldPrefix: string,
+      anchorNames: string[],
+    ) => {
+      resolveMeasValueColumns(hdr, anchorNames).forEach(({ h, idx: ci }, mi) => {
+        const m = h.match(/^meas\s*(\d+)$/i);
+        const measNum = m ? m[1] : String(mi + 1);
+        pushRow(`${fieldPrefix}Meas${measNum}`, row[ci] ?? "", rowIndex, testName);
+      });
+    };
+    const toNum = (v: string) => {
+      const n = parseFloat(v);
+      return isNaN(n) ? null : n;
+    };
+
+    const isTestHeader = (r: string[]) => /^TEST\s*:/i.test((r[0] || "").trim());
+    while (i < rows.length) {
+      if (!isTestHeader(rows[i] || [])) { i++; continue; }
+      const title = (rows[i]?.[0] || "").replace(/^TEST\s*:/i, "").trim().toUpperCase();
+      i++;
+      while (i < rows.length && rows[i].every((c) => !String(c || "").trim())) i++;
+      if (i >= rows.length) break;
+      let header = rows[i] || [];
+      i++;
+
+      if (title.includes("RADIATION PROTECTION SURVEY")) {
+        const settingsHeader = header;
+        const settingsRow = rows[i] || [];
+        i++;
+        if (settingsRow.some((c) => String(c || "").trim())) {
+          pushRow("SurveyDate", settingsRow[colIdx(settingsHeader, "Survey Date")] ?? "", 0, "Radiation Protection Survey");
+          pushRow("HasValidCalibration", settingsRow[colIdx(settingsHeader, "Has Valid Calibration", "Valid Calibration")] ?? "", 0, "Radiation Protection Survey");
+          pushRow("AppliedCurrent", settingsRow[colIdx(settingsHeader, "Applied Current")] ?? "", 0, "Radiation Protection Survey");
+          pushRow("AppliedVoltage", settingsRow[colIdx(settingsHeader, "Applied Voltage")] ?? "", 0, "Radiation Protection Survey");
+          pushRow("ExposureTime", settingsRow[colIdx(settingsHeader, "Exposure Time")] ?? "", 0, "Radiation Protection Survey");
+          pushRow("Workload", settingsRow[colIdx(settingsHeader, "Workload")] ?? "", 0, "Radiation Protection Survey");
+        }
+        while (i < rows.length && rows[i].every((c) => !String(c || "").trim())) i++;
+        if (i < rows.length && !isTestHeader(rows[i])) {
+          header = rows[i] || [];
+          i++;
+        }
+        let locIdx = 0;
+        while (i < rows.length && !isTestHeader(rows[i])) {
+          const r = rows[i];
+          if (r.some((c) => String(c || "").trim())) {
+            pushRow("Location_Location", r[colIdx(header, "Location", "LOCATION")] ?? "", locIdx, "Radiation Protection Survey");
+            pushRow("Location_mRPerHr", r[colIdx(header, "MAX. RADIATION", "mR/HR", "MR/HR")] ?? "", locIdx, "Radiation Protection Survey");
+            pushRow("Location_Category", r[colIdx(header, "Category", "CATEGORY")] ?? "", locIdx, "Radiation Protection Survey");
+            locIdx++;
+          }
+          i++;
+        }
+        continue;
+      }
+
+      const sectionRows: string[][] = [];
+      while (i < rows.length && !isTestHeader(rows[i])) {
+        if (rows[i].some((c) => String(c || "").trim())) sectionRows.push(rows[i]);
+        i++;
+      }
+
+      if (title.includes("CONGRUENCE OF RADIATION")) {
+        const testName = "Congruence of Radiation";
+        sectionRows.forEach((r, idx) => {
+          if (idx === 0) {
+            pushRow("TechniqueFactors_FCD", r[colIdx(header, "FCD", "FDD")] ?? "", 0, testName);
+            pushRow("TechniqueFactors_kV", r[colIdx(header, "kV")] ?? "", 0, testName);
+            pushRow("TechniqueFactors_mAs", r[colIdx(header, "mAs")] ?? "", 0, testName);
+          }
+          pushRow("CongruenceMeasurement_Dimension", r[colIdx(header, "Dimension")] ?? "", idx, testName);
+          pushRow("CongruenceMeasurement_ObservedShift", r[colIdx(header, "Observed Shift")] ?? "", idx, testName);
+          pushRow("CongruenceMeasurement_EdgeShift", r[colIdx(header, "Edge Shift")] ?? "", idx, testName);
+          pushRow("CongruenceMeasurement_PercentFED", r[colIdx(header, "Percent FED", "FED", "% FED")] ?? "", idx, testName);
+          pushRow("CongruenceMeasurement_Tolerance", r[colIdx(header, "Tolerance")] ?? "", idx, testName);
+        });
+      } else if (title.includes("CENTRAL BEAM ALIGNMENT")) {
+        const testName = "Central Beam Alignment";
+        if (sectionRows.length > 0) {
+          const r = sectionRows[0];
+          pushRow("TechniqueFactors_FCD", r[colIdx(header, "FCD", "FDD")] ?? "", 0, testName);
+          pushRow("TechniqueFactors_kV", r[colIdx(header, "kV")] ?? "", 0, testName);
+          pushRow("TechniqueFactors_mAs", r[colIdx(header, "mAs")] ?? "", 0, testName);
+          pushRow("ObservedTilt_Value", r[colIdx(header, "Observed Tilt", "Observed")] ?? "", 0, testName);
+          pushRow("ObservedTilt_Operator", r[colIdx(header, "Observed Op", "Observed Operator")] ?? "", 0, testName);
+          pushRow("Tolerance_Value", r[colIdx(header, "Tol Value", "Tolerance Value")] ?? "", 0, testName);
+          pushRow("Tolerance_Operator", r[colIdx(header, "Tol Operator", "Tolerance Operator")] ?? "", 0, testName);
+        }
+      } else if (title.includes("EFFECTIVE FOCAL SPOT")) {
+        const testName = "Effective Focal Spot";
+        sectionRows.forEach((r, idx) => {
+          if (idx === 0) pushRow("FCD", r[colIdx(header, "FCD", "FDD")] ?? "", 0, testName);
+          const focusType = r[colIdx(header, "Focus Type", "Focus")] ?? "";
+          if (focusType) pushRow("FocalSpot_FocusType", focusType, idx, testName);
+          const sW = r[colIdx(header, "Stated Width", "Stated")] ?? "";
+          const sH = r[colIdx(header, "Stated Height")] ?? "";
+          const mW = r[colIdx(header, "Measured Width", "Measured")] ?? "";
+          const mH = r[colIdx(header, "Measured Height")] ?? "";
+          if (sW) pushRow("FocalSpot_StatedWidth", sW, idx, testName);
+          if (sH) pushRow("FocalSpot_StatedHeight", sH, idx, testName);
+          const statedNom1 = toNum(sW);
+          const statedNom2 = toNum(sH);
+          const statedNominal = statedNom1 != null && statedNom2 != null ? (statedNom1 + statedNom2) / 2 : (statedNom1 ?? statedNom2);
+          if (statedNominal != null) pushRow("FocalSpot_StatedNominal", String(statedNominal), idx, testName);
+          if (mW) pushRow("FocalSpot_MeasuredWidth", mW, idx, testName);
+          if (mH) pushRow("FocalSpot_MeasuredHeight", mH, idx, testName);
+          const measuredNom1 = toNum(mW);
+          const measuredNom2 = toNum(mH);
+          const measuredNominal = measuredNom1 != null && measuredNom2 != null ? (measuredNom1 + measuredNom2) / 2 : (measuredNom1 ?? measuredNom2);
+          if (measuredNominal != null) pushRow("FocalSpot_MeasuredNominal", String(measuredNominal), idx, testName);
+        });
+      } else if (title.includes("ACCURACY OF IRRADIATION TIME")) {
+        const testName = "Accuracy of Irradiation Time";
+        sectionRows.forEach((r, idx) => {
+          if (idx === 0) {
+            pushRow("TestConditions_FCD", r[colIdx(header, "FCD", "FDD")] ?? "", 0, testName);
+            pushRow("TestConditions_kV", r[colIdx(header, "kV")] ?? "", 0, testName);
+            pushRow("TestConditions_ma", r[colIdx(header, "mA")] ?? "", 0, testName);
+            pushRow("Tolerance_Operator", r[colIdx(header, "Tol Operator", "Tolerance Operator")] ?? "", 0, testName);
+            pushRow("Tolerance_Value", r[colIdx(header, "Tol Value", "Tolerance Value")] ?? "", 0, testName);
+          }
+          pushRow("IrradiationTime_SetTime", r[colIdx(header, "Set Time")] ?? "", idx, testName);
+          pushRow("IrradiationTime_MeasuredTime", r[colIdx(header, "Measured Time")] ?? "", idx, testName);
+        });
+      } else if (title.includes("ACCURACY OF OPERATING POTENTIAL") || title.includes("TOTAL FILTRATION")) {
+        const testName = "Total Filtration";
+        const hCols = header.filter((h) => isHeaderLabelCol(h));
+        sectionRows.forEach((r, idx) => {
+          if (idx === 0) {
+            pushRow("Tolerance_Sign", r[colIdx(header, "Tolerance Sign")] ?? "", 0, testName);
+            pushRow("Tolerance_Value", r[colIdx(header, "Tolerance Value")] ?? "", 0, testName);
+            pushRow("TotalFiltration_Measured", r[colIdx(header, "Total Filtration Measured", "Measured")] ?? "", 0, testName);
+            pushRow("TotalFiltration_Required", r[colIdx(header, "Total Filtration Required", "Required")] ?? "", 0, testName);
+            hCols.forEach((_, hi) => {
+              const label = r[colIdx(header, `Header ${hi + 1}`)] ?? "";
+              if (label) pushRow("MeasHeader", label, 0, testName);
+            });
+          }
+          pushRow("Measurement_AppliedKvp", r[colIdx(header, "Applied kVp", "Applied kV")] ?? "", idx, testName);
+          pushMeasFields(r, header, idx, testName, "Measurement_", ["Applied kVp", "Applied kV"]);
+        });
+      } else if (title.includes("LINEARITY OF MA LOADING")) {
+        const testName = "Linearity of mA Loading";
+        const hCols = header.filter((h) => isHeaderLabelCol(h));
+        sectionRows.forEach((r, idx) => {
+          if (idx === 0) {
+            pushRow("Table1_FCD", r[colIdx(header, "FCD", "FDD")] ?? "", 0, testName);
+            pushRow("Table1_kV", r[colIdx(header, "kV")] ?? "", 0, testName);
+            pushRow("Table1_Time", r[colIdx(header, "Time")] ?? "", 0, testName);
+            pushRow("ToleranceOperator", r[colIdx(header, "Tol Operator", "Tolerance Operator")] ?? "", 0, testName);
+            pushRow("Tolerance", r[colIdx(header, "Tol Value", "Tolerance")] ?? "", 0, testName);
+            hCols.forEach((_, hi) => {
+              const label = r[colIdx(header, `Header ${hi + 1}`)] ?? "";
+              if (label) pushRow("MeasHeader", label, 0, testName);
+            });
+          }
+          pushRow("Table2_mAsApplied", r[colIdx(header, "mA Applied", "mA")] ?? "", idx, testName);
+          pushMeasFields(r, header, idx, testName, "Table2_", ["mA Applied", "mA"]);
+        });
+      } else if (title.includes("LINEARITY OF MAS LOADING")) {
+        const testName = "Linearity of mAs Loading";
+        const hCols = header.filter((h) => isHeaderLabelCol(h));
+        sectionRows.forEach((r, idx) => {
+          if (idx === 0) {
+            pushRow("Table1_FCD", r[colIdx(header, "FCD", "FDD")] ?? "", 0, testName);
+            pushRow("Table1_kV", r[colIdx(header, "kV")] ?? "", 0, testName);
+            pushRow("ToleranceOperator", r[colIdx(header, "Tol Operator", "Tolerance Operator")] ?? "", 0, testName);
+            pushRow("Tolerance", r[colIdx(header, "Tol Value", "Tolerance")] ?? "", 0, testName);
+            hCols.forEach((_, hi) => {
+              const label = r[colIdx(header, `Header ${hi + 1}`)] ?? "";
+              if (label) pushRow("MeasHeader", label, 0, testName);
+            });
+          }
+          pushRow("Table2_mAsApplied", r[colIdx(header, "mAs", "mAs Range", "mAs Applied")] ?? "", idx, testName);
+          pushMeasFields(r, header, idx, testName, "Table2_", ["mAs", "mAs Range", "mAs Applied"]);
+        });
+      } else if (title.includes("OUTPUT CONSISTENCY")) {
+        const testName = "Output Consistency";
+        const hCols = header.filter((h) => isHeaderLabelCol(h));
+        sectionRows.forEach((r, idx) => {
+          if (idx === 0) {
+            pushRow("FFD", r[colIdx(header, "FFD", "FDD", "FCD")] ?? "", 0, testName);
+            pushRow("Tolerance_Operator", r[colIdx(header, "Tol Operator", "Tolerance Operator")] ?? "", 0, testName);
+            pushRow("Tolerance_Value", r[colIdx(header, "Tol Value", "Tolerance")] ?? "", 0, testName);
+            hCols.forEach((_, hi) => {
+              const label = r[colIdx(header, `Header ${hi + 1}`)] ?? "";
+              if (label) pushRow("MeasHeader", label, 0, testName);
+            });
+          }
+          pushRow("OutputRow_kV", r[colIdx(header, "kV", "kVp")] ?? "", idx, testName);
+          pushRow("OutputRow_mAs", r[colIdx(header, "mAs")] ?? "", idx, testName);
+          pushMeasFields(r, header, idx, testName, "OutputRow_", ["mAs"]);
+        });
+      } else if (title.includes("RADIATION LEAKAGE")) {
+        const testName = "Radiation Leakage Level";
+        sectionRows.forEach((r, idx) => {
+          if (idx === 0) {
+            pushRow("Settings_FCD", r[colIdx(header, "FCD", "FDD")] ?? "", 0, testName);
+            pushRow("Settings_kV", r[colIdx(header, "kV")] ?? "", 0, testName);
+            pushRow("Settings_ma", r[colIdx(header, "mA")] ?? "", 0, testName);
+            pushRow("Settings_Time", r[colIdx(header, "Time")] ?? "", 0, testName);
+            pushRow("Workload", r[colIdx(header, "Workload")] ?? "", 0, testName);
+            pushRow("ToleranceValue", r[colIdx(header, "Tol Value", "Tolerance Value")] ?? "", 0, testName);
+            pushRow("ToleranceOperator", r[colIdx(header, "Tol Operator", "Tolerance Operator")] ?? "", 0, testName);
+          }
+          const loc = r[colIdx(header, "Location")] ?? "";
+          if (loc) {
+            pushRow("LeakageMeasurement_Location", loc, idx, testName);
+            pushRow("LeakageMeasurement_Left", r[colIdx(header, "Left")] ?? "", idx, testName);
+            pushRow("LeakageMeasurement_Right", r[colIdx(header, "Right")] ?? "", idx, testName);
+            pushRow("LeakageMeasurement_Front", r[colIdx(header, "Front")] ?? "", idx, testName);
+            pushRow("LeakageMeasurement_Back", r[colIdx(header, "Back")] ?? "", idx, testName);
+            pushRow("LeakageMeasurement_Top", r[colIdx(header, "Top")] ?? "", idx, testName);
+          }
+        });
+      }
+    }
+    return data;
+  };
+
   // Parse Dental-style table CSV (RadiographyMobileHT_Test_Data_Template_WithTimer.csv)
   // into the same internal "Field Name"/"Value"/"Row Index"/"Test Name" rows used by processCSVData.
   const parseTableCSVToRows = (text: string): any[] => {
@@ -815,6 +1104,20 @@ const RadiographyMobileHT: React.FC<{ serviceId: string; qaTestDate?: string | n
     return data;
   };
 
+  const parseWorkbookToRows = (workbook: XLSX.WorkBook): any[] => {
+    const sheetName = workbook.SheetNames[0];
+    const sheet = workbook.Sheets[sheetName];
+    const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" }) as any[][];
+    if (jsonData.length === 0) return [];
+    const firstCell = String(jsonData[0]?.[0] ?? "").trim();
+    if (/^TEST\s*:/i.test(firstCell)) {
+      return parseHorizontalMobileHTTemplate(
+        jsonData.map((row) => (row ?? []).map((cell) => String(cell ?? ""))),
+      );
+    }
+    return parseExcelToCSVFormat(workbook);
+  };
+
   // When applyConfigFromExcel is true (file from ServiceDetails2 redirect), infer hasTimer from Excel and skip timer modal.
   const processCSVData = async (csvData: any[], applyConfigFromExcel?: boolean) => {
     try {
@@ -954,6 +1257,16 @@ const RadiographyMobileHT: React.FC<{ serviceId: string; qaTestDate?: string | n
             }
           } else if (f === "Measurement_AverageKvp" && measurements[ri]) measurements[ri].averageKvp = v;
         });
+        measurements.forEach((m) => {
+          if (!String(m.averageKvp || "").trim()) {
+            const nums = (m.measuredValues || [])
+              .filter((v: string) => String(v || "").trim() !== "" && !isNaN(Number(v)))
+              .map(Number);
+            if (nums.length > 0) {
+              m.averageKvp = (nums.reduce((sum, n) => sum + n, 0) / nums.length).toFixed(2);
+            }
+          }
+        });
         setCsvDataForComponents((prev) => ({ ...prev, totalFilteration: { mAStations: mAStations.length ? mAStations : ["50 mA", "100 mA"], measurements, tolerance: { sign: toleranceSign, value: toleranceValue }, totalFiltration: { measured: totalFiltrationMeasured, required: totalFiltrationRequired, atKvp: "" } } }));
       }
 
@@ -991,6 +1304,8 @@ const RadiographyMobileHT: React.FC<{ serviceId: string; qaTestDate?: string | n
         const data = grouped["Output Consistency"];
         let ffd = "100", tolOp = "<=", tolVal = "0.05";
         const outputRows: any[] = [];
+        const importHeaders: string[] = [];
+        let maxCols = 0;
         data.forEach((r) => {
           const f = (r["Field Name"] ?? "").trim();
           const v = (r["Value"] ?? "").trim();
@@ -998,6 +1313,12 @@ const RadiographyMobileHT: React.FC<{ serviceId: string; qaTestDate?: string | n
           if (f === "FFD") ffd = v;
           if (f === "Tolerance_Operator") tolOp = v;
           if (f === "Tolerance_Value") tolVal = v;
+          if (f === "MeasHeader" && v && !importHeaders.includes(v)) importHeaders.push(v);
+          if (f === "MeasColumnLabels") {
+            v.split(",").map((s: string) => s.trim()).filter(Boolean).forEach((label) => {
+              if (!importHeaders.includes(label)) importHeaders.push(label);
+            });
+          }
           if (f === "OutputRow_kV") {
             while (outputRows.length <= ri) outputRows.push({ kv: "", mAs: "", meas: [], avg: "", cv: "" });
             outputRows[ri].kv = v;
@@ -1007,11 +1328,23 @@ const RadiographyMobileHT: React.FC<{ serviceId: string; qaTestDate?: string | n
             if (!isNaN(idx)) {
               while (outputRows[ri].meas.length <= idx) outputRows[ri].meas.push("");
               outputRows[ri].meas[idx] = v;
+              maxCols = Math.max(maxCols, idx + 1);
             }
           } else if (f === "OutputRow_Avg" && outputRows[ri]) outputRows[ri].avg = v;
           else if (f === "OutputRow_CV" && outputRows[ri]) outputRows[ri].cv = v;
         });
-        setCsvDataForComponents((prev) => ({ ...prev, consistencyOfRadiationOutput: { ffd, tolerance: { operator: tolOp, value: tolVal }, outputRows: outputRows.filter((row) => row.kv || row.mAs) } }));
+        const resolvedHeaders = importHeaders.length > 0
+          ? importHeaders
+          : Array.from({ length: maxCols || 5 }, (_, i) => `Meas ${i + 1}`);
+        setCsvDataForComponents((prev) => ({
+          ...prev,
+          consistencyOfRadiationOutput: {
+            ffd,
+            tolerance: { operator: tolOp, value: tolVal },
+            headers: resolvedHeaders,
+            outputRows: outputRows.filter((row) => row.kv || row.mAs || row.meas.some((m: string) => m)),
+          },
+        }));
       }
 
       if (grouped["Radiation Leakage Level"]?.length) {
@@ -1099,7 +1432,7 @@ const RadiographyMobileHT: React.FC<{ serviceId: string; qaTestDate?: string | n
         try {
           const ab = ev.target?.result as ArrayBuffer;
           const wb = XLSX.read(ab, { type: "array" });
-          const csvData = parseExcelToCSVFormat(wb);
+          const csvData = parseWorkbookToRows(wb);
           await processCSVData(csvData);
         } catch (err: any) {
           toast.error(err?.message ?? "Failed to read Excel file");
@@ -1111,9 +1444,14 @@ const RadiographyMobileHT: React.FC<{ serviceId: string; qaTestDate?: string | n
       reader.onload = async (ev) => {
         try {
           const text = ev.target?.result as string;
-          const tableRows = parseTableCSVToRows(text);
-          const horizontalRows = text.includes("Field Name") ? parseCSV(text) : [];
-          const rows = tableRows.length > 0 ? (horizontalRows.length > 0 ? [...tableRows, ...horizontalRows] : tableRows) : horizontalRows;
+          let rows: any[];
+          if (isCArmMobileHTFormat(text)) {
+            rows = parseHorizontalMobileHTTemplate(parseTextToRows(text));
+          } else {
+            const tableRows = parseTableCSVToRows(text);
+            const horizontalRows = text.includes("Field Name") ? parseCSV(text) : [];
+            rows = tableRows.length > 0 ? (horizontalRows.length > 0 ? [...tableRows, ...horizontalRows] : tableRows) : horizontalRows;
+          }
           await processCSVData(rows);
         } catch (err: any) {
           toast.error(err?.message ?? "Failed to read CSV file");
@@ -1136,13 +1474,17 @@ const RadiographyMobileHT: React.FC<{ serviceId: string; qaTestDate?: string | n
           const res = await proxyFile(csvFileUrl);
           const ab = await (res.data as Blob).arrayBuffer();
           const wb = XLSX.read(ab, { type: "array" });
-          csvData = parseExcelToCSVFormat(wb);
+          csvData = parseWorkbookToRows(wb);
         } else {
           const res = await proxyFile(csvFileUrl);
           const text = await (res.data as Blob).text();
-          const tableRows = parseTableCSVToRows(text);
-          const horizontalRows = parseCSV(text);
-          csvData = tableRows.length > 0 ? (horizontalRows.length > 0 ? [...tableRows, ...horizontalRows] : tableRows) : horizontalRows;
+          if (isCArmMobileHTFormat(text)) {
+            csvData = parseHorizontalMobileHTTemplate(parseTextToRows(text));
+          } else {
+            const tableRows = parseTableCSVToRows(text);
+            const horizontalRows = parseCSV(text);
+            csvData = tableRows.length > 0 ? (horizontalRows.length > 0 ? [...tableRows, ...horizontalRows] : tableRows) : horizontalRows;
+          }
         }
         if (csvData.length > 0) {
         await processCSVData(csvData, true);

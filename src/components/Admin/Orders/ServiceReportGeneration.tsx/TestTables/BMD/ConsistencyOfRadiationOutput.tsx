@@ -56,6 +56,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
   const previousInitialDataRef = useRef<string>('');
   const [fcd, setFcd] = useState<FCDData>({ value: '' });
   const [measurementCount, setMeasurementCount] = useState<number>(5);
+  const [measurementHeaders, setMeasurementHeaders] = useState<string[]>(['Meas 1', 'Meas 2', 'Meas 3', 'Meas 4', 'Meas 5']);
 
   const [tolerance, setTolerance] = useState<Tolerance>({
     operator: '<=',
@@ -146,6 +147,12 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
     }
     const newCount = measurementCount + 1;
     setMeasurementCount(newCount);
+    setMeasurementHeaders(prev => {
+      const next = [...prev];
+      next.splice(afterIndex + 1, 0, `Meas ${afterIndex + 2}`);
+      while (next.length < newCount) next.push(`Meas ${next.length + 1}`);
+      return next.slice(0, newCount);
+    });
     setOutputRows(prev =>
       prev.map(row => {
         const newOutputs = [...row.outputs];
@@ -166,6 +173,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
     }
     const newCount = measurementCount - 1;
     setMeasurementCount(newCount);
+    setMeasurementHeaders(prev => prev.filter((_, i) => i !== index));
     setOutputRows(prev =>
       prev.map(row => ({
         ...row,
@@ -213,6 +221,15 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
         return { ...row, outputs };
       })
     );
+    setIsSaved(false);
+  };
+
+  const updateMeasurementHeader = (index: number, value: string) => {
+    setMeasurementHeaders(prev => {
+      const next = [...prev];
+      next[index] = value || `Meas ${index + 1}`;
+      return next;
+    });
     setIsSaved(false);
   };
 
@@ -277,6 +294,14 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
           const numMeas = firstRow.outputs?.length || 5;
           console.log('Setting measurement count to:', numMeas);
           setMeasurementCount(numMeas);
+          const importedHeaders = Array.isArray(initialData.measurementHeaders) ? initialData.measurementHeaders : [];
+          if (importedHeaders.length > 0) {
+            const next = [...importedHeaders];
+            while (next.length < numMeas) next.push(`Meas ${next.length + 1}`);
+            setMeasurementHeaders(next.slice(0, numMeas));
+          } else {
+            setMeasurementHeaders(Array.from({ length: numMeas }, (_, i) => `Meas ${i + 1}`));
+          }
 
           const mappedRows = initialData.outputRows.map((r: any, index: number) => {
             const outputs = r.outputs && Array.isArray(r.outputs) && r.outputs.length > 0
@@ -352,6 +377,14 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
             const firstRow = testData.outputRows[0];
             const numMeas = firstRow.outputs?.length || 5;
             setMeasurementCount(numMeas);
+            const savedHeaders = Array.isArray(testData.measurementHeaders) ? testData.measurementHeaders : [];
+            if (savedHeaders.length > 0) {
+              const next = [...savedHeaders];
+              while (next.length < numMeas) next.push(`Meas ${next.length + 1}`);
+              setMeasurementHeaders(next.slice(0, numMeas));
+            } else {
+              setMeasurementHeaders(Array.from({ length: numMeas }, (_, i) => `Meas ${i + 1}`));
+            }
             setOutputRows(testData.outputRows.map((r: any) => ({
               id: Date.now().toString() + Math.random(),
               kv: r.kv || '',
@@ -401,6 +434,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
           remark: r.remark,
         })),
         tolerance,
+        measurementHeaders,
       };
 
       let result;
@@ -516,7 +550,13 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
                   >
                     <div className="flex flex-col items-center gap-1">
                       <div className="flex items-center gap-1">
-                        <span>Meas {i + 1}</span>
+                        <input
+                          type="text"
+                          value={measurementHeaders[i] || `Meas ${i + 1}`}
+                          onChange={e => updateMeasurementHeader(i, e.target.value)}
+                          disabled={isViewMode}
+                          className={`w-24 px-1 py-0.5 text-xs border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+                        />
                         {!isViewMode && measurementCount < 10 && (
                           <button
                             onClick={() => addMeasurementColumn(i)}

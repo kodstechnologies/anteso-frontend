@@ -489,13 +489,22 @@ const OArm: React.FC<OArmProps> = ({ serviceId, csvFileUrl }) => {
 
     const headerMap: { [test: string]: { [header: string]: string } } = {
       'Total Filtration': {
+        'Tolerance Sign': 'Tolerance_Sign',
+        'Tolerance Value': 'Tolerance_Value',
+        'Total Filtration At kVp': 'TotalFiltration_AtKvp',
+        'Total Filtration (mm Al)': 'TotalFiltration_Required',
         'Applied KVp': 'Table2_AppliedKvp',
+        'Applied kVp': 'Table2_AppliedKvp',
+        'Applied kV': 'Table2_AppliedKvp',
+        'Applied KV': 'Table2_AppliedKvp',
         'Meas 1': 'Table2_Meas_0', 'Meas 2': 'Table2_Meas_1', 'Meas 3': 'Table2_Meas_2',
         'Meas 4': 'Table2_Meas_3', 'Meas 5': 'Table2_Meas_4',
       },
       'Output Consistency': {
-        'FFD': 'Param_FFD', 'Time': 'Param_Time',
-        'kVp': 'Row_kvp', 'mA': 'Row_ma',
+        'FFD': 'Param_FFD', 'FDD (cm)': 'Param_FFD', 'FDD': 'Param_FFD',
+        'Time': 'Param_Time', 'Time (s)': 'Param_Time',
+        'kVp': 'Row_kvp', 'kV': 'Row_kvp',
+        'mA': 'Row_ma',
         'Meas 1': 'Row_Output_0', 'Meas 2': 'Row_Output_1', 'Meas 3': 'Row_Output_2',
         'Meas 4': 'Row_Output_3', 'Meas 5': 'Row_Output_4',
       },
@@ -510,31 +519,83 @@ const OArm: React.FC<OArmProps> = ({ serviceId, csvFileUrl }) => {
         'Exposure': 'Row_Exposure', 'Mode': 'Row_Mode',
       },
       'Tube Housing Leakage': {
-        'FCD': 'Settings_FCD', 'kV': 'Settings_KV', 'mA': 'Settings_MA', 'Time': 'Settings_Time',
+        'FCD': 'Settings_FCD', 'FDD (cm)': 'Settings_FCD', 'FDD': 'Settings_FCD',
+        'kV': 'Settings_KV', 'mA': 'Settings_MA',
+        'Time': 'Settings_Time', 'Time (sec)': 'Settings_Time',
         'Workload': 'Workload',
         'Location': 'Leakage_Location', 'Left': 'Leakage_Left', 'Right': 'Leakage_Right',
         'Front': 'Leakage_Front', 'Back': 'Leakage_Back', 'Top': 'Leakage_Top',
       },
       'Linearity of mA Loading': {
-        'FCD': 'Exposure_FCD', 'kV': 'Exposure_KV', 'Time': 'Exposure_Time',
+        'FCD': 'Exposure_FCD', 'FDD (cm)': 'Exposure_FCD', 'FDD': 'Exposure_FCD',
+        'kV': 'Exposure_KV',
+        'Time': 'Exposure_Time', 'Time (sec)': 'Exposure_Time',
         'mA': 'Row_mAsRange',
         'Meas 1': 'Row_Meas_0', 'Meas 2': 'Row_Meas_1', 'Meas 3': 'Row_Meas_2',
         'Meas 4': 'Row_Meas_3', 'Meas 5': 'Row_Meas_4',
       },
       'Linearity of mAs Loading': {
-        'FCD': 'Exposure_FCD', 'kV': 'Exposure_KV',
+        'FCD': 'Exposure_FCD', 'FDD (cm)': 'Exposure_FCD', 'FDD': 'Exposure_FCD',
+        'kV': 'Exposure_KV',
         'mAs Range': 'Row_mAsRange',
         'Meas 1': 'Row_Meas_0', 'Meas 2': 'Row_Meas_1', 'Meas 3': 'Row_Meas_2',
         'Meas 4': 'Row_Meas_3', 'Meas 5': 'Row_Meas_4',
       },
       'Accuracy of Irradiation Time': {
-        'FCD': 'Table1_fcd', 'kV': 'Table1_kv', 'mA': 'Table1_ma',
+        'FCD': 'Table1_fcd', 'FDD (cm)': 'Table1_fcd', 'FDD': 'Table1_fcd',
+        'kV': 'Table1_kv', 'mA': 'Table1_ma',
         'Set Time (ms)': 'Table2_setTime', 'Measured Time (ms)': 'Table2_measuredTime',
+        'Set Time (sec)': 'Table2_setTime', 'Measured Time (sec)': 'Table2_measuredTime',
         'Tolerance': 'Tolerance_Value', 'Tolerance Operator': 'Tolerance_Operator',
       },
     };
 
     const sectionRowCounter: { [key: string]: number } = {};
+    const appliedKvpHeaders = new Set(['Applied kVp', 'Applied KVp', 'Applied kV', 'Applied KV']);
+
+    const fixedHeadersByTest: Record<string, Set<string>> = {
+      'Total Filtration': new Set([
+        ...appliedKvpHeaders,
+        'Tolerance Sign',
+        'Tolerance Value',
+        'Total Filtration At kVp',
+        'Total Filtration (mm Al)',
+      ]),
+      'Output Consistency': new Set(['FFD', 'FDD (cm)', 'FDD', 'Time', 'Time (s)', 'kVp', 'kV', 'mA']),
+      'Linearity of mAs Loading': new Set(['FCD', 'FDD (cm)', 'FDD', 'kV', 'mAs Range']),
+      'Linearity of mA Loading': new Set(['FCD', 'FDD (cm)', 'FDD', 'kV', 'Time', 'Time (sec)', 'mA']),
+    };
+
+    const measFieldPrefixByTest: Record<string, string> = {
+      'Total Filtration': 'Table2_Meas_',
+      'Output Consistency': 'Row_Output_',
+      'Linearity of mAs Loading': 'Row_Meas_',
+      'Linearity of mA Loading': 'Row_Meas_',
+    };
+
+    const isDynamicMeasColumn = (testName: string, header: string, map: Record<string, string>) => {
+      const trimmed = header.trim();
+      if (!trimmed || trimmed.match(/^Header\s*\d+$/i)) return false;
+      if (!measFieldPrefixByTest[testName]) return false;
+      if (map[trimmed]) return false;
+      const fixed = fixedHeadersByTest[testName];
+      return !fixed?.has(trimmed);
+    };
+
+    const emitDynamicHeaderLabels = (testName: string, headerRow: string[], map: Record<string, string>) => {
+      let measIdx = 0;
+      headerRow.forEach((h) => {
+        const trimmed = (h || '').trim();
+        if (!isDynamicMeasColumn(testName, trimmed, map)) return;
+        measIdx += 1;
+        data.push({
+          'Field Name': `Header_${measIdx}`,
+          'Value': trimmed,
+          'Row Index': 0,
+          'Test Name': currentTestName,
+        });
+      });
+    };
 
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i].map(c => String(c || '').trim());
@@ -554,6 +615,10 @@ const OArm: React.FC<OArmProps> = ({ serviceId, csvFileUrl }) => {
 
       if (isReadingTest && headers.length === 0 && row.some(c => c)) {
         headers = row;
+        const map = headerMap[currentTestNameBase] || {};
+        if (measFieldPrefixByTest[currentTestNameBase]) {
+          emitDynamicHeaderLabels(currentTestNameBase, headers, map);
+        }
         continue;
       }
 
@@ -565,10 +630,34 @@ const OArm: React.FC<OArmProps> = ({ serviceId, csvFileUrl }) => {
       if (isReadingTest && currentTestName && currentTestNameBase && headers.length > 0) {
         sectionRowCounter[currentTestName] = (sectionRowCounter[currentTestName] || 0) + 1;
         const rowIdx = sectionRowCounter[currentTestName];
-        row.forEach((value, cellIdx) => {
-          const header = headers[cellIdx];
-          const internalField = (headerMap[currentTestNameBase] || {})[header];
-          if (internalField && value) {
+        const map = headerMap[currentTestNameBase] || {};
+        let dynamicMeasIdx = 0;
+
+        headers.forEach((h, cellIdx) => {
+          const header = (h || '').trim();
+          const value = row[cellIdx];
+          if (!header) return;
+
+          if (isDynamicMeasColumn(currentTestNameBase, header, map)) {
+            if (value) {
+              const prefix = measFieldPrefixByTest[currentTestNameBase] || 'Table2_Meas_';
+              data.push({
+                'Field Name': `${prefix}${dynamicMeasIdx}`,
+                'Value': value,
+                'Row Index': rowIdx,
+                'Test Name': currentTestName,
+              });
+            }
+            dynamicMeasIdx += 1;
+            return;
+          }
+
+          if (!value) return;
+          const headerMatch = header.match(/^Header\s*(\d+)$/i);
+          const internalField = headerMatch
+            ? `Header_${headerMatch[1]}`
+            : map[header];
+          if (internalField) {
             data.push({
               'Field Name': internalField,
               'Value': value,
@@ -984,12 +1073,12 @@ const OArm: React.FC<OArmProps> = ({ serviceId, csvFileUrl }) => {
 
         {[
           ...(hasTimer ? [{ title: "Accuracy of Irradiation Time", component: <AccuracyOfIrradiationTimeOArm serviceId={serviceId} csvData={csvDataForComponents['Accuracy of Irradiation Time']} /> }] : []),
-          { title: "Total Filteration", component: <TotalFilteration serviceId={serviceId} csvData={csvDataForComponents['Total Filtration']} /> },
-          { title: "Consistency Of Radiation Output", component: <OutputConsisitency serviceId={serviceId} csvData={csvDataForComponents['Output Consistency']} /> },
-          { title: "High Contrast Resolution", component: <HighContrastResolution serviceId={serviceId} csvData={csvDataForComponents['High Contrast Resolution']} /> },
-          { title: "Low Contrast Resolution", component: <LowContrastResolution serviceId={serviceId} csvData={csvDataForComponents['Low Contrast Resolution']} /> },
-          { title: "Exposure Rate At Table Top", component: <ExposureRateAtTableTop serviceId={serviceId} csvData={csvDataForComponents['Exposure Rate At Table Top']} /> },
-          { title: "Tube Housing Leakage", component: <TubeHousingLeakage serviceId={serviceId} csvData={csvDataForComponents['Tube Housing Leakage']} /> },
+          { title: "Total Filteration", component: <TotalFilteration key={`total-filtration-${refreshKey}`} serviceId={serviceId} csvData={csvDataForComponents['Total Filtration']} /> },
+          { title: "Consistency Of Radiation Output", component: <OutputConsisitency key={`output-consistency-${refreshKey}`} serviceId={serviceId} csvData={csvDataForComponents['Output Consistency']} /> },
+          { title: "High Contrast Resolution", component: <HighContrastResolution key={`high-contrast-${refreshKey}`} serviceId={serviceId} csvData={csvDataForComponents['High Contrast Resolution']} /> },
+          { title: "Low Contrast Resolution", component: <LowContrastResolution key={`low-contrast-${refreshKey}`} serviceId={serviceId} csvData={csvDataForComponents['Low Contrast Resolution']} /> },
+          { title: "Exposure Rate At Table Top", component: <ExposureRateAtTableTop key={`exposure-rate-${refreshKey}`} serviceId={serviceId} csvData={csvDataForComponents['Exposure Rate At Table Top']} /> },
+          { title: "Tube Housing Leakage", component: <TubeHousingLeakage key={`tube-leakage-${refreshKey}`} serviceId={serviceId} csvData={csvDataForComponents['Tube Housing Leakage']} /> },
 
           ...(hasTimer === true
             ? [{

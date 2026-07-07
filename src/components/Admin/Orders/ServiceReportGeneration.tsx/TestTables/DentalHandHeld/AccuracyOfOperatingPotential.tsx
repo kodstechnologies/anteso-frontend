@@ -215,6 +215,13 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
     // CSV Data Injection — apply after load finishes so server data does not overwrite import
     useEffect(() => {
         if (isLoading || !csvData || csvData.length === 0) return;
+        const csvMeasLabels = csvData.find(r => r['Field Name'] === 'MeasColumnLabels')?.['Value'];
+        if (csvMeasLabels) {
+            const labels = String(csvMeasLabels).split(',').map((h: string) => h.trim()).filter(Boolean);
+            if (labels.length > 0) {
+                setMAStations(labels);
+            }
+        }
 
         const tfRowIdx = csvData.find(r => r['Field Name'] === 'Measured' || r['Field Name'] === 'atKvp')?.['Row Index'];
         if (tfRowIdx !== undefined) {
@@ -263,15 +270,21 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
             setRows(newRows);
 
             const maxMeas = Math.max(...newRows.map(r => r.measuredValues.length));
-            if (maxMeas > mAStations.length) {
-                const newCols = Array.from({ length: maxMeas - mAStations.length }, (_, i) => `mA Station ${mAStations.length + i + 1}`);
-                setMAStations(prev => [...prev, ...newCols]);
-            }
+            setMAStations(prev => {
+                const targetCount = Math.max(maxMeas, 2);
+                const base = (csvMeasLabels
+                    ? String(csvMeasLabels).split(',').map((h: string) => h.trim()).filter(Boolean)
+                    : prev).slice(0, targetCount);
+                while (base.length < targetCount) {
+                    base.push(`mA Station ${base.length + 1}`);
+                }
+                return base;
+            });
         }
 
         setIsSaved(false);
         setIsEditing(true);
-    }, [csvData, isLoading, recalcRow, mAStations.length]);
+    }, [csvData, isLoading, recalcRow]);
 
     // Save function
     const saveTest = async () => {
