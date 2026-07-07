@@ -294,7 +294,8 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
     if (initialData && refreshKey !== undefined) {
       console.log('RadiationLeakageLevel: Loading CSV data', initialData);
       if (initialData.settings) {
-        if (initialData.settings.distance) setSettings(prev => ({ ...prev, distance: String(initialData.settings.distance) }));
+        const dist = initialData.settings.fcd ?? initialData.settings.distance ?? initialData.settings.fdd;
+        if (dist) setSettings(prev => ({ ...prev, fcd: String(dist) }));
         if (initialData.settings.kv) setSettings(prev => ({ ...prev, kv: String(initialData.settings.kv) }));
         if (initialData.settings.ma) setSettings(prev => ({ ...prev, ma: String(initialData.settings.ma) }));
         if (initialData.settings.time) setSettings(prev => ({ ...prev, time: String(initialData.settings.time) }));

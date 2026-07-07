@@ -21,6 +21,12 @@ import {
   getRadiationLeakageLevelByServiceIdForRadiographyPortable,
 } from "../../../../../../api";
 import { createRadiographyPortableUploadableExcel, RadiographyPortableExportData } from "./exportRadiographyPortableToExcel";
+import {
+  isPortableTableFormat,
+  matrixToLines,
+  parsePortableTableCSV,
+  parsePortableTableMatrix,
+} from "./parsePortableTableFormat";
 
 import Standards from "../../Standards";
 import Notes from "../../Notes";
@@ -507,14 +513,34 @@ const RadiographyPortable: React.FC<{ serviceId: string; qaTestDate?: string | n
   };
 
   const parseCSV = (text: string): any[] => {
-    const lines = text.split('\n').map(line => line.split(',').map(c => c.trim()));
+    const lines = text.split(/\r?\n/).map((line) => line.split(",").map((c) => c.trim()));
+    if (isPortableTableFormat(lines)) {
+      return parsePortableTableCSV(text);
+    }
     return parseHorizontalData(lines);
   };
 
-  const parseExcelToCSVFormat = (workbook: XLSX.WorkBook): any[] => {
-    const firstSheetName = workbook.SheetNames[0];
-    const worksheet = workbook.Sheets[firstSheetName];
-    const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' }) as any[][];
+  const pickExcelSheetName = (workbook: XLSX.WorkBook, preferTimer: boolean | null): string => {
+    const names = workbook.SheetNames;
+    if (preferTimer === true) {
+      return names.find((n) => /with\s*timer/i.test(n)) || names[0];
+    }
+    if (preferTimer === false) {
+      return names.find((n) => /without\s*timer/i.test(n)) || names[names.length - 1] || names[0];
+    }
+    return names[0];
+  };
+
+  const parseExcelToCSVFormat = (workbook: XLSX.WorkBook, preferTimer: boolean | null = hasTimer): any[] => {
+    const sheetName = pickExcelSheetName(workbook, preferTimer);
+    const worksheet = workbook.Sheets[sheetName];
+    const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" }) as any[][];
+
+    if (isPortableTableFormat(jsonData)) {
+      return parsePortableTableMatrix(jsonData);
+    }
+
+    // Legacy horizontal format
     // Inject "Shift in Edges (cm)" column into Congruence section if missing (so 9th column is parsed)
     const edgeShiftHeader = 'Shift in Edges (cm)';
     for (let i = 0; i < jsonData.length; i++) {
@@ -554,53 +580,115 @@ const RadiographyPortable: React.FC<{ serviceId: string; qaTestDate?: string | n
 
       console.log('Radiography Portable CSV Data grouped:', groupedData);
 
-      if (applyConfigFromExcel && Object.keys(groupedData).length > 0) {
+      if (csvData.length === 0) {
+        toast.error("No test data found in the uploaded file. Please use the Radiography Portable template.");
+        return;
+      }
+
+      if (Object.keys(groupedData).length > 0) {
         const hasTimerSection = !!(groupedData['Accuracy of Irradiation Time']?.length);
-        setHasTimer(hasTimerSection);
-        setShowTimerModal(false);
-        if (serviceId) {
-          localStorage.setItem(`radiography-portable-timer-${serviceId}`, String(hasTimerSection));
+        const hasMaLinear = !!(groupedData['Linearity Of mA Loading']?.length);
+        const hasMasLinear = !!(groupedData['Linearity Of mAs Loading']?.length);
+        if (hasTimerSection || hasMaLinear || hasMasLinear) {
+          const timerChoice = hasTimerSection || hasMaLinear;
+          setHasTimer(timerChoice);
+          setShowTimerModal(false);
+          if (serviceId) {
+            localStorage.setItem(`radiography-portable-timer-${serviceId}`, String(timerChoice));
+          }
         }
       }
 
-      // Build totalFiltration for TotalFilteration component (same as Radiography Fixed)
-      const aop = groupedData['Accuracy of Operating Potential'];
+      // Build totalFiltration for TotalFilteration component
+      const aop = groupedData["Accuracy of Operating Potential"];
       if (aop && Array.isArray(aop) && aop.length > 0) {
         const byRow: Record<number, { appliedKvp?: string; measuredValues?: string[] }> = {};
-        let toleranceValue = '2.0';
+        const measHeaders: string[] = [];
+        let toleranceSign = "±";
+        let toleranceValue = "2.0";
+        const totalFiltration: any = { measured: "", required: "", atKvp: "" };
+
         aop.forEach((r: any) => {
-          const idx = r['Row Index'] ?? 0;
-          if (!byRow[idx]) byRow[idx] = {};
-          const field = r['Field Name'];
-          const val = String(r['Value'] ?? '').trim();
-          if (field === 'Table2_setKV') byRow[idx].appliedKvp = val;
-          if (field === 'Table2_ma10') {
-            if (!byRow[idx].measuredValues) byRow[idx].measuredValues = [];
+          const idx = Number(r["Row Index"] ?? 0);
+          if (!byRow[idx]) byRow[idx] = { measuredValues: [] };
+          const field = r["Field Name"];
+          const val = String(r["Value"] ?? "").trim();
+          if (field === "MeasHeader" && val && !measHeaders.includes(val)) measHeaders.push(val);
+          if (field === "Table2_setKV" || field === "Measurement_AppliedKvp") byRow[idx].appliedKvp = val;
+          if (field === "Measurement_Meas1" || field === "Table2_ma10") {
             byRow[idx].measuredValues![0] = val;
           }
-          if (field === 'Table2_ma100') {
-            if (!byRow[idx].measuredValues) byRow[idx].measuredValues = [];
+          if (field === "Measurement_Meas2" || field === "Table2_ma100") {
             byRow[idx].measuredValues![1] = val;
           }
-          if (field === 'Table2_ma200') {
-            if (!byRow[idx].measuredValues) byRow[idx].measuredValues = [];
+          if (field === "Measurement_Meas3" || field === "Table2_ma200") {
             byRow[idx].measuredValues![2] = val;
           }
-          if (field === 'Tolerance_Value') toleranceValue = val || '2.0';
+          if (field === "Tolerance_Sign") toleranceSign = val || toleranceSign;
+          if (field === "Tolerance_Value") toleranceValue = val || toleranceValue;
+          if (field === "TotalFiltration_Measured") totalFiltration.measured = val;
+          if (field === "TotalFiltration_Required") totalFiltration.required = val;
+          if (field === "TotalFiltration_AtKvp") totalFiltration.atKvp = val;
         });
+
         const measurements = Object.keys(byRow)
           .sort((a, b) => Number(a) - Number(b))
           .map((k) => {
             const r = byRow[Number(k)];
             return {
-              appliedKvp: r?.appliedKvp ?? '',
-              measuredValues: r?.measuredValues ?? ['', '', ''],
+              appliedKvp: r?.appliedKvp ?? "",
+              measuredValues: r?.measuredValues ?? ["", "", ""],
             };
-          });
+          })
+          .filter((m) => m.appliedKvp);
+
         (groupedData as any).totalFiltration = {
-          mAStations: ['10 mA', '100 mA', '200 mA'],
+          mAStations: measHeaders.length > 0 ? measHeaders : ["50 mA", "100 mA"],
           measurements,
-          tolerance: { sign: '±', value: toleranceValue },
+          tolerance: { sign: toleranceSign, value: toleranceValue },
+          totalFiltration,
+        };
+      }
+
+      // Radiation Leakage Level — structured initialData
+      const leakRows = groupedData["Radiation Leakage Level"];
+      if (leakRows && Array.isArray(leakRows) && leakRows.length > 0) {
+        const settings = { fcd: "", kv: "", ma: "", time: "" };
+        let workload = "";
+        let toleranceValue = "1";
+        let toleranceOperator = "less than or equal to";
+        const byLoc: Record<number, any> = {};
+
+        leakRows.forEach((r: any) => {
+          const field = r["Field Name"];
+          const val = String(r["Value"] ?? "").trim();
+          const idx = Number(r["Row Index"] ?? 0);
+          if (field === "Table1_fcd") settings.fcd = val;
+          if (field === "Table1_kv") settings.kv = val;
+          if (field === "Table1_ma") settings.ma = val;
+          if (field === "Table1_time") settings.time = val;
+          if (field === "Workload") workload = val;
+          if (field === "Tolerance_Value") toleranceValue = val;
+          if (field === "Tolerance_operator") toleranceOperator = val;
+          if (field?.startsWith("Table2_")) {
+            if (!byLoc[idx]) byLoc[idx] = { location: "", left: "", right: "", front: "", back: "", top: "" };
+            const fn = field.replace("Table2_", "");
+            if (fn === "location") byLoc[idx].location = val;
+            else if (["left", "right", "front", "back", "top"].includes(fn)) byLoc[idx][fn] = val;
+          }
+        });
+
+        const leakageMeasurements = Object.keys(byLoc)
+          .sort((a, b) => Number(a) - Number(b))
+          .map((k) => byLoc[Number(k)])
+          .filter((r) => r.location);
+
+        (groupedData as any).radiationLeakageLevel = {
+          settings,
+          workload,
+          toleranceValue,
+          toleranceOperator,
+          leakageMeasurements,
         };
       }
 

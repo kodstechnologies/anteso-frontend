@@ -1,5 +1,5 @@
 // components/TestTables/LinearityOfMasLoading.tsx
-'use client';
+
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { Plus, Trash2, Save, Edit3, Loader2 } from 'lucide-react';
@@ -132,8 +132,63 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
         );
     };
 
+    // Load CSV Initial Data
+    useEffect(() => {
+        if (initialData) {
+            console.log('LinearityOfMasLoading: Loading initial data from CSV:', initialData);
+            if (initialData.table1) {
+                setExposureCondition({
+                    fcd: initialData.table1.fcd || '100',
+                    kv: initialData.table1.kv || '80',
+                });
+            }
+            if (initialData.headers && initialData.headers.length > 0) {
+                setMeasHeaders(initialData.headers);
+            }
+            if (initialData.tolerance) {
+                const tol = initialData.tolerance;
+                if (typeof tol === 'object') {
+                    setTolerance(tol.value || '0.1');
+                    setToleranceOperator(tol.operator || '<=');
+                } else {
+                    setTolerance(String(tol));
+                }
+            }
+            if (initialData.table2Rows && initialData.table2Rows.length > 0) {
+                const numCols =
+                    initialData.headers?.length ||
+                    initialData.table2Rows[0]?.measurements?.length ||
+                    3;
+                setTable2Rows(
+                    initialData.table2Rows.map((r, i) => ({
+                        id: `csv-row-${Date.now()}-${i}`,
+                        mAsRange: r.mAsApplied || '',
+                        measuredOutputs:
+                            r.measurements && r.measurements.length > 0
+                                ? r.measurements.map((v) => v ?? '')
+                                : Array(numCols).fill(''),
+                        measuredOutputsStatus: [],
+                        average: '',
+                        x: '',
+                        xMax: '',
+                        xMin: '',
+                        col: '',
+                        remarks: '',
+                    }))
+                );
+            }
+            setIsEditing(true);
+            setIsLoading(false);
+            console.log('LinearityOfMasLoading: CSV data loaded into form');
+        }
+    }, [initialData]);
+
     // Load data from backend
     useEffect(() => {
+        if (initialData) {
+            return;
+        }
+
         const load = async () => {
             if (!serviceId) {
                 setIsLoading(false);

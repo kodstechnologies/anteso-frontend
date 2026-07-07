@@ -361,6 +361,7 @@ const RadioFluro: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, qaTestDa
             '========== ACCURACY OF IRRADIATION TIME ==========': 'Accuracy of Irradiation Time',
             '========== ACCURACY OF OPERATING POTENTIAL ==========': 'Accuracy of Operating Potential',
             '========== TOTAL FILTRATION ==========': 'Total Filtration',
+            '========== LINEARITY OF mA LOADING ==========': 'Linearity of mA Loading',
             '========== LINEARITY OF MA LOADING ==========': 'Linearity of mA Loading',
             '========== LINEARITY OF MAS LOADING ==========': 'Linearity of mAs Loading',
             '========== OUTPUT CONSISTENCY ==========': 'Output Consistency',
@@ -389,7 +390,7 @@ const RadioFluro: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, qaTestDa
 
             if (!fieldName || fieldName.startsWith('---')) continue;
 
-            const isKnownField = fieldName.match(/^(Table|Tolerance|ExposureCondition|Measurement|TestConditions|IrradiationTime|TechniqueFactors|FocalSpot|LeakageMeasurement|Location|SurveyDate|HasValidCalibration|AppliedCurrent|AppliedVoltage|ExposureTime|MeasHeader|Table1|Table2|ObservedTilt|FCD|FFD|kV|mA|mAs|Time|Settings|Workload|RadiationOutput|OutputRow|TotalFiltration|CongruenceMeasurement|MeasurementRow|MeasuredLpPerMm|RecommendedStandard|SmallestHoleSize|ToleranceOperator|ToleranceValue|TestRow|ExposureRateRow)/);
+            const isKnownField = fieldName.match(/^(Table|Tolerance|ExposureCondition|Measurement|TestConditions|IrradiationTime|TechniqueFactors|FocalSpot|LeakageMeasurement|Location|SurveyDate|HasValidCalibration|AppliedCurrent|AppliedVoltage|ExposureTime|MeasHeader|Table1|Table2|ObservedTilt|FCD|FFD|FDD|kV|mA|mAs|Time|Settings|Workload|RadiationOutput|OutputRow|TotalFiltration|CongruenceMeasurement|MeasurementRow|MeasuredLpPerMm|RecommendedStandard|SmallestHoleSize|ToleranceOperator|ToleranceValue|TestRow|ExposureRateRow)/);
             if (!isKnownField) continue;
 
             if (currentTestName) {
@@ -400,6 +401,7 @@ const RadioFluro: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, qaTestDa
                     'CongruenceMeasurement_Dimension',
                     'FocalSpot_FocusType',
                     'Table2_mAsApplied',
+                    'Table2_ma',
                     'MeasurementRow_maApplied',
                     'LeakageMeasurement_Location',
                     'Location_Location',
@@ -468,6 +470,7 @@ const RadioFluro: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, qaTestDa
             '========== ACCURACY OF IRRADIATION TIME ==========': 'Accuracy of Irradiation Time',
             '========== ACCURACY OF OPERATING POTENTIAL ==========': 'Accuracy of Operating Potential',
             '========== TOTAL FILTRATION ==========': 'Total Filtration',
+            '========== LINEARITY OF mA LOADING ==========': 'Linearity of mA Loading',
             '========== LINEARITY OF MA LOADING ==========': 'Linearity of mA Loading',
             '========== LINEARITY OF MAS LOADING ==========': 'Linearity of mAs Loading',
             '========== OUTPUT CONSISTENCY ==========': 'Output Consistency',
@@ -496,7 +499,7 @@ const RadioFluro: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, qaTestDa
 
             if (!fieldName || fieldName.startsWith('---')) continue;
 
-            const isKnownField = fieldName.match(/^(Table|Tolerance|ExposureCondition|Measurement|TestConditions|IrradiationTime|TechniqueFactors|FocalSpot|LeakageMeasurement|Location|SurveyDate|HasValidCalibration|AppliedCurrent|AppliedVoltage|ExposureTime|MeasHeader|Table1|Table2|ObservedTilt|FCD|FFD|kV|mA|mAs|Time|Settings|Workload|RadiationOutput|OutputRow|TotalFiltration|CongruenceMeasurement|MeasurementRow|MeasuredLpPerMm|RecommendedStandard|SmallestHoleSize|ToleranceOperator|ToleranceValue|TestRow|ExposureRateRow)/);
+            const isKnownField = fieldName.match(/^(Table|Tolerance|ExposureCondition|Measurement|TestConditions|IrradiationTime|TechniqueFactors|FocalSpot|LeakageMeasurement|Location|SurveyDate|HasValidCalibration|AppliedCurrent|AppliedVoltage|ExposureTime|MeasHeader|Table1|Table2|ObservedTilt|FCD|FFD|FDD|kV|mA|mAs|Time|Settings|Workload|RadiationOutput|OutputRow|TotalFiltration|CongruenceMeasurement|MeasurementRow|MeasuredLpPerMm|RecommendedStandard|SmallestHoleSize|ToleranceOperator|ToleranceValue|TestRow|ExposureRateRow)/);
             if (!isKnownField) continue;
 
             if (currentTestName) {
@@ -507,6 +510,7 @@ const RadioFluro: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, qaTestDa
                     'CongruenceMeasurement_Dimension',
                     'FocalSpot_FocusType',
                     'Table2_mAsApplied',
+                    'Table2_ma',
                     'MeasurementRow_maApplied',
                     'LeakageMeasurement_Location',
                     'Location_Location',
@@ -604,7 +608,7 @@ const RadioFluro: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, qaTestDa
                             if (techniqueRows.length === 0) {
                                 techniqueRows.push({ fcd: '', kv: '', mas: '' });
                             }
-                            if (fieldName === 'FCD') techniqueRows[0].fcd = value;
+                            if (fieldName === 'FCD' || fieldName === 'FFD' || fieldName === 'FDD') techniqueRows[0].fcd = value;
                             if (fieldName === 'kV') techniqueRows[0].kv = value;
                             if (fieldName === 'mAs') techniqueRows[0].mas = value;
                         }
@@ -649,7 +653,7 @@ const RadioFluro: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, qaTestDa
                         const field = (row['Field Name'] || '').trim();
                         const value = (row['Value'] || '').trim();
 
-                        if (field === 'TestConditions_FCD') testConditions.fcd = value;
+                        if (field === 'TestConditions_FCD' || field === 'TestConditions_FFD' || field === 'TestConditions_FDD') testConditions.fcd = value;
                         if (field === 'TestConditions_kV') testConditions.kv = value;
                         if (field === 'TestConditions_mAs') testConditions.mas = value;
                         if (field === 'ObservedTilt_X') observedTiltX = value;
@@ -691,7 +695,7 @@ const RadioFluro: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, qaTestDa
                         const value = (row['Value'] || '').trim();
                         const rowIndex = parseInt(row['Row Index'] || '0');
 
-                        if (field === 'FCD') fcd = value;
+                        if (field === 'FCD' || field === 'FFD') fcd = value;
                         if (field === 'Tolerance_TolSmallMul') tolerance.tolSmallMul = value;
                         if (field === 'Tolerance_SmallLimit') tolerance.smallLimit = value;
                         if (field === 'Tolerance_TolMediumMul') tolerance.tolMediumMul = value;
@@ -752,7 +756,7 @@ const RadioFluro: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, qaTestDa
                         const value = (row['Value'] || '').trim();
                         const rowIndex = parseInt(row['Row Index'] || '0');
 
-                        if (field === 'TestConditions_FCD') testConditions.fcd = value;
+                        if (field === 'TestConditions_FCD' || field === 'TestConditions_FFD' || field === 'TestConditions_FDD') testConditions.fcd = value;
                         if (field === 'TestConditions_kV') testConditions.kv = value;
                         if (field === 'TestConditions_ma') testConditions.ma = value;
                         if (field === 'Tolerance_Operator') toleranceOperator = value;
@@ -877,7 +881,7 @@ const RadioFluro: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, qaTestDa
                         const value = (row['Value'] || '').trim();
                         const rowIndex = parseInt(row['Row Index'] || '0');
 
-                        if (field === 'Table1_FCD' || field === 'ExposureCondition_fcd') table1.fcd = value;
+                        if (field === 'Table1_FCD' || field === 'Table1_FFD' || field === 'Table1_FDD' || field === 'ExposureCondition_fcd') table1.fcd = value;
                         if (field === 'Table1_kV' || field === 'ExposureCondition_kv') table1.kv = value;
                         if (field === 'Table1_Time' || field === 'ExposureCondition_time') table1.time = value;
                         if (field === 'Tolerance' || field === 'Tolerance_value') tolerance = value;
@@ -924,7 +928,15 @@ const RadioFluro: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, qaTestDa
                             table1,
                             tolerance,
                             toleranceOperator,
-                            table2Rows: filteredTable2Rows.length > 0 ? filteredTable2Rows : [],
+                            table2Rows: filteredTable2Rows.length > 0
+                                ? filteredTable2Rows.map((r: any) => ({
+                                    ma: r.ma,
+                                    meas1: r.measuredOutputs?.[0] ?? '',
+                                    meas2: r.measuredOutputs?.[1] ?? '',
+                                    meas3: r.measuredOutputs?.[2] ?? '',
+                                    measuredOutputs: r.measuredOutputs || [],
+                                }))
+                                : [],
                         }
                     }));
                 } catch (error: any) {
@@ -945,7 +957,7 @@ const RadioFluro: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, qaTestDa
                         const value = (row['Value'] || '').trim();
                         const rowIndex = parseInt(row['Row Index'] || '0');
 
-                        if (field === 'Table1_FCD') table1.fcd = value;
+                        if (field === 'Table1_FCD' || field === 'Table1_FFD' || field === 'Table1_FDD') table1.fcd = value;
                         if (field === 'Table1_kV') table1.kv = value;
                         if (field === 'Tolerance') tolerance = value;
 
@@ -988,6 +1000,7 @@ const RadioFluro: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, qaTestDa
                 try {
                     const data = groupedData['Output Consistency'];
                     let toleranceValue = '5';
+                    let ffdValue = '';
                     const outputRows: any[] = [];
 
                     data.forEach((row) => {
@@ -996,6 +1009,7 @@ const RadioFluro: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, qaTestDa
                         const rowIndex = parseInt(row['Row Index'] || '0');
 
                         if (field === 'Tolerance_Value') toleranceValue = value;
+                        if (field === 'FFD' || field === 'FDD') ffdValue = value;
 
                         if (field.startsWith('OutputRow_')) {
                             while (outputRows.length <= rowIndex) {
@@ -1007,6 +1021,8 @@ const RadioFluro: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, qaTestDa
                             if (fieldName === 'Meas1') outputRows[rowIndex].meas1 = value;
                             if (fieldName === 'Meas2') outputRows[rowIndex].meas2 = value;
                             if (fieldName === 'Meas3') outputRows[rowIndex].meas3 = value;
+                            if (fieldName === 'Meas4') outputRows[rowIndex].meas4 = value;
+                            if (fieldName === 'Meas5') outputRows[rowIndex].meas5 = value;
                             if (fieldName === 'Average') outputRows[rowIndex].average = value;
                             if (fieldName === 'CoV') outputRows[rowIndex].cv = value;
                         }
@@ -1018,6 +1034,7 @@ const RadioFluro: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, qaTestDa
                     setCsvDataForComponents((prev: any) => ({
                         ...prev,
                         outputConsistency: {
+                            ffd: ffdValue ? { value: ffdValue } : undefined,
                             toleranceValue,
                             outputRows: filteredOutputRows.length > 0 ? filteredOutputRows : [],
                         }
@@ -1139,7 +1156,7 @@ const RadioFluro: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, qaTestDa
             if (groupedData['Tube Housing Leakage'] && groupedData['Tube Housing Leakage'].length > 0) {
                 try {
                     const data = groupedData['Tube Housing Leakage'];
-                    const settings = { distance: '', kv: '', ma: '', time: '' };
+                    const settings = { fcd: '', kv: '', ma: '', time: '' };
                     let workload = '';
                     let toleranceValue = '1';
                     let toleranceOperator = '<=';
@@ -1150,7 +1167,7 @@ const RadioFluro: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, qaTestDa
                         const value = (row['Value'] || '').trim();
                         const rowIndex = parseInt(row['Row Index'] || '0');
 
-                        if (field === 'Settings_Distance') settings.distance = value;
+                        if (field === 'Settings_Distance' || field === 'Settings_FCD' || field === 'Settings_FDD') settings.fcd = value;
                         if (field === 'Settings_kV') settings.kv = value;
                         if (field === 'Settings_ma') settings.ma = value;
                         if (field === 'Settings_time') settings.time = value;

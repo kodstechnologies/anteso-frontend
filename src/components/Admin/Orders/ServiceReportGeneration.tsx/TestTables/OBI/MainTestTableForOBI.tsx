@@ -4,9 +4,11 @@ import React from "react";
 interface MainTestTableProps {
   testData: any;
   hasTimer?: boolean;
+  rows?: any[];
+  isContinuation?: boolean;
 }
 
-const MainTestTableForOBI: React.FC<MainTestTableProps> = ({ testData, hasTimer = false }) => {
+export const generateOBISummaryRows = (testData: any, hasTimer: boolean = false) => {
   const rows: any[] = [];
   let srNo = 1;
 
@@ -610,20 +612,33 @@ const MainTestTableForOBI: React.FC<MainTestTableProps> = ({ testData, hasTimer 
     }
   }
 
+  return rows;
+};
+
+const MainTestTableForOBI: React.FC<MainTestTableProps> = ({
+  testData,
+  hasTimer = false,
+  rows: providedRows,
+  isContinuation = false,
+}) => {
+  const rows = providedRows || generateOBISummaryRows(testData, hasTimer);
+
   if (rows.length === 0) {
     return <div className="text-center text-gray-500 py-10">No test results available.</div>;
   }
 
   return (
-    <div className="mt-20 print:mt-12">
-      <h2 className="text-2xl font-bold text-center underline mb-8 print:mb-6">
-        SUMMARY OF QA TEST RESULTS
-      </h2>
+    <div className="mt-4 print:mt-2">
+      {!isContinuation && (
+        <h2 className="text-2xl font-bold text-center underline mb-4 print:mb-2 print:text-xl">
+          SUMMARY OF QA TEST RESULTS
+        </h2>
+      )}
 
       <div className="overflow-x-auto print:overflow-visible print:max-w-none flex justify-center">
         <table
-          className="border border-black text-xs print:text-xxs print:min-w-full"
-          style={{ width: "auto", textAlign: "center", borderCollapse: "collapse", borderWidth: 1, borderStyle: "solid", borderColor: "#000" }}
+          className="border border-black text-xs print:text-[9px] print:min-w-full"
+          style={{ width: "100%", textAlign: "center", borderCollapse: "collapse", borderWidth: 1, borderStyle: "solid", borderColor: "#000" }}
         >
           <thead className="bg-gray-200">
             <tr>

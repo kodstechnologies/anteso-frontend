@@ -66,7 +66,7 @@ IrradiationTime_SetTime,500
 IrradiationTime_MeasuredTime,495
 Tolerance_Operator,<=
 Tolerance_Value,10
-========== LINEARITY OF MA LOADING ==========,
+========== LINEARITY OF mA LOADING ==========,
 Table1_FDD,100
 Table1_kV,80
 Table1_Time,2

@@ -273,6 +273,10 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
       if (initialData.toleranceValue) {
         setTolerance({ operator: '<=' as const, value: initialData.toleranceValue });
       }
+      if (initialData.ffd) {
+        const v = initialData.ffd?.value ?? initialData.ffd;
+        setFFD({ value: String(v) });
+      }
       if (initialData.outputRows && initialData.outputRows.length > 0) {
         setOutputRows(initialData.outputRows.map((r: any, i: number) => ({
           id: String(i + 1),
@@ -282,6 +286,8 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
             { value: String(r.meas1 || '') },
             { value: String(r.meas2 || '') },
             { value: String(r.meas3 || '') },
+            { value: String(r.meas4 || '') },
+            { value: String(r.meas5 || '') },
           ],
           avg: String(r.average || ''),
           cv: String(r.cv || ''),

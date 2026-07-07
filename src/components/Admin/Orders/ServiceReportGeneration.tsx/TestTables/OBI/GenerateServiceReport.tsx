@@ -849,11 +849,6 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null; qaTestDate?
                             }
                             const fieldName = field.replace('Table2_', '');
                             if (fieldName === 'mAsApplied') table2Rows[rowIndex].mAsApplied = value;
-                            if (fieldName === 'Average') table2Rows[rowIndex].average = value;
-                            if (fieldName === 'X') table2Rows[rowIndex].x = value;
-                            if (fieldName === 'XMax') table2Rows[rowIndex].xMax = value;
-                            if (fieldName === 'XMin') table2Rows[rowIndex].xMin = value;
-                            if (fieldName === 'CoL') table2Rows[rowIndex].coL = value;
                             if (fieldName.startsWith('Meas')) {
                                 const colIndex = parseInt(fieldName.replace('Meas', '')) - 1;
                                 while (table2Rows[rowIndex].measurements.length <= colIndex) {

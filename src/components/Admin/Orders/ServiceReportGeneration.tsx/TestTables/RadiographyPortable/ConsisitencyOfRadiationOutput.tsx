@@ -238,6 +238,11 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
           if (!measDataGrouped[rowIndex]) measDataGrouped[rowIndex] = {};
           measDataGrouped[rowIndex][fieldName] = strVal;
         }
+        if (fn?.startsWith('OutputRow_Meas')) {
+          const n = fn.replace('OutputRow_Meas', '');
+          if (!measDataGrouped[rowIndex]) measDataGrouped[rowIndex] = {};
+          measDataGrouped[rowIndex][`reading${n}`] = strVal;
+        }
       });
 
       const rowIndices = Object.keys(measDataGrouped).sort((a, b) => Number(a) - Number(b));
@@ -291,7 +296,10 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
       setIsLoading(false);
       return;
     }
-    if (csvData && csvData.length > 0) return;
+    if (csvData && csvData.length > 0) {
+      setIsLoading(false);
+      return;
+    }
 
     const loadTest = async () => {
       setIsLoading(true);

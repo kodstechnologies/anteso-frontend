@@ -128,6 +128,9 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, on
           const newRows = rowIndices.map(idx => {
           const r = t2DataGrouped[idx];
           const focusType = r.focusType || '';
+          const ft = String(focusType).toLowerCase();
+          const isLarge = ft.includes('large');
+          const isSmall = ft.includes('small');
             const statedNominal =
               r.statedNominal != null && String(r.statedNominal).trim() !== ''
                 ? Number(r.statedNominal)
@@ -141,8 +144,8 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, on
                     ? (Number(r.measuredWidth) + Number(r.measuredHeight)) / 2
                     : r.measuredWidth ?? r.measuredHeight);
           return {
-            id: focusType === 'Large Focus' ? 'large' : focusType === 'Small Focus' ? 'small' : idx,
-            focusType: focusType,
+            id: isLarge ? 'large' : isSmall ? 'small' : idx,
+            focusType: isLarge ? 'Large Focus' : isSmall ? 'Small Focus' : focusType,
               statedNominal: String(statedNominal ?? ''),
               measuredNominal: String(measuredNominal ?? ''),
             remark: r.remark || '',
@@ -164,6 +167,7 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, on
   // Load existing test data
   useEffect(() => {
     if (!serviceId) return;
+    if (csvData && csvData.length > 0) return;
     const loadTest = async () => {
       try {
         const res = await getEffectiveFocalSpotByServiceIdForRadiographyPortable(serviceId);

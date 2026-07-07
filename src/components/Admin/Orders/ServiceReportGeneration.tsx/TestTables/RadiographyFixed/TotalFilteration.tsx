@@ -61,6 +61,39 @@ const checkMeasuredTolerance = (
     return checkTolerance(measured, applied, tolerance, sign);
 };
 
+const buildRowMetrics = (
+    appliedKvp: string,
+    measuredValues: string[],
+    tolSign: ToleranceSign,
+    tolValue: string
+): Pick<RowData, "measuredValuesStatus" | "averageKvp" | "averageKvpStatus" | "remarks"> => {
+    const applied = parseFloat(appliedKvp || "0");
+    const tol = parseFloat(tolValue || "0");
+    const measuredValuesStatus = measuredValues.map((val) =>
+        checkMeasuredTolerance(val, applied, tol, tolSign)
+    );
+    const nums = measuredValues.filter((v) => v !== "" && !isNaN(Number(v))).map(Number);
+    const averageKvp = nums.length > 0 ? (nums.reduce((a, b) => a + b, 0) / nums.length).toFixed(2) : "";
+    const avgNum = parseFloat(averageKvp || "0");
+    const averageKvpStatus = averageKvp ? checkTolerance(avgNum, applied, tol, tolSign) : true;
+    const hasAnyFailure =
+        measuredValuesStatus.some((status, idx) => measuredValues[idx] !== "" && status === false) ||
+        (averageKvp !== "" && averageKvpStatus === false);
+    const hasValidData =
+        !isNaN(applied) &&
+        applied > 0 &&
+        !isNaN(tol) &&
+        tol > 0 &&
+        (measuredValues.some((v) => v !== "" && !isNaN(parseFloat(v))) || (!isNaN(avgNum) && avgNum > 0));
+
+    let remarks: "PASS" | "FAIL" | "-" = "-";
+    if (hasValidData) {
+        remarks = hasAnyFailure ? "FAIL" : "PASS";
+    }
+
+    return { measuredValuesStatus, averageKvp, averageKvpStatus, remarks };
+};
+
 const TotalFilteration: React.FC<TotalFilterationProps> = ({
     serviceId,
     testId: initialTestId = null,
@@ -97,26 +130,36 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
     // Apply CSV/Excel initial data
     useEffect(() => {
         if (!initialData) return;
+
+        let sign: ToleranceSign = toleranceSign;
+        let tolVal = toleranceValue;
+
+        if (initialData.tolerance) {
+            if (initialData.tolerance.sign) {
+                sign = normalizeToleranceSign(initialData.tolerance.sign);
+                setToleranceSign(sign);
+            }
+            if (initialData.tolerance.value) {
+                tolVal = String(initialData.tolerance.value);
+                setToleranceValue(tolVal);
+            }
+        }
         if (initialData.mAStations?.length > 0) setMAStations(initialData.mAStations.map(String));
         if (initialData.measurements?.length > 0) {
-            const stationCount = initialData.mAStations?.length ?? 2;
-            setRows(initialData.measurements.map((m: any, i: number) => {
-                // Use measuredValues array from parser, pad to station count
-                const vals = (m.measuredValues ?? []).map(String);
-                while (vals.length < stationCount) vals.push('');
-                return {
-                    id: (i + 1).toString(),
-                    appliedKvp: String(m.appliedKvp ?? ''),
-                    measuredValues: vals,
-                    measuredValuesStatus: [] as boolean[],
-                    averageKvp: '',
-                    remarks: '-' as const,
-                };
-            }));
-        }
-        if (initialData.tolerance) {
-            if (initialData.tolerance.sign) setToleranceSign(normalizeToleranceSign(initialData.tolerance.sign));
-            if (initialData.tolerance.value) setToleranceValue(String(initialData.tolerance.value));
+            const stationCount = initialData.mAStations?.length ?? initialData.measurements[0]?.measuredValues?.length ?? 2;
+            setRows(
+                initialData.measurements.map((m: any, i: number) => {
+                    const vals = (m.measuredValues ?? []).map(String);
+                    while (vals.length < stationCount) vals.push("");
+                    const appliedKvp = String(m.appliedKvp ?? "");
+                    return {
+                        id: (i + 1).toString(),
+                        appliedKvp,
+                        measuredValues: vals,
+                        ...buildRowMetrics(appliedKvp, vals, sign, tolVal),
+                    };
+                })
+            );
         }
         if (initialData.totalFiltration) {
             setTotalFiltration(prev => ({
@@ -126,6 +169,7 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
                 atKvp: String(initialData.totalFiltration.atKvp ?? prev.atKvp),
             }));
         }
+        setIsSaved(false);
     }, [csvDataVersion, initialData]);
 
     // Load existing test data
@@ -348,74 +392,17 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
     const updateCell = (rowId: string, field: "appliedKvp" | number, value: string) => {
         setRows(prev => prev.map(row => {
             if (row.id !== rowId) return row;
-            if (field === "appliedKvp") {
-                setIsSaved(false);
-                // Recalculate all validations when appliedKvp changes
-                const applied = parseFloat(value || "0");
-                const tol = parseFloat(toleranceValue || "0");
-                const newMeasuredStatus = row.measuredValues.map(val =>
-                    checkMeasuredTolerance(val, applied, tol, toleranceSign)
-                );
-                const nums = row.measuredValues.filter(v => v !== "" && !isNaN(Number(v))).map(Number);
-                const avg = nums.length > 0 ? (nums.reduce((a, b) => a + b, 0) / nums.length).toFixed(2) : "";
-                const avgNum = parseFloat(avg || "0");
-                const avgStatus = avg ? checkTolerance(avgNum, applied, tol, toleranceSign) : true;
-
-                const hasAnyFailure = newMeasuredStatus.some((status, idx) =>
-                    row.measuredValues[idx] !== "" && status === false
-                ) || (avg !== "" && avgStatus === false);
-                const hasValidData = !isNaN(applied) && applied > 0 && !isNaN(tol) && tol > 0 &&
-                    (row.measuredValues.some(v => v !== "" && !isNaN(parseFloat(v))) || (!isNaN(avgNum) && avgNum > 0));
-
-                let remark: "PASS" | "FAIL" | "-" = "-";
-                if (hasValidData) {
-                    remark = hasAnyFailure ? "FAIL" : "PASS";
-                }
-
-                return {
-                    ...row,
-                    appliedKvp: value,
-                    measuredValuesStatus: newMeasuredStatus,
-                    averageKvpStatus: avgStatus,
-                    remarks: remark
-                };
-            }
-
-            const newMeasured = [...row.measuredValues];
-            newMeasured[field] = value;
-
-            const nums = newMeasured.filter(v => v !== "" && !isNaN(Number(v))).map(Number);
-            const avg = nums.length > 0 ? (nums.reduce((a, b) => a + b, 0) / nums.length).toFixed(2) : "";
-
-            const applied = parseFloat(row.appliedKvp || "0");
-            const tol = parseFloat(toleranceValue || "0");
-
-            const newMeasuredStatus = newMeasured.map(val =>
-                checkMeasuredTolerance(val, applied, tol, toleranceSign)
-            );
-
-            const avgNum = parseFloat(avg || "0");
-            const avgStatus = avg ? checkTolerance(avgNum, applied, tol, toleranceSign) : true;
-
-            const hasAnyFailure = newMeasuredStatus.some((status, idx) =>
-                newMeasured[idx] !== "" && status === false
-            ) || (avg !== "" && avgStatus === false);
-            const hasValidData = !isNaN(applied) && applied > 0 && !isNaN(tol) && tol > 0 &&
-                (newMeasured.some(v => v !== "" && !isNaN(parseFloat(v))) || (!isNaN(avgNum) && avgNum > 0));
-
-            let remark: "PASS" | "FAIL" | "-" = "-";
-            if (hasValidData) {
-                remark = hasAnyFailure ? "FAIL" : "PASS";
-            }
-
             setIsSaved(false);
+            const appliedKvp = field === "appliedKvp" ? value : row.appliedKvp;
+            const measuredValues =
+                field === "appliedKvp"
+                    ? row.measuredValues
+                    : row.measuredValues.map((v, idx) => (idx === field ? value : v));
             return {
                 ...row,
-                measuredValues: newMeasured,
-                measuredValuesStatus: newMeasuredStatus,
-                averageKvp: avg,
-                averageKvpStatus: avgStatus,
-                remarks: remark
+                appliedKvp,
+                measuredValues,
+                ...buildRowMetrics(appliedKvp, measuredValues, toleranceSign, toleranceValue),
             };
         }));
     };

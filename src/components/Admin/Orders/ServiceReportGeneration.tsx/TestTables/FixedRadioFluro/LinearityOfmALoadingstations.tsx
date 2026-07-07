@@ -190,6 +190,10 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
   // === Load Data from backend ===
   useEffect(() => {
     const load = async () => {
+      if (initialData && refreshKey !== undefined) {
+        setIsLoading(false);
+        return;
+      }
       if (!serviceId) {
         setIsLoading(false);
         return;
@@ -236,7 +240,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
       }
     };
     load();
-  }, [serviceId]);
+  }, [serviceId, refreshKey, initialData]);
 
   // Load CSV data when initialData is provided
   useEffect(() => {
@@ -251,23 +255,27 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
         setTolerance(String(initialData.tolerance));
       }
       if (initialData.table2Rows && initialData.table2Rows.length > 0) {
-        setTable2Rows(initialData.table2Rows.map((r: any, i: number) => ({
-          id: String(i + 1),
-          ma: String(r.ma || ''),
-          measuredOutputs: [
-            String(r.meas1 || ''),
-            String(r.meas2 || ''),
-            String(r.meas3 || ''),
-          ],
-          average: String(r.average || ''),
-          x: String(r.x || ''),
-          xMax: String(r.xMax || ''),
-          xMin: String(r.xMin || ''),
-          col: String(r.col || ''),
-          remarks: r.remarks || '',
-        })));
+        setTable2Rows(initialData.table2Rows.map((r: any, i: number) => {
+          const outputs = Array.isArray(r.measuredOutputs) && r.measuredOutputs.length > 0
+            ? r.measuredOutputs.map((v: any) => String(v ?? ''))
+            : [r.meas1, r.meas2, r.meas3].map((v: any) => String(v ?? ''));
+          while (outputs.length < 3) outputs.push('');
+          return {
+            id: String(i + 1),
+            ma: String(r.ma ?? r.mAApplied ?? r.mAsApplied ?? ''),
+            measuredOutputs: outputs,
+            average: '',
+            x: '',
+            xMax: '',
+            xMin: '',
+            col: '',
+            remarks: '',
+          };
+        }));
       }
       setHasSaved(false);
+      setIsEditing(true);
+      setIsLoading(false);
     }
   }, [refreshKey, initialData]);
 
@@ -372,14 +380,8 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
   const isViewMode = hasSaved && !isEditing;
   const buttonText = isViewMode ? 'Edit' : testId ? 'Update' : 'Save';
   const ButtonIcon = isViewMode ? Edit3 : Save;
-  const isTimerSelected = String(table1Row.time || '').trim() !== '';
-  const tableTitle = isTimerSelected
-    ? 'Linearity of mAs Loading'
-    : 'Linearity of mA Loading Stations';
-  const sectionTitle = isTimerSelected
-    ? 'Linearity of mAs Loading and Accuracy of Irradiation Time'
-    : 'Linearity of mA Loading Stations';
-  const xUnitLabel = isTimerSelected ? 'mGy/(mA*s)' : 'mGy/mA';
+  const hasTime = String(table1Row.time || '').trim() !== '';
+  const xUnitLabel = hasTime ? 'mGy/(mA*s)' : 'mGy/mA';
 
   if (isLoading) {
     return (
@@ -392,7 +394,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
 
   return (
     <div className="p-6 max-w-full overflow-x-auto">
-      <h2 className="text-2xl font-bold mb-6">{tableTitle}</h2>
+      <h2 className="text-2xl font-bold mb-6">Linearity of mA Loading</h2>
 
       {!isViewMode && table1Row.time.trim() && !hasValidTime && (
         <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
@@ -452,7 +454,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
       {/* Table 2: mA + Output (mGy) */}
       <div className="bg-white shadow-md rounded-lg overflow-hidden">
         <div className="px-4 py-3 bg-blue-50 border-b">
-          <h3 className="text-lg font-semibold text-blue-900">{sectionTitle}</h3>
+          <h3 className="text-lg font-semibold text-blue-900">Linearity of mA Loading</h3>
         </div>
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-blue-50">

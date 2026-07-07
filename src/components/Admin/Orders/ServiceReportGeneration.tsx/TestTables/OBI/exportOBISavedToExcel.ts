@@ -125,13 +125,21 @@ export const createOBISavedExcel = (data: OBISavedExportData): XLSX.WorkBook => 
   const lmas = unwrap(data.linearityOfMasLoadingStations);
   if (lmas?.table2?.length > 0) {
     const t1 = lmas.table1?.[0] || lmas.table1 || {};
-    allData.push(["TEST: LINEARITY OF mAs LOADING STATIONS"]);
-    allData.push(["FCD", t1.fcd ?? "", "kV", t1.kv ?? ""]);
-    allData.push(["mAs Range", "Measured 1", "Measured 2", "Measured 3"]);
+    allData.push(["========== LINEARITY OF mAs LOADING STATIONS =========="]);
+    allData.push(["Field Name", "Value"]);
+    allData.push(["Table1_FCD", t1.fcd ?? ""]);
+    allData.push(["Table1_kV", t1.kv ?? ""]);
+    const headers = lmas.measHeaders || ["Meas 1", "Meas 2", "Meas 3"];
+    headers.forEach((h: string) => allData.push(["MeasHeader", h]));
     lmas.table2.forEach((r: any) => {
-      const outs = r.measuredOutputs || r.outputs || [];
-      allData.push([r.mAsRange ?? r.mAsApplied ?? "", outs[0] ?? "", outs[1] ?? "", outs[2] ?? ""]);
+      const outs = (r.measuredOutputs || r.outputs || []).map((v: any) =>
+        v != null && typeof v === "object" && "value" in v ? v.value : v
+      );
+      allData.push(["Table2_mAsApplied", r.mAsApplied ?? r.mAsRange ?? ""]);
+      outs.forEach((val: any, idx: number) => allData.push([`Table2_Meas${idx + 1}`, val ?? ""]));
     });
+    allData.push(["Tolerance", lmas.tolerance ?? "0.1"]);
+    allData.push(["ToleranceOperator", lmas.toleranceOperator ?? "<="]);
     addBlank();
   }
 

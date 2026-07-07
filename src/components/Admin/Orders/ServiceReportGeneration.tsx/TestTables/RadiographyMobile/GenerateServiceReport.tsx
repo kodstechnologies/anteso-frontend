@@ -461,9 +461,14 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
         "Tolerance Value": "Tolerance_Value",
         "TF Measured": "TotalFiltration_Measured",
         "TF Required": "TotalFiltration_Required",
+        "TF At kVp": "TotalFiltration_AtKvp",
+        "Total Filtration At kVp": "TotalFiltration_AtKvp",
+        "At kVp": "TotalFiltration_AtKvp",
       },
       "Accuracy of Irradiation Time": {
         "FCD": "TestConditions_FCD",
+        "FDD (cm)": "TestConditions_FCD",
+        "FDD": "TestConditions_FCD",
         "kV": "TestConditions_kV",
         "mA": "TestConditions_ma",
         "Set Time (ms)": "IrradiationTime_SetTime",
@@ -473,6 +478,8 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
       },
       "Output Consistency": {
         "FFD": "FFD",
+        "FDD (cm)": "FFD",
+        "FDD": "FFD",
         "Tol Operator": "Tolerance_Operator",
         "Tol Value": "Tolerance_Value",
         "kV": "OutputRow_kV",
@@ -485,6 +492,8 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
       },
       "Central Beam Alignment": {
         "FCD": "TechniqueFactors_FCD",
+        "FFD (cm)": "TechniqueFactors_FCD",
+        "FFD": "TechniqueFactors_FCD",
         "kV": "TechniqueFactors_kV",
         "mAs": "TechniqueFactors_mAs",
         "Observed Tilt": "ObservedTilt_Value",
@@ -492,6 +501,8 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
       },
       "Congruence of Radiation": {
         "FCD": "TechniqueFactors_FCD",
+        "FFD (cm)": "TechniqueFactors_FCD",
+        "FFD": "TechniqueFactors_FCD",
         "kV": "TechniqueFactors_kV",
         "mAs": "TechniqueFactors_mAs",
         "Dimension": "CongruenceMeasurement_Dimension",
@@ -502,6 +513,8 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
       },
       "Effective Focal Spot": {
         "FCD": "FCD",
+        "FFD (cm)": "FCD",
+        "FFD": "FCD",
         "Focus Type": "FocalSpot_FocusType",
         "Stated Width": "FocalSpot_StatedWidth",
         "Stated Height": "FocalSpot_StatedHeight",
@@ -514,6 +527,8 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
       },
       "Linearity of mA Loading": {
         "FCD": "Table1_FCD",
+        "FDD (cm)": "Table1_FCD",
+        "FDD": "Table1_FCD",
         "kV": "Table1_kV",
         "Time (sec)": "Table1_Time",
         "Time": "Table1_Time",
@@ -527,6 +542,8 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
       },
       "Linearity of mAs Loading Stations": {
         "FCD": "Table1_FCD",
+        "FDD (cm)": "Table1_FCD",
+        "FDD": "Table1_FCD",
         "kV": "Table1_kV",
         "mAs Applied": "Table2_mAsApplied",
         "Meas 1": "Table2_Meas1",
@@ -537,6 +554,8 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
       },
       "Radiation Leakage Level": {
         "FCD": "Settings_FCD",
+        "FDD (cm)": "Settings_FCD",
+        "FDD": "Settings_FCD",
         "kV": "Settings_kV",
         "mA": "Settings_ma",
         "Time": "Settings_Time",
@@ -744,6 +763,7 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
             const idxTolVal = col("Tolerance Value");
             const idxTfMeasured = col("TF Measured");
             const idxTfRequired = col("TF Required");
+            const idxTfAtKvp = col("TF At kVp") >= 0 ? col("TF At kVp") : col("At kVp");
 
             header.forEach((h) => {
               const trimmed = (h || "").trim();
@@ -771,6 +791,9 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
                 if (idxTfRequired >= 0 && (cells[idxTfRequired] || "").trim()) {
                   pushRow(testName, "TotalFiltration_Required", cells[idxTfRequired].trim(), 0);
                 }
+                if (idxTfAtKvp >= 0 && (cells[idxTfAtKvp] || "").trim()) {
+                  pushRow(testName, "TotalFiltration_AtKvp", cells[idxTfAtKvp].trim(), 0);
+                }
               }
 
               pushRow(testName, "Measurement_AppliedKvp", applied, rowIdx);
@@ -784,16 +807,42 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
             continue;
           }
 
-          const tolSign = (lines[i + 1] || "").split(",")[1] || "";
-          const tolVal = (lines[i + 2] || "").split(",")[1] || "";
-          const tfMeasured = (lines[i + 3] || "").split(",")[1] || "";
-          const tfRequired = (lines[i + 4] || "").split(",")[1] || "";
-          const header = (lines[i + 5] || "").split(",");
+          let headerLineIdx = -1;
+          let j = i + 1;
+          for (; j < lines.length; j++) {
+            const l = lines[j].trim();
+            if (!l) continue;
+            if (l.startsWith("TEST:")) break;
+            const cells = l.split(",");
+            const labelCell = (cells[0] || "").trim();
+            const valCell = (cells[1] || "").trim();
+            if (labelCell.startsWith("Applied kVp") || labelCell.startsWith("Applied kV")) {
+              headerLineIdx = j;
+              break;
+            }
+            if (labelCell === "Tolerance Sign" || labelCell.startsWith("Tolerance Sign")) {
+              if (valCell) pushRow(testName, "Tolerance_Sign", valCell, 0);
+            } else if (labelCell.startsWith("Tolerance Value")) {
+              if (valCell) pushRow(testName, "Tolerance_Value", valCell, 0);
+            } else if (labelCell.startsWith("Total Filtration Measured") || labelCell === "TF Measured") {
+              if (valCell) pushRow(testName, "TotalFiltration_Measured", valCell, 0);
+            } else if (labelCell.startsWith("Total Filtration Required") || labelCell === "TF Required") {
+              if (valCell) pushRow(testName, "TotalFiltration_Required", valCell, 0);
+            } else if (
+              labelCell.startsWith("Total Filtration At kVp") ||
+              labelCell.startsWith("TF At kVp") ||
+              labelCell === "At kVp"
+            ) {
+              if (valCell) pushRow(testName, "TotalFiltration_AtKvp", valCell, 0);
+            }
+          }
 
-          if (tolSign) pushRow(testName, "Tolerance_Sign", tolSign, 0);
-          if (tolVal) pushRow(testName, "Tolerance_Value", tolVal, 0);
-          if (tfMeasured) pushRow(testName, "TotalFiltration_Measured", tfMeasured, 0);
-          if (tfRequired) pushRow(testName, "TotalFiltration_Required", tfRequired, 0);
+          if (headerLineIdx < 0) {
+            i = j;
+            continue;
+          }
+
+          const header = (lines[headerLineIdx] || "").split(",");
 
           // mA stations from header, starting at column 1
           for (let c = 1; c < header.length; c++) {
@@ -801,9 +850,9 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
             if (h) pushRow(testName, "MeasHeader", h, 0);
           }
 
-          // measurement rows start at i+6 until blank line or next TEST
+          // measurement rows start after header until blank line or next TEST
           let rowIdx = 0;
-          let j = i + 6;
+          j = headerLineIdx + 1;
           while (j < lines.length) {
             const l = lines[j].trim();
             if (!l || l.startsWith("TEST:")) break;
@@ -969,23 +1018,47 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
           const fcd = cond[1] || "";
           if (fcd) pushRow(testName, "FCD", fcd, 0);
 
+          const header = (lines[i + 2] || "").split(",").map((h) => (h || "").trim().toLowerCase());
+          const colIndex = (predicates: ((h: string) => boolean)[]) =>
+            header.findIndex((h) => predicates.some((p) => p(h)));
+          const idxFocus = colIndex([(h) => h.includes("focus")]);
+          const idxStatedNom = colIndex([
+            (h) => h.includes("stated focal") || h.includes("stated nominal"),
+          ]);
+          const idxMeasNom = colIndex([
+            (h) => h.includes("measured focal") || (h.includes("measured") && h.includes("nominal")),
+          ]);
+          const idxStatedW = colIndex([(h) => h.includes("stated width")]);
+          const idxStatedH = colIndex([(h) => h.includes("stated height")]);
+          const idxMeasW = colIndex([(h) => h.includes("measured width")]);
+          const idxMeasH = colIndex([(h) => h.includes("measured height")]);
+          const useNominal = idxStatedNom >= 0 && idxMeasNom >= 0;
+
           let rowIdx = 0;
-          let j = i + 3; // skip header at i+2
+          let j = i + 3;
           while (j < lines.length) {
             const l = lines[j].trim();
             if (!l || l.startsWith("TEST:")) break;
             const cells = l.split(",");
-            const fType = (cells[0] || "").trim();
-            const sW = (cells[1] || "").trim();
-            const sH = (cells[2] || "").trim();
-            const mW = (cells[3] || "").trim();
-            const mH = (cells[4] || "").trim();
+            const get = (idx: number) => (idx >= 0 ? (cells[idx] || "").trim() : "");
+            const fType = get(idxFocus >= 0 ? idxFocus : 0);
             if (fType) {
               pushRow(testName, "FocalSpot_FocusType", fType, rowIdx);
-              if (sW) pushRow(testName, "FocalSpot_StatedWidth", sW, rowIdx);
-              if (sH) pushRow(testName, "FocalSpot_StatedHeight", sH, rowIdx);
-              if (mW) pushRow(testName, "FocalSpot_MeasuredWidth", mW, rowIdx);
-              if (mH) pushRow(testName, "FocalSpot_MeasuredHeight", mH, rowIdx);
+              if (useNominal) {
+                const statedNom = get(idxStatedNom);
+                const measuredNom = get(idxMeasNom);
+                if (statedNom) pushRow(testName, "FocalSpot_StatedNominal", statedNom, rowIdx);
+                if (measuredNom) pushRow(testName, "FocalSpot_MeasuredNominal", measuredNom, rowIdx);
+              } else {
+                const sW = get(idxStatedW >= 0 ? idxStatedW : 1);
+                const sH = get(idxStatedH >= 0 ? idxStatedH : 2);
+                const mW = get(idxMeasW >= 0 ? idxMeasW : 3);
+                const mH = get(idxMeasH >= 0 ? idxMeasH : 4);
+                if (sW) pushRow(testName, "FocalSpot_StatedWidth", sW, rowIdx);
+                if (sH) pushRow(testName, "FocalSpot_StatedHeight", sH, rowIdx);
+                if (mW) pushRow(testName, "FocalSpot_MeasuredWidth", mW, rowIdx);
+                if (mH) pushRow(testName, "FocalSpot_MeasuredHeight", mH, rowIdx);
+              }
               rowIdx++;
             }
             j++;
@@ -1000,7 +1073,14 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
           const header = (lines[i + 1] || "").split(",").map((h) => (h || "").trim());
           const col = (name: string) =>
             header.findIndex((h) => h.toLowerCase() === name.toLowerCase());
-          const idxFcd = col("FCD");
+          const idxFcd =
+            col("FDD (cm)") >= 0
+              ? col("FDD (cm)")
+              : col("FDD") >= 0
+                ? col("FDD")
+                : col("FCD (cm)") >= 0
+                  ? col("FCD (cm)")
+                  : col("FCD");
           const idxKv = col("kV");
           const idxTime = col("Time (sec)") >= 0 ? col("Time (sec)") : col("Time");
           const idxMa = col("mA Applied") >= 0 ? col("mA Applied") : col("mAs Applied");
@@ -1203,7 +1283,7 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
             const field = (row["Field Name"] || "").trim();
             const value = (row["Value"] || "").trim();
             const idx = parseInt(row["Row Index"] || "0");
-            if (field === "TestConditions_FCD") testConditions.fcd = value;
+            if (field === "TestConditions_FCD" || field === "TestConditions_FDD" || field === "TestConditions_FFD") testConditions.fcd = value;
             if (field === "TestConditions_kV") testConditions.kv = value;
             if (field === "TestConditions_ma") testConditions.ma = value;
             if (field === "Tolerance_Operator") toleranceOperator = value;
@@ -1235,7 +1315,7 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
             const idx = parseInt(row["Row Index"] || "0");
             if (field === "Tolerance_Value") toleranceValue = value;
             if (field === "Tolerance_Operator") toleranceOperator = value;
-            if (field === "FFD") ffd = value;
+            if (field === "FFD" || field === "FDD") ffd = value;
             if (field.startsWith("OutputRow_")) {
               while (outputRows.length <= idx) outputRows.push({ kv: "", mas: "", outputs: [], avg: "", remark: "" });
               const fn = field.replace("OutputRow_", "");
@@ -1261,7 +1341,7 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
           data.forEach(row => {
             const field = (row["Field Name"] || "").trim();
             const value = (row["Value"] || "").trim();
-            if (field === "TechniqueFactors_FCD") techniqueFactors.fcd = value;
+            if (field === "TechniqueFactors_FCD" || field === "TechniqueFactors_FFD") techniqueFactors.fcd = value;
             if (field === "TechniqueFactors_kV") techniqueFactors.kv = value;
             if (field === "TechniqueFactors_mAs") techniqueFactors.mas = value;
             if (field === "ObservedTilt_Value") observedTiltValue = value;
@@ -1290,7 +1370,7 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
             if (field.startsWith("TechniqueFactors_")) {
               while (techniqueFactors.length <= idx) techniqueFactors.push({ id: String(idx + 1), fcd: "100", kv: "80", mas: "10" });
               const fn = field.replace("TechniqueFactors_", "");
-              if (fn === "FCD") techniqueFactors[idx].fcd = value;
+              if (fn === "FCD" || fn === "FFD") techniqueFactors[idx].fcd = value;
               if (fn === "kV") techniqueFactors[idx].kv = value;
               if (fn === "mAs") techniqueFactors[idx].mas = value;
             }
@@ -1321,7 +1401,7 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
             const field = (row["Field Name"] || "").trim();
             const value = (row["Value"] || "").trim();
             const idx = parseInt(row["Row Index"] || "0");
-            if (field === "FCD") fcd = value;
+            if (field === "FCD" || field === "FFD") fcd = value;
             if (field.startsWith("FocalSpot_")) {
               while (focalSpots.length <= idx) focalSpots.push({ focusType: "", statedWidth: "", statedHeight: "", measuredWidth: "", measuredHeight: "" });
               const fn = field.replace("FocalSpot_", "");
@@ -1353,7 +1433,7 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
           if (field.startsWith("Table1_")) {
             while (table1.length <= idx) table1.push({ fcd: "100", kv: "80", time: "" });
             const fn = field.replace("Table1_", "");
-            if (fn === "FCD") table1[idx].fcd = value;
+            if (fn === "FCD" || fn === "FDD") table1[idx].fcd = value;
             if (fn === "kV") table1[idx].kv = value;
             if (fn === "Time" || fn === "Timer") table1[idx].time = value;
           }
@@ -1406,7 +1486,7 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
             const field = (row["Field Name"] || "").trim();
             const value = (row["Value"] || "").trim();
             const idx = parseInt(row["Row Index"] || "0");
-            if (field === "Settings_FCD") settings.fcd = value;
+            if (field === "Settings_FCD" || field === "Settings_FDD") settings.fcd = value;
             if (field === "Settings_kV") settings.kv = value;
             if (field === "Settings_ma") settings.ma = value;
             if (field === "Settings_Time") settings.time = value;

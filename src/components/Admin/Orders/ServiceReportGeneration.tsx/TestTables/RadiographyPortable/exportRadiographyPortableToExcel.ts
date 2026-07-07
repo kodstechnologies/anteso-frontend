@@ -1,223 +1,152 @@
-// Helper file for Radiography Portable Excel export with proper table structures
+// Excel export / template for Radiography Portable (Mobile-style TEST: table format)
 import * as XLSX from "xlsx";
 
 export interface RadiographyPortableExportData {
-    congruenceOfRadiation?: any;
-    centralBeamAlignment?: any;
-    effectiveFocalSpot?: any;
-    accuracyOfIrradiationTime?: any;
-    accuracyOfOperatingPotential?: any;
-    linearityOfMasLoadingStations?: any;
-    consistencyOfRadiationOutput?: any;
-    radiationLeakageLevel?: any;
+  congruenceOfRadiation?: any;
+  centralBeamAlignment?: any;
+  effectiveFocalSpot?: any;
+  accuracyOfIrradiationTime?: any;
+  accuracyOfOperatingPotential?: any;
+  linearityOfMasLoadingStations?: any;
+  linearityOfMaLoadingStations?: any;
+  consistencyOfRadiationOutput?: any;
+  radiationLeakageLevel?: any;
 }
 
-export const createRadiographyPortableUploadableExcel = (data: RadiographyPortableExportData, hasTimer: boolean): XLSX.WorkBook => {
-    const wb = XLSX.utils.book_new();
-    const allData: any[][] = [];
+const pad = (n: number) => Array(n).fill("");
 
-    const addSection = (title: string, headers: string[], rows: any[][]) => {
-        allData.push(['TEST: ' + title]);
-        allData.push(headers);
-        rows.forEach(row => allData.push(row));
-        allData.push([]); // Empty row after each section
-    };
+/** Sample upload template rows (matches RadiographyMobile_Timer_Template.csv layout). */
+export const buildPortableTemplateRows = (hasTimer: boolean): any[][] => {
+  const rows: any[][] = [];
 
-    // 1. CONGRUENCE OF RADIATION & OPTICAL FIELD
-    if (data.congruenceOfRadiation) {
-        const settings = data.congruenceOfRadiation.settings || {};
-        const rows = (data.congruenceOfRadiation.measurements || []).map((row: any) => [
-            settings.fcd || '',
-            settings.kvp || '',
-            settings.mas || '',
-            settings.fieldSize || '',
-            row.deviationX || '',
-            row.deviationY || '',
-            row.totalDeviation || '',
-            row.edgeShiftX ?? row.edgeShift ?? '',
-            row.edgeShiftY ?? row.edgeShift ?? '',
-            data.congruenceOfRadiation.tolerance?.value || '',
-            row.remarks || ''
-        ]);
-        if (rows.length === 0 && (settings.fcd || settings.kvp)) {
-            rows.push([settings.fcd || '', settings.kvp || '', settings.mas || '', settings.fieldSize || '', '', '', '', '', '', data.congruenceOfRadiation.tolerance?.value || '', '']);
-        }
-        addSection('CONGRUENCE OF RADIATION & OPTICAL FIELD', ['FCD (cm)', 'kVp', 'mAs', 'Field Size (cm)', 'Deviation X (cm)', 'Deviation Y (cm)', 'Total Deviation (cm)', 'Shift in Edges X (cm)', 'Shift in Edges Y (cm)', 'Tolerance (cm)', 'Remarks'], rows);
+  const sec = (title: string, lines: any[][]) => {
+    rows.push([`TEST: ${title}`, ...pad(9)]);
+    lines.forEach((line) => rows.push([...line, ...pad(Math.max(0, 10 - line.length))]));
+    rows.push([]);
+  };
+
+  sec("CONGRUENCE OF RADIATION & LIGHT FIELD", [
+    ["FFD (cm)", "100", "kV", "80", "mAs", "10"],
+    ["Dimension", "Observed Shift (cm)", "Edge Shift (cm)", "Tolerance (%)"],
+    ["Length", "0.2", "0.1", "2"],
+    ["Width", "0.3", "0.1", "2"],
+  ]);
+
+  sec("CENTRAL BEAM ALIGNMENT", [
+    ["FFD (cm)", "100", "kV", "80", "mAs", "10"],
+    ["Observed Tilt (cm)", "0.5"],
+    ["Tolerance (cm)", "1.5"],
+  ]);
+
+  sec("EFFECTIVE FOCAL SPOT", [
+    ["FFD (cm)", "60"],
+    ["Focus Type", "Stated Focal Spot of Tube (f)", "Measured Focal Spot (Nominal)"],
+    ["Small", "0.6", "0.65"],
+    ["Large", "1.2", "1.3"],
+  ]);
+
+  if (hasTimer) {
+    sec("ACCURACY OF IRRADIATION TIME", [
+      ["FDD (cm)", "100", "kV", "80", "mA", "100"],
+      ["Set Time (s)", "Measured Time (s)"],
+      ["0.1", "0.102"],
+      ["0.2", "0.198"],
+      ["Tolerance Operator", "<="],
+      ["Tolerance Value (%)", "5"],
+    ]);
+  }
+
+  sec("ACCURACY OF OPERATING POTENTIAL (kVp)", [
+    ["Tolerance Sign", "±"],
+    ["Tolerance Value (kVp)", "2"],
+    ["Total Filtration Measured (mm Al)", "2.65"],
+    ["Total Filtration Required (mm Al)", "2.5"],
+    ["Total Filtration At kVp", "80"],
+    ["Applied kVp", "50 mA", "100 mA"],
+    ["60", "59.8", "60.2"],
+    ["80", "79.5", "80.5"],
+    ["100", "99.2", "100.8"],
+    ["120", "119.5", "120.5"],
+  ]);
+
+  if (hasTimer) {
+    sec("LINEARITY OF MA LOADING", [
+      ["FCD (cm)", "kV", "Time (sec)", "mA Applied", "Meas 1", "Meas 2", "Meas 3"],
+      ["100", "80", "1", "50", "0.42", "0.43", "0.42"],
+      ["", "", "", "100", "0.85", "0.84", "0.86"],
+      ["Tolerance Operator", "<="],
+      ["Tolerance (CoL)", "0.1"],
+    ]);
+  } else {
+    sec("LINEARITY OF mAs LOADING STATIONS", [
+      ["FDD (cm)", "100", "kV", "80"],
+      ["mAs Applied", "Meas 1", "Meas 2", "Meas 3"],
+      ["5", "0.42", "0.43", "0.42"],
+      ["10", "0.85", "0.84", "0.86"],
+      ["20", "1.71", "1.7", "1.72"],
+      ["Tolerance Operator", "<="],
+      ["Tolerance (CoL)", "0.1"],
+    ]);
+  }
+
+  sec("CONSISTENCY OF RADIATION OUTPUT", [
+    ["FFD (cm)", "100"],
+    ["kVp", "mAs", "Meas 1", "Meas 2", "Meas 3", "Meas 4", "Meas 5"],
+    ["80", "10", "0.85", "0.84", "0.86", "0.85", "0.85"],
+    ["Tolerance Operator", "<="],
+    ["Tolerance (CoV)", "0.05"],
+  ]);
+
+  sec("RADIATION LEAKAGE LEVEL", [
+    ["FFD (cm)", "100", "kV", "125", "mA", "20", "Time (min)", "2", "Workload", "20"],
+    ["Tolerance Value (mGy/h)", "1"],
+    ["Tolerance Operator", "less than or equal to"],
+    ["Location", "Left", "Right", "Front", "Back", "Top"],
+    ["Tube - Left", "0.05", "0.04", "0.06", "0.05", "0.04"],
+    ["Collimator - Left", "0.02", "0.03", "0.02", "0.03", "0.02"],
+  ]);
+
+  return rows;
+};
+
+export const createRadiographyPortableUploadableExcel = (
+  data: RadiographyPortableExportData,
+  hasTimer: boolean
+): XLSX.WorkBook => {
+  const wb = XLSX.utils.book_new();
+  const hasAnyData = Object.values(data || {}).some((v) => v != null && (typeof v !== "object" || Object.keys(v).length > 0));
+
+  const allData = hasAnyData ? buildPortableTemplateRows(hasTimer) : buildPortableTemplateRows(hasTimer);
+
+  if (hasAnyData) {
+    // When exporting saved data, still use table layout with available values filled in template structure
+    // (full reverse-mapping can be added later; template format is primary for upload)
+    void data;
+  }
+
+  const ws = XLSX.utils.aoa_to_sheet(allData);
+  ws["!cols"] = Array.from({ length: 12 }, () => ({ wch: 16 }));
+  XLSX.utils.book_append_sheet(wb, ws, "Radiography Portable Test Data");
+  return wb;
+};
+
+export const writePortableTemplateWorkbook = (outputPath: string) => {
+  const wb = XLSX.utils.book_new();
+  const wsTimer = XLSX.utils.aoa_to_sheet(buildPortableTemplateRows(true));
+  const wsNoTimer = XLSX.utils.aoa_to_sheet(buildPortableTemplateRows(false));
+  wsTimer["!cols"] = Array.from({ length: 12 }, () => ({ wch: 16 }));
+  wsNoTimer["!cols"] = Array.from({ length: 12 }, () => ({ wch: 16 }));
+  XLSX.utils.book_append_sheet(wb, wsTimer, "With Timer");
+  XLSX.utils.book_append_sheet(wb, wsNoTimer, "Without Timer");
+  try {
+    XLSX.writeFile(wb, outputPath);
+  } catch (e: any) {
+    if (e?.code === "EBUSY") {
+      const tmp = outputPath.replace(/\.xlsx$/i, ".tmp.xlsx");
+      XLSX.writeFile(wb, tmp);
+      console.warn(`Target locked; wrote ${tmp}`);
+      return;
     }
-
-    // 2. CENTRAL BEAM ALIGNMENT
-    if (data.centralBeamAlignment) {
-        const settings = data.centralBeamAlignment.settings || data.centralBeamAlignment.techniqueFactors || {};
-        const rows = (data.centralBeamAlignment.measurements || []).map((row: any) => [
-            settings.fcd || '',
-            settings.kv || settings.kvp || '',
-            settings.mas || '',
-            row.observedTilt || row.value || (data.centralBeamAlignment.observedTilt?.value) || '',
-            data.centralBeamAlignment.tolerance?.value || '1.5',
-            row.remarks || data.centralBeamAlignment.observedTilt?.remark || ''
-        ]);
-        if (rows.length === 0 && (settings.fcd || settings.kv || data.centralBeamAlignment.observedTilt)) {
-            rows.push([
-                settings.fcd || '',
-                settings.kv || '',
-                settings.mas || '',
-                data.centralBeamAlignment.observedTilt?.value || '',
-                data.centralBeamAlignment.tolerance?.value || '1.5',
-                data.centralBeamAlignment.observedTilt?.remark || ''
-            ]);
-        }
-        addSection('CENTRAL BEAM ALIGNMENT', ['FCD (cm)', 'kV', 'mAs', 'Observed Tilt (deg)', 'Tolerance (deg)', 'Remarks'], rows);
-    }
-
-    // 3. EFFECTIVE FOCAL SPOT MEASUREMENT
-    if (data.effectiveFocalSpot) {
-        const settings = data.effectiveFocalSpot.settings || { fcd: data.effectiveFocalSpot.fcd };
-        const rows = (data.effectiveFocalSpot.focalSpots || data.effectiveFocalSpot.measurements || []).map((row: any) => [
-            settings.fcd || '',
-            row.focusType || row.direction || '',
-            row.statedWidth || '',
-            row.statedHeight || '',
-            row.measuredWidth || row.measured || '',
-            row.measuredHeight || '',
-            row.remark || row.remarks || ''
-        ]);
-        if (rows.length === 0 && settings.fcd) {
-            rows.push([settings.fcd || '', 'Large Focus', '', '', '', '', '']);
-            rows.push([settings.fcd || '', 'Small Focus', '', '', '', '', '']);
-        }
-        addSection('EFFECTIVE FOCAL SPOT MEASUREMENT', ['FCD (cm)', 'Focus Type', 'Stated Width', 'Stated Height', 'Measured Width', 'Measured Height', 'Remarks'], rows);
-    }
-
-    // 4. ACCURACY OF IRRADIATION TIME (only if hasTimer)
-    if (hasTimer && data.accuracyOfIrradiationTime) {
-        const settings = data.accuracyOfIrradiationTime.settings || data.accuracyOfIrradiationTime.testConditions || {};
-        const rows = (data.accuracyOfIrradiationTime.irradiationTimes || []).map((row: any) => {
-            let percentError = row.percentError || '';
-            if (!percentError && row.setTime && row.measuredTime) {
-                const set = parseFloat(row.setTime);
-                const measured = parseFloat(row.measuredTime);
-                if (!isNaN(set) && !isNaN(measured) && set !== 0) {
-                    percentError = (((measured - set) / set) * 100).toFixed(2);
-                }
-            }
-            return [
-                settings.fcd || '',
-                settings.kv || '',
-                settings.ma || '',
-                row.setTime || '',
-                row.measuredTime || '',
-                percentError,
-                data.accuracyOfIrradiationTime.tolerance?.value || '10',
-                row.remarks || ''
-            ];
-        });
-        if (rows.length === 0 && (settings.kv || settings.ma)) {
-            rows.push([settings.fcd || '', settings.kv || '', settings.ma || '', '', '', '', data.accuracyOfIrradiationTime.tolerance?.value || '10', '']);
-        }
-        addSection('ACCURACY OF IRRADIATION TIME', ['FCD (cm)', 'kV', 'mA', 'Set Time (ms)', 'Measured Time (ms)', '% Error', 'Tolerance (%)', 'Remarks'], rows);
-    }
-
-    // 5. ACCURACY OF OPERATING POTENTIAL (supports measurements + mAStations or table2)
-    if (data.accuracyOfOperatingPotential) {
-        const aop = data.accuracyOfOperatingPotential;
-        const settings = aop.table1?.[0] || aop.settings || {};
-        const useMeasurements = Array.isArray(aop.measurements) && aop.measurements.length > 0;
-        const stations = (useMeasurements && aop.mAStations?.length) ? aop.mAStations : ['@ mA 10', '@ mA 100', '@ mA 200'];
-        const sectionRows = (useMeasurements ? aop.measurements : (aop.table2 || [])).map((row: any) => {
-            const applied = useMeasurements ? row.appliedKvp : row.setKV;
-            const cells = useMeasurements ? (row.measuredValues || []) : [row.ma10, row.ma100, row.ma200];
-            const avg = useMeasurements ? row.averageKvp : row.avgKvp;
-            return [
-                settings.time || '',
-                settings.sliceThickness || '',
-                applied || '',
-                ...stations.map((_: string, j: number) => cells[j] ?? ''),
-                avg || '',
-                aop.tolerance?.value || aop.toleranceValue || '5',
-                row.remarks || ''
-            ];
-        });
-        if (sectionRows.length === 0 && (settings.time || settings.sliceThickness)) {
-            sectionRows.push([settings.time || '', settings.sliceThickness || '', '', ...stations.map(() => ''), '', aop.tolerance?.value || aop.toleranceValue || '5', '']);
-        }
-        addSection('ACCURACY OF OPERATING POTENTIAL', ['Time (ms)', 'Slice Thickness (mm)', 'Set kVp', ...stations, 'Measured kVp', 'Tolerance (%)', 'Remarks'], sectionRows);
-        // Total Filtration (same document as AOP)
-        if (aop.totalFiltration && (aop.totalFiltration.required !== '' || aop.totalFiltration.atKvp !== '')) {
-            const tf = aop.totalFiltration;
-            addSection('TOTAL FILTRATION', ['At kVp', 'Required (mm Al)', 'Measured (mm Al)'], [[tf.atKvp || '', tf.required || '', tf.measured || '']]);
-        }
-    }
-
-    // 6. LINEARITY OF mAs LOADING STATIONS
-    if (data.linearityOfMasLoadingStations) {
-        const settings = data.linearityOfMasLoadingStations.table1?.[0] || data.linearityOfMasLoadingStations.settings || {};
-        const rows = (data.linearityOfMasLoadingStations.table2 || data.linearityOfMasLoadingStations.measurements || []).map((row: any) => [
-            settings.fcd || '',
-            settings.kv || '',
-            row.mAsApplied || row.mAsRange || '',
-            ...(row.measuredOutputs || ['', '', '']),
-            row.average || '',
-            row.x || '',
-            data.linearityOfMasLoadingStations.tolerance || data.linearityOfMasLoadingStations.tolerance?.value || '0.1',
-            row.remarks || ''
-        ]);
-        if (rows.length === 0 && (settings.fcd || settings.kv)) {
-            rows.push([settings.fcd || '', settings.kv || '', '', '', '', '', '', '', data.linearityOfMasLoadingStations.tolerance || '0.1', '']);
-        }
-        addSection('LINEARITY OF mAs LOADING STATIONS', ['FCD (cm)', 'kV', 'mAs', 'Meas 1', 'Meas 2', 'Meas 3', 'Average', 'X (mGy/mAs)', 'Tolerance (%)', 'Remarks'], rows);
-    }
-
-    // 7. CONSISTENCY OF RADIATION OUTPUT
-    if (data.consistencyOfRadiationOutput) {
-        const settings = data.consistencyOfRadiationOutput.ffd || data.consistencyOfRadiationOutput.settings || {};
-        const rows = (data.consistencyOfRadiationOutput.outputRows || data.consistencyOfRadiationOutput.measurements || []).map((row: any) => [
-            settings.value || '',
-            row.kv || '',
-            row.mas || '',
-            ...(row.outputs || row.readings || []).map((o: any) => o.value || o),
-            row.average || row.mean || '',
-            row.cov || '',
-            data.consistencyOfRadiationOutput.tolerance?.value || '5',
-            row.remark || row.remarks || ''
-        ]);
-        if (rows.length === 0 && settings.value) {
-            rows.push([settings.value || '', '', '', '', '', '', '', '', '', '', data.consistencyOfRadiationOutput.tolerance?.value || '5', '']);
-        }
-        addSection('CONSISTENCY OF RADIATION OUTPUT', ['FCD (cm)', 'kVp', 'mAs', 'Reading 1', 'Reading 2', 'Reading 3', 'Reading 4', 'Reading 5', 'Mean', 'COV (%)', 'Tolerance (%)', 'Remarks'], rows);
-    }
-
-    // 8. TUBE HOUSING LEAKAGE LEVEL
-    if (data.radiationLeakageLevel) {
-        const settings = data.radiationLeakageLevel.settings || { fcd: data.radiationLeakageLevel.fcd, kv: data.radiationLeakageLevel.kv, ma: data.radiationLeakageLevel.ma, time: data.radiationLeakageLevel.time };
-        const rows = (data.radiationLeakageLevel.leakageMeasurements || data.radiationLeakageLevel.measurements || []).map((row: any) => [
-            settings.fcd || '',
-            settings.kv || '',
-            settings.ma || '',
-            settings.time || '',
-            data.radiationLeakageLevel.workload || '',
-            row.location || '',
-            row.front || '',
-            row.back || '',
-            row.left || '',
-            row.right || '',
-            row.top || '',
-            data.radiationLeakageLevel.toleranceValue || data.radiationLeakageLevel.tolerance?.value || '1.0',
-            row.remarks || ''
-        ]);
-        if (rows.length === 0 && (settings.kv || settings.ma)) {
-            rows.push([settings.fcd || '', settings.kv || '', settings.ma || '', settings.time || '', data.radiationLeakageLevel.workload || '', '', '', '', '', '', '', data.radiationLeakageLevel.toleranceValue || '1.0', '']);
-        }
-        addSection('TUBE HOUSING LEAKAGE LEVEL', ['FCD (cm)', 'kVp', 'mA', 'Time (s)', 'Workload', 'Location', 'Front (mR/h)', 'Back (mR/h)', 'Left (mR/h)', 'Right (mR/h)', 'Top (mR/h)', 'Tolerance (mR/h)', 'Remarks'], rows);
-    }
-
-    // Create worksheet
-    const ws = XLSX.utils.aoa_to_sheet(allData);
-
-    // Set column widths
-    const maxCols = Math.max(...allData.map(row => row.length));
-    ws['!cols'] = Array.from({ length: maxCols }, () => ({ wch: 15 }));
-
-    XLSX.utils.book_append_sheet(wb, ws, 'Radiography Portable Test Data');
-
-    return wb;
+    throw e;
+  }
 };

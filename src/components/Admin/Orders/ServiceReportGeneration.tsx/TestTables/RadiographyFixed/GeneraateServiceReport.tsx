@@ -589,7 +589,7 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
             const cells = l.split(",");
             const labelCell = (cells[0] || "").trim();
             const valCell = (cells[1] || "").trim();
-            if (labelCell.startsWith("FCD")) {
+            if (labelCell.startsWith("FCD") || labelCell.startsWith("FFD")) {
               if (valCell) pushRow(testName, "FCD", valCell, 0);
             } else if (labelCell === "Tolerance Small Multiplier") {
               pushRow(testName, "ToleranceCriteria_tolSmallMul", valCell, 0);
@@ -925,7 +925,9 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
           const idx = parseInt(row['Index']) || 0;
           if (key.startsWith('TechniqueFactors_')) {
             if (!techniqueFactors[idx]) techniqueFactors[idx] = {};
-            techniqueFactors[idx][key.split('_')[1]] = val;
+            const field = key.split('_')[1];
+            const normalized = field === 'ffd' || field === 'fdd' ? 'fcd' : field;
+            techniqueFactors[idx][normalized] = val;
           } else if (key.startsWith('Measurement_')) {
             if (!measurements[idx]) measurements[idx] = {};
             measurements[idx][key.split('_')[1]] = val;
@@ -943,8 +945,10 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
         data.forEach(row => {
           const key = row['Key'];
           const val = row['Value'];
-          if (key.startsWith('TechniqueFactors_')) tech[key.split('_')[1]] = val;
-          else if (key.startsWith('ObservedTilt_')) obs[key.split('_')[1]] = val;
+          if (key.startsWith('TechniqueFactors_')) {
+            const field = key.split('_')[1];
+            tech[field === 'ffd' || field === 'fdd' ? 'fcd' : field] = val;
+          } else if (key.startsWith('ObservedTilt_')) obs[key.split('_')[1]] = val;
           else if (key.startsWith('Tolerance_')) {
             const field = key.split('_')[1];
             tol[field] = field === 'operator' ? normalizeCsvComparisonOperator(val) : val;
@@ -963,7 +967,7 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
           const key = row['Key'];
           const val = row['Value'];
           const idx = parseInt(row['Index']) || 0;
-          if (key === 'FCD') fcd = val;
+          if (key === 'FCD' || key === 'FFD') fcd = val;
           else if (key.startsWith('ToleranceCriteria_')) tol[key.split('_')[1]] = val;
           else if (key.startsWith('FocalSpot_')) {
             if (!spots[idx]) spots[idx] = {};
@@ -983,8 +987,10 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
           const key = row['Key'];
           const val = row['Value'];
           const idx = parseInt(row['Index']) || 0;
-          if (key.startsWith('TestConditions_')) cond[key.split('_')[1]] = val;
-          else if (key.startsWith('IrradiationTime_')) {
+          if (key.startsWith('TestConditions_')) {
+            const field = key.split('_')[1];
+            cond[field === 'ffd' || field === 'fdd' ? 'fcd' : field] = val;
+          } else if (key.startsWith('IrradiationTime_')) {
             if (!times[idx]) times[idx] = {};
             const field = key.split('_')[1]; // setTime or measuredTime
             times[idx][field] = val;
@@ -1111,9 +1117,11 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
           const val = (row['Value'] || '').trim();
           const idx = parseInt(row['Index']) || 0;
           if (key.startsWith('ExposureCondition_')) {
-            cond[key.split('_')[1]] = val;
+            const field = key.split('_')[1];
+            cond[field === 'ffd' || field === 'fdd' ? 'fcd' : field] = val;
           } else if (key.startsWith('Table1_')) {
-            cond[key.split('_')[1]] = val;
+            const field = key.split('_')[1];
+            cond[field === 'ffd' || field === 'fdd' ? 'fcd' : field] = val;
           } else if (key === 'Table2_mAApplied' || key === 'Table2_mAsApplied') {
             currentRowIdx++;
             currentRow = { mAApplied: val, measuredOutputs: [] };
@@ -1158,8 +1166,10 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
           const key = row['Key'];
           const val = row['Value'];
           const idx = parseInt(row['Index']) || 0;
-          if (key.startsWith('Table1_')) cond[key.split('_')[1]] = val;
-          else if (key.startsWith('Table2_')) {
+          if (key.startsWith('Table1_')) {
+            const field = key.split('_')[1];
+            cond[field === 'ffd' || field === 'fdd' ? 'fcd' : field] = val;
+          } else if (key.startsWith('Table2_')) {
             if (!rows[idx]) rows[idx] = { measuredOutputs: [] };
             const field = key.split('_')[1];
             const measMatch = field.match(/^Meas(\d+)$/);
@@ -1188,7 +1198,7 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
           const key = (row['Key'] || '').trim();
           const val = (row['Value'] || '').trim();
           const idx = parseInt(row['Index']) || 0;
-          if (key === 'FFD') ffd = val;
+          if (key === 'FFD' || key === 'FDD') ffd = val;
           else if (key === 'Tolerance_Value' || key === 'Tolerance_value') tol = val;
           else if (key === 'Tolerance') tol = val;
           else if (key === 'Tolerance_Operator' || key === 'Tolerance_operator' || key === 'ToleranceOperator') tolOp = val;
@@ -1248,8 +1258,10 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
           const key = (row['Key'] || '').trim();
           const val = (row['Value'] || '').trim();
           const idx = parseInt(row['Index']) || 0;
-          if (key.startsWith('Settings_')) set[key.split('_')[1]] = val;
-          else if (key === 'Workload') wl = val;
+          if (key.startsWith('Settings_')) {
+            const field = key.split('_')[1];
+            set[field === 'ffd' || field === 'fdd' ? 'fcd' : field] = val;
+          } else if (key === 'Workload') wl = val;
           else if (key === 'LeakageMeasurement_Location') {
             // New leakage block
             currentLeakageIdx++;

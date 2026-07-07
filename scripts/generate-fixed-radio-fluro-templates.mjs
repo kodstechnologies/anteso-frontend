@@ -1,0 +1,212 @@
+/**
+ * Generate Fixed Radio Fluoro upload templates (input fields only — no computed averages/CoV/remarks).
+ * Pattern matches Radiography_Portable_Template: raw measurements + tolerance settings only.
+ */
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const outDir = path.join(__dirname, "../public/templates");
+
+const lines = (...rows) => rows.map((r) => (Array.isArray(r) ? r.join(",") : r));
+
+const buildCommonSections = () => [
+  ...lines(
+    ["Field Name", "Value"],
+    ["========== CONGRUENCE OF RADIATION & OPTICAL FIELD ==========", ""],
+    ["TechniqueFactors_FFD", "100"],
+    ["TechniqueFactors_kV", "80"],
+    ["TechniqueFactors_mAs", "10"],
+    ["CongruenceMeasurement_Dimension", "Length"],
+    ["CongruenceMeasurement_ObservedShift", "0.2"],
+    ["CongruenceMeasurement_EdgeShift", "0.1"],
+    ["CongruenceMeasurement_Tolerance", "2"],
+    ["CongruenceMeasurement_Dimension", "Width"],
+    ["CongruenceMeasurement_ObservedShift", "0.3"],
+    ["CongruenceMeasurement_EdgeShift", "0.1"],
+    ["CongruenceMeasurement_Tolerance", "2"],
+    ["========== CENTRAL BEAM ALIGNMENT ==========", ""],
+    ["TestConditions_FFD", "100"],
+    ["TestConditions_kV", "80"],
+    ["TestConditions_mAs", "10"],
+    ["ObservedTilt_X", "0.5"],
+    ["ObservedTilt_Y", "0.3"],
+    ["Tolerance_Value", "2"],
+    ["========== EFFECTIVE FOCAL SPOT ==========", ""],
+    ["FFD", "100"],
+    ["FocalSpot_FocusType", "Large Focus"],
+    ["FocalSpot_StatedNominal", "1.2"],
+    ["FocalSpot_MeasuredNominal", "1.25"],
+    ["FocalSpot_FocusType", "Small Focus"],
+    ["FocalSpot_StatedNominal", "0.6"],
+    ["FocalSpot_MeasuredNominal", "0.65"],
+    ["Tolerance_TolSmallMul", "0.5"],
+    ["Tolerance_SmallLimit", "0.8"],
+    ["Tolerance_TolMediumMul", "0.4"],
+    ["Tolerance_MediumLower", "0.8"],
+    ["Tolerance_MediumUpper", "1.5"],
+    ["Tolerance_TolLargeMul", "0.3"],
+    ["========== TOTAL FILTRATION ==========", ""],
+    ["mAStations", "50 mA"],
+    ["mAStations", "100 mA"],
+    ["Measurement_AppliedKvp", "60"],
+    ["Measurement_Meas1", "60.2"],
+    ["Measurement_Meas2", "60.1"],
+    ["Measurement_AppliedKvp", "80"],
+    ["Measurement_Meas1", "80.1"],
+    ["Measurement_Meas2", "80.2"],
+    ["Measurement_AppliedKvp", "100"],
+    ["Measurement_Meas1", "100.2"],
+    ["Measurement_Meas2", "100.1"],
+    ["Tolerance_Sign", "±"],
+    ["Tolerance_Value", "2"],
+    ["TotalFiltration_Measured", "2.5"],
+    ["TotalFiltration_Required", "2"],
+    ["TotalFiltration_AtKvp", "80"],
+    ["FiltrationTolerance_ForKvGreaterThan70", "1.5"],
+    ["FiltrationTolerance_ForKvBetween70And100", "2"],
+    ["FiltrationTolerance_ForKvGreaterThan100", "2.5"],
+    ["FiltrationTolerance_KvThreshold1", "70"],
+    ["FiltrationTolerance_KvThreshold2", "100"]
+  ),
+];
+
+const buildMasLinearity = () =>
+  lines(
+    ["========== LINEARITY OF MAS LOADING ==========", ""],
+    ["Table1_FDD", "100"],
+    ["Table1_kV", "80"],
+    ["Table2_mAsApplied", "10"],
+    ["Table2_Meas1", "0.85"],
+    ["Table2_Meas2", "0.84"],
+    ["Table2_Meas3", "0.86"],
+    ["Table2_mAsApplied", "20"],
+    ["Table2_Meas1", "1.71"],
+    ["Table2_Meas2", "1.7"],
+    ["Table2_Meas3", "1.72"],
+    ["Tolerance", "0.1"],
+    ["ToleranceOperator", "<="]
+  );
+
+const buildTimerSections = () =>
+  lines(
+    ["========== ACCURACY OF IRRADIATION TIME ==========", ""],
+    ["TestConditions_FDD", "100"],
+    ["TestConditions_kV", "80"],
+    ["TestConditions_ma", "100"],
+    ["IrradiationTime_SetTime", "100"],
+    ["IrradiationTime_MeasuredTime", "98"],
+    ["IrradiationTime_SetTime", "200"],
+    ["IrradiationTime_MeasuredTime", "202"],
+    ["IrradiationTime_SetTime", "500"],
+    ["IrradiationTime_MeasuredTime", "495"],
+    ["Tolerance_Operator", "<="],
+    ["Tolerance_Value", "10"],
+    ["========== LINEARITY OF mA LOADING ==========", ""],
+    ["Table1_FDD", "100"],
+    ["Table1_kV", "80"],
+    ["Table1_Time", "2"],
+    ["Table2_ma", "50"],
+    ["Table2_Meas1", "1.25"],
+    ["Table2_Meas2", "1.26"],
+    ["Table2_Meas3", "1.24"],
+    ["Table2_ma", "100"],
+    ["Table2_Meas1", "2.5"],
+    ["Table2_Meas2", "2.51"],
+    ["Table2_Meas3", "2.49"],
+    ["Tolerance", "0.1"],
+    ["ToleranceOperator", "<="]
+  );
+
+const buildTailSections = () =>
+  lines(
+    ["========== OUTPUT CONSISTENCY ==========", ""],
+    ["FDD", "100"],
+    ["OutputRow_kV", "80"],
+    ["OutputRow_mAs", "100"],
+    ["OutputRow_Meas1", "10.5"],
+    ["OutputRow_Meas2", "10.4"],
+    ["OutputRow_Meas3", "10.6"],
+    ["OutputRow_Meas4", "10.5"],
+    ["OutputRow_Meas5", "10.5"],
+    ["Tolerance_Value", "0.05"],
+    ["========== LOW CONTRAST RESOLUTION ==========", ""],
+    ["MeasuredLpPerMm", "0.8"],
+    ["RecommendedStandard", "0.6"],
+    ["SmallestHoleSize", "2"],
+    ["========== HIGH CONTRAST RESOLUTION ==========", ""],
+    ["MeasuredLpPerMm", "2.5"],
+    ["RecommendedStandard", "2"],
+    ["SmallestHoleSize", "0.2"],
+    ["========== EXPOSURE RATE AT TABLE TOP ==========", ""],
+    ["ExposureRateRow_Distance", "100"],
+    ["ExposureRateRow_AppliedKv", "80"],
+    ["ExposureRateRow_AppliedMa", "100"],
+    ["ExposureRateRow_Exposure", "5.2"],
+    ["ExposureRateRow_Remark", "AEC Mode"],
+    ["ExposureRateRow_Distance", "100"],
+    ["ExposureRateRow_AppliedKv", "100"],
+    ["ExposureRateRow_AppliedMa", "200"],
+    ["ExposureRateRow_Exposure", "4.8"],
+    ["ExposureRateRow_Remark", "Manual Mode"],
+    ["Tolerance_AecTolerance", "10"],
+    ["Tolerance_NonAecTolerance", "5"],
+    ["Tolerance_MinFocusDistance", "30"],
+    ["========== TUBE HOUSING LEAKAGE ==========", ""],
+    ["Settings_FDD", "100"],
+    ["Settings_kV", "80"],
+    ["Settings_ma", "100"],
+    ["Settings_time", "1"],
+    ["LeakageMeasurement_Location", "Tube"],
+    ["LeakageMeasurement_Left", "0.05"],
+    ["LeakageMeasurement_Right", "0.04"],
+    ["LeakageMeasurement_Front", "0.06"],
+    ["LeakageMeasurement_Back", "0.05"],
+    ["LeakageMeasurement_Top", "0.07"],
+    ["Workload", "5000"],
+    ["ToleranceValue", "1"],
+    ["ToleranceOperator", "<="],
+    ["ToleranceTime", "1"],
+    ["========== RADIATION PROTECTION SURVEY ==========", ""],
+    ["SurveyDate", "15-01-2024"],
+    ["AppliedCurrent", "100"],
+    ["AppliedVoltage", "80"],
+    ["ExposureTime", "1"],
+    ["Workload", "5000"],
+    ["HasValidCalibration", "Yes"],
+    ["Location_Location", "Control Room"],
+    ["Location_mRPerHr", "0.5"],
+    ["Location_Category", "worker"],
+    ["Location_Location", "Corridor"],
+    ["Location_mRPerHr", "0.2"],
+    ["Location_Category", "public"]
+  );
+
+const buildNoTimer = () => [...buildCommonSections(), ...buildMasLinearity(), ...buildTailSections()];
+
+const buildWithTimer = () => [
+  ...buildCommonSections(),
+  ...buildTimerSections(),
+  ...buildTailSections(),
+];
+
+const writeCsv = (filename, rows) => {
+  const content = rows.join("\r\n") + "\r\n";
+  const filePath = path.join(outDir, filename);
+  try {
+    fs.writeFileSync(filePath, content, "utf8");
+    console.log(`Wrote ${filePath} (${rows.length} lines)`);
+  } catch (e) {
+    if (e?.code === "EBUSY") {
+      const tmp = filePath.replace(/\.csv$/i, ".tmp.csv");
+      fs.writeFileSync(tmp, content, "utf8");
+      console.warn(`Target locked; wrote ${tmp}`);
+      return;
+    }
+    throw e;
+  }
+};
+
+writeCsv("FixedRadioFluro_Test_Data_Template_NoTimer.csv", buildNoTimer());
+writeCsv("FixedRadioFluro_Test_Data_Template_WithTimer.csv", buildWithTimer());

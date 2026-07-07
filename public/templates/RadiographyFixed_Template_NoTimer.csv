@@ -1,6 +1,6 @@
 Key,Value,Index
 ========== CONGRUENCE OF RADIATION ==========,,
-TechniqueFactors_fcd,100,0
+TechniqueFactors_ffd,100,0
 TechniqueFactors_kv,80,0
 TechniqueFactors_mas,10,0
 Measurement_observedShift,0.5,0
@@ -10,14 +10,14 @@ Measurement_observedShift,0.4,1
 Measurement_edgeShift,0.3,1
 Measurement_tolerance,2,1
 ========== CENTRAL BEAM ALIGNMENT ==========,,
-TechniqueFactors_fcd,100,0
+TechniqueFactors_ffd,100,0
 TechniqueFactors_kv,80,0
 TechniqueFactors_mas,10,0
 ObservedTilt_value,1.2,0
 Tolerance_operator,<,0
 Tolerance_value,1.5,0
 ========== EFFECTIVE FOCAL SPOT ==========,,
-FCD,100,0
+FFD,100,0
 ToleranceCriteria_tolSmallMul,0.5,0
 ToleranceCriteria_smallLimit,0.8,0
 ToleranceCriteria_tolMediumMul,0.4,0
@@ -55,7 +55,7 @@ TotalFiltration_measured,2.6,0
 TotalFiltration_required,2.5,0
 TotalFiltration_atKvp,70,0
 ========== LINEARITY OF MAS LOADING ==========,,
-Table1_fcd,100,0
+Table1_fdd,100,0
 Table1_kv,80,0
 Table2_mAsRange,5 - 10,0
 Table2_Meas1,0.50,0
@@ -72,7 +72,7 @@ Table2_Meas3,2.49,2
 Tolerance_operator,<=,0
 Tolerance_value,0.1,0
 ========== CONSISTENCY OF RADIATION OUTPUT ==========,,
-FFD,100,0
+FDD,100,0
 OutputRow_kv,80,0
 OutputRow_mas,10,0
 OutputRow_Meas1,0.50,0
@@ -82,7 +82,7 @@ OutputRow_Meas4,0.50,0
 OutputRow_Meas5,0.52,0
 Tolerance,0.05,0
 ========== RADIATION LEAKAGE LEVEL ==========,,
-Settings_fcd,100,0
+Settings_fdd,100,0
 Settings_kv,120,0
 Settings_ma,21,0
 Settings_time,2,0
