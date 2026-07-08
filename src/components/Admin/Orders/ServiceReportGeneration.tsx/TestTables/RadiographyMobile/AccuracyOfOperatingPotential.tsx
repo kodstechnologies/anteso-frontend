@@ -49,17 +49,17 @@ const buildImportedRow = (
   tolSign: "+" | "-" | "±",
   tolVal: number
 ): RowData => {
-  const vals = Array.isArray(r.measuredValues)
-    ? r.measuredValues.map((v: any) => String(v ?? ""))
+  const vals: string[] = Array.isArray(r.measuredValues)
+    ? r.measuredValues.map((v: unknown) => String(v ?? ""))
     : [String(r.ma10 ?? ""), String(r.ma100 ?? ""), String(r.ma200 ?? "")];
   while (vals.length < stationCount) vals.push("");
 
   const applied = parseFloat(String(r.setKV ?? r.appliedKvp ?? "0"));
-  const statuses = vals.map((v) => checkTolerance(parseFloat(v || "0"), applied, tolVal, tolSign));
-  const nums = vals.filter((v) => v !== "" && !isNaN(parseFloat(v))).map(Number);
-  const avg = nums.length > 0 ? (nums.reduce((a, b) => a + b, 0) / nums.length).toFixed(2) : "";
+  const statuses = vals.map((v: string) => checkTolerance(parseFloat(v || "0"), applied, tolVal, tolSign));
+  const nums = vals.filter((v: string) => v !== "" && !isNaN(parseFloat(v))).map(Number);
+  const avg = nums.length > 0 ? (nums.reduce((a: number, b: number) => a + b, 0) / nums.length).toFixed(2) : "";
   const avgStatus = avg ? checkTolerance(parseFloat(avg), applied, tolVal, tolSign) : true;
-  const hasFail = statuses.some((s) => !s) || !avgStatus;
+  const hasFail = statuses.some((s: boolean) => !s) || !avgStatus;
   const hasData =
     !isNaN(applied) &&
     applied > 0 &&

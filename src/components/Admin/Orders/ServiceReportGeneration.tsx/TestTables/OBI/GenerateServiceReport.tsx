@@ -805,7 +805,7 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null; qaTestDate?
                                 .filter((v: string) => String(v || '').trim() !== '' && !isNaN(Number(v)))
                                 .map(Number);
                             if (nums.length > 0) {
-                                m.averageKvp = (nums.reduce((sum, n) => sum + n, 0) / nums.length).toFixed(2);
+                                m.averageKvp = (nums.reduce((sum: number, n: number) => sum + n, 0) / nums.length).toFixed(2);
                             }
                         }
                     });
@@ -910,7 +910,7 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null; qaTestDate?
                             headers.push(value);
                         }
                         if (field === 'MeasColumnLabels') {
-                            value.split(',').map((v: string) => v.trim()).filter(Boolean).forEach((label) => {
+                            value.split(',').map((v: string) => v.trim()).filter(Boolean).forEach((label: string) => {
                                 if (!headers.includes(label)) headers.push(label);
                             });
                         }

@@ -1259,11 +1259,11 @@ const RadiographyMobileHT: React.FC<{ serviceId: string; qaTestDate?: string | n
         });
         measurements.forEach((m) => {
           if (!String(m.averageKvp || "").trim()) {
-            const nums = (m.measuredValues || [])
+            const nums: number[] = (m.measuredValues || [])
               .filter((v: string) => String(v || "").trim() !== "" && !isNaN(Number(v)))
-              .map(Number);
+              .map((v: string) => Number(v));
             if (nums.length > 0) {
-              m.averageKvp = (nums.reduce((sum, n) => sum + n, 0) / nums.length).toFixed(2);
+              m.averageKvp = (nums.reduce((sum: number, n: number) => sum + n, 0) / nums.length).toFixed(2);
             }
           }
         });
@@ -1315,7 +1315,7 @@ const RadiographyMobileHT: React.FC<{ serviceId: string; qaTestDate?: string | n
           if (f === "Tolerance_Value") tolVal = v;
           if (f === "MeasHeader" && v && !importHeaders.includes(v)) importHeaders.push(v);
           if (f === "MeasColumnLabels") {
-            v.split(",").map((s: string) => s.trim()).filter(Boolean).forEach((label) => {
+            v.split(",").map((s: string) => s.trim()).filter(Boolean).forEach((label: any) => {
               if (!importHeaders.includes(label)) importHeaders.push(label);
             });
           }

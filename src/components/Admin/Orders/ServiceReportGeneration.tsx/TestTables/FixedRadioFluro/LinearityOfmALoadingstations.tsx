@@ -621,7 +621,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
           ) : (
             <>
               <ButtonIcon className="w-4 h-4" />
-              {buttonText} {isTimerSelected ? 'mAs' : 'mA'} Linearity
+              {buttonText} {hasTime ? 'mAs' : 'mA'} Linearity
             </>
           )}
         </button>

@@ -91,12 +91,12 @@ export const createInventionalRadiologySavedExcel = (
   const oc = unwrap(data.consistencyOfRadiationOutput);
   if (oc?.outputRows?.length > 0) {
     const ffdVal = oc.ffd?.value ?? oc.ffd ?? "";
-    const savedHeaders = Array.isArray(oc.measurementHeaders) && oc.measurementHeaders.length > 0
-      ? oc.measurementHeaders
+    const savedHeaders: string[] = Array.isArray(oc.measurementHeaders) && oc.measurementHeaders.length > 0
+      ? oc.measurementHeaders.map((h: unknown) => String(h ?? ""))
       : (() => {
           const rows = Array.isArray(oc.outputRows) ? oc.outputRows : [];
           const colCount = Math.max(0, ...rows.map((r: any) => (r.outputs ?? []).length));
-          return Array.from({ length: colCount || 5 }, (_, i) => `Meas ${i + 1}`);
+          return Array.from({ length: colCount || 5 }, (_, i: number) => `Meas ${i + 1}`);
         })();
     const tol = oc.tolerance || {};
     const headerCols = savedHeaders.map((_, i) => `Header ${i + 1}`);

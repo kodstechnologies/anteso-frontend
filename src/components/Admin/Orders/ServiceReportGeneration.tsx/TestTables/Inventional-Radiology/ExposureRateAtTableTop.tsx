@@ -157,7 +157,7 @@ const ExposureRateAtTableTop: React.FC<Props> = ({
 
             if (tableRows.length > 0) {
                 const rowIndices = Array.from(new Set(tableRows.map((r) => parseInt(r['Row Index'], 10)))).sort((a, b) => a - b);
-                const newRows = rowIndices.map((idx, i) => {
+                const newRows = rowIndices.map((idx, i): Row => {
                     const kv = csvData.find((r) => r['Field Name'] === 'Table1_kv' && parseInt(r['Row Index'], 10) === idx)?.['Value'] || '';
                     const ma = csvData.find((r) => r['Field Name'] === 'Table1_ma' && parseInt(r['Row Index'], 10) === idx)?.['Value'] || '';
                     const exposure =
@@ -168,12 +168,12 @@ const ExposureRateAtTableTop: React.FC<Props> = ({
                     const criteria =
                         csvData.find((r) => r['Field Name'] === 'Criteria' && parseInt(r['Row Index'], 10) === idx)?.['Value'] || '';
 
-                    const remark =
+                    const remark: Row['remark'] =
                         mode === 'AEC' || mode === 'AEC Mode'
                             ? 'AEC Mode'
                             : mode === 'Manual' || mode === 'Manual Mode'
                               ? 'Manual Mode'
-                              : ('' as const);
+                              : '';
 
                     if (criteria) {
                         if (remark === 'AEC Mode') setAecTolerance(criteria);
@@ -183,10 +183,10 @@ const ExposureRateAtTableTop: React.FC<Props> = ({
 
                     return {
                         id: Date.now().toString() + i,
-                        distance,
-                        appliedKv: kv,
-                        appliedMa: ma,
-                        exposure,
+                        distance: String(distance),
+                        appliedKv: String(kv),
+                        appliedMa: String(ma),
+                        exposure: String(exposure),
                         remark,
                     };
                 });

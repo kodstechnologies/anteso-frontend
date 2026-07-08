@@ -275,7 +275,7 @@ export const exportInvoicesToExcel = (
     invoices: Record<string, any>[],
     filters: InvoiceExportFilters,
 ) => {
-    const rows = invoices.map(mapInvoiceToExportRow);
+    const rows = invoices.map((invoice) => mapInvoiceToExportRow(invoice));
     const sheetData = [
         ...buildFilterSummary(filters, rows.length),
         Array.from(INVOICE_EXPORT_HEADERS),
@@ -292,7 +292,7 @@ export const exportInvoicesToWord = async (
     invoices: Record<string, any>[],
     filters: InvoiceExportFilters,
 ) => {
-    const rows = invoices.map(mapInvoiceToExportRow);
+    const rows = invoices.map((invoice) => mapInvoiceToExportRow(invoice));
     const summaryLines = buildFilterSummary(filters, rows.length);
 
     const summaryParagraphs = summaryLines.map((line) => {

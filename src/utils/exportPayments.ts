@@ -273,7 +273,7 @@ export const exportPaymentsToExcel = (
     payments: Record<string, any>[],
     filters: PaymentExportFilters,
 ) => {
-    const rows = payments.map(mapPaymentToExportRow);
+    const rows = payments.map((payment) => mapPaymentToExportRow(payment));
     const sheetData = [
         ...buildFilterSummary(filters, rows.length),
         Array.from(PAYMENT_EXPORT_HEADERS),
@@ -290,7 +290,7 @@ export const exportPaymentsToWord = async (
     payments: Record<string, any>[],
     filters: PaymentExportFilters,
 ) => {
-    const rows = payments.map(mapPaymentToExportRow);
+    const rows = payments.map((payment) => mapPaymentToExportRow(payment));
     const summaryLines = buildFilterSummary(filters, rows.length);
 
     const summaryParagraphs = summaryLines.map((line) => {
