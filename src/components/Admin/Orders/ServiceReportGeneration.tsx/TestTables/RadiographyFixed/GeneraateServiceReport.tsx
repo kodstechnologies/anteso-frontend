@@ -739,17 +739,62 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
             const l = lines[j].trim();
             if (!l || l.startsWith("TEST:")) break;
             const cells = l.split(",");
-            const ma = (cells[0] || "").trim();
-            if (ma && !isNaN(Number(ma))) {
-              pushRow(testName, "Table2_mAApplied", ma, idx);
-              if (cells[1] !== undefined) pushRow(testName, "Table2_measuredOutput1", cells[1], idx);
-              if (cells[2] !== undefined) pushRow(testName, "Table2_measuredOutput2", cells[2], idx);
+            const firstCell = (cells[0] || "").trim();
+            if (firstCell === "Tolerance Operator") {
+              pushRow(testName, "Tolerance_operator", normalizeCsvComparisonOperator((cells[1] || "").trim()), 0);
+            } else if (firstCell.startsWith("Tolerance Value")) {
+              pushRow(testName, "Tolerance_value", (cells[1] || "").trim(), 0);
+            } else if (firstCell !== "mA Applied" && firstCell && !isNaN(Number(firstCell))) {
+              pushRow(testName, "Table2_mAApplied", firstCell, idx);
+              if (cells[1] !== undefined && String(cells[1]).trim() !== "") {
+                pushRow(testName, "Table2_measuredOutput1", String(cells[1]).trim(), idx);
+              }
+              if (cells[2] !== undefined && String(cells[2]).trim() !== "") {
+                pushRow(testName, "Table2_measuredOutput2", String(cells[2]).trim(), idx);
+              }
+              if (cells[3] !== undefined && String(cells[3]).trim() !== "") {
+                pushRow(testName, "Table2_measuredOutput3", String(cells[3]).trim(), idx);
+              }
               idx++;
-            } else {
-              const labelCell = (cells[0] || "").trim();
-              const valCell = (cells[1] || "").trim();
-              if (labelCell === "Tolerance Operator") pushRow(testName, "Tolerance_operator", valCell, 0);
-              if (labelCell.startsWith("Tolerance Value")) pushRow(testName, "Tolerance_value", valCell, 0);
+            }
+            j++;
+          }
+          i = j;
+          continue;
+        }
+
+        // 6b) Linearity of mAs Loading
+        if (label === "LINEARITY OF mAs LOADING" || label === "LINEARITY OF MAS LOADING") {
+          const testName = "Linearity Of mAs Loading";
+          const cond = (lines[i + 1] || "").split(",");
+          const fcd = (cond[1] || "").trim();
+          const kv = (cond[3] || "").trim();
+          if (fcd) pushRow(testName, "Table1_fcd", fcd, 0);
+          if (kv) pushRow(testName, "Table1_kv", kv, 0);
+
+          let idx = 0;
+          let j = i + 3;
+          while (j < lines.length) {
+            const l = lines[j].trim();
+            if (!l || l.startsWith("TEST:")) break;
+            const cells = l.split(",");
+            const firstCell = (cells[0] || "").trim();
+            if (firstCell === "Tolerance Operator") {
+              pushRow(testName, "Tolerance_operator", normalizeCsvComparisonOperator((cells[1] || "").trim()), 0);
+            } else if (firstCell.startsWith("Tolerance Value")) {
+              pushRow(testName, "Tolerance_value", (cells[1] || "").trim(), 0);
+            } else if (firstCell !== "mAs Range" && firstCell) {
+              pushRow(testName, "Table2_mAsRange", firstCell, idx);
+              if (cells[1] !== undefined && String(cells[1]).trim() !== "") {
+                pushRow(testName, "Table2_Meas1", String(cells[1]).trim(), idx);
+              }
+              if (cells[2] !== undefined && String(cells[2]).trim() !== "") {
+                pushRow(testName, "Table2_Meas2", String(cells[2]).trim(), idx);
+              }
+              if (cells[3] !== undefined && String(cells[3]).trim() !== "") {
+                pushRow(testName, "Table2_Meas3", String(cells[3]).trim(), idx);
+              }
+              idx++;
             }
             j++;
           }
@@ -1187,28 +1232,53 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
         const data = groupedData['Linearity Of mAs Loading'];
         const cond: any = {};
         const rows: any[] = [];
-        const tol: any = {};
+        let tol = '';
+        let tolOp = '<=';
+        let currentRow: any = null;
+        let currentRowIdx = -1;
         data.forEach(row => {
-          const key = row['Key'];
-          const val = row['Value'];
+          const key = (row['Key'] || '').trim();
+          const val = (row['Value'] || '').trim();
           const idx = parseInt(row['Index']) || 0;
-          if (key.startsWith('Table1_')) {
+          if (key.startsWith('Table1_') || key.startsWith('ExposureCondition_')) {
             const field = key.split('_')[1];
             cond[field === 'ffd' || field === 'fdd' ? 'fcd' : field] = val;
+          } else if (key === 'Table2_mAsRange' || key === 'Table2_mAsApplied') {
+            currentRowIdx++;
+            currentRow = { mAsRange: val, measuredOutputs: [] };
+            rows[currentRowIdx] = currentRow;
+          } else if ((key.startsWith('Table2_measuredOutput') || key.startsWith('Table2_Meas')) && currentRow) {
+            const m1 = key.match(/^Table2_measuredOutput(\d+)$/);
+            const m2 = key.match(/^Table2_Meas(\d+)$/);
+            const mIdx = m1 ? parseInt(m1[1], 10) - 1 : m2 ? parseInt(m2[1], 10) - 1 : -1;
+            if (mIdx >= 0) {
+              while (currentRow.measuredOutputs.length <= mIdx) currentRow.measuredOutputs.push('');
+              currentRow.measuredOutputs[mIdx] = val;
+            }
           } else if (key.startsWith('Table2_')) {
-            if (!rows[idx]) rows[idx] = { measuredOutputs: [] };
+            if (!rows[idx]) rows[idx] = { mAsRange: '', measuredOutputs: [] };
             const field = key.split('_')[1];
             const measMatch = field.match(/^Meas(\d+)$/);
             if (measMatch) {
-              const mIdx = parseInt(measMatch[1]) - 1;
+              const mIdx = parseInt(measMatch[1], 10) - 1;
+              while (rows[idx].measuredOutputs.length <= mIdx) rows[idx].measuredOutputs.push('');
               rows[idx].measuredOutputs[mIdx] = val;
+            } else if (field === 'mAsRange' || field === 'mAsApplied') {
+              rows[idx].mAsRange = val;
             } else {
               rows[idx][field] = val;
             }
+          } else if (key.startsWith('Tolerance_')) {
+            if (key === 'Tolerance_value') tol = val;
+            else if (key === 'Tolerance_operator') tolOp = normalizeCsvComparisonOperator(val) || val;
           }
-          else if (key.startsWith('Tolerance_')) tol[key.split('_')[1]] = val;
         });
-        newDataForComponents.linearityOfMasLoading = { table1: cond, table2: rows, tolerance: tol.value, toleranceOperator: tol.operator };
+        newDataForComponents.linearityOfMasLoading = {
+          table1: cond,
+          table2: rows.filter(Boolean),
+          tolerance: tol,
+          toleranceOperator: tolOp,
+        };
       }
 
       // Reproducibility of Radiation Output / Consistency (template: FFD, Measurement_kv, Measurement_mas, Measurement_output1/2, Tolerance)
