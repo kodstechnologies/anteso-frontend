@@ -193,27 +193,48 @@ const Add = () => {
       >
         {({ setFieldValue, values, errors, submitCount, touched }) => {
 
-          // Auto-suggest payment type (but user can still override)
+          // Auto-set payment type. If amount equals total, force "complete".
           useEffect(() => {
-            if (!values.srfClient || !values.paymentAmount || !values.totalAmount) return;
+            if (!values.srfClient || !values.totalAmount) return;
 
+            const paymentAmountNum = Number(values.paymentAmount || 0);
+            const totalAmountNum = Number(values.totalAmount || 0);
+            if (Number.isNaN(paymentAmountNum) || Number.isNaN(totalAmountNum)) return;
+
+            // Force complete whenever paid amount matches total amount.
+            if (paymentAmountNum > 0 && paymentAmountNum === totalAmountNum) {
+              if (values.paymentType !== "complete") {
+                setFieldValue("paymentType", "complete");
+              }
+              return;
+            }
+
+            let cancelled = false;
             let suggestedType = "advance";
-            if (Number(values.paymentAmount) === Number(values.totalAmount)) {
-              suggestedType = "complete";
-            } else if (Number(values.paymentAmount) > 0) {
+            if (paymentAmountNum > 0) {
               getPaymentsBySrf(values.srfClient)
                 .then(res => {
+                  if (cancelled) return;
                   if (res.data && res.data.length > 0) {
                     suggestedType = "balance";
                   }
-                  setFieldValue("paymentType", suggestedType);
+                  if (values.paymentType !== suggestedType) {
+                    setFieldValue("paymentType", suggestedType);
+                  }
                 })
                 .catch(() => {
-                  setFieldValue("paymentType", suggestedType);
+                  if (cancelled) return;
+                  if (values.paymentType !== suggestedType) {
+                    setFieldValue("paymentType", suggestedType);
+                  }
                 });
-            } else {
+            } else if (values.paymentType !== suggestedType) {
               setFieldValue("paymentType", suggestedType);
             }
+
+            return () => {
+              cancelled = true;
+            };
           }, [values.paymentAmount, values.srfClient, values.totalAmount]);
 
           return (
@@ -313,8 +334,14 @@ const Add = () => {
                         if (value > values.totalAmount) {
                           setFieldValue("paymentAmount", values.totalAmount);
                           showMessage("Payment cannot exceed total amount", "warning");
+                          if (Number(values.totalAmount) > 0) {
+                            setFieldValue("paymentType", "complete");
+                          }
                         } else {
                           setFieldValue("paymentAmount", value);
+                          if (Number(value) > 0 && Number(value) === Number(values.totalAmount)) {
+                            setFieldValue("paymentType", "complete");
+                          }
                         }
                       }}
                     />

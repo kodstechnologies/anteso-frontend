@@ -21,7 +21,7 @@ import {
     Trash2,
     Plus,
 } from "lucide-react"
-import { getAssignedStaffName, getMachineDetails, deleteMachineFromOrder, getCustomerFeedbackByOrderId } from "../../../api"
+import { getAssignedStaffName, getMachineDetails, deleteMachineFromOrder, getCustomerFeedbackByOrderId, getOrderPaymentStatusByOrderId } from "../../../api"
 import {
     getActiveTechnicians,
     getActiveStaffs,
@@ -363,6 +363,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
     const [leadOwnerId, setLeadOwnerId] = useState<string | null>(null)
     const [customerFeedback, setCustomerFeedback] = useState<string>("")
     const [additionalServices, setAdditionalServices] = useState<AdditionalServiceItem[]>([])
+    const [orderPaymentType, setOrderPaymentType] = useState<string | null>(null)
 
     type ReportData = {
         qaTestReportNumber: string;
@@ -496,7 +497,11 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
             setLoading(true);
             setError(null);
             setServiceReportsGenerated({});
-            const response = await getMachineDetails(orderId);
+            const [response, paymentStatusData] = await Promise.all([
+                getMachineDetails(orderId),
+                getOrderPaymentStatusByOrderId(orderId),
+            ]);
+            setOrderPaymentType(paymentStatusData?.paymentType || null);
             const extraServices = Array.isArray(response.additionalServices) ? response.additionalServices : [];
             setAdditionalServices(extraServices);
 
@@ -2041,6 +2046,10 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
 
     const handleDeleteMachine = async (serviceId: string) => {
         if (!orderId) return;
+        if (orderPaymentType === "complete") {
+            showMessage("Cannot delete machine when payment type is complete", "warning");
+            return;
+        }
 
         const result = await Swal.fire({
             title: 'Are you sure?',
@@ -2350,6 +2359,8 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
         )
     }
 
+    const isPaymentComplete = orderPaymentType === "complete";
+
     return (
         <div className="space-y-6 p-6">
             <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -2359,12 +2370,18 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                 </div>
                 <button
                     onClick={() => setAddMachineModalOpen(true)}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                    disabled={isPaymentComplete}
+                    className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg transition-colors font-medium ${isPaymentComplete ? "bg-gray-400 text-white cursor-not-allowed" : "bg-blue-600 text-white hover:bg-blue-700"}`}
                 >
                     <Plus className="h-5 w-5" />
                     Add Machine
                 </button>
             </div>
+            {isPaymentComplete && (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+                    Machine add/delete is disabled because payment type is <strong>complete</strong>.
+                </div>
+            )}
             <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
                 <h3 className="text-sm font-semibold text-gray-900 mb-1">Customer Feedback</h3>
                 <p className="text-sm text-gray-700 whitespace-pre-wrap">
@@ -2459,7 +2476,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                     {machineData.length > 1 && currentUserRole !== 'staff' && (
                                         <button
                                             onClick={() => handleDeleteMachine(service.workTypes[0]?.serviceId || service.id.split("-")[0])}
-                                            disabled={deletingMachineId === (service.workTypes[0]?.serviceId || service.id.split("-")[0])}
+                                            disabled={isPaymentComplete || deletingMachineId === (service.workTypes[0]?.serviceId || service.id.split("-")[0])}
                                             className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                             title="Delete machine"
                                         >
@@ -2936,19 +2953,21 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                         <div className="flex gap-2">
                                                                             <button
                                                                                 onClick={() => handleEditToggle(workType.id)}
-                                                                                className="flex items-center gap-2 px-5 py-2.5 text-sm font-semibold 
+                                                                                disabled={isPaymentComplete}
+                                                                                className={`flex items-center gap-2 px-5 py-2.5 text-sm font-semibold 
                                                                                 text-white rounded-xl 
                                                                                 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 
                                                                                 shadow-lg hover:shadow-xl 
                                                                                 hover:scale-105 active:scale-95 
-                                                                                transition-all duration-300"
+                                                                                transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100`}
                                                                             >
                                                                                 <Edit className="h-4 w-4" />
                                                                                 Edit
                                                                             </button>
                                                                             <button
                                                                                 onClick={() => handleReassign(workType.id)}
-                                                                                className="flex items-center gap-2 px-3 py-1 text-sm bg-orange-100 text-orange-700 rounded-md hover:bg-orange-200 transition-colors"
+                                                                                disabled={isPaymentComplete}
+                                                                                className="flex items-center gap-2 px-3 py-1 text-sm bg-orange-100 text-orange-700 rounded-md hover:bg-orange-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-orange-100"
                                                                             >
                                                                                 <RefreshCw className="h-3 w-3" />
                                                                                 Reassign
@@ -2967,7 +2986,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                         Staff assigned at: {formatDate(workType.assignedAtStaff)}
                                                                     </span>
                                                                 </div>
-                                                                {canAssignQATest(workType) && editingWorkType[workType.id] && (
+                                                                {canAssignQATest(workType) && !isPaymentComplete && editingWorkType[workType.id] && (
                                                                     <div className="p-3 bg-blue-50 rounded-md border border-blue-200">
                                                                         <div className="flex gap-2 items-center">
                                                                             <label className="text-sm font-medium text-blue-700">Update Status:</label>

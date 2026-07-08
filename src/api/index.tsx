@@ -1580,6 +1580,23 @@ export const getCustomerFeedbackByOrderId = async (orderId: string) => {
     }
 };
 
+export const getOrderPaymentStatusByOrderId = async (orderId: string) => {
+    try {
+        const token = Cookies.get('accessToken');
+        const res = await api.get(`/orders/payment-status/${orderId}`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
+        return res.data?.data;
+    } catch (error: any) {
+        console.error("🚀 ~ getOrderPaymentStatusByOrderId ~ error:", error);
+        throw new Error(
+            error?.response?.data?.message || "Failed to fetch payment status"
+        );
+    }
+};
+
 // 1.
 // export const getMachineDetails = async (id: any) => {
 //     try {
