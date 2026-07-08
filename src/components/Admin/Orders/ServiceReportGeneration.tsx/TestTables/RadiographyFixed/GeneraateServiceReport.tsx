@@ -581,6 +581,7 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
         if (label === "EFFECTIVE FOCAL SPOT") {
           const testName = "Effective Focal Spot";
           let idx = 0;
+          let focalSpotFormat: "nominal" | "legacy" = "nominal";
           let j = i + 1;
           while (j < lines.length) {
             const l = lines[j].trim();
@@ -589,7 +590,12 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
             const cells = l.split(",");
             const labelCell = (cells[0] || "").trim();
             const valCell = (cells[1] || "").trim();
-            if (labelCell.startsWith("FCD") || labelCell.startsWith("FFD")) {
+            if (labelCell === "Focus Type") {
+              const header = cells.slice(1).map((c) => (c || "").trim().toLowerCase()).join(" ");
+              focalSpotFormat = header.includes("stated width") || header.includes("stated height")
+                ? "legacy"
+                : "nominal";
+            } else if (labelCell.startsWith("FCD") || labelCell.startsWith("FFD")) {
               if (valCell) pushRow(testName, "FCD", valCell, 0);
             } else if (labelCell === "Tolerance Small Multiplier") {
               pushRow(testName, "ToleranceCriteria_tolSmallMul", valCell, 0);
@@ -603,18 +609,25 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
               pushRow(testName, "ToleranceCriteria_mediumUpper", valCell, 0);
             } else if (labelCell === "Tolerance Large Multiplier") {
               pushRow(testName, "ToleranceCriteria_tolLargeMul", valCell, 0);
-            } else if (labelCell !== "Focus Type" && labelCell.includes("Focus")) {
-              const sW = (cells[1] || "").trim();
-              const sH = (cells[2] || "").trim();
-              const mW = (cells[3] || "").trim();
-              const mH = (cells[4] || "").trim();
+            } else if (labelCell.includes("Focus")) {
               pushRow(testName, "FocalSpot_focusType", labelCell, idx);
-              if (sW) pushRow(testName, "FocalSpot_statedWidth", sW, idx);
-              if (sH) pushRow(testName, "FocalSpot_statedHeight", sH, idx);
-              if (mW) pushRow(testName, "FocalSpot_measuredWidth", mW, idx);
-              if (mH) pushRow(testName, "FocalSpot_measuredHeight", mH, idx);
-              if (sW) pushRow(testName, "FocalSpot_statedNominal", sW, idx);
-              if (mW) pushRow(testName, "FocalSpot_measuredNominal", mW, idx);
+              if (focalSpotFormat === "legacy") {
+                const sW = (cells[1] || "").trim();
+                const sH = (cells[2] || "").trim();
+                const mW = (cells[3] || "").trim();
+                const mH = (cells[4] || "").trim();
+                if (sW) pushRow(testName, "FocalSpot_statedWidth", sW, idx);
+                if (sH) pushRow(testName, "FocalSpot_statedHeight", sH, idx);
+                if (mW) pushRow(testName, "FocalSpot_measuredWidth", mW, idx);
+                if (mH) pushRow(testName, "FocalSpot_measuredHeight", mH, idx);
+                if (sW) pushRow(testName, "FocalSpot_statedNominal", sW, idx);
+                if (mW) pushRow(testName, "FocalSpot_measuredNominal", mW, idx);
+              } else {
+                const statedNominal = (cells[1] || "").trim();
+                const measuredNominal = (cells[2] || "").trim();
+                if (statedNominal) pushRow(testName, "FocalSpot_statedNominal", statedNominal, idx);
+                if (measuredNominal) pushRow(testName, "FocalSpot_measuredNominal", measuredNominal, idx);
+              }
               idx++;
             }
             j++;
