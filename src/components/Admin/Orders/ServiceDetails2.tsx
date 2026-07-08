@@ -1829,18 +1829,10 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                     reportNumbers[parentService.id]?.qatest?.reportUrl,
                 ]);
 
-                if (!csvFileUrl) {
-                    showMessage(
-                        "Please upload an Excel (.xlsx/.xls) or CSV file under Available Files (QA Raw) before generating the report.",
-                        "error"
-                    );
-                    return;
-                }
-
-                console.log('ServiceDetails2: Auto-navigating to report with Available Files spreadsheet:', {
+                console.log('ServiceDetails2: Auto-navigating to report:', {
                     machineType: parentService.machineType,
                     serviceId: cleanId,
-                    csvFileUrl
+                    csvFileUrl: csvFileUrl || null,
                 });
 
                 setTimeout(() => {
@@ -3110,19 +3102,6 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                                                     csvFileUrl = getAvailableSpreadsheetFileUrl(firstQATest, [
                                                                                                         reportNumbers[service.id]?.qatest?.reportUrl,
                                                                                                     ]);
-
-                                                                                                    if (!csvFileUrl) {
-                                                                                                        showMessage(
-                                                                                                            "Please upload an Excel (.xlsx/.xls) or CSV file under Available Files (QA Raw) before generating the report.",
-                                                                                                            "error"
-                                                                                                        );
-                                                                                                        return;
-                                                                                                    }
-
-                                                                                                    console.log("ServiceDetails2: Using Available Files spreadsheet for report:", {
-                                                                                                        machineType: service.machineType,
-                                                                                                        csvFileUrl,
-                                                                                                    });
                                                                                                 }
 
                                                                                                 navigate("/admin/orders/generic-service-table", {
