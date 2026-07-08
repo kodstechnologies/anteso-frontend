@@ -26,6 +26,7 @@ import {
 } from "../../../../../../api";
 import { getDetails, getTools } from "../../../../../../api";
 import { createFixedRadioFluroUploadableExcel, FixedRadioFluroExportData } from "./exportFixedRadioFluroToExcel";
+import { isExcelFileUrl } from "../../../../../../utils/spreadsheetFile";
 
 import Standards from "../../Standards";
 import Notes from "../../Notes";
@@ -1356,8 +1357,7 @@ const RadioFluro: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, qaTestDa
             try {
                 setCsvUploading(true);
 
-                const urlLower = csvFileUrl.toLowerCase();
-                const isExcel = urlLower.endsWith('.xlsx') || urlLower.endsWith('.xls');
+                const isExcel = isExcelFileUrl(csvFileUrl);
 
                 let csvData: any[] = [];
 

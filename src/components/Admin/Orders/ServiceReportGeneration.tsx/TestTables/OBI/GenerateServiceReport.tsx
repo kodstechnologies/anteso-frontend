@@ -25,6 +25,7 @@ import {
 } from "../../../../../../api";
 import { getDetails, getTools } from "../../../../../../api";
 import { createOBISavedExcel, OBISavedExportData } from "./exportOBISavedToExcel";
+import { isExcelFileUrl } from "../../../../../../utils/spreadsheetFile";
 
 import Standards from "../../Standards";
 import Notes from "../../Notes";
@@ -1671,9 +1672,7 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null; qaTestDate?
                 console.log('Fetching file from URL:', csvFileUrl);
                 setCsvUploading(true);
 
-                // Determine file type from URL
-                const urlLower = csvFileUrl.toLowerCase();
-                const isExcel = urlLower.endsWith('.xlsx') || urlLower.endsWith('.xls');
+                const isExcel = isExcelFileUrl(csvFileUrl);
 
                 let csvData: any[] = [];
 

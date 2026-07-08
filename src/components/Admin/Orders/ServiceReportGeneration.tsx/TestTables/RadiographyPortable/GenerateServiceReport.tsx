@@ -27,6 +27,7 @@ import {
   parsePortableTableCSV,
   parsePortableTableMatrix,
 } from "./parsePortableTableFormat";
+import { isExcelFileUrl } from "../../../../../../utils/spreadsheetFile";
 
 import Standards from "../../Standards";
 import Notes from "../../Notes";
@@ -884,8 +885,7 @@ const RadiographyPortable: React.FC<{ serviceId: string; qaTestDate?: string | n
       try {
         setCsvUploading(true);
 
-        const urlLower = csvFileUrl.toLowerCase();
-        const isExcel = urlLower.endsWith('.xlsx') || urlLower.endsWith('.xls');
+        const isExcel = isExcelFileUrl(csvFileUrl);
 
         let csvData: any[] = [];
 

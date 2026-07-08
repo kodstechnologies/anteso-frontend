@@ -8,6 +8,7 @@ import { saveReportHeaderForCBCT, getReportHeaderForCBCT, getAccuracyOfOperating
 import { getDetails, getTools } from "../../../../../../api";
 import * as XLSX from 'xlsx';
 import { createCBCTUploadableExcel } from './exportCBCTToExcel';
+import { isExcelFileUrl } from '../../../../../../utils/spreadsheetFile';
 
 import Standards from "../../Standards";
 import Notes from "../../Notes";
@@ -789,10 +790,7 @@ const DentalConeBeamCT: React.FC<{ serviceId: string; qaTestDate?: string | null
             try {
                 toast.loading('Loading Excel data from file...', { id: 'csv-loading' });
 
-                // Extract file extension from URL (remove query parameters first)
-                const urlWithoutQuery = csvFileUrl.split('?')[0].split('#')[0];
-                const urlLower = urlWithoutQuery.toLowerCase();
-                const isExcel = urlLower.endsWith('.xlsx') || urlLower.endsWith('.xls');
+                const isExcel = isExcelFileUrl(csvFileUrl);
 
                 if (isExcel) {
                     const response = await proxyFile(csvFileUrl);

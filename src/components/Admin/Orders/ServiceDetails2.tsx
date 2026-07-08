@@ -40,6 +40,7 @@ import {
 } from "../../../api"
 import { useNavigate } from "react-router-dom";
 import AddMachineModal from "./AddMachineModal";
+import { isSpreadsheetFileUrl } from "../../../utils/spreadsheetFile";
 
 const showMessage = (msg = '', type = 'success') => {
     const toast: any = Swal.mixin({
@@ -96,6 +97,54 @@ const VIEW_GENERATED_REPORT_ROUTES: Record<string, string> = {
 const getViewGeneratedReportPath = (machineType: string): string | null => {
     return VIEW_GENERATED_REPORT_ROUTES[machineType] || null;
 };
+
+/** Prefer QA Raw Available Files (upload + view) that are xlsx/xls/csv for report prefill. */
+const getAvailableSpreadsheetFileUrl = (qaRawWorkType?: {
+    backendFields?: {
+        uploadFile?: string;
+        fileUrl?: string;
+        viewFile?: string[];
+    };
+} | null, fallbackUrls: Array<string | null | undefined> = []): string | null => {
+    const candidates: string[] = [];
+    const fields = qaRawWorkType?.backendFields;
+
+    if (fields?.uploadFile) candidates.push(fields.uploadFile);
+    if (fields?.fileUrl) candidates.push(fields.fileUrl);
+    if (Array.isArray(fields?.viewFile)) {
+        candidates.push(...fields.viewFile.filter(Boolean));
+    }
+    for (const url of fallbackUrls) {
+        if (url) candidates.push(url);
+    }
+
+    const spreadsheet = candidates.find(isSpreadsheetFileUrl);
+    return spreadsheet || null;
+};
+
+const MACHINES_USING_SPREADSHEET_PREFILL = [
+    "C-Arm",
+    "Mammography",
+    "OBI",
+    "KV Imaging (OBI)",
+    "Bone Densitometer (BMD)",
+    "BMD",
+    "Radiography and Fluoroscopy",
+    "Computed Tomography",
+    "Dental Cone Beam CT",
+    "Dental Intra",
+    "Dental (Intra Oral)",
+    "Radiography (Mobile)",
+    "Radiography (Mobile) with HT",
+    "Radiography (Portable)",
+    "Radiography (Fixed)",
+    "Interventional Radiology",
+    "O-Arm",
+    "Ortho Pantomography (OPG)",
+    "Dental (Hand-held)",
+    "Dental Hand-held",
+    "Lead Apron/Thyroid Shield/Gonad Shield",
+] as const;
 
 const REPORT_HEADER_API_SLUGS: Record<string, string> = {
     "C-Arm": "c-arm",
@@ -1742,30 +1791,14 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
             });
             saveToLocalStorage(STORAGE_KEYS.assignments, newAssignments)
 
-            // Auto-navigate logic for specific machine types (only for QA Test)
-            if (isQATestService && newStatus === "complete" && [
-                "C-Arm",
-                "Mammography",
-                "OBI",
-                "KV Imaging (OBI)",
-                "Bone Densitometer (BMD)",
-                "BMD",
-                "Radiography and Fluoroscopy",
-                "Computed Tomography",
-                "Dental Cone Beam CT",
-                "Dental Intra",
-                "Dental (Intra Oral)",
-                "Dental Hand-held",
-                "Radiography (Mobile)",
-                "Radiography (Mobile) with HT",
-                "Radiography (Portable)",
-                "Radiography (Fixed)",
-                "Interventional Radiology",
-                "O-Arm",
-                "Ortho Pantomography (OPG)",
-                "Lead Apron/Thyroid Shield/Gonad Shield"
-            ].includes(parentService.machineType)) {
-
+            // Auto-navigate for QA Test complete: use Available Files xlsx/csv to prefill report
+            if (
+                isQATestService &&
+                newStatus === "complete" &&
+                MACHINES_USING_SPREADSHEET_PREFILL.includes(
+                    parentService.machineType as (typeof MACHINES_USING_SPREADSHEET_PREFILL)[number]
+                )
+            ) {
                 const token = Cookies.get("accessToken");
                 if (!token) {
                     console.error("No access token found, cannot navigate");
@@ -1788,16 +1821,23 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                 const createdAt = workType.qaTestSubmittedAt || firstQATest?.backendFields?.createdAt || null;
                 const ulrNumber = reportNumbers[parentService.id]?.qatest?.reportULRNumber || firstQATest?.backendFields?.reportURLNumber || null;
 
-                const csvFileUrl = response?.data?.fileUrl ||
-                    response?.data?.uploadedFileUrl ||
-                    response?.data?.linkedReport?.fileUrl ||
-                    response?.data?.linkedReport?.report ||
-                    firstQATest?.backendFields?.uploadFile ||
-                    firstQATest?.backendFields?.fileUrl ||
-                    reportNumbers[parentService.id]?.qatest?.reportUrl ||
-                    null;
+                const csvFileUrl = getAvailableSpreadsheetFileUrl(firstQATest, [
+                    response?.data?.fileUrl,
+                    response?.data?.uploadedFileUrl,
+                    response?.data?.linkedReport?.fileUrl,
+                    response?.data?.linkedReport?.report,
+                    reportNumbers[parentService.id]?.qatest?.reportUrl,
+                ]);
 
-                console.log('ServiceDetails2: Auto-navigating to report:', {
+                if (!csvFileUrl) {
+                    showMessage(
+                        "Please upload an Excel (.xlsx/.xls) or CSV file under Available Files (QA Raw) before generating the report.",
+                        "error"
+                    );
+                    return;
+                }
+
+                console.log('ServiceDetails2: Auto-navigating to report with Available Files spreadsheet:', {
                     machineType: parentService.machineType,
                     serviceId: cleanId,
                     csvFileUrl
@@ -1811,7 +1851,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                             qaTestDate: workType.qaTestSubmittedAt || null,
                             createdAt: createdAt,
                             ulrNumber: ulrNumber,
-                            csvFileUrl: csvFileUrl,
+                            csvFileUrl,
                         },
                     });
                 }, 100);
@@ -3057,61 +3097,31 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                                                 }
 
                                                                                                 const cleanId = service.id.replace(/-0$/, "");
-                                                                                                console.log("Navigating with:", { serviceId: cleanId, machineType: service.machineType });
-
-                                                                                                // Get createdAt from the first QA test's createdAt (from backend)
-                                                                                                // We need to get it from the original machineData response
-                                                                                                // For now, use qaTestSubmittedAt as fallback, or get from firstTest
                                                                                                 const firstQATest = service.workTypes.find((wt: any) => wt.name === "QA Raw");
-                                                                                                // Try to get createdAt from the original response - it should be in firstTest.createdAt
-                                                                                                // Since we don't have direct access, we'll use qaTestSubmittedAt or fetch it
-                                                                                                // For Lead Apron, the createdAt is typically the first QA test's createdAt
                                                                                                 const createdAt = workType.qaTestSubmittedAt ||
                                                                                                     firstQATest?.backendFields?.createdAt ||
                                                                                                     null;
-
-                                                                                                // Get ULR number from reportNumbers
                                                                                                 const ulrNumber = reportNumbers[service.id]?.qatest?.reportULRNumber ||
                                                                                                     firstQATest?.backendFields?.reportURLNumber ||
                                                                                                     null;
 
-                                                                                                // Get file URL for mammography/OBI/BMD/FixedRadioFluro/CT Scan CSV/Excel file
-                                                                                                let csvFileUrl = null;
-                                                                                                if (
-                                                                                                    service.machineType === "C-Arm" ||
-                                                                                                    service.machineType === "Mammography" ||
-                                                                                                    service.machineType === "OBI" ||
-                                                                                                    service.machineType === "KV Imaging (OBI)" ||
-                                                                                                    service.machineType === "Bone Densitometer (BMD)" ||
-                                                                                                    service.machineType === "BMD" ||
-                                                                                                    service.machineType === "Radiography and Fluoroscopy" ||
-                                                                                                    service.machineType === "Computed Tomography" ||
-                                                                                                    service.machineType === "Dental Cone Beam CT" ||
-                                                                                                    service.machineType === "Dental Intra" ||
-                                                                                                    service.machineType === "Dental (Intra Oral)" ||
-                                                                                                    service.machineType === "Radiography (Mobile)" ||
-                                                                                                    service.machineType === "Radiography (Mobile) with HT" ||
-                                                                                                    service.machineType === "Radiography (Portable)" ||
-                                                                                                    service.machineType === "Radiography (Fixed)" ||
-                                                                                                    service.machineType === "Interventional Radiology" ||
-                                                                                                    service.machineType === "O-Arm" ||
-                                                                                                    service.machineType === "Ortho Pantomography (OPG)" ||
-                                                                                                    service.machineType === "Dental (Hand-held)" ||
-                                                                                                    service.machineType === "Dental Hand-held" ||
-                                                                                                    service.machineType === "Lead Apron/Thyroid Shield/Gonad Shield"
-                                                                                                ) {
-                                                                                                    // First try to get uploadFile from QA Raw workType's backendFields (this is the file uploaded by engineer)
-                                                                                                    // Then fallback to reportUrl from reportNumbers (this is the file uploaded by office staff)
-                                                                                                    csvFileUrl = firstQATest?.backendFields?.uploadFile ||
-                                                                                                        firstQATest?.backendFields?.fileUrl ||
-                                                                                                        reportNumbers[service.id]?.qatest?.reportUrl ||
-                                                                                                        null;
+                                                                                                let csvFileUrl: string | null = null;
+                                                                                                if (MACHINES_USING_SPREADSHEET_PREFILL.includes(service.machineType as typeof MACHINES_USING_SPREADSHEET_PREFILL[number])) {
+                                                                                                    csvFileUrl = getAvailableSpreadsheetFileUrl(firstQATest, [
+                                                                                                        reportNumbers[service.id]?.qatest?.reportUrl,
+                                                                                                    ]);
 
-                                                                                                    console.log('ServiceDetails2: Getting csvFileUrl:', {
+                                                                                                    if (!csvFileUrl) {
+                                                                                                        showMessage(
+                                                                                                            "Please upload an Excel (.xlsx/.xls) or CSV file under Available Files (QA Raw) before generating the report.",
+                                                                                                            "error"
+                                                                                                        );
+                                                                                                        return;
+                                                                                                    }
+
+                                                                                                    console.log("ServiceDetails2: Using Available Files spreadsheet for report:", {
                                                                                                         machineType: service.machineType,
-                                                                                                        uploadFile: firstQATest?.backendFields?.uploadFile,
-                                                                                                        reportUrl: reportNumbers[service.id]?.qatest?.reportUrl,
-                                                                                                        finalCsvFileUrl: csvFileUrl
+                                                                                                        csvFileUrl,
                                                                                                     });
                                                                                                 }
 
@@ -3122,7 +3132,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                                                         qaTestDate: workType.qaTestSubmittedAt || null,
                                                                                                         createdAt: createdAt,
                                                                                                         ulrNumber: ulrNumber,
-                                                                                                        csvFileUrl: csvFileUrl, // Pass file URL for mammography
+                                                                                                        csvFileUrl,
                                                                                                     },
                                                                                                 });
                                                                                             }}

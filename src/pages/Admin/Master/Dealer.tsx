@@ -13,7 +13,6 @@ import IconHome from '../../../components/Icon/IconHome';
 import IconBox from '../../../components/Icon/IconBox';
 import {
     getAllDealers,
-    getDealerFilterOptions,
     deleteDealer,
     type DealerListFilters,
     type DealerFilterOptions,
@@ -87,7 +86,6 @@ const Dealers = () => {
     const [name, setName] = useState('');
     const [pincode, setPincode] = useState('');
     const [branch, setBranch] = useState('');
-    const [appliedFilters, setAppliedFilters] = useState<DealerListFilters>({});
     const [filterOptions, setFilterOptions] = useState<DealerFilterOptions>(emptyFilterOptions);
 
     const [page, setPage] = useState(1);
@@ -99,11 +97,12 @@ const Dealers = () => {
         direction: 'asc',
     });
 
-    const fetchDealers = async (filters: DealerListFilters = appliedFilters) => {
+    const fetchDealers = async (filters: DealerListFilters = {}) => {
         try {
             setLoading(true);
             const res = await getAllDealers(filters);
             setRecords(res?.data?.dealers || []);
+            setFilterOptions(res?.data?.filters || emptyFilterOptions);
         } catch (error) {
             console.error('Failed to fetch dealers:', error);
             showMessage('Failed to fetch dealers', 'error');
@@ -112,27 +111,14 @@ const Dealers = () => {
         }
     };
 
-    const fetchFilterOptions = async () => {
-        try {
-            const options = await getDealerFilterOptions();
-            setFilterOptions(options || emptyFilterOptions);
-        } catch (error) {
-            console.error('Failed to fetch dealer filter options:', error);
-        }
-    };
-
     useEffect(() => {
         dispatch(setPageTitle('Dealers'));
-        fetchDealers();
-        fetchFilterOptions();
     }, [dispatch]);
 
-    const applyFilters = () => {
+    useEffect(() => {
         const filters: DealerListFilters = { dealerId, name, pincode, branch };
-        setAppliedFilters(filters);
-        setPage(1);
         fetchDealers(filters);
-    };
+    }, [dealerId, name, pincode, branch]);
 
     const clearFilters = () => {
         setSearch('');
@@ -140,9 +126,7 @@ const Dealers = () => {
         setName('');
         setPincode('');
         setBranch('');
-        setAppliedFilters({});
         setPage(1);
-        fetchDealers({});
     };
 
     const hasActiveFilters = search || dealerId || name || pincode || branch;
@@ -291,21 +275,13 @@ const Dealers = () => {
                         </div>
 
                         <div className="rounded-lg border border-gray-200 bg-gray-50/80 p-4 dark:border-white/10 dark:bg-white/5">
-                            <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                            <div className="mb-4">
                                 <div>
                                     <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200">Filter Dealers</h3>
                                     <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                                         {sortedRecords.length} record(s) match the current filters
                                     </p>
                                 </div>
-                                <button
-                                    type="button"
-                                    onClick={applyFilters}
-                                    className="btn btn-primary h-[38px]"
-                                    disabled={loading || exporting !== null}
-                                >
-                                    Apply Filters
-                                </button>
                             </div>
 
                             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">

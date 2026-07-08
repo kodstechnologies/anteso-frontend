@@ -26,6 +26,7 @@ import {
 } from "../../../../../../api";
 import { getDetails, getTools } from "../../../../../../api";
 import { createCTScanUploadableExcel, CTScanExportData } from "./exportCTScanToExcel";
+import { isExcelFileUrl } from "../../../../../../utils/spreadsheetFile";
 
 import Standards from "../../Standards";
 import Notes from "../../Notes";
@@ -803,8 +804,7 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
             try {
                 setCsvUploading(true);
 
-                const urlLower = csvFileUrl.toLowerCase();
-                const isExcel = urlLower.endsWith('.xlsx') || urlLower.endsWith('.xls');
+                const isExcel = isExcelFileUrl(csvFileUrl);
 
                 let csvData: any[] = [];
 

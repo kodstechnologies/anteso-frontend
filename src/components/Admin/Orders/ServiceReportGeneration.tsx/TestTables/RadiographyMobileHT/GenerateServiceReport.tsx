@@ -23,6 +23,7 @@ import {
   getRadiationProtectionSurveyByServiceIdForRadiographyMobileHT,
 } from "../../../../../../api";
 import { createRadiographyMobileHTUploadableExcel, RadiographyMobileHTExportData } from "./exportRadiographyMobileHTToExcel";
+import { isExcelFileUrl } from "../../../../../../utils/spreadsheetFile";
 
 import Standards from "../../Standards";
 import Notes from "../../Notes";
@@ -1467,8 +1468,7 @@ const RadiographyMobileHT: React.FC<{ serviceId: string; qaTestDate?: string | n
       if (!csvFileUrl) return;
       try {
         setCsvUploading(true);
-        const urlLower = csvFileUrl.toLowerCase();
-        const isExcel = urlLower.endsWith(".xlsx") || urlLower.endsWith(".xls");
+        const isExcel = isExcelFileUrl(csvFileUrl);
         let csvData: any[] = [];
         if (isExcel) {
           const res = await proxyFile(csvFileUrl);

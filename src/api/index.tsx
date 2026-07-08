@@ -744,23 +744,6 @@ export type EnquiryFilterOptions = {
     contactNumbers: string[];
 };
 
-export const getEnquiryFilterOptions = async () => {
-    try {
-        const token = Cookies.get('accessToken');
-        const res = await api.get('/enquiry/filter-options', {
-            headers: {
-                Authorization: `Bearer ${token}`,
-            },
-        });
-        return res.data?.filters as EnquiryFilterOptions;
-    } catch (error: any) {
-        console.error("Failed to fetch enquiry filter options:", error);
-        throw new Error(
-            error?.response?.data?.message || "Failed to fetch enquiry filter options"
-        );
-    }
-};
-
 export const getQuotationByCustomerAndEnquiryId = async (customerId: any, enquiryId: any) => {
     try {
         const token = Cookies.get('accessToken')
@@ -1382,23 +1365,6 @@ export type OrderFilterOptions = {
     districts: string[];
     emailAddresses: string[];
     contactNumbers: string[];
-};
-
-export const getOrderFilterOptions = async () => {
-    try {
-        const token = Cookies.get('accessToken');
-        const res = await api.get(`/orders/filter-options`, {
-            headers: {
-                Authorization: `Bearer ${token}`,
-            },
-        });
-        return res.data?.filters as OrderFilterOptions;
-    } catch (error: any) {
-        console.error("Failed to fetch order filter options:", error);
-        throw new Error(
-            error?.response?.data?.message || "Failed to fetch order filter options"
-        );
-    }
 };
 
 export const getAllOrders = async (filters?: OrderListFilters) => {

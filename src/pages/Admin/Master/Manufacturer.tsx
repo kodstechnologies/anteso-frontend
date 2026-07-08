@@ -13,7 +13,6 @@ import IconHome from '../../../components/Icon/IconHome';
 import IconBox from '../../../components/Icon/IconBox';
 import {
     getAllManufacturer,
-    getManufacturerFilterOptions,
     deleteManufacturer,
     type ManufacturerListFilters,
     type ManufacturerFilterOptions,
@@ -97,7 +96,6 @@ const Manufacturers = () => {
     const [pincode, setPincode] = useState('');
     const [branch, setBranch] = useState('');
     const [mouValidity, setMouValidity] = useState('');
-    const [appliedFilters, setAppliedFilters] = useState<ManufacturerListFilters>({});
     const [filterOptions, setFilterOptions] = useState<ManufacturerFilterOptions>(emptyFilterOptions);
 
     const [page, setPage] = useState(1);
@@ -109,11 +107,12 @@ const Manufacturers = () => {
         direction: 'asc',
     });
 
-    const fetchManufacturers = async (filters: ManufacturerListFilters = appliedFilters) => {
+    const fetchManufacturers = async (filters: ManufacturerListFilters = {}) => {
         try {
             setLoading(true);
             const res = await getAllManufacturer(filters);
             setRecords(res?.data?.data || []);
+            setFilterOptions(res?.data?.filters || emptyFilterOptions);
         } catch (error) {
             console.error('Error fetching manufacturers:', error);
             showMessage('Failed to fetch manufacturers', 'error');
@@ -122,22 +121,11 @@ const Manufacturers = () => {
         }
     };
 
-    const fetchFilterOptions = async () => {
-        try {
-            const options = await getManufacturerFilterOptions();
-            setFilterOptions(options || emptyFilterOptions);
-        } catch (error) {
-            console.error('Failed to fetch manufacturer filter options:', error);
-        }
-    };
-
     useEffect(() => {
         dispatch(setPageTitle('Manufacturers'));
-        fetchManufacturers();
-        fetchFilterOptions();
     }, [dispatch]);
 
-    const applyFilters = () => {
+    useEffect(() => {
         const filters: ManufacturerListFilters = {
             manufacturerId,
             name,
@@ -145,10 +133,8 @@ const Manufacturers = () => {
             branch,
             mouValidity,
         };
-        setAppliedFilters(filters);
-        setPage(1);
         fetchManufacturers(filters);
-    };
+    }, [manufacturerId, name, pincode, branch, mouValidity]);
 
     const clearFilters = () => {
         setSearch('');
@@ -157,9 +143,7 @@ const Manufacturers = () => {
         setPincode('');
         setBranch('');
         setMouValidity('');
-        setAppliedFilters({});
         setPage(1);
-        fetchManufacturers({});
     };
 
     const hasActiveFilters = search || manufacturerId || name || pincode || branch || mouValidity;
@@ -325,21 +309,13 @@ const Manufacturers = () => {
                         </div>
 
                         <div className="rounded-lg border border-gray-200 bg-gray-50/80 p-4 dark:border-white/10 dark:bg-white/5">
-                            <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                            <div className="mb-4">
                                 <div>
                                     <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200">Filter Manufacturers</h3>
                                     <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                                         {sortedRecords.length} record(s) match the current filters
                                     </p>
                                 </div>
-                                <button
-                                    type="button"
-                                    onClick={applyFilters}
-                                    className="btn btn-primary h-[38px]"
-                                    disabled={loading || exporting !== null}
-                                >
-                                    Apply Filters
-                                </button>
                             </div>
 
                             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">

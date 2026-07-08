@@ -10,7 +10,7 @@ import IconRefresh from '../../components/Icon/IconRefresh';
 import Breadcrumb, { BreadcrumbItem } from '../../components/common/Breadcrumb';
 import { useDispatch } from 'react-redux';
 import { setPageTitle } from '../../store/themeConfigSlice';
-import { getAllOrders, getOrderFilterOptions, deleteOrder, type OrderListFilters, type OrderFilterOptions } from '../../api';
+import { getAllOrders, deleteOrder, type OrderListFilters, type OrderFilterOptions } from '../../api';
 import { showMessage } from '../../components/common/ShowMessage';
 import ConfirmModal from '../../components/common/ConfirmModal';
 import { formatCreatedAtDisplay, isInDateRange } from '../../utils/tableDateFilter';
@@ -91,7 +91,6 @@ const Orders = () => {
     const [district, setDistrict] = useState('');
     const [emailAddress, setEmailAddress] = useState('');
     const [contactNumber, setContactNumber] = useState('');
-    const [appliedFilters, setAppliedFilters] = useState<OrderListFilters>({});
     const [filterOptions, setFilterOptions] = useState<OrderFilterOptions>(emptyFilterOptions);
     const [loading, setLoading] = useState(false);
     const [exporting, setExporting] = useState<'pdf' | 'excel' | 'word' | null>(null);
@@ -109,11 +108,12 @@ const Orders = () => {
 
     const dispatch = useDispatch();
 
-    const fetchOrders = async (filters: OrderListFilters = appliedFilters) => {
+    const fetchOrders = async (filters: OrderListFilters = {}) => {
         try {
             setLoading(true);
             const data = await getAllOrders(filters);
             setRecords(data.orders || []);
+            setFilterOptions(data.filters || emptyFilterOptions);
         } catch (error) {
             console.error('Failed to fetch orders:', error);
             showMessage('Failed to fetch orders', 'error');
@@ -122,23 +122,12 @@ const Orders = () => {
         }
     };
 
-    const fetchFilterOptions = async () => {
-        try {
-            const options = await getOrderFilterOptions();
-            setFilterOptions(options || emptyFilterOptions);
-        } catch (error) {
-            console.error('Failed to fetch order filter options:', error);
-        }
-    };
-
     // ✅ Fetch Orders on Mount
     useEffect(() => {
         dispatch(setPageTitle('Orders'));
         fetchOrders();
-        fetchFilterOptions();
     }, [dispatch]);
-
-    const applyFilters = () => {
+    useEffect(() => {
         const filters: OrderListFilters = {
             branchName,
             city,
@@ -146,10 +135,9 @@ const Orders = () => {
             emailAddress,
             contactNumber,
         };
-        setAppliedFilters(filters);
-        setPage(1);
         fetchOrders(filters);
-    };
+        setPage(1);
+    }, [branchName, city, district, emailAddress, contactNumber]);
 
     // ✅ Clear all filters
     const clearFilters = () => {
@@ -161,9 +149,7 @@ const Orders = () => {
         setDistrict('');
         setEmailAddress('');
         setContactNumber('');
-        setAppliedFilters({});
         setPage(1);
-        fetchOrders({});
     };
 
     const hasActiveFilters =
@@ -353,21 +339,13 @@ const Orders = () => {
                         </div>
 
                         <div className="rounded-lg border border-gray-200 bg-gray-50/80 p-4 dark:border-white/10 dark:bg-white/5">
-                            <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                            <div className="mb-4">
                                 <div>
                                     <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200">Filter Orders</h3>
                                     <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                                         {sortedRecords.length} record(s) match the current filters
                                     </p>
                                 </div>
-                                <button
-                                    type="button"
-                                    onClick={applyFilters}
-                                    className="btn btn-primary h-[38px]"
-                                    disabled={loading || exporting !== null}
-                                >
-                                    Apply Filters
-                                </button>
                             </div>
 
                             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">

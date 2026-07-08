@@ -28,6 +28,7 @@ import {
 } from "../../../../../../api";
 import * as XLSX from "xlsx";
 import { createMammographySavedExcel, MammographySavedExportData } from "./exportMammographySavedToExcel";
+import { isExcelFileUrl } from "../../../../../../utils/spreadsheetFile";
 
 /** Tests whose CSV columns after fixed fields are dynamic measurement columns (custom headers like "22", "400 mA"). */
 const MAMMOGRAPHY_MEAS_FIELD_PREFIX_BY_TEST: Record<string, string> = {
@@ -1427,8 +1428,7 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
 
                 const response = await proxyFile(csvFileUrl);
                 const blob = response.data instanceof Blob ? response.data : new Blob([response.data]);
-                const urlLower = csvFileUrl.toLowerCase();
-                const isExcel = urlLower.endsWith('.xlsx') || urlLower.endsWith('.xls');
+                const isExcel = isExcelFileUrl(csvFileUrl);
 
                 let csvData: any[];
                 if (isExcel) {

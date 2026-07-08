@@ -25,6 +25,7 @@ import {
   proxyFile,
 } from "../../../../../../api";
 import { createOArmUploadableExcel, OArmExportData } from "./exportOArmToExcel";
+import { isExcelFileUrl } from "../../../../../../utils/spreadsheetFile";
 
 // Test-table imports
 import TotalFilteration from "./TotalFilteration";
@@ -758,8 +759,7 @@ const OArm: React.FC<OArmProps> = ({ serviceId, csvFileUrl }) => {
       console.log('O-Arm: Fetching file from URL:', csvFileUrl);
       try {
         setCsvUploading(true);
-        const urlLower = csvFileUrl.toLowerCase();
-        const isExcel = urlLower.endsWith('.xlsx') || urlLower.endsWith('.xls');
+        const isExcel = isExcelFileUrl(csvFileUrl);
         let csvData: any[] = [];
         if (isExcel) {
           toast.loading('Loading Excel data from file...', { id: 'csv-loading' });

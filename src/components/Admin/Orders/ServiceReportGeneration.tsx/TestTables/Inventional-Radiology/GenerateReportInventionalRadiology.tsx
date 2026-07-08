@@ -45,6 +45,7 @@ import MeasurementOfMaLinearity from "./measurementOfMaLinearity";
 
 import { handleExportToExcel as exportToExcel } from "../../../../../../utils/exportInventionalRadiologyToExcel";
 import { createInventionalRadiologySavedExcel, InventionalRadiologySavedExportData } from "./exportInventionalRadiologySavedToExcel";
+import { isExcelFileUrl } from "../../../../../../utils/spreadsheetFile";
 // import EquipmentSettingForInterventionalRadiology from "./EquipmentSettingForInventionalRadiology";
 // import MaxRadiationLevel from "./MaxRadiationLevel";
 export interface Standard {
@@ -743,8 +744,7 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
 
       try {
         setCsvUploading(true);
-        const urlLower = csvFileUrl.toLowerCase();
-        const isExcel = urlLower.endsWith('.xlsx') || urlLower.endsWith('.xls');
+        const isExcel = isExcelFileUrl(csvFileUrl);
 
         toast.loading('Loading data from file...', { id: 'csv-loading' });
         const response = await proxyFile(csvFileUrl);

@@ -25,6 +25,7 @@ import RadiationLeakageLevel from "./RadiationLeakageLevel";
 import DetailsOfRadiationProtection from "./DetailsOfRadiationProtection";
 
 import { createDentalIntraUploadableExcel, DentalIntraExportData } from "./exportDentalIntraToExcel";
+import { isExcelFileUrl } from "../../../../../../utils/spreadsheetFile";
 import {
     getAccuracyOfOperatingPotentialByServiceIdForDentalIntra,
     getAccuracyOfIrradiationTimeByServiceIdForDentalIntra,
@@ -738,10 +739,7 @@ const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId, qaTestDate,
             try {
                 setCsvUploading(true);
 
-                // Strip query parameters and hash fragments for extension detection
-                const urlWithoutQuery = csvFileUrl.split('?')[0].split('#')[0];
-                const urlLower = urlWithoutQuery.toLowerCase();
-                const isExcel = urlLower.endsWith('.xlsx') || urlLower.endsWith('.xls');
+                const isExcel = isExcelFileUrl(csvFileUrl);
 
                 let csvData: any[] = [];
 

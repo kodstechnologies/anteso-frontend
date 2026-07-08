@@ -24,6 +24,7 @@ import {
     proxyFile,
 } from "../../../../../../api";
 import { createBMDSavedExcel, BMDSavedExportData } from "./exportBMDSavedToExcel";
+import { isExcelFileUrl } from "../../../../../../utils/spreadsheetFile";
 
 // Test-table imports
 import AccuracyOfIrradiationTime from "./AccuracyOfIrradiationTime";
@@ -1109,9 +1110,7 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl, qaTes
       try {
         setCsvUploading(true);
 
-        // Determine file type from URL
-        const urlLower = csvFileUrl.toLowerCase();
-        const isExcel = urlLower.endsWith('.xlsx') || urlLower.endsWith('.xls');
+        const isExcel = isExcelFileUrl(csvFileUrl);
 
         let csvData: any[] = [];
 

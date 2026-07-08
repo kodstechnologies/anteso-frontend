@@ -8,6 +8,7 @@ import * as XLSX from "xlsx";
 import { saveReportHeaderForLeadApron, getReportHeaderForLeadApron, proxyFile } from "../../../../../../api";
 import { getDetails, getTools } from "../../../../../../api";
 import { createLeadApronUploadableExcel, LeadApronExportData } from "./exportLeadApronToExcel";
+import { isExcelFileUrl } from "../../../../../../utils/spreadsheetFile";
 
 import Standards from "../../Standards";
 import Notes from "../../Notes";
@@ -424,8 +425,7 @@ const LeadApron: React.FC<{ serviceId: string; qaTestDate?: string | null; creat
             try {
                 setCsvUploading(true);
 
-                const urlLower = csvFileUrl.toLowerCase();
-                const isExcel = urlLower.endsWith('.xlsx') || urlLower.endsWith('.xls');
+                const isExcel = isExcelFileUrl(csvFileUrl);
 
                 let csvData: any[] = [];
 

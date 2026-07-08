@@ -15,7 +15,6 @@ import IconBox from '../../components/Icon/IconBox';
 import {
     deleteEnquiryById,
     getAllEnquiry,
-    getEnquiryFilterOptions,
     type EnquiryFilterOptions,
     type EnquiryListFilters,
 } from '../../api';
@@ -111,7 +110,6 @@ const Enquiry = () => {
     const [branch, setBranch] = useState('');
     const [emailAddress, setEmailAddress] = useState('');
     const [contactNumber, setContactNumber] = useState('');
-    const [appliedFilters, setAppliedFilters] = useState<EnquiryListFilters>({});
     const [filterOptions, setFilterOptions] = useState<EnquiryFilterOptions>(emptyFilterOptions);
 
     const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -122,12 +120,13 @@ const Enquiry = () => {
     });
     const [copied, setCopied] = useState(false);
 
-    const fetchEnquiries = async (filters: EnquiryListFilters = appliedFilters) => {
+    const fetchEnquiries = async (filters: EnquiryListFilters = {}) => {
         try {
             setLoading(true);
             const response = await getAllEnquiry(filters);
             const enriched = (response.data || []).map(mapEnquiryItem);
             setItems(enriched);
+            setFilterOptions(response.filters || emptyFilterOptions);
         } catch (err: any) {
             showMessage(err.message || 'Failed to fetch enquiries', 'error');
         } finally {
@@ -135,22 +134,11 @@ const Enquiry = () => {
         }
     };
 
-    const fetchFilterOptions = async () => {
-        try {
-            const options = await getEnquiryFilterOptions();
-            setFilterOptions(options || emptyFilterOptions);
-        } catch (error) {
-            console.error('Failed to fetch enquiry filter options:', error);
-        }
-    };
-
     useEffect(() => {
         dispatch(setPageTitle('Enquiry'));
         fetchEnquiries();
-        fetchFilterOptions();
     }, [dispatch]);
-
-    const applyFilters = () => {
+    useEffect(() => {
         const filters: EnquiryListFilters = {
             city,
             district,
@@ -159,10 +147,9 @@ const Enquiry = () => {
             emailAddress,
             contactNumber,
         };
-        setAppliedFilters(filters);
-        setPage(1);
         fetchEnquiries(filters);
-    };
+        setPage(1);
+    }, [city, district, pinCode, branch, emailAddress, contactNumber]);
 
     const clearFilters = () => {
         setSearch('');
@@ -174,9 +161,7 @@ const Enquiry = () => {
         setBranch('');
         setEmailAddress('');
         setContactNumber('');
-        setAppliedFilters({});
         setPage(1);
-        fetchEnquiries({});
     };
 
     const hasActiveFilters =
@@ -381,21 +366,13 @@ const Enquiry = () => {
                         </div>
 
                         <div className="rounded-lg border border-gray-200 bg-gray-50/80 p-4 dark:border-white/10 dark:bg-white/5">
-                            <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                            <div className="mb-4">
                                 <div>
                                     <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200">Filter Enquiries</h3>
                                     <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                                         {sortedRecords.length} record(s) match the current filters
                                     </p>
                                 </div>
-                                <button
-                                    type="button"
-                                    onClick={applyFilters}
-                                    className="btn btn-primary h-[38px]"
-                                    disabled={loading || exporting !== null}
-                                >
-                                    Apply Filters
-                                </button>
                             </div>
 
                             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">

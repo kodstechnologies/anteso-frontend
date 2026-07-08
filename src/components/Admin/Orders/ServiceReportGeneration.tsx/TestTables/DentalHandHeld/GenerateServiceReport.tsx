@@ -20,6 +20,7 @@ import { Disclosure } from "@headlessui/react";
 import { ChevronDownIcon, CloudArrowUpIcon } from "@heroicons/react/24/outline";
 import toast from "react-hot-toast";
 import * as XLSX from "xlsx";
+import { isExcelFileUrl } from "../../../../../../utils/spreadsheetFile";
 
 import Standards from "../../Standards";
 import Notes from "../../Notes";
@@ -711,9 +712,7 @@ const GenerateReportForDentalHandHeld: React.FC<DentalProps> = ({ serviceId, qaT
 
             try {
                 setCsvUploading(true);
-                const urlWithoutQuery = url.split('?')[0].split('#')[0];
-                const urlLower = urlWithoutQuery.toLowerCase();
-                const isExcel = urlLower.endsWith('.xlsx') || urlLower.endsWith('.xls');
+                const isExcel = isExcelFileUrl(url);
 
                 let csvData: any[] = [];
 
