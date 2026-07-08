@@ -178,7 +178,7 @@ const ManufacturerView: React.FC = () => {
                 </div>
 
                 {/* Services + Amount */}
-                <div className="mt-8">
+                {/* <div className="mt-8">
                     <h2 className="text-lg font-semibold text-gray-700 mb-2 flex items-center gap-2">
                         <FaCogs className="text-primary" /> Services
                     </h2>
@@ -213,7 +213,7 @@ const ManufacturerView: React.FC = () => {
                     ) : (
                         <p className="text-gray-500">-</p>
                     )}
-                </div>
+                </div> */}
 
                 {/* Travel Cost */}
                 <div className="mt-8">

@@ -251,6 +251,7 @@ interface MachineData {
     procExpiryDate?: string | null
     formattedProcExpiryDate?: string | null
     price?: any
+    quantity?: number
 }
 
 interface ServicesCardProps {
@@ -670,6 +671,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                             procExpiryDate: machineData.procExpiryDate || null,
                             formattedProcExpiryDate: machineData.formattedProcExpiryDate || null,
                             workOrderCopy: machineData.workOrderCopy || null,
+                            quantity: machineData.quantity ?? 1,
                         };
                     }
                 );
@@ -2410,6 +2412,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                     </div>
                                     <div className="flex items-center gap-4 text-sm text-gray-600">
                                         <span className="font-medium">Equipment ID/Serial No: {service.equipmentId}</span>
+                                        <span className="font-medium">Quantity: {service.quantity ?? 1}</span>
                                         {/* ✅ Add Serial Number here */}
                                         {/* {service.workTypes[0]?.backendFields?.serialNo && service.workTypes[0]?.backendFields?.serialNo !== "N/A" && (
                                             <span className="font-medium">Serial No: {service.workTypes[0]?.backendFields?.serialNo}</span>

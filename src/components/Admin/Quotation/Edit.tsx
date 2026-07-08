@@ -358,7 +358,7 @@ const EditQuotation: React.FC = () => {
             await performUpdate();
             setSuccessMessage("saved successfully");
             setTimeout(() => {
-                navigate(-1);
+                navigate(`/admin/quotation/view/${id}`, { replace: true });
             }, 2000);
         } catch (err: any) {
             setEditError(err.message || "Failed to update quotation");
@@ -422,7 +422,7 @@ const EditQuotation: React.FC = () => {
 
             setSuccessMessage(`Quotation saved and PDF uploaded successfully!`);
             setTimeout(() => {
-                navigate(-1);
+                navigate(`/admin/quotation/view/${id}`, { replace: true });
             }, 2000);
         } catch (err: any) {
             console.error("Error saving and uploading:", err);
@@ -1235,7 +1235,7 @@ const EditQuotation: React.FC = () => {
 
                 {quotationData?.quotationStatus === "Rejected" && (
                     <button
-                        onClick={() => navigate(`/quotation/view/${id}`)}
+                        onClick={() => navigate(`/admin/quotation/view/${id}`)}
                         className="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700"
                     >
                         Back to View

@@ -462,8 +462,6 @@ const ViewQuotation: React.FC = () => {
     ]
 
     const discount = quotationData.discount; // 600
-    const gstAmount = quotationData.gstAmount; // 600
-
     const gstRate = quotationData.gstRate; // 600
 
     const travelCost: number = 0
@@ -479,9 +477,18 @@ const ViewQuotation: React.FC = () => {
     }, 0)
 
     // const subtotal = quotationData.subtotalAmount; // 6000
-    const subtotal = quotationData.subtotal;
+    const subtotal = Number(
+        quotationData.subtotal ??
+        quotationData.subtotalAmount ??
+        aitemsTotal + bitemsTotal
+    );
     const discountAmount: number = (subtotal * discount) / 100
-    const totalAmount = quotationData.total; // 5400
+    const taxableAmount = subtotal - discountAmount;
+    const gstAmount = Number(
+        quotationData.gstAmount ??
+        ((taxableAmount * (gstRate || 0)) / 100)
+    );
+    const totalAmount = Number(quotationData.total ?? (taxableAmount + gstAmount));
 
     const formatDate = (dateString: string) => {
         const date = new Date(dateString)
@@ -491,6 +498,8 @@ const ViewQuotation: React.FC = () => {
             year: "numeric",
         })
     }
+
+    const quotationPdfUrl = quotationData?.pdfUrl || "";
 
     const historySeen = new Set<string>();
     const uniqueHistory = (history || []).filter((rec: any) => {
@@ -1001,9 +1010,9 @@ const ViewQuotation: React.FC = () => {
                                                 </span>
                                             </td>
                                             <td className="px-4 py-3">
-                                                {rec.pdfUrl ? (
+                                                {(quotationPdfUrl || rec.pdfUrl) ? (
                                                     <a
-                                                        href={rec.pdfUrl}
+                                                        href={quotationPdfUrl || rec.pdfUrl}
                                                         target="_blank"
                                                         rel="noopener noreferrer"
                                                         className="inline-flex items-center text-blue-600 hover:text-blue-800 font-medium text-sm transition-colors"
