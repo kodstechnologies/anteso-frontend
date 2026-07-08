@@ -182,16 +182,48 @@ const TotalFilterationForInventionalRadiology: React.FC<TotalFilterationForInven
             (r) => r['Field Name'] === 'Table2_SetKV' || String(r['Field Name'] || '').startsWith('Table2_MeasuredKV')
         );
         if (opTableRows.length > 0) {
-            const colCount = opData.some((r) => r['Field Name'] === 'Table2_MeasuredKV_2')
-                ? 3
-                : opData.some((r) => r['Field Name'] === 'Table2_MeasuredKV_1')
-                  ? 2
-                  : 1;
-            const stations = Array.from({ length: colCount }, (_, i) => `Meas ${i + 1}`);
+            const measHeaders = opData
+                .filter((r) => r['Field Name'] === 'MeasHeader')
+                .map((r) => r['Value'])
+                .filter(Boolean);
+            const colCount = measHeaders.length > 0
+                ? measHeaders.length
+                : opData.some((r) => r['Field Name'] === 'Table2_MeasuredKV_2')
+                  ? 3
+                  : opData.some((r) => r['Field Name'] === 'Table2_MeasuredKV_1')
+                    ? 2
+                    : 1;
+            const stations = measHeaders.length > 0
+                ? measHeaders
+                : Array.from({ length: colCount }, (_, i) => `Meas ${i + 1}`);
+
+            const tolOp = opData.find(
+                (r) => r['Field Name'] === 'ToleranceOperator' && parseInt(String(r['Row Index']), 10) === 0
+            )?.['Value'];
+            const tolVal = opData.find(
+                (r) => r['Field Name'] === 'ToleranceValue' && parseInt(String(r['Row Index']), 10) === 0
+            )?.['Value'];
+            if (tolOp) {
+                const normalized = String(tolOp).trim();
+                if (normalized === '+' || normalized === '-' || normalized === '±') {
+                    setToleranceSign(normalized);
+                } else if (/<=|less than or equal/i.test(normalized) || normalized === '<') {
+                    setToleranceSign('±');
+                }
+            }
+            if (tolVal) setToleranceValue(String(tolVal));
 
             const rowIndices = Array.from(new Set(opTableRows.map((r) => parseInt(r['Row Index'], 10)))).sort((a, b) => a - b);
-            const tol = parseFloat(toleranceValue || '0');
-            const sign = toleranceSign;
+            let sign: '+' | '-' | '±' = toleranceSign;
+            if (tolOp) {
+                const normalized = String(tolOp).trim();
+                if (normalized === '+' || normalized === '-' || normalized === '±') {
+                    sign = normalized;
+                } else if (/<=|less than or equal/i.test(normalized) || normalized === '<') {
+                    sign = '±';
+                }
+            }
+            const tol = parseFloat(tolVal || toleranceValue || '0');
 
             const newRows = rowIndices.map((idx) => {
                 const setKV =

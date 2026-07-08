@@ -501,7 +501,7 @@ const RadiographyMobileHT: React.FC<{ serviceId: string; qaTestDate?: string | n
         const testName = "Congruence of Radiation";
         sectionRows.forEach((r, idx) => {
           if (idx === 0) {
-            pushRow("TechniqueFactors_FCD", r[colIdx(header, "FCD", "FDD")] ?? "", 0, testName);
+            pushRow("TechniqueFactors_FCD", r[colIdx(header, "FFD", "FCD", "FDD")] ?? "", 0, testName);
             pushRow("TechniqueFactors_kV", r[colIdx(header, "kV")] ?? "", 0, testName);
             pushRow("TechniqueFactors_mAs", r[colIdx(header, "mAs")] ?? "", 0, testName);
           }
@@ -515,7 +515,7 @@ const RadiographyMobileHT: React.FC<{ serviceId: string; qaTestDate?: string | n
         const testName = "Central Beam Alignment";
         if (sectionRows.length > 0) {
           const r = sectionRows[0];
-          pushRow("TechniqueFactors_FCD", r[colIdx(header, "FCD", "FDD")] ?? "", 0, testName);
+          pushRow("TechniqueFactors_FCD", r[colIdx(header, "FFD", "FCD", "FDD")] ?? "", 0, testName);
           pushRow("TechniqueFactors_kV", r[colIdx(header, "kV")] ?? "", 0, testName);
           pushRow("TechniqueFactors_mAs", r[colIdx(header, "mAs")] ?? "", 0, testName);
           pushRow("ObservedTilt_Value", r[colIdx(header, "Observed Tilt", "Observed")] ?? "", 0, testName);
@@ -526,7 +526,7 @@ const RadiographyMobileHT: React.FC<{ serviceId: string; qaTestDate?: string | n
       } else if (title.includes("EFFECTIVE FOCAL SPOT")) {
         const testName = "Effective Focal Spot";
         sectionRows.forEach((r, idx) => {
-          if (idx === 0) pushRow("FCD", r[colIdx(header, "FCD", "FDD")] ?? "", 0, testName);
+          if (idx === 0) pushRow("FCD", r[colIdx(header, "FFD", "FCD", "FDD")] ?? "", 0, testName);
           const focusType = r[colIdx(header, "Focus Type", "Focus")] ?? "";
           if (focusType) pushRow("FocalSpot_FocusType", focusType, idx, testName);
           const sW = r[colIdx(header, "Stated Width", "Stated")] ?? "";
@@ -550,7 +550,7 @@ const RadiographyMobileHT: React.FC<{ serviceId: string; qaTestDate?: string | n
         const testName = "Accuracy of Irradiation Time";
         sectionRows.forEach((r, idx) => {
           if (idx === 0) {
-            pushRow("TestConditions_FCD", r[colIdx(header, "FCD", "FDD")] ?? "", 0, testName);
+            pushRow("TestConditions_FCD", r[colIdx(header, "FDD", "FCD", "FFD")] ?? "", 0, testName);
             pushRow("TestConditions_kV", r[colIdx(header, "kV")] ?? "", 0, testName);
             pushRow("TestConditions_ma", r[colIdx(header, "mA")] ?? "", 0, testName);
             pushRow("Tolerance_Operator", r[colIdx(header, "Tol Operator", "Tolerance Operator")] ?? "", 0, testName);
@@ -581,7 +581,7 @@ const RadiographyMobileHT: React.FC<{ serviceId: string; qaTestDate?: string | n
         const hCols = header.filter((h) => isHeaderLabelCol(h));
         sectionRows.forEach((r, idx) => {
           if (idx === 0) {
-            pushRow("Table1_FCD", r[colIdx(header, "FCD", "FDD")] ?? "", 0, testName);
+            pushRow("Table1_FCD", r[colIdx(header, "FDD", "FCD", "FFD")] ?? "", 0, testName);
             pushRow("Table1_kV", r[colIdx(header, "kV")] ?? "", 0, testName);
             pushRow("Table1_Time", r[colIdx(header, "Time")] ?? "", 0, testName);
             pushRow("ToleranceOperator", r[colIdx(header, "Tol Operator", "Tolerance Operator")] ?? "", 0, testName);
@@ -599,7 +599,7 @@ const RadiographyMobileHT: React.FC<{ serviceId: string; qaTestDate?: string | n
         const hCols = header.filter((h) => isHeaderLabelCol(h));
         sectionRows.forEach((r, idx) => {
           if (idx === 0) {
-            pushRow("Table1_FCD", r[colIdx(header, "FCD", "FDD")] ?? "", 0, testName);
+            pushRow("Table1_FCD", r[colIdx(header, "FDD", "FCD", "FFD")] ?? "", 0, testName);
             pushRow("Table1_kV", r[colIdx(header, "kV")] ?? "", 0, testName);
             pushRow("ToleranceOperator", r[colIdx(header, "Tol Operator", "Tolerance Operator")] ?? "", 0, testName);
             pushRow("Tolerance", r[colIdx(header, "Tol Value", "Tolerance")] ?? "", 0, testName);
@@ -616,7 +616,7 @@ const RadiographyMobileHT: React.FC<{ serviceId: string; qaTestDate?: string | n
         const hCols = header.filter((h) => isHeaderLabelCol(h));
         sectionRows.forEach((r, idx) => {
           if (idx === 0) {
-            pushRow("FFD", r[colIdx(header, "FFD", "FDD", "FCD")] ?? "", 0, testName);
+            pushRow("FFD", r[colIdx(header, "FDD", "FFD", "FCD")] ?? "", 0, testName);
             pushRow("Tolerance_Operator", r[colIdx(header, "Tol Operator", "Tolerance Operator")] ?? "", 0, testName);
             pushRow("Tolerance_Value", r[colIdx(header, "Tol Value", "Tolerance")] ?? "", 0, testName);
             hCols.forEach((_, hi) => {
@@ -632,7 +632,7 @@ const RadiographyMobileHT: React.FC<{ serviceId: string; qaTestDate?: string | n
         const testName = "Radiation Leakage Level";
         sectionRows.forEach((r, idx) => {
           if (idx === 0) {
-            pushRow("Settings_FCD", r[colIdx(header, "FCD", "FDD")] ?? "", 0, testName);
+            pushRow("Settings_FCD", r[colIdx(header, "FDD", "FCD", "FFD")] ?? "", 0, testName);
             pushRow("Settings_kV", r[colIdx(header, "kV")] ?? "", 0, testName);
             pushRow("Settings_ma", r[colIdx(header, "mA")] ?? "", 0, testName);
             pushRow("Settings_Time", r[colIdx(header, "Time")] ?? "", 0, testName);

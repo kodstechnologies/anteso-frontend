@@ -187,17 +187,37 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
                     r['Field Name']?.startsWith('Table2_Exp')
             );
             if (tableRows.length > 0) {
+                const measHeaders = csvData
+                    .filter((r) => r['Field Name'] === 'MeasHeader')
+                    .map((r) => r['Value'])
+                    .filter(Boolean);
+                const maxExpIdx = csvData
+                    .filter((r) => /^Table2_Exp\d+$/i.test(String(r['Field Name'] || '')))
+                    .reduce((max, r) => {
+                        const n = parseInt(String(r['Field Name']).replace(/Table2_Exp/i, ''), 10);
+                        return isNaN(n) ? max : Math.max(max, n);
+                    }, 0);
+                const outputColCount = measHeaders.length > 0
+                    ? measHeaders.length
+                    : maxExpIdx > 0
+                      ? maxExpIdx
+                      : 5;
+                if (measHeaders.length > 0) {
+                    setHeaders(measHeaders);
+                } else if (maxExpIdx > 0) {
+                    setHeaders(Array.from({ length: maxExpIdx }, (_, i) => `Meas ${i + 1}`));
+                }
+
                 const rowIndices = Array.from(new Set(tableRows.map((r) => parseInt(r['Row Index'], 10)))).sort((a, b) => a - b);
                 const newRows = rowIndices.map((idx, i) => {
                     const kv = csvData.find((r) => r['Field Name'] === 'Table1_kv' && parseInt(r['Row Index'], 10) === idx)?.['Value'] || '';
                     const ma = csvData.find((r) => r['Field Name'] === 'Table1_ma' && parseInt(r['Row Index'], 10) === idx)?.['Value'] || '';
                     const time = csvData.find((r) => r['Field Name'] === 'Table1_time' && parseInt(r['Row Index'], 10) === idx)?.['Value'] || '';
                     const mas = ma && time ? String(parseFloat(ma) * parseFloat(time)) : ma;
-                    const outputs = [1, 2, 3, 4, 5].map(
-                        (n) =>
-                            csvData.find(
-                                (r) => r['Field Name'] === `Table2_Exp${n}` && parseInt(r['Row Index'], 10) === idx
-                            )?.['Value'] || ''
+                    const outputs = Array.from({ length: outputColCount }, (_, n) =>
+                        csvData.find(
+                            (r) => r['Field Name'] === `Table2_Exp${n + 1}` && parseInt(r['Row Index'], 10) === idx
+                        )?.['Value'] ?? ''
                     );
 
                     return {
@@ -226,7 +246,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
                 setIsSaved(false);
             }
         }
-    }, [csvData, testId, headers]);
+    }, [csvData, testId]);
 
     // Save / Update
     const handleSave = async () => {
@@ -313,6 +333,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
             copy[idx] = value || `Meas ${idx + 1}`;
             return copy;
         });
+        setIsSaved(false);
     };
 
     const addRow = () => {
@@ -427,14 +448,20 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
                                 <th className="px-5 py-3 text-left text-xs font-medium text-gray-600  border-r">
                                     mAs
                                 </th>
-                                {Array.from({ length: headers.length }, (_, i) => (
+                                {headers.map((header, i) => (
                                     <th
                                         key={i}
                                         className="px-3 py-3 text-center text-xs font-medium text-gray-600 border-r relative"
                                     >
                                         <div className="flex flex-col items-center gap-1">
                                             <div className="flex items-center gap-1">
-                                                <span>Meas {i + 1}</span>
+                                                <input
+                                                    type="text"
+                                                    value={header}
+                                                    onChange={(e) => updateHeader(i, e.target.value)}
+                                                    disabled={isViewMode}
+                                                    className={`w-20 px-1 py-0.5 text-xs border rounded text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'}`}
+                                                />
                                                 {!isViewMode && headers.length < 10 && (
                                                     <button
                                                         onClick={() => addColumn()}
@@ -445,7 +472,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
                                                     </button>
                                                 )}
                                             </div>
-                                            {!isViewMode && headers.length > 3 && (
+                                            {!isViewMode && headers.length > 1 && (
                                                 <button
                                                     onClick={() => removeColumn(i)}
                                                     className="text-red-600 hover:bg-red-100 p-1 rounded transition"

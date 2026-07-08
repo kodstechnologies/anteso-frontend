@@ -393,9 +393,24 @@ const ViewServiceReportCTScan: React.FC = () => {
     return Math.max(0, ...maLinearity.table2.map((r: any) => (r.measuredOutputs ? r.measuredOutputs.length : 0)));
   };
 
+  const getOutputConsistencyMeasHeaders = (outputConsistency: any) => {
+    const saved = outputConsistency?.measurementHeaders;
+    if (Array.isArray(saved) && saved.length > 0) return saved;
+    const count = Math.max(outputConsistency?.outputRows?.[0]?.outputs?.length || 0, 5);
+    return Array.from({ length: count }, (_, i) => `Meas ${i + 1}`);
+  };
+
+  const getMaLinearityMeasHeaders = (maLinearity: any) => {
+    const saved = maLinearity?.measurementHeaders;
+    if (Array.isArray(saved) && saved.length > 0) return saved;
+    const count = getMaLinearityMeasCount(maLinearity);
+    return Array.from({ length: count }, (_, i) => `Meas ${i + 1}`);
+  };
+
   const renderMaLinearityTable = (maLinearity: any) => {
     if (!maLinearity || !maLinearity.table2 || maLinearity.table2.length === 0) return null;
-    const measCount = getMaLinearityMeasCount(maLinearity);
+    const measHeaders = getMaLinearityMeasHeaders(maLinearity);
+    const measCount = measHeaders.length;
 
     return (
       <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
@@ -412,8 +427,8 @@ const ViewServiceReportCTScan: React.FC = () => {
               <th rowSpan={2} className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Remarks</th>
             </tr>
             <tr>
-              {Array.from({ length: measCount }).map((_, idx) => (
-                <th key={idx} className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Meas {idx + 1}</th>
+              {measHeaders.map((header, idx) => (
+                <th key={idx} className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{header}</th>
               ))}
             </tr>
           </thead>
@@ -1402,8 +1417,8 @@ const ViewServiceReportCTScan: React.FC = () => {
                                 <tr>
                                   <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>kVp</th>
                                   {/* Dynamic Measurement Columns */}
-                                  {Array.from({ length: Math.max(testDataTubeA.outputConsistency.outputRows[0]?.outputs?.length || 0, 5) }).map((_, idx) => (
-                                    <th key={idx} className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Meas {idx + 1}</th>
+                                  {getOutputConsistencyMeasHeaders(testDataTubeA.outputConsistency).map((header, idx) => (
+                                    <th key={idx} className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{header}</th>
                                   ))}
                                   <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Mean (XÌ„)</th>
                                   <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>COV</th>
@@ -1415,7 +1430,7 @@ const ViewServiceReportCTScan: React.FC = () => {
                                   <tr key={i} className="text-center" style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
                                     <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.kvp || "-"}</td>
                                     {/* Dynamic Measurement Data */}
-                                    {Array.from({ length: Math.max(row.outputs?.length || 0, 5) }).map((_, idx) => (
+                                    {getOutputConsistencyMeasHeaders(testDataTubeA.outputConsistency).map((_, idx) => (
                                       <td key={idx} className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>
                                         {(row.outputs && row.outputs[idx]) || "-"}
                                       </td>
@@ -1499,8 +1514,8 @@ const ViewServiceReportCTScan: React.FC = () => {
                                 <tr>
                                   <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>kVp</th>
                                   {/* Dynamic Measurement Columns */}
-                                  {Array.from({ length: Math.max(testDataTubeB.outputConsistency.outputRows[0]?.outputs?.length || 0, 5) }).map((_, idx) => (
-                                    <th key={idx} className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Meas {idx + 1}</th>
+                                  {getOutputConsistencyMeasHeaders(testDataTubeB.outputConsistency).map((header, idx) => (
+                                    <th key={idx} className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{header}</th>
                                   ))}
                                   <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Mean (XÌ„)</th>
                                   <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>COV</th>
@@ -1512,7 +1527,7 @@ const ViewServiceReportCTScan: React.FC = () => {
                                   <tr key={i} className="text-center" style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
                                     <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.kvp || "-"}</td>
                                     {/* Dynamic Measurement Data */}
-                                    {Array.from({ length: Math.max(row.outputs?.length || 0, 5) }).map((_, idx) => (
+                                    {getOutputConsistencyMeasHeaders(testDataTubeA.outputConsistency).map((_, idx) => (
                                       <td key={idx} className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>
                                         {(row.outputs && row.outputs[idx]) || "-"}
                                       </td>
@@ -1596,8 +1611,8 @@ const ViewServiceReportCTScan: React.FC = () => {
                               <tr>
                                 <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>kVp</th>
                                 {/* Dynamic Measurement Columns */}
-                                {Array.from({ length: Math.max(testData.outputConsistency.outputRows[0]?.outputs?.length || 0, 5) }).map((_, idx) => (
-                                  <th key={idx} className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Meas {idx + 1}</th>
+                                {getOutputConsistencyMeasHeaders(testData.outputConsistency).map((header, idx) => (
+                                  <th key={idx} className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{header}</th>
                                 ))}
                                 <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Mean (XÌ„)</th>
                                 <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>COV</th>

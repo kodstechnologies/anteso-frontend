@@ -9,6 +9,7 @@ export interface InventionalRadiologySavedExportData {
   totalFiltration?: any;
   consistencyOfRadiationOutput?: any;
   linearityOfMasLoading?: any;
+  measurementOfMaLinearity?: any;
   lowContrastResolution?: any;
   highContrastResolution?: any;
   exposureRateTableTop?: any;
@@ -37,7 +38,7 @@ export const createInventionalRadiologySavedExcel = (
   if (aoi?.irradiationTimes?.length > 0) {
     const tc = aoi.testConditions || {};
     allData.push(["TEST: ACCURACY OF IRRADIATION TIME"]);
-    allData.push(["FCD", tc.fcd ?? "", "kV", tc.kv ?? "", "mA", tc.ma ?? ""]);
+    allData.push(["FDD (cm)", tc.fcd ?? "", "kV", tc.kv ?? "", "mA", tc.ma ?? ""]);
     allData.push(["Set Time (mSec)", "Measured Time (mSec)"]);
     aoi.irradiationTimes.forEach((t: any) =>
       allData.push([t.setTime ?? "", t.measuredTime ?? t.measuredTime1 ?? ""])
@@ -52,14 +53,20 @@ export const createInventionalRadiologySavedExcel = (
   }
 
   const efs = unwrap(data.effectiveFocalSpot);
-  if (efs?.table2?.length > 0) {
-    const rows = efs.table2.map((r: any) => [
-      r.focusType ?? "",
-      r.measuredLpPerMm ?? "",
-      r.recommendedStandard ?? "",
-      r.smallestHoleSize ?? "",
-    ]);
-    addSection("EFFECTIVE FOCAL SPOT", ["Focus Type", "Measured lp/mm", "Recommended", "Smallest Hole"], rows);
+  if (efs?.focalSpots?.length > 0 || efs?.table2?.length > 0) {
+    const spots = efs.focalSpots || efs.table2 || [];
+    const fcdVal = efs.fcd ?? "";
+    allData.push(["TEST: EFFECTIVE FOCAL SPOT SIZE"]);
+    allData.push(["FFD (cm)", "Focus", "Stated Focal Spot (f)", "Measured Focal Spot (Nominal)"]);
+    spots.forEach((r: any, i: number) => {
+      allData.push([
+        i === 0 ? fcdVal : "",
+        r.focusType ?? "",
+        r.statedNominal ?? r.statedWidth ?? "",
+        r.measuredNominal ?? r.measuredWidth ?? "",
+      ]);
+    });
+    addBlank();
   }
 
   const aop = unwrap(data.accuracyOfOperatingPotential);
@@ -84,13 +91,31 @@ export const createInventionalRadiologySavedExcel = (
   const oc = unwrap(data.consistencyOfRadiationOutput);
   if (oc?.outputRows?.length > 0) {
     const ffdVal = oc.ffd?.value ?? oc.ffd ?? "";
+    const savedHeaders = Array.isArray(oc.measurementHeaders) && oc.measurementHeaders.length > 0
+      ? oc.measurementHeaders
+      : (() => {
+          const rows = Array.isArray(oc.outputRows) ? oc.outputRows : [];
+          const colCount = Math.max(0, ...rows.map((r: any) => (r.outputs ?? []).length));
+          return Array.from({ length: colCount || 5 }, (_, i) => `Meas ${i + 1}`);
+        })();
+    const tol = oc.tolerance || {};
+    const headerCols = savedHeaders.map((_, i) => `Header ${i + 1}`);
+    const measCols = savedHeaders.map((_, i) => `Meas ${i + 1}`);
     allData.push(["TEST: CONSISTENCY OF RADIATION OUTPUT"]);
-    allData.push(["FFD", ffdVal]);
-    const maxOut = Math.max(...oc.outputRows.map((r: any) => (r.outputs || []).length));
-    allData.push(["kVp", "mAs", ...Array.from({ length: maxOut }, (_, i) => `Reading ${i + 1}`), "Mean", "CoV"]);
-    oc.outputRows.forEach((r: any) => {
-      const outs = (r.outputs || []).map((o: any) => (o?.value !== undefined ? o.value : o));
-      allData.push([r.kv ?? r.kvp ?? "", r.mas ?? "", ...outs, r.mean ?? "", r.cov ?? ""]);
+    allData.push(["FDD (cm)", "kV", "mA", "Time", "Tolerance", ...headerCols, ...measCols]);
+    const rows = Array.isArray(oc.outputRows) ? oc.outputRows : [];
+    rows.forEach((r: any, idx: number) => {
+      const outs = (r.outputs ?? []).map((o: any) => (typeof o === "object" && o != null ? o.value ?? "" : o ?? ""));
+      const headerValues = idx === 0 ? savedHeaders : Array(savedHeaders.length).fill("");
+      allData.push([
+        idx === 0 ? (ffdVal || "") : "",
+        r.kvp ?? r.kv ?? "",
+        r.mas ?? "",
+        "",
+        idx === 0 ? (tol.value ?? "0.05") : "",
+        ...headerValues,
+        ...savedHeaders.map((_, i) => outs[i] ?? ""),
+      ]);
     });
     addBlank();
   }
@@ -99,11 +124,38 @@ export const createInventionalRadiologySavedExcel = (
   if (lmas?.table2?.length > 0) {
     const t1 = lmas.table1?.[0] || lmas.table1 || {};
     allData.push(["TEST: LINEARITY OF mAs LOADING"]);
-    allData.push(["FCD", t1.fcd ?? "", "kV", t1.kv ?? ""]);
+    allData.push(["FDD (cm)", t1.fcd ?? "", "kV", t1.kv ?? ""]);
     allData.push(["mAs Range", "Measured 1", "Measured 2", "Measured 3"]);
     lmas.table2.forEach((r: any) => {
       const outs = r.measuredOutputs || r.outputs || [];
       allData.push([r.mAsRange ?? r.mAsApplied ?? "", outs[0] ?? "", outs[1] ?? "", outs[2] ?? ""]);
+    });
+    addBlank();
+  }
+
+  const mol = unwrap(data.measurementOfMaLinearity);
+  if (mol?.table2?.length > 0) {
+    const t1 = mol.table1?.[0] || mol.table1 || {};
+    const hdrs = ["Meas 1", "Meas 2", "Meas 3"];
+    allData.push(["TEST: MEASUREMENT OF MA LINEARITY"]);
+    allData.push([
+      "kVp",
+      "Slice Thickness (mm)",
+      "Time (ms)",
+      "Tolerance",
+      "Header 1",
+      "Header 2",
+      "Header 3",
+      "mA Applied",
+      ...hdrs,
+    ]);
+    mol.table2.forEach((r: any, idx: number) => {
+      const outs = (r.measuredOutputs || []).map((o: any) => (o == null ? "" : String(o)));
+      const prefix =
+        idx === 0
+          ? [t1.kvp ?? "", t1.sliceThickness ?? "", t1.time ?? "", mol.tolerance ?? "0.1", ...hdrs]
+          : ["", "", "", "", "", "", ""];
+      allData.push([...prefix, r.mAsApplied ?? "", ...hdrs.map((_, i) => outs[i] ?? "")]);
     });
     addBlank();
   }
@@ -125,9 +177,37 @@ export const createInventionalRadiologySavedExcel = (
   }
 
   const ert = unwrap(data.exposureRateTableTop);
-  if (ert?.exposureRateRows?.length > 0) {
-    const rows = ert.exposureRateRows.map((r: any) => [r.distance ?? "", r.rate ?? r.exposureRate ?? "", r.remarks ?? ""]);
-    addSection("EXPOSURE RATE AT TABLE TOP", ["Distance", "Exposure Rate", "Remarks"], rows);
+  if (ert?.rows?.length > 0) {
+    allData.push(["TEST: EXPOSURE RATE AT TABLE TOP"]);
+    allData.push([
+      "Max Exposure (AEC Mode) (cGy/Min)",
+      "Max Exposure (Manual Mode) (cGy/Min)",
+      "Min. Focus to Tabletop Distance",
+      "Distance (cm)",
+      "kV",
+      "mA",
+      "Mode",
+      "Measured Rate",
+      "Criteria",
+    ]);
+    ert.rows.forEach((r: any, idx: number) => {
+      const mode =
+        r.remark === "AEC Mode" ? "AEC" : r.remark === "Manual Mode" ? "Manual" : r.remark ?? "";
+      const prefix =
+        idx === 0
+          ? [ert.aecTolerance ?? "10", ert.nonAecTolerance ?? "5", ert.minFocusDistance ?? "30"]
+          : ["", "", ""];
+      allData.push([
+        ...prefix,
+        r.distance ?? "",
+        r.appliedKv ?? "",
+        r.appliedMa ?? "",
+        mode,
+        r.exposure ?? "",
+        "",
+      ]);
+    });
+    addBlank();
   }
 
   const rll = unwrap(data.tubeHousingLeakage);

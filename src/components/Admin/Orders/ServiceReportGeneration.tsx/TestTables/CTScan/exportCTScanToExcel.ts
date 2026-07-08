@@ -28,6 +28,27 @@ const getOperatingPotentialTolerance = (op: any) => ({
     sign: op?.toleranceSign ?? op?.tolerance?.sign ?? '',
 });
 
+const getMaLinearityMeasHeaders = (mal: any): string[] => {
+    const saved = mal?.measurementHeaders;
+    if (Array.isArray(saved) && saved.length > 0) return saved.map(String);
+    const count = Math.max(
+        0,
+        ...(mal?.table2 || []).map((r: any) => (r.measuredOutputs || []).length)
+    );
+    return Array.from({ length: count || 3 }, (_, i) => `Meas ${i + 1}`);
+};
+
+const getOutputConsistencyMeasHeaders = (oc: any): string[] => {
+    const saved = oc?.measurementHeaders;
+    if (Array.isArray(saved) && saved.length > 0) return saved.map(String);
+    const count = Math.max(
+        oc?.outputRows?.[0]?.outputs?.length || 0,
+        oc?.measurementCount || 0,
+        5
+    );
+    return Array.from({ length: count }, (_, i) => `Meas ${i + 1}`);
+};
+
 export interface CTScanExportData {
     radiationProfileWidth?: any;
     measurementOfOperatingPotential?: any;
@@ -144,14 +165,12 @@ export const createCTScanExcelWithTables = (data: CTScanExportData, hasTimer: bo
             );
         }
 
-        // mA Applied vs Measured Outputs Table
+        // mA Applied vs Measured Outputs Table (dynamic measurement headers)
         if (data.measurementOfMaLinearity.table2 && data.measurementOfMaLinearity.table2.length > 0) {
-            // Determine max number of measurements
-            const maxMeas = Math.max(...data.measurementOfMaLinearity.table2.map((r: any) =>
-                (r.measuredOutputs || []).length
-            ));
+            const headerLabels = getMaLinearityMeasHeaders(data.measurementOfMaLinearity);
+            const maxMeas = headerLabels.length;
 
-            const headers = ['mA Applied', ...Array.from({ length: maxMeas }, (_, i) => `Meas ${i + 1}`),
+            const headers = ['mA Applied', ...headerLabels,
                 'Avg Output', 'X', 'X MAX', 'X MIN', 'CoL', 'Remarks'];
 
             const table2Rows = data.measurementOfMaLinearity.table2.map((row: any) => {
@@ -410,11 +429,10 @@ export const createCTScanExcelWithTables = (data: CTScanExportData, hasTimer: bo
         }
 
         if (data.outputConsistency.outputRows && data.outputConsistency.outputRows.length > 0) {
-            const maxMeas = Math.max(...data.outputConsistency.outputRows.map((r: any) =>
-                (r.outputs || []).length
-            ));
+            const headerLabels = getOutputConsistencyMeasHeaders(data.outputConsistency);
+            const maxMeas = headerLabels.length;
 
-            const headers = ['kVp', ...Array.from({ length: maxMeas }, (_, i) => `Meas ${i + 1}`),
+            const headers = ['kVp', ...headerLabels,
                 'Mean', 'COV', 'Remark'];
 
             const outputRows = data.outputConsistency.outputRows.map((row: any) => {
@@ -561,33 +579,75 @@ export const createCTScanUploadableExcel = (data: CTScanExportData, hasTimer: bo
         addSection('RADIATION PROFILE WIDTH FOR CT SCAN', ['Applied', 'Measured', 'kVp', 'mA'], rows);
     }
 
-    // 2. MEASUREMENT OF OPERATING POTENTIAL (dynamic mA columns)
+    // 2. MEASUREMENT OF OPERATING POTENTIAL (dynamic mA columns with Header 1-N + Meas 1-N)
     if (data.measurementOfOperatingPotential) {
         const t1 = data.measurementOfOperatingPotential.table1?.[0] || {};
         const maLabels = getOperatingPotentialMaLabelsFromData(data.measurementOfOperatingPotential);
         const opTolerance = getOperatingPotentialTolerance(data.measurementOfOperatingPotential);
-        const rows = (data.measurementOfOperatingPotential.table2 || []).map((row: any) => [
+        const headerCols = maLabels.map((_, i) => `Header ${i + 1}`);
+        const measCols = maLabels.map((_, i) => `Meas ${i + 1}`);
+        const sectionHeaders = [
+            'Set kV',
+            ...headerCols,
+            ...measCols,
+            'Time (ms)',
+            'Slice Thickness (mm)',
+            'Tol Value',
+            'Tol Type',
+            'Tol Sign',
+        ];
+        const rows = (data.measurementOfOperatingPotential.table2 || []).map((row: any, idx: number) => [
             row.setKV || '',
+            ...(idx === 0 ? maLabels : Array(maLabels.length).fill('')),
             ...maLabels.map((l: string) => getOperatingPotentialMaValue(row, l)),
-            t1.time || '',
-            t1.sliceThickness || '',
-            opTolerance.value || '',
-            opTolerance.type || '',
-            opTolerance.sign || ''
+            idx === 0 ? (t1.time || '') : '',
+            idx === 0 ? (t1.sliceThickness || '') : '',
+            idx === 0 ? (opTolerance.value || '') : '',
+            idx === 0 ? (opTolerance.type || '') : '',
+            idx === 0 ? (opTolerance.sign || '') : '',
         ]);
         if (rows.length === 0 && (t1.time || t1.sliceThickness)) {
-            rows.push(['', ...maLabels.map(() => ''), t1.time, t1.sliceThickness, opTolerance.value || '', opTolerance.type || '', opTolerance.sign || '']);
+            rows.push([
+                '',
+                ...maLabels,
+                ...maLabels.map(() => ''),
+                t1.time,
+                t1.sliceThickness,
+                opTolerance.value || '',
+                opTolerance.type || '',
+                opTolerance.sign || '',
+            ]);
         }
-        addSection('MEASUREMENT OF OPERATING POTENTIAL', ['Set kV', ...maLabels.map((l: string) => `@ mA ${l}`), 'Time (ms)', 'Slice Thickness (mm)', 'Tol Value', 'Tol Type', 'Tol Sign'], rows);
+        addSection('MEASUREMENT OF OPERATING POTENTIAL', sectionHeaders, rows);
     }
 
-    // 3. MEASUREMENT OF MA LINEARITY
+    // 3. MEASUREMENT OF MA LINEARITY (dynamic Header 1-N + Meas 1-N)
     if (data.measurementOfMaLinearity) {
         const t1 = data.measurementOfMaLinearity.table1?.[0] || {};
-        const rows = (data.measurementOfMaLinearity.table2 || []).map((row: any) => [
-            t1.kvp || '',
-            t1.sliceThickness || '',
-            t1.time || '',
+        const headerLabels = getMaLinearityMeasHeaders(data.measurementOfMaLinearity);
+        const headerCols = headerLabels.map((_, i) => `Header ${i + 1}`);
+        const measCols = headerLabels.map((_, i) => `Meas ${i + 1}`);
+        const sectionHeaders = [
+            'kVp',
+            'Slice Thickness (mm)',
+            'Time (ms)',
+            'Tolerance',
+            ...headerCols,
+            'mA Applied',
+            ...measCols,
+            'Avg Output',
+            'X (mR/mAs)',
+            'X Max',
+            'X Min',
+            'CoL',
+            'Remarks',
+        ];
+        const rows = (data.measurementOfMaLinearity.table2 || []).map((row: any, idx: number) => [
+            idx === 0 ? (t1.kvp || '') : '',
+            idx === 0 ? (t1.sliceThickness || '') : '',
+            idx === 0 ? (t1.time || '') : '',
+            idx === 0 ? (data.measurementOfMaLinearity.tolerance || '') : '',
+            ...(idx === 0 ? headerLabels : Array(headerLabels.length).fill('')),
             row.mAsApplied || '',
             ...(row.measuredOutputs || []),
             row.avgOutput || '',
@@ -595,10 +655,9 @@ export const createCTScanUploadableExcel = (data: CTScanExportData, hasTimer: bo
             row.xMax || '',
             row.xMin || '',
             row.col || '',
-            row.remarks || ''
+            row.remarks || '',
         ]);
-        const measHeaders = (data.measurementOfMaLinearity.table2?.[0]?.measuredOutputs || []).map((_: any, i: number) => `Meas ${i + 1}`);
-        addSection('MEASUREMENT OF MA LINEARITY', ['kVp', 'Slice Thickness (mm)', 'Time (ms)', 'mA Applied', ...measHeaders, 'Avg Output', 'X (mR/mAs)', 'X Max', 'X Min', 'CoL', 'Remarks'], rows);
+        addSection('MEASUREMENT OF MA LINEARITY', sectionHeaders, rows);
     }
 
     // 4. TIMER ACCURACY
@@ -717,19 +776,33 @@ export const createCTScanUploadableExcel = (data: CTScanExportData, hasTimer: bo
     // 9. Reproducibility of Radiation Output (Consistency Test)
     if (data.outputConsistency) {
         const params = data.outputConsistency.parameters || {};
-        const rows = (data.outputConsistency.outputRows || []).map((row: any) => [
-            params.mas || '',
-            params.sliceThickness || '',
-            params.time || '',
-            row.kvp || '',
-            ...(row.outputs || []),
-            row.mean || '',
-            row.cov || '',
-            data.outputConsistency.tolerance?.value || '',
-            row.remark || ''
-        ]);
-        const measHeaders = (data.outputConsistency.outputRows?.[0]?.outputs || []).map((_: any, i: number) => `Meas ${i + 1}`);
-        addSection('Reproducibility of Radiation Output (Consistency Test)', ['mAs', 'Slice Thickness (mm)', 'Time (s)', 'kVp', ...measHeaders, 'Mean', 'COV', 'Tolerance', 'Remark'], rows);
+        const headerLabels = getOutputConsistencyMeasHeaders(data.outputConsistency);
+        const headerCols = headerLabels.map((_, i) => `Header ${i + 1}`);
+        const measCols = headerLabels.map((_, i) => `Meas ${i + 1}`);
+        const sectionHeaders = ['mAs', 'Slice Thickness (mm)', 'Time (s)', 'Tolerance', ...headerCols, 'kVp', ...measCols];
+        const rows = (data.outputConsistency.outputRows || []).map((row: any, idx: number) => {
+            const outputs = (row.outputs || []).map((o: any) =>
+                (o && typeof o === 'object') ? (o.value ?? '') : (o ?? '')
+            );
+            if (idx === 0) {
+                return [
+                    params.mas || '',
+                    params.sliceThickness || '',
+                    params.time || '',
+                    data.outputConsistency.tolerance?.value || data.outputConsistency.tolerance || '',
+                    ...headerLabels,
+                    row.kvp || '',
+                    ...outputs,
+                ];
+            }
+            return [
+                '', '', '', '',
+                ...Array(headerLabels.length).fill(''),
+                row.kvp || '',
+                ...outputs,
+            ];
+        });
+        addSection('Reproducibility of Radiation Output (Consistency Test)', sectionHeaders, rows);
     }
 
     // 10. LOW CONTRAST RESOLUTION

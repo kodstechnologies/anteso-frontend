@@ -158,25 +158,27 @@ export const createRadiographyFixedUploadableExcel = (
   const oc = unwrap(data.outputConsistency);
   if (oc) {
     const ffdVal = oc.ffd?.value ?? "";
+    const rows = Array.isArray(oc.outputRows) ? oc.outputRows : [];
+    const measCount = Math.max(
+      ...rows.map((r: any) => (r.outputs ?? []).length),
+      Array.isArray(oc.measurementHeaders) ? oc.measurementHeaders.length : 0,
+      1
+    );
+    const headerLabels = Array.isArray(oc.measurementHeaders) && oc.measurementHeaders.length > 0
+      ? [...oc.measurementHeaders]
+      : Array.from({ length: measCount }, (_, i) => `Meas ${i + 1}`);
+    while (headerLabels.length < measCount) headerLabels.push(`Meas ${headerLabels.length + 1}`);
     allData.push(["TEST: CONSISTENCY OF RADIATION OUTPUT"]);
     allData.push(["FFD", ffdVal]);
-    allData.push([
-      "kVp",
-      "mAs",
-      "Reading (mR) 1",
-      "Reading (mR) 2",
-      "Reading (mR) 3",
-    ]);
-    const rows = Array.isArray(oc.outputRows) ? oc.outputRows : [];
+    allData.push(["kVp", "mAs", ...headerLabels.slice(0, measCount)]);
     rows.forEach((r: any) => {
       const outs = r.outputs || [];
-      allData.push([
+      const rowData = [
         r.kv ?? "",
         r.mas ?? "",
-        outs[0]?.value ?? outs[0] ?? "",
-        outs[1]?.value ?? outs[1] ?? "",
-        outs[2]?.value ?? outs[2] ?? "",
-      ]);
+        ...Array.from({ length: measCount }, (_, i) => outs[i]?.value ?? outs[i] ?? ""),
+      ];
+      allData.push(rowData);
     });
     addBlank();
   }

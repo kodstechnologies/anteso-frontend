@@ -194,13 +194,21 @@ const MeasurementOfMaLinearity: React.FC<Props> = ({ serviceId, tubeId, testId: 
     ].sort((a, b) => a - b);
 
     if (rowIndices.length > 0) {
+      const measHeaderLabels = csvData
+        .filter((r) => r["Field Name"] === "MeasHeader")
+        .map((r) => r["Value"])
+        .filter(Boolean);
       const resultFields = csvData.filter((r) => String(r["Field Name"] || "").startsWith("Table2_Result_"));
       const maxResultIdx = resultFields.reduce((max: number, r: any) => {
         const idx = parseInt(String(r["Field Name"]).replace("Table2_Result_", ""), 10);
         return isNaN(idx) ? max : Math.max(max, idx);
       }, 0);
-      const numMeas = Math.max(3, maxResultIdx + 1);
-      const newHeaders = Array.from({ length: numMeas }, (_, i) => `Meas ${i + 1}`);
+      const numMeas = measHeaderLabels.length > 0
+        ? measHeaderLabels.length
+        : Math.max(3, maxResultIdx + 1);
+      const newHeaders = measHeaderLabels.length > 0
+        ? measHeaderLabels
+        : Array.from({ length: numMeas }, (_, i) => `Meas ${i + 1}`);
       setMeasHeaders(newHeaders);
 
       const newRows = rowIndices.map((idx) => {
@@ -209,7 +217,7 @@ const MeasurementOfMaLinearity: React.FC<Props> = ({ serviceId, tubeId, testId: 
         const outputs = Array(numMeas).fill("");
         newHeaders.forEach((_, hIdx) => {
           const val = rowData.find((r) => r["Field Name"] === `Table2_Result_${hIdx}`)?.["Value"];
-          if (val) outputs[hIdx] = val;
+          if (val !== undefined && val !== null && String(val).trim() !== "") outputs[hIdx] = String(val);
         });
         return {
           id: Date.now().toString() + Math.random(),

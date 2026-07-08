@@ -56,6 +56,10 @@ const OutputConsistency: React.FC<Props> = ({ serviceId, testId: propTestId, tub
 
   const [measurementCount, setMeasurementCount] = useState<number>(5);
 
+  const [measHeaders, setMeasHeaders] = useState<string[]>([
+    'Meas 1', 'Meas 2', 'Meas 3', 'Meas 4', 'Meas 5',
+  ]);
+
   const [tolerance, setTolerance] = useState<{
     operator: '<=' | '<' | '>=' | '>';
     value: string;
@@ -86,6 +90,19 @@ const OutputConsistency: React.FC<Props> = ({ serviceId, testId: propTestId, tub
         return row;
       })
     );
+    setMeasHeaders((prev) => {
+      const diff = measurementCount - prev.length;
+      if (diff > 0) {
+        return [
+          ...prev,
+          ...Array.from({ length: diff }, (_, i) => `Meas ${prev.length + i + 1}`),
+        ];
+      }
+      if (diff < 0) {
+        return prev.slice(0, measurementCount);
+      }
+      return prev;
+    });
   }, [measurementCount]);
 
   // === CSV Data Injection ===
@@ -107,10 +124,33 @@ const OutputConsistency: React.FC<Props> = ({ serviceId, testId: propTestId, tub
       }
 
       // Table 2: Output Measurements
-      // Generator produces: OutputRow_kvp (e.g. 120), Result (e.g. 100.5)
-      // Multiple rows expected.
+      const measHeaderValues = csvData
+        .filter((r) => r['Field Name'] === 'MeasHeader')
+        .map((r) => r['Value'])
+        .filter(Boolean);
+      const maxResultIdx = csvData
+        .filter((r) => /^Result_\d+$/i.test(String(r['Field Name'] || '')))
+        .reduce((max, r) => {
+          const n = parseInt(String(r['Field Name']).replace(/Result_/i, ''), 10);
+          return isNaN(n) ? max : Math.max(max, n);
+        }, -1);
+      const outputColCount = measHeaderValues.length > 0
+        ? measHeaderValues.length
+        : maxResultIdx >= 0
+          ? maxResultIdx + 1
+          : measurementCount;
+
+      if (measHeaderValues.length > 0) {
+        setMeasHeaders(measHeaderValues);
+        setMeasurementCount(measHeaderValues.length);
+      } else if (maxResultIdx >= 0) {
+        const defaultHeaders = Array.from({ length: outputColCount }, (_, i) => `Meas ${i + 1}`);
+        setMeasHeaders(defaultHeaders);
+        setMeasurementCount(outputColCount);
+      }
+
       const rowIndices = [...new Set(csvData
-        .filter(r => r['Field Name'] === 'OutputRow_kvp' || r['Field Name'] === 'Result')
+        .filter(r => r['Field Name'] === 'OutputRow_kvp' || /^Result_\d+$/i.test(String(r['Field Name'] || '')))
         .map(r => parseInt(r['Row Index']))
         .filter(i => !isNaN(i) && i > 0)
       )];
@@ -120,9 +160,8 @@ const OutputConsistency: React.FC<Props> = ({ serviceId, testId: propTestId, tub
           const rowData = csvData.filter(r => parseInt(r['Row Index']) === idx);
           const kvp = rowData.find(r => r['Field Name'] === 'OutputRow_kvp')?.['Value'] || '';
 
-          // Support multiple measurements (Meas 1, Meas 2, ...)
-          const outputs = Array(measurementCount).fill('');
-          for (let i = 0; i < measurementCount; i++) {
+          const outputs = Array(outputColCount).fill('');
+          for (let i = 0; i < outputColCount; i++) {
             const val = rowData.find(r => r['Field Name'] === `Result_${i}`)?.['Value'];
             if (val) outputs[i] = val;
           }
@@ -221,6 +260,11 @@ const OutputConsistency: React.FC<Props> = ({ serviceId, testId: propTestId, tub
             const firstRow = data.outputRows[0];
             const numMeas = firstRow.outputs?.length || 5;
             setMeasurementCount(numMeas);
+            if (Array.isArray(data.measurementHeaders) && data.measurementHeaders.length > 0) {
+              setMeasHeaders(data.measurementHeaders);
+            } else {
+              setMeasHeaders(Array.from({ length: numMeas }, (_, i) => `Meas ${i + 1}`));
+            }
             setOutputRows(
               data.outputRows.map((row: any) => ({
                 id: Date.now().toString() + Math.random(),
@@ -287,6 +331,7 @@ const OutputConsistency: React.FC<Props> = ({ serviceId, testId: propTestId, tub
         cov: row.cov || "",
         remark: row.remark || "",
       })),
+      measurementHeaders: measHeaders,
       tolerance,
       tubeId: tubeId ?? null,
     };
@@ -329,6 +374,11 @@ const OutputConsistency: React.FC<Props> = ({ serviceId, testId: propTestId, tub
     setMeasurementCount(count);
   };
 
+  const updateMeasHeader = (index: number, value: string) => {
+    if (isViewMode) return;
+    setMeasHeaders((prev) => prev.map((h, i) => (i === index ? value : h)));
+  };
+
   const addMeasurementColumn = (afterIndex: number) => {
     if (measurementCount >= 10) {
       toast.error('Maximum 10 measurements allowed');
@@ -336,6 +386,11 @@ const OutputConsistency: React.FC<Props> = ({ serviceId, testId: propTestId, tub
     }
     const newCount = measurementCount + 1;
     setMeasurementCount(newCount);
+    setMeasHeaders((prev) => {
+      const next = [...prev];
+      next.splice(afterIndex + 1, 0, `Meas ${newCount}`);
+      return next;
+    });
     setOutputRows((prev) =>
       prev.map((row) => {
         const newOutputs = [...row.outputs];
@@ -355,6 +410,7 @@ const OutputConsistency: React.FC<Props> = ({ serviceId, testId: propTestId, tub
     }
     const newCount = measurementCount - 1;
     setMeasurementCount(newCount);
+    setMeasHeaders((prev) => prev.filter((_, i) => i !== index));
     setOutputRows((prev) =>
       prev.map((row) => ({
         ...row,
@@ -498,14 +554,20 @@ const OutputConsistency: React.FC<Props> = ({ serviceId, testId: propTestId, tub
                 <th className="px-5 py-3 text-left text-xs font-medium text-gray-600 border-r">
                   kVp
                 </th>
-                {Array.from({ length: measurementCount }, (_, i) => (
+                {measHeaders.map((header, i) => (
                   <th
                     key={i}
                     className="px-3 py-3 text-center text-xs font-medium text-gray-600 border-r relative"
                   >
                     <div className="flex flex-col items-center gap-1">
                       <div className="flex items-center gap-1">
-                        <span>Meas {i + 1}</span>
+                        <input
+                          type="text"
+                          value={header}
+                          onChange={(e) => updateMeasHeader(i, e.target.value)}
+                          disabled={isViewMode}
+                          className={`w-20 px-1 py-0.5 text-xs border rounded text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'}`}
+                        />
                         {!isViewMode && measurementCount < 10 && (
                           <button
                             onClick={() => addMeasurementColumn(i)}

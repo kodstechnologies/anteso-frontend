@@ -212,15 +212,22 @@ const MeasurementOfMaLinearity: React.FC<Props> = ({ serviceId, testId: propTest
             )];
 
             if (rowIndices.length > 0) {
-                // Find all result columns across all rows to determine measHeaders
+                const measHeaderLabels = csvData
+                    .filter((r) => r['Field Name'] === 'MeasHeader')
+                    .map((r) => r['Value'])
+                    .filter(Boolean);
                 const resultFields = csvData.filter(r => r['Field Name'].startsWith('Table2_Result_'));
                 const maxResultIdx = resultFields.reduce((max, r) => {
                     const idx = parseInt(r['Field Name'].replace('Table2_Result_', ''));
                     return isNaN(idx) ? max : Math.max(max, idx);
                 }, 0);
 
-                const numMeas = Math.max(3, maxResultIdx + 1); // Default to at least 3
-                const newHeaders = Array.from({ length: numMeas }, (_, i) => `Meas ${i + 1}`);
+                const numMeas = measHeaderLabels.length > 0
+                    ? measHeaderLabels.length
+                    : Math.max(3, maxResultIdx + 1);
+                const newHeaders = measHeaderLabels.length > 0
+                    ? measHeaderLabels
+                    : Array.from({ length: numMeas }, (_, i) => `Meas ${i + 1}`);
                 setMeasHeaders(newHeaders);
 
                 const newRows = rowIndices.map(idx => {
@@ -297,9 +304,11 @@ const MeasurementOfMaLinearity: React.FC<Props> = ({ serviceId, testId: propTest
                     }
 
                     if (Array.isArray(rec.table2) && rec.table2.length > 0) {
-                        const headers = rec.table2[0].measuredOutputs?.length > 0
-                            ? Array.from({ length: rec.table2[0].measuredOutputs.length }, (_, i) => `Meas ${i + 1}`)
-                            : measHeaders;
+                        const headers = Array.isArray(rec.measurementHeaders) && rec.measurementHeaders.length > 0
+                            ? rec.measurementHeaders.map(String)
+                            : rec.table2[0].measuredOutputs?.length > 0
+                                ? Array.from({ length: rec.table2[0].measuredOutputs.length }, (_, i) => `Meas ${i + 1}`)
+                                : measHeaders;
                         setMeasHeaders(headers);
 
                         setTable2Rows(
@@ -361,6 +370,7 @@ const MeasurementOfMaLinearity: React.FC<Props> = ({ serviceId, testId: propTest
                 col: row.col !== '—' ? parseFloat(row.col) : null,
                 remarks: row.remarks || '',
             })),
+            measurementHeaders: measHeaders,
             tolerance,
             tubeId: tubeId || null,
         };

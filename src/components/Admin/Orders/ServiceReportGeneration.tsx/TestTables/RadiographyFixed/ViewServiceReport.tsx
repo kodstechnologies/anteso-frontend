@@ -1422,6 +1422,10 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
                   (() => {
                     const rows = testData.outputConsistency.outputRows;
                     const measCount = Math.max(...rows.map((r: any) => (r.outputs ?? []).length), 1);
+                    const savedMeasHeaders = Array.isArray(testData.outputConsistency.measurementHeaders)
+                      && testData.outputConsistency.measurementHeaders.length > 0
+                      ? testData.outputConsistency.measurementHeaders
+                      : Array.from({ length: measCount }, (_, i) => `Meas ${i + 1}`);
                     const tolVal = parseFloat(testData.outputConsistency.tolerance?.value ?? "0.05") || 0.05;
                     const tolOp = testData.outputConsistency.tolerance?.operator ?? "<=";
                     const getVal = (o: any): number => {
@@ -1443,12 +1447,12 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
                               <th style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px" })}>
                                 mAs
                               </th>
-                              {Array.from({ length: measCount }, (_, i) => (
+                              {savedMeasHeaders.map((header: string, i: number) => (
                                 <th
                                   key={i}
                                   style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px" })}
                                 >
-                                  Meas {i + 1}
+                                  {header}
                                 </th>
                               ))}
                               <th style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px" })}>

@@ -444,6 +444,55 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
         };
 
         const sectionRowCounter: { [key: string]: number } = {};
+        const sectionMaLabels: { [key: string]: string[] } = {};
+
+        const pushField = (field: string, value: string, rowIndex: number, testName: string) => {
+            if (!field || String(value ?? '').trim() === '') return;
+            data.push({
+                'Field Name': field,
+                'Value': String(value).trim(),
+                'Row Index': rowIndex,
+                'Test Name': testName,
+            });
+        };
+
+        const colIdx = (hdr: string[], ...names: string[]) => {
+            for (const name of names) {
+                const idx = hdr.findIndex((h) => String(h || '').toLowerCase().includes(name.toLowerCase()));
+                if (idx >= 0) return idx;
+            }
+            return -1;
+        };
+
+        const isHeaderLabelCol = (h: string) => /^header\s*\d+$/i.test(String(h || '').trim());
+        const isMeasCol = (h: string) => /^meas\s*\d+$/i.test(String(h || '').trim());
+
+        const resolveMeasColumns = (hdr: string[], anchorNames: string[]) => {
+            const explicit = hdr
+                .map((h, idx) => ({ h: String(h || '').trim(), idx }))
+                .filter(({ h }) => isMeasCol(h))
+                .sort((a, b) => {
+                    const na = parseInt(a.h.replace(/[^\d]/g, ''), 10);
+                    const nb = parseInt(b.h.replace(/[^\d]/g, ''), 10);
+                    return (isNaN(na) ? 0 : na) - (isNaN(nb) ? 0 : nb);
+                });
+            if (explicit.length > 0) return explicit;
+
+            const headerCount = hdr.filter((h) => isHeaderLabelCol(h)).length;
+            if (headerCount === 0) return [];
+
+            let anchorIdx = -1;
+            for (const name of anchorNames) {
+                anchorIdx = colIdx(hdr, name);
+                if (anchorIdx >= 0) break;
+            }
+            if (anchorIdx < 0) return [];
+
+            return Array.from({ length: headerCount }, (_, i) => ({
+                h: `Meas ${i + 1}`,
+                idx: anchorIdx + 1 + i,
+            }));
+        };
 
         for (let i = 0; i < rows.length; i++) {
             const row = rows[i].map(c => String(c || '').trim());
@@ -502,6 +551,124 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
             if (isReadingTest && currentTestName && currentTestNameBase && headers.length > 0) {
                 sectionRowCounter[currentTestName] = (sectionRowCounter[currentTestName] || 0) + 1;
                 const rowIdx = sectionRowCounter[currentTestName];
+
+                if (currentTestNameBase === 'Output Consistency') {
+                    const hasCArmMeas = headers.some(isHeaderLabelCol) && headers.some(isMeasCol);
+                    const mas = row[colIdx(headers, 'mAs')] ?? '';
+                    const st = row[colIdx(headers, 'Slice Thickness (mm)', 'Slice Thickness')] ?? '';
+                    const time = row[colIdx(headers, 'Time (s)', 'Time')] ?? '';
+                    const kvp = row[colIdx(headers, 'kVp', 'kV')] ?? '';
+                    const tol = row[colIdx(headers, 'Tolerance', 'Tol Value')] ?? '';
+
+                    if (hasCArmMeas) {
+                        if (rowIdx === 1) {
+                            if (mas) pushField('TestConditions_mAs', mas, 0, currentTestName);
+                            if (st) pushField('TestConditions_SliceThickness', st, 0, currentTestName);
+                            if (time) pushField('TestConditions_Time', time, 0, currentTestName);
+                            if (tol) pushField('Tolerance', tol, 0, currentTestName);
+                            headers.forEach((h, hi) => {
+                                if (isHeaderLabelCol(h)) {
+                                    const label = row[hi] ?? '';
+                                    if (label) pushField('MeasHeader', label, 0, currentTestName);
+                                }
+                            });
+                        }
+                        if (kvp) pushField('OutputRow_kvp', kvp, rowIdx, currentTestName);
+                        resolveMeasColumns(headers, ['kVp', 'kV', 'Meas 1']).forEach(({ idx }, mi) => {
+                            pushField(`Result_${mi}`, row[idx] ?? '', rowIdx, currentTestName);
+                        });
+                    } else {
+                        if (rowIdx === 1) {
+                            headers.forEach((h) => {
+                                if (isMeasCol(h)) {
+                                    pushField('MeasHeader', String(h).trim(), 0, currentTestName);
+                                }
+                            });
+                        }
+                        if (mas) pushField('TestConditions_mAs', mas, 0, currentTestName);
+                        if (st) pushField('TestConditions_SliceThickness', st, 0, currentTestName);
+                        if (time) pushField('TestConditions_Time', time, 0, currentTestName);
+                        if (tol) pushField('Tolerance', tol, 0, currentTestName);
+                        if (kvp) pushField('OutputRow_kvp', kvp, rowIdx, currentTestName);
+                        headers.forEach((h, cellIdx) => {
+                            const measMatch = String(h || '').trim().match(/^meas\s*(\d+)$/i);
+                            if (measMatch) {
+                                const mi = parseInt(measMatch[1], 10) - 1;
+                                pushField(`Result_${mi}`, row[cellIdx] ?? '', rowIdx, currentTestName);
+                            }
+                        });
+                    }
+                    continue;
+                }
+
+                if (currentTestNameBase === 'Measurement of Operating Potential') {
+                    const hasHeaderMeas = headers.some(isHeaderLabelCol) && (
+                        headers.some(isMeasCol) || resolveMeasColumns(headers, ['Set kV', 'Meas 1']).length > 0
+                    );
+                    if (hasHeaderMeas) {
+                        if (rowIdx === 1) {
+                            const maLabels: string[] = [];
+                            headers.forEach((h, hi) => {
+                                if (isHeaderLabelCol(h)) {
+                                    const label = String(row[hi] ?? '').trim();
+                                    if (label) maLabels.push(label);
+                                }
+                            });
+                            if (maLabels.length > 0) {
+                                sectionMaLabels[currentTestName] = maLabels;
+                                pushField('MaColumnLabels', maLabels.join(','), 0, currentTestName);
+                            }
+                            const time = row[colIdx(headers, 'Time (ms)', 'Time')] ?? '';
+                            const slice = row[colIdx(headers, 'Slice Thickness (mm)', 'Slice Thickness')] ?? '';
+                            if (time) pushField('Table1_Time', time, 0, currentTestName);
+                            if (slice) pushField('Table1_SliceThickness', slice, 0, currentTestName);
+                            const tolVal = row[colIdx(headers, 'Tol Value', 'Tolerance Value')] ?? '';
+                            const tolType = row[colIdx(headers, 'Tol Type', 'Tolerance Type')] ?? '';
+                            const tolSign = row[colIdx(headers, 'Tol Sign', 'Tolerance Sign')] ?? '';
+                            if (tolVal) pushField('Tolerance_Value', tolVal, 0, currentTestName);
+                            if (tolType) pushField('Tolerance_Type', tolType, 0, currentTestName);
+                            if (tolSign) pushField('Tolerance_Sign', tolSign, 0, currentTestName);
+                        }
+                        const setKV = row[colIdx(headers, 'Set kV', 'Applied kV')] ?? '';
+                        if (setKV) pushField('Table2_SetKV', setKV, rowIdx, currentTestName);
+                        const maLabels = sectionMaLabels[currentTestName] || [];
+                        resolveMeasColumns(headers, ['Set kV', 'Meas 1']).forEach(({ idx }, mi) => {
+                            const label = maLabels[mi] || String(mi + 1);
+                            pushField(`Table2_ma${label}`, row[idx] ?? '', rowIdx, currentTestName);
+                        });
+                        continue;
+                    }
+                }
+
+                if (currentTestNameBase === 'Measurement of mA Linearity') {
+                    const hasHeaderMeas = headers.some(isHeaderLabelCol) && (
+                        headers.some(isMeasCol) || resolveMeasColumns(headers, ['mA Applied', 'Meas 1']).length > 0
+                    );
+                    if (hasHeaderMeas) {
+                        if (rowIdx === 1) {
+                            const kvp = row[colIdx(headers, 'kVp', 'kV')] ?? '';
+                            const slice = row[colIdx(headers, 'Slice Thickness (mm)', 'Slice Thickness')] ?? '';
+                            const time = row[colIdx(headers, 'Time (ms)', 'Time')] ?? '';
+                            const tol = row[colIdx(headers, 'Tolerance', 'Tol Value')] ?? '';
+                            if (kvp) pushField('Table1_kvp', kvp, 0, currentTestName);
+                            if (slice) pushField('Table1_SliceThickness', slice, 0, currentTestName);
+                            if (time) pushField('Table1_Time', time, 0, currentTestName);
+                            if (tol) pushField('Tolerance', tol, 0, currentTestName);
+                            headers.forEach((h, hi) => {
+                                if (isHeaderLabelCol(h)) {
+                                    const label = row[hi] ?? '';
+                                    if (label) pushField('MeasHeader', label, 0, currentTestName);
+                                }
+                            });
+                        }
+                        pushField('Table2_mAsApplied', row[colIdx(headers, 'mA Applied', 'mA', 'mAs Applied')] ?? '', rowIdx, currentTestName);
+                        resolveMeasColumns(headers, ['mA Applied', 'mA', 'mAs Applied', 'Meas 1']).forEach(({ idx }, mi) => {
+                            pushField(`Table2_Result_${mi}`, row[idx] ?? '', rowIdx, currentTestName);
+                        });
+                        continue;
+                    }
+                }
+
                 row.forEach((value, cellIdx) => {
                     const header = String(headers[cellIdx] || '').trim();
                     let internalField = (headerMap[currentTestNameBase] || {})[header];
@@ -1157,7 +1324,7 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
                             {csvUploading ? 'Uploading...' : 'Upload Excel'}
                         </label>
                         {/* <a
-                            href="/templates/CTScan_Test_Data_Template_DoubleTube.csv"
+                            href="/templates/CTScan_Test_Data_Template_DoubleTube_updated.csv"
                             download
                             className="px-6 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition"
                         >

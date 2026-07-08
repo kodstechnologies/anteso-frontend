@@ -964,6 +964,9 @@ const ViewServiceReport: React.FC = () => {
     })();
     // Determine max measurement count across all rows
     const measCount = Math.max(...rows.map((r: any) => (r.outputs ?? []).length), 1);
+    const savedMeasHeaders = Array.isArray(consistencyData.measurementHeaders) && consistencyData.measurementHeaders.length > 0
+      ? consistencyData.measurementHeaders
+      : Array.from({ length: measCount }, (_, i) => `Meas ${i + 1}`);
     const tolVal = parseFloat(consistencyData.tolerance?.value ?? '0.05') || 0.05;
     const tolOp = consistencyData.tolerance?.operator ?? '<=';
 
@@ -1013,8 +1016,8 @@ const ViewServiceReport: React.FC = () => {
               <tr>
                 <th className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>kV</th>
                 <th className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>mAs</th>
-                {Array.from({ length: measCount }, (_, i) => (
-                  <th key={i} className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>Meas {i + 1}</th>
+                {savedMeasHeaders.map((header: string, i: number) => (
+                  <th key={i} className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{header}</th>
                 ))}
                 <th className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>Avg (X̄)</th>
                 <th className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>CoV</th>

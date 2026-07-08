@@ -135,14 +135,16 @@ const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, 
   useEffect(() => {
     if (csvData && csvData.length > 0) {
       // Technique Factors
+      const tFcd = csvData.find(r => r['Field Name'] === 'Table1_fcd')?.['Value'];
       const tKv = csvData.find(r => r['Field Name'] === 'Table1_kv')?.['Value'];
       const tMa = csvData.find(r => r['Field Name'] === 'Table1_ma')?.['Value'];
       const tTime = csvData.find(r => r['Field Name'] === 'Table1_time')?.['Value'];
 
-      if (tKv || tMa || tTime) {
+      if (tFcd || tKv || tMa || tTime) {
         const mas = tMa && tTime ? String(parseFloat(tMa) * parseFloat(tTime)) : tMa || '';
         setTechniqueRow(prev => ({
           ...prev,
+          fcd: tFcd || prev.fcd,
           kv: tKv || prev.kv,
           mas: mas || prev.mas,
         }));

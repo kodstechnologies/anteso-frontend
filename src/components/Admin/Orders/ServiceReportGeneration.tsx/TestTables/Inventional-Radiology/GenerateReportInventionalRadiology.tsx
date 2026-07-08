@@ -179,19 +179,24 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
 
     const headerMap: { [key: string]: { [key: string]: string } } = {
       'Accuracy Of Irradiation Time': {
-        'FCD (cm)': 'Table1_fcd', 'kV': 'Table1_kv', 'mA': 'Table1_ma',
+        'FCD (cm)': 'Table1_fcd', 'FDD (cm)': 'Table1_fcd', 'FFD (cm)': 'Table1_fcd',
+        'kV': 'Table1_kv', 'mA': 'Table1_ma',
         'Set Time (mSec)': 'Table2_SetTime', 'Measured Time (mSec)': 'Table2_MeasuredTime',
         'Tolerance Operator': 'ToleranceOperator', 'Tolerance Value': 'ToleranceValue'
       },
       'Central Beam Alignment': {
+        'FCD (cm)': 'Table1_fcd', 'FDD (cm)': 'Table1_fcd', 'FFD (cm)': 'Table1_fcd',
         'kV': 'Table1_kv', 'mA': 'Table1_ma', 'Time': 'Table1_time',
         'Result': 'Table2_Result', 'Tolerance': 'Tolerance'
       },
       'Effective Focal Spot Size': {
-        'kV': 'Table1_kv', 'mA': 'Table1_ma', 'Focal Spot Size': 'Table1_focalSpotSize',
+        'FCD (cm)': 'Table1_fcd', 'FDD (cm)': 'Table1_fcd', 'FFD (cm)': 'Table1_fcd',
+        'kV': 'Table1_kv', 'mA': 'Table1_ma',
+        'Focus': 'Table1_focalSpotSize', 'Focal Spot Size': 'Table1_focalSpotSize', 'Focus Type': 'Table1_focalSpotSize',
+        'Stated Focal Spot (f)': 'Table2_StatedNominal', 'Stated Nominal': 'Table2_StatedNominal',
+        'Measured Focal Spot (Nominal)': 'Table2_MeasuredNominal', 'Measured Nominal': 'Table2_MeasuredNominal',
         'Measured Dimension (W)': 'Table2_MeasuredWidth', 'Measured Dimension (L)': 'Table2_MeasuredLength',
-        'Measured Nominal': 'Table2_MeasuredNominal', 'Measured Focal Spot (Nominal)': 'Table2_MeasuredNominal',
-        'Tolerance Width': 'ToleranceWidth', 'Tolerance Length': 'ToleranceLength'
+        'Tolerance Width': 'ToleranceWidth', 'Tolerance Length': 'ToleranceLength',
       },
       'Accuracy Of Operating Potential': {
         'mA': 'Table1_ma', 'Time': 'Table1_time',
@@ -203,6 +208,7 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
         'Measured TF': 'Table2_Result', 'Criteria': 'Criteria'
       },
       'Consistency Of Radiation Output': {
+        'FDD (cm)': 'Table1_fcd', 'FCD (cm)': 'Table1_fcd', 'FFD (cm)': 'Table1_fcd',
         'kV': 'Table1_kv', 'mA': 'Table1_ma', 'Time': 'Table1_time',
         'Exposure 1': 'Table2_Exp1', 'Exposure 2': 'Table2_Exp2', 'Exposure 3': 'Table2_Exp3',
         'Exposure 4': 'Table2_Exp4', 'Exposure 5': 'Table2_Exp5',
@@ -230,11 +236,16 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
         'Measured Resolution': 'Table1_measuredLpPerMm', 'Criteria': 'Table1_recommendedStandard'
       },
       'Exposure Rate At Table Top': {
-        'kV': 'Table1_kv', 'mA': 'Table1_ma',
-        'Mode': 'Table2_Mode', 'Measured Rate': 'Table2_MeasuredRate', 'Criteria': 'Criteria'
+        'kV': 'Table1_kv', 'mA': 'Table1_ma', 'Applied kV': 'Table1_kv', 'Applied mA': 'Table1_ma',
+        'Mode': 'Table2_Mode', 'Measured Rate': 'Table2_MeasuredRate', 'Exposure': 'Table2_MeasuredRate',
+        'Distance (cm)': 'Table2_Distance', 'Distance': 'Table2_Distance',
+        'Criteria': 'Criteria',
+        'Max Exposure (AEC Mode) (cGy/Min)': 'Table1_aecTolerance',
+        'Max Exposure (Manual Mode) (cGy/Min)': 'Table1_nonAecTolerance',
+        'Min. Focus to Tabletop Distance': 'Table1_minFocusDistance',
       },
       'Tube Housing Leakage': {
-        'kV': 'Table1_kv', 'mA': 'Table1_ma', 'Time': 'Table1_time', 'FCD (cm)': 'Table1_fcd', 'Workload': 'Table1_workload',
+        'kV': 'Table1_kv', 'mA': 'Table1_ma', 'Time': 'Table1_time', 'FCD (cm)': 'Table1_fcd', 'FDD (cm)': 'Table1_fcd', 'FFD (cm)': 'Table1_fcd', 'Workload': 'Table1_workload',
         'Location': 'Table1_Location',
         'Left': 'Table1_Left', 'Right': 'Table1_Right', 'Front': 'Table1_Front', 'Back': 'Table1_Back', 'Top': 'Table1_Top',
         'Tolerance Operator': 'ToleranceOperator', 'Tolerance Value': 'Table1_toleranceValue'
@@ -247,6 +258,68 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
     };
 
     const sectionRowCounter: { [key: string]: number } = {};
+
+    const pushField = (field: string, value: string, rowIndex: number, testName: string) => {
+      if (!field || String(value ?? '').trim() === '') return;
+      data.push({
+        'Field Name': field,
+        'Value': String(value).trim(),
+        'Row Index': rowIndex,
+        'Test Name': testName,
+      });
+    };
+
+    const colIdx = (hdr: string[], ...names: string[]) => {
+      for (const name of names) {
+        const idx = hdr.findIndex((h) => String(h || '').toLowerCase().includes(name.toLowerCase()));
+        if (idx >= 0) return idx;
+      }
+      return -1;
+    };
+
+    const isHeaderLabelCol = (h: string) => /^header\s*\d+$/i.test(String(h || '').trim());
+    const isMeasCol = (h: string) =>
+      /^meas\s*\d+$/i.test(String(h || '').trim()) || /^exposure\s*\d+$/i.test(String(h || '').trim());
+
+    const resolveMeasColumns = (hdr: string[], anchorNames: string[]) => {
+      const explicit = hdr
+        .map((h, idx) => ({ h: String(h || '').trim(), idx }))
+        .filter(({ h }) => isMeasCol(h))
+        .sort((a, b) => {
+          const na = parseInt(a.h.replace(/[^\d]/g, ''), 10);
+          const nb = parseInt(b.h.replace(/[^\d]/g, ''), 10);
+          return (isNaN(na) ? 0 : na) - (isNaN(nb) ? 0 : nb);
+        });
+      if (explicit.length > 0) return explicit;
+
+      const headerCount = hdr.filter((h) => isHeaderLabelCol(h)).length;
+      if (headerCount === 0) return [];
+
+      let anchorIdx = -1;
+      for (const name of anchorNames) {
+        anchorIdx = colIdx(hdr, name);
+        if (anchorIdx >= 0) break;
+      }
+      if (anchorIdx < 0) return [];
+
+      return Array.from({ length: headerCount }, (_, i) => ({
+        h: `Meas ${i + 1}`,
+        idx: anchorIdx + 1 + i,
+      }));
+    };
+
+    const pushLegacyRow = (row: string[], rowIdx: number) => {
+      row.forEach((value, cellIdx) => {
+        const header = headers[cellIdx];
+        if (!header) return;
+        let internalField = (headerMap[currentTestNameBase] || {})[header];
+        if (internalField === 'Table2_MeasuredKV') {
+          const measIdx = headers.slice(0, cellIdx + 1).filter((h) => h === header).length - 1;
+          internalField = measIdx === 0 ? 'Table2_MeasuredKV' : `Table2_MeasuredKV_${measIdx}`;
+        }
+        pushField(internalField, value, rowIdx, currentTestName);
+      });
+    };
 
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i].map((c) => (c === null || c === undefined || c === '' ? '' : String(c).trim()));
@@ -294,23 +367,125 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
       if (isReadingTest && currentTestName && currentTestNameBase && headers.length > 0) {
         sectionRowCounter[currentTestName] = (sectionRowCounter[currentTestName] || 0) + 1;
         const rowIdx = sectionRowCounter[currentTestName];
-        row.forEach((value, cellIdx) => {
-          const header = headers[cellIdx];
-          if (!header) return;
-          let internalField = (headerMap[currentTestNameBase] || {})[header];
-          if (internalField === 'Table2_MeasuredKV') {
-            const measIdx = headers.slice(0, cellIdx + 1).filter((h) => h === header).length - 1;
-            internalField = measIdx === 0 ? 'Table2_MeasuredKV' : `Table2_MeasuredKV_${measIdx}`;
+
+        if (currentTestNameBase === 'Effective Focal Spot Size') {
+          const focusType = row[colIdx(headers, 'Focus', 'Focal Spot Size', 'Focus Type')] ?? '';
+          if (rowIdx === 1) {
+            pushField('Table1_fcd', row[colIdx(headers, 'FFD (cm)', 'FDD (cm)', 'FCD (cm)', 'FFD', 'FDD', 'FCD')] ?? '', 0, currentTestName);
           }
-          if (internalField && value !== '') {
-            data.push({
-              'Field Name': internalField,
-              'Value': value,
-              'Row Index': rowIdx,
-              'Test Name': currentTestName,
+          if (focusType) {
+            pushField('Table1_focalSpotSize', focusType, rowIdx, currentTestName);
+            const stated = row[colIdx(headers, 'Stated Focal Spot (f)', 'Stated Nominal', 'Stated Focal Spot')] ?? '';
+            const measured = row[colIdx(headers, 'Measured Focal Spot (Nominal)', 'Measured Nominal')] ?? '';
+            if (stated) pushField('Table2_StatedNominal', stated, rowIdx, currentTestName);
+            if (measured) pushField('Table2_MeasuredNominal', measured, rowIdx, currentTestName);
+            // Legacy width/length format fallback
+            const w = row[colIdx(headers, 'Measured Dimension (W)', 'Measured Width')] ?? '';
+            const l = row[colIdx(headers, 'Measured Dimension (L)', 'Measured Length')] ?? '';
+            if (w) pushField('Table2_MeasuredWidth', w, rowIdx, currentTestName);
+            if (l) pushField('Table2_MeasuredLength', l, rowIdx, currentTestName);
+            if (!measured && w && l) {
+              pushField('Table2_MeasuredNominal', ((parseFloat(w) + parseFloat(l)) / 2).toFixed(2), rowIdx, currentTestName);
+            }
+          }
+        } else if (currentTestNameBase === 'Accuracy Of Operating Potential') {
+          const hasCArmMeas = headers.some(isHeaderLabelCol) && (headers.some(isMeasCol) || colIdx(headers, 'Set kV', 'Applied kVp') >= 0);
+          if (hasCArmMeas) {
+            if (rowIdx === 1) {
+              pushField('ToleranceOperator', row[colIdx(headers, 'Tolerance Operator', 'Tol Operator', 'Tolerance Sign')] ?? '', 0, currentTestName);
+              pushField('ToleranceValue', row[colIdx(headers, 'Tolerance Value', 'Tol Value')] ?? '', 0, currentTestName);
+              headers.forEach((h, hi) => {
+                if (isHeaderLabelCol(h)) {
+                  const label = row[hi] ?? '';
+                  if (label) pushField('MeasHeader', label, 0, currentTestName);
+                }
+              });
+            }
+            pushField('Table1_ma', row[colIdx(headers, 'mA')] ?? '', rowIdx, currentTestName);
+            pushField('Table1_time', row[colIdx(headers, 'Time')] ?? '', rowIdx, currentTestName);
+            pushField('Table2_SetKV', row[colIdx(headers, 'Set kV', 'Applied kVp', 'Applied kV')] ?? '', rowIdx, currentTestName);
+            resolveMeasColumns(headers, ['Set kV', 'Applied kVp', 'Applied kV', 'Meas 1']).forEach(({ idx }, mi) => {
+              const field = mi === 0 ? 'Table2_MeasuredKV' : `Table2_MeasuredKV_${mi}`;
+              pushField(field, row[idx] ?? '', rowIdx, currentTestName);
+            });
+          } else {
+            if (rowIdx === 1) {
+              const measKvpCols = headers.filter((h) => String(h || '').trim() === 'Measured kV');
+              if (measKvpCols.length > 1) {
+                measKvpCols.forEach((_, mi) => {
+                  pushField('MeasHeader', `Meas ${mi + 1}`, 0, currentTestName);
+                });
+              }
+            }
+            pushLegacyRow(row, rowIdx);
+          }
+        } else if (currentTestNameBase === 'Consistency Of Radiation Output') {
+          const hasCArmMeas = headers.some(isHeaderLabelCol) && headers.some(isMeasCol);
+          if (hasCArmMeas) {
+            if (rowIdx === 1) {
+              pushField('Table1_fcd', row[colIdx(headers, 'FDD (cm)', 'FFD (cm)', 'FDD', 'FCD', 'FFD')] ?? '', 0, currentTestName);
+              pushField('Tolerance', row[colIdx(headers, 'Tolerance', 'Tol Value')] ?? '', 0, currentTestName);
+              headers.forEach((h, hi) => {
+                if (isHeaderLabelCol(h)) {
+                  const label = row[hi] ?? '';
+                  if (label) pushField('MeasHeader', label, 0, currentTestName);
+                }
+              });
+            }
+            pushField('Table1_kv', row[colIdx(headers, 'kV', 'kVp')] ?? '', rowIdx, currentTestName);
+            pushField('Table1_ma', row[colIdx(headers, 'mA')] ?? '', rowIdx, currentTestName);
+            pushField('Table1_time', row[colIdx(headers, 'Time')] ?? '', rowIdx, currentTestName);
+            resolveMeasColumns(headers, ['mA', 'mAs', 'Time', 'Meas 1']).forEach(({ idx }, mi) => {
+              pushField(`Table2_Exp${mi + 1}`, row[idx] ?? '', rowIdx, currentTestName);
+            });
+          } else {
+            if (rowIdx === 1) {
+              headers.forEach((h) => {
+                if (/^exposure\s*\d+$/i.test(String(h || '').trim())) {
+                  pushField('MeasHeader', h, 0, currentTestName);
+                }
+              });
+            }
+            pushLegacyRow(row, rowIdx);
+          }
+        } else if (currentTestNameBase === 'Measurement of mA Linearity') {
+          if (rowIdx === 1) {
+            pushField('Table1_kvp', row[colIdx(headers, 'kVp', 'kV')] ?? '', 0, currentTestName);
+            pushField('Table1_SliceThickness', row[colIdx(headers, 'Slice Thickness')] ?? '', 0, currentTestName);
+            pushField('Table1_Time', row[colIdx(headers, 'Time', 'Time (ms)')] ?? '', 0, currentTestName);
+            pushField('Tolerance', row[colIdx(headers, 'Tolerance', 'Tol Value')] ?? '', 0, currentTestName);
+            headers.forEach((h, hi) => {
+              if (isHeaderLabelCol(h)) {
+                const label = row[hi] ?? '';
+                if (label) pushField('MeasHeader', label, 0, currentTestName);
+              }
             });
           }
-        });
+          pushField('Table2_mAsApplied', row[colIdx(headers, 'mA Applied', 'mA', 'mAs Applied')] ?? '', rowIdx, currentTestName);
+          resolveMeasColumns(headers, ['mA Applied', 'mA', 'mAs Applied', 'mAs Range', 'Meas 1']).forEach(({ idx }, mi) => {
+            pushField(`Table2_Result_${mi}`, row[idx] ?? '', rowIdx, currentTestName);
+          });
+        } else if (currentTestNameBase === 'Exposure Rate At Table Top') {
+          const isCArmSummary = colIdx(headers, 'AEC Tolerance', 'Max Exposure', 'Min Focus') >= 0;
+          if (isCArmSummary) {
+            if (rowIdx === 1) {
+              pushField('Table1_aecTolerance', row[colIdx(headers, 'AEC Tolerance', 'Max Exposure (AEC Mode)', 'Max Exposure (AEC Mode) (cGy/Min)')] ?? '', 0, currentTestName);
+              pushField('Table1_nonAecTolerance', row[colIdx(headers, 'Manual Tolerance', 'Max Exposure (Manual Mode)', 'Max Exposure (Manual Mode) (cGy/Min)')] ?? '', 0, currentTestName);
+              pushField('Table1_minFocusDistance', row[colIdx(headers, 'Min Focus', 'Min. Focus to Tabletop Distance')] ?? '', 0, currentTestName);
+            }
+            pushField('Table1_kv', row[colIdx(headers, 'Applied kV', 'kV')] ?? '', rowIdx, currentTestName);
+            pushField('Table1_ma', row[colIdx(headers, 'Applied mA', 'mA')] ?? '', rowIdx, currentTestName);
+            pushField('Table2_Mode', row[colIdx(headers, 'Mode')] ?? '', rowIdx, currentTestName);
+            pushField('Table2_MeasuredRate', row[colIdx(headers, 'Exposure', 'Measured Rate', 'Exposure (cGy/Min)')] ?? '', rowIdx, currentTestName);
+            pushField('Criteria', row[colIdx(headers, 'Criteria')] ?? '', rowIdx, currentTestName);
+            const dist = row[colIdx(headers, 'Distance (cm)', 'Distance')] ?? '';
+            if (dist) pushField('Table2_Distance', dist, rowIdx, currentTestName);
+          } else {
+            pushLegacyRow(row, rowIdx);
+          }
+        } else {
+          pushLegacyRow(row, rowIdx);
+        }
       }
     }
     console.log('[IR CSV] Parsed field count:', data.length, 'Tests found:', [...new Set(data.map(d => d['Test Name']))]);
@@ -341,6 +516,7 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
       if (fieldName === 'MeasuredDimension1') return 'Table2_MeasuredWidth';
       if (fieldName === 'MeasuredDimension2') return 'Table2_MeasuredLength';
       if (fieldName === 'MeasuredNominal') return 'Table2_MeasuredNominal';
+      if (fieldName === 'StatedNominal') return 'Table2_StatedNominal';
     }
     if (component === 'ConsistencyOfRadiationOutput') {
       if (fieldName === 'Table1_fdd') return 'Table1_fcd';
@@ -535,6 +711,7 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
       exportData.accuracyOfOperatingPotential = await fetchTest(() => getAccuracyOfOperatingPotentialByServiceIdForInventionalRadiology(serviceId, tubeId));
       exportData.totalFiltration = await fetchTest(() => getTotalFilterationByServiceIdForInventionalRadiology(serviceId, tubeId));
       exportData.consistencyOfRadiationOutput = await fetchTest(() => getConsistencyOfRadiationOutputByServiceIdForInventionalRadiology(serviceId, tubeId));
+      exportData.measurementOfMaLinearity = await fetchTest(() => getMeasurementOfMaLinearityByServiceIdForInventionalRadiology(serviceId, tubeId));
       exportData.linearityOfMasLoading = await fetchTest(() => getLinearityOfmAsLoadingByServiceIdForInventionalRadiology(serviceId));
       exportData.lowContrastResolution = await fetchTest(() => getLowContrastResolutionByServiceIdForInventionalRadiology(serviceId, tubeId));
       exportData.highContrastResolution = await fetchTest(() => getHighContrastResolutionByServiceIdForInventionalRadiology(serviceId, tubeId));

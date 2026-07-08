@@ -88,9 +88,9 @@ addSection('TOTAL FILTRATION',
 
 // 8. Reproducibility of Radiation Output (Consistency Test)
 addSection('Reproducibility of Radiation Output (Consistency Test)',
-    ['mAs', 'Slice Thickness (mm)', 'Time (s)', 'kVp', 'Meas 1', 'Meas 2', 'Meas 3', 'Meas 4', 'Meas 5', 'COV', 'Tolerance'],
+    ['mAs', 'Slice Thickness (mm)', 'Time (s)', 'Tolerance', 'Header 1', 'Header 2', 'Header 3', 'Header 4', 'Header 5', 'kVp', 'Meas 1', 'Meas 2', 'Meas 3', 'Meas 4', 'Meas 5'],
     [
-        ['100', '5', '1.0', '120', '100.5', '100.3', '100.6', '100.4', '100.5', '', '0.05']
+        ['100', '5', '1.0', '0.05', 'Meas 1', 'Meas 2', 'Meas 3', 'Meas 4', 'Meas 5', '120', '100.5', '100.3', '100.6', '100.4', '100.5']
     ]
 );
 

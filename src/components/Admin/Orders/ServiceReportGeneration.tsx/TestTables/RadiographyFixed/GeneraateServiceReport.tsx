@@ -751,26 +751,39 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
           const ffd = ffdLine[1] || "";
           if (ffd) pushRow(testName, "FFD", ffd, 0);
 
-          const dataLine = lines[i + 3] || "";
-          const cells = dataLine.split(",");
-          let idx = 0;
-          const kv = (cells[0] || "").trim();
-          const mas = (cells[1] || "").trim();
-          if (kv) pushRow(testName, "Measurement_kv", kv, idx);
-          if (mas) pushRow(testName, "Measurement_mas", mas, idx);
-          if (cells[2] !== undefined) pushRow(testName, "Measurement_output1", cells[2], idx);
-          if (cells[3] !== undefined) pushRow(testName, "Measurement_output2", cells[3], idx);
+          const headerLine = (lines[i + 2] || "").split(",");
+          const headerCells = headerLine.slice(2).map((cell) => cell.trim()).filter(Boolean);
+          headerCells.forEach((header, headerIdx) => {
+            pushRow(testName, "MeasHeader", header, headerIdx);
+          });
 
-          // tolerance from next line(s)
-          for (let j = i + 4; j < Math.min(lines.length, i + 8); j++) {
+          let idx = 0;
+          let j = i + 3;
+          while (j < lines.length) {
             const l = lines[j].trim();
-            if (!l) break;
-            const parts = l.split(",");
-            const labelCell = (parts[0] || "").trim();
-            const valCell = (parts[1] || "").trim();
-            if (labelCell.startsWith("Tolerance")) pushRow(testName, "Tolerance", valCell, 0);
+            if (!l || l.startsWith("TEST:")) break;
+            const cells = l.split(",");
+            const kv = (cells[0] || "").trim();
+            const mas = (cells[1] || "").trim();
+            if (kv || mas) {
+              if (kv) pushRow(testName, "Measurement_kv", kv, idx);
+              if (mas) pushRow(testName, "Measurement_mas", mas, idx);
+              const outputCount = headerCells.length > 0 ? headerCells.length : Math.max(0, cells.length - 2);
+              for (let col = 0; col < outputCount; col++) {
+                const val = cells[col + 2];
+                if (val !== undefined && String(val).trim() !== "") {
+                  pushRow(testName, `Measurement_output${col + 1}`, String(val).trim(), idx);
+                }
+              }
+              idx++;
+            } else {
+              const labelCell = (cells[0] || "").trim();
+              const valCell = (cells[1] || "").trim();
+              if (labelCell.startsWith("Tolerance")) pushRow(testName, "Tolerance", valCell, 0);
+            }
+            j++;
           }
-          i += 6;
+          i = j;
           continue;
         }
 
@@ -1190,6 +1203,7 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
         const data = groupedData['Consistency Of Radiation Output'];
         let ffd = '100';
         const rows: any[] = [];
+        const measHeaders: string[] = [];
         let tol = '0.05';
         let tolOp = '<=';
         let currentRow: any = null;
@@ -1199,6 +1213,7 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
           const val = (row['Value'] || '').trim();
           const idx = parseInt(row['Index']) || 0;
           if (key === 'FFD' || key === 'FDD') ffd = val;
+          else if (key === 'MeasHeader' && val) measHeaders.push(val);
           else if (key === 'Tolerance_Value' || key === 'Tolerance_value') tol = val;
           else if (key === 'Tolerance') tol = val;
           else if (key === 'Tolerance_Operator' || key === 'Tolerance_operator' || key === 'ToleranceOperator') tolOp = val;
@@ -1242,7 +1257,12 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
         data.forEach(row => {
           if ((row['Key'] || '').trim() === 'Tolerance_Value' || (row['Key'] || '').trim() === 'Tolerance') tol = (row['Value'] || '').trim();
         });
-        newDataForComponents.consistencyOfRadiationOutput = { ffd, outputRows: rows.filter(Boolean), tolerance: { value: tol, operator: tolOp } };
+        newDataForComponents.consistencyOfRadiationOutput = {
+          ffd,
+          outputRows: rows.filter(Boolean),
+          tolerance: { value: tol, operator: tolOp },
+          ...(measHeaders.length > 0 ? { measurementHeaders: measHeaders } : {}),
+        };
       }
 
       // Leakage

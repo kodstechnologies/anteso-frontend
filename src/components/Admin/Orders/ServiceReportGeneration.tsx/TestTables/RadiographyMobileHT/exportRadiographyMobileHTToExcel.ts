@@ -41,7 +41,7 @@ export const createRadiographyMobileHTUploadableExcel = (
     const tech = Array.isArray(cong.techniqueFactors) ? cong.techniqueFactors[0] || {} : {};
     const meas = Array.isArray(cong.congruenceMeasurements) ? cong.congruenceMeasurements : [];
     allData.push(["TEST: CONGRUENCE OF RADIATION"]);
-    allData.push(["FCD", tech.fcd ?? "", "kV", tech.kv ?? "", "mAs", tech.mas ?? ""]);
+    allData.push(["FFD (cm)", tech.fcd ?? "", "kV", tech.kv ?? "", "mAs", tech.mas ?? ""]);
     allData.push(["Dimension", "Observed Shift", "Edge Shift", "% FED", "Tolerance", "Remark"]);
     meas.forEach((m: any) => {
       allData.push([
@@ -62,7 +62,7 @@ export const createRadiographyMobileHTUploadableExcel = (
     const tf = cba.techniqueFactors || {};
     const obs = cba.observedTilt || {};
     allData.push(["TEST: CENTRAL BEAM ALIGNMENT"]);
-    allData.push(["FCD", tf.fcd ?? "", "kV", tf.kv ?? "", "mAs", tf.mas ?? ""]);
+    allData.push(["FDD (cm)", tf.fcd ?? "", "kV", tf.kv ?? "", "mAs", tf.mas ?? ""]);
     allData.push(["Observed Tilt", obs.value ?? "", "Remark", obs.remark ?? ""]);
     addBlank();
   }
@@ -71,7 +71,7 @@ export const createRadiographyMobileHTUploadableExcel = (
   const efs = unwrap(data.effectiveFocalSpot);
   if (efs?.focalSpots?.length) {
     allData.push(["TEST: EFFECTIVE FOCAL SPOT"]);
-    allData.push(["FCD", efs.fcd ?? ""]);
+    allData.push(["FFD (cm)", efs.fcd ?? ""]);
     allData.push(["Focus Type", "Stated Width", "Stated Height", "Measured Width", "Measured Height", "Remark"]);
     efs.focalSpots.forEach((s: any) => {
       allData.push([
@@ -92,7 +92,7 @@ export const createRadiographyMobileHTUploadableExcel = (
     const tc = aoi.testConditions || {};
     allData.push(["TEST: ACCURACY OF IRRADIATION TIME"]);
     allData.push([
-      "FCD",
+      "FDD (cm)",
       tc.fcd ?? "",
       "kV",
       tc.kv ?? "",
@@ -147,7 +147,7 @@ export const createRadiographyMobileHTUploadableExcel = (
     const t2 = Array.isArray(lma.table2) ? lma.table2 : [];
     allData.push(["TEST: LINEARITY OF mA LOADING"]);
     allData.push([
-      "FCD",
+      "FDD (cm)",
       t1.fcd ?? "",
       "kV",
       t1.kv ?? "",
@@ -178,7 +178,7 @@ export const createRadiographyMobileHTUploadableExcel = (
     const t1 = lmas.table1?.[0] || lmas.table1 || {};
     const t2 = Array.isArray(lmas.table2) ? lmas.table2 : [];
     allData.push(["TEST: LINEARITY OF mAs LOADING"]);
-    allData.push(["FCD", t1.fcd ?? "", "kV", t1.kv ?? ""]);
+    allData.push(["FDD (cm)", t1.fcd ?? "", "kV", t1.kv ?? ""]);
     allData.push([
       "mAs Range",
       "Measured mR 1",
@@ -213,7 +213,7 @@ export const createRadiographyMobileHTUploadableExcel = (
     const measCols = savedHeaders.map((_, i) => `Meas ${i + 1}`);
     allData.push(["TEST: OUTPUT CONSISTENCY"]);
     allData.push([
-      "FFD (cm)",
+      "FDD (cm)",
       "Tol Operator",
       "Tol Value",
       ...headerCols,
@@ -243,7 +243,7 @@ export const createRadiographyMobileHTUploadableExcel = (
     const s = rll.settings || {};
     allData.push(["TEST: RADIATION LEAKAGE LEVEL FROM X-RAY TUBE HOUSE"]);
     allData.push([
-      "FFD",
+      "FDD (cm)",
       s.fcd ?? "",
       "kVp",
       s.kv ?? "",

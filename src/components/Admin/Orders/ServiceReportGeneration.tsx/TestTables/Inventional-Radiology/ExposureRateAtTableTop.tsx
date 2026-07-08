@@ -151,7 +151,8 @@ const ExposureRateAtTableTop: React.FC<Props> = ({
                     r['Field Name'] === 'Table1_kv' ||
                     r['Field Name'] === 'Table1_ma' ||
                     r['Field Name'] === 'Table2_Mode' ||
-                    r['Field Name'] === 'Table2_MeasuredRate'
+                    r['Field Name'] === 'Table2_MeasuredRate' ||
+                    r['Field Name'] === 'Table2_Distance'
             );
 
             if (tableRows.length > 0) {
@@ -162,6 +163,8 @@ const ExposureRateAtTableTop: React.FC<Props> = ({
                     const exposure =
                         csvData.find((r) => r['Field Name'] === 'Table2_MeasuredRate' && parseInt(r['Row Index'], 10) === idx)?.['Value'] || '';
                     const mode = csvData.find((r) => r['Field Name'] === 'Table2_Mode' && parseInt(r['Row Index'], 10) === idx)?.['Value'] || '';
+                    const distance =
+                        csvData.find((r) => r['Field Name'] === 'Table2_Distance' && parseInt(r['Row Index'], 10) === idx)?.['Value'] || '';
                     const criteria =
                         csvData.find((r) => r['Field Name'] === 'Criteria' && parseInt(r['Row Index'], 10) === idx)?.['Value'] || '';
 
@@ -180,7 +183,7 @@ const ExposureRateAtTableTop: React.FC<Props> = ({
 
                     return {
                         id: Date.now().toString() + i,
-                        distance: '',
+                        distance,
                         appliedKv: kv,
                         appliedMa: ma,
                         exposure,
