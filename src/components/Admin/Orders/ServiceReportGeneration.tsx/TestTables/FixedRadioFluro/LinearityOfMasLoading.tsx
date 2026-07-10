@@ -33,6 +33,7 @@ interface Props {
   testId?: string;
   onRefresh?: () => void;
   refreshKey?: number;
+  csvDataVersion?: number;
   initialData?: any;
 }
 
@@ -41,6 +42,7 @@ const LinearityOfMasLoading: React.FC<Props> = ({
   testId: propTestId,
   onRefresh,
   refreshKey,
+  csvDataVersion,
   initialData,
 }) => {
   const [testId, setTestId] = useState<string | null>(propTestId || null);
@@ -71,12 +73,31 @@ const LinearityOfMasLoading: React.FC<Props> = ({
       }));
     }
     if (data.tolerance !== undefined) setTolerance(String(data.tolerance));
-    if (data.toleranceOperator) setToleranceOperator(String(data.toleranceOperator));
+    if (data.toleranceOperator) {
+      const op = String(data.toleranceOperator).trim();
+      setToleranceOperator(['<', '>', '<=', '>=', '='].includes(op) ? op : '<=');
+    }
+
+    const importedHeaders = Array.isArray(data.measHeaders)
+      ? data.measHeaders
+      : Array.isArray(data.measurementHeaders)
+        ? data.measurementHeaders
+        : [];
 
     if (data.table2?.length > 0) {
-      const maxOutputs = Math.max(...data.table2.map((r: any) => (r.measuredOutputs ?? []).length));
+      const maxOutputs = Math.max(
+        ...data.table2.map((r: any) => (r.measuredOutputs ?? []).length),
+        importedHeaders.length,
+        3
+      );
       const headerCount = Math.max(maxOutputs, 1);
-      setMeasHeaders(Array.from({ length: headerCount }, (_, i) => `Meas ${i + 1}`));
+      setMeasHeaders(
+        importedHeaders.length > 0
+          ? [...importedHeaders, ...Array(Math.max(0, headerCount - importedHeaders.length)).fill('')].map(
+              (h, i) => h || `Meas ${i + 1}`
+            ).slice(0, headerCount)
+          : Array.from({ length: headerCount }, (_, i) => `Meas ${i + 1}`)
+      );
       setTable2Rows(
         data.table2.map((r: any, i: number) => {
           const outputs = (r.measuredOutputs ?? []).map(String);
@@ -96,16 +117,35 @@ const LinearityOfMasLoading: React.FC<Props> = ({
     if (data.table2Rows?.length > 0) {
       const maxMeas = Math.max(
         3,
-        ...data.table2Rows.map((r: any) =>
-          [r.meas1, r.meas2, r.meas3, r.meas4, r.meas5].filter((v: any) => v != null && String(v).trim() !== '').length
-        )
+        importedHeaders.length,
+        ...data.table2Rows.map((r: any) => {
+          if (Array.isArray(r.measuredOutputs) && r.measuredOutputs.length > 0) {
+            return r.measuredOutputs.length;
+          }
+          let maxKey = 0;
+          for (let j = 1; j <= 20; j++) {
+            if (r[`meas${j}`] !== undefined) maxKey = j;
+          }
+          return maxKey;
+        })
       );
-      setMeasHeaders(Array.from({ length: maxMeas }, (_, i) => `Meas ${i + 1}`));
+      setMeasHeaders(
+        importedHeaders.length > 0
+          ? [...importedHeaders, ...Array(Math.max(0, maxMeas - importedHeaders.length)).fill('')].map(
+              (h, i) => h || `Meas ${i + 1}`
+            ).slice(0, maxMeas)
+          : Array.from({ length: maxMeas }, (_, i) => `Meas ${i + 1}`)
+      );
       setTable2Rows(
         data.table2Rows.map((r: any, i: number) => {
-          const outputs = [r.meas1, r.meas2, r.meas3, r.meas4, r.meas5]
-            .filter((_: any, idx: number) => idx < maxMeas)
-            .map((v: any) => String(v ?? ''));
+          let outputs: string[] = [];
+          if (Array.isArray(r.measuredOutputs) && r.measuredOutputs.length > 0) {
+            outputs = r.measuredOutputs.map((v: any) => String(v ?? ''));
+          } else {
+            for (let j = 1; j <= maxMeas; j++) {
+              outputs.push(String(r[`meas${j}`] ?? ''));
+            }
+          }
           while (outputs.length < maxMeas) outputs.push('');
           return {
             id: (i + 1).toString(),
@@ -120,13 +160,12 @@ const LinearityOfMasLoading: React.FC<Props> = ({
   };
 
   useEffect(() => {
-    if (initialData && refreshKey !== undefined) {
-      applyInitialData(initialData);
-      setHasSaved(false);
-      setIsEditing(true);
-      setIsLoading(false);
-    }
-  }, [refreshKey, initialData]);
+    if (!initialData || !csvDataVersion) return;
+    applyInitialData(initialData);
+    setHasSaved(false);
+    setIsEditing(true);
+    setIsLoading(false);
+  }, [csvDataVersion, initialData]);
 
   const addMeasColumn = () => {
     setMeasHeaders(p => [...p, `Meas ${p.length + 1}`]);
@@ -181,13 +220,17 @@ const LinearityOfMasLoading: React.FC<Props> = ({
 
   useEffect(() => {
     const load = async () => {
-      if (initialData && refreshKey !== undefined) return;
+      if (csvDataVersion) {
+        setIsLoading(false);
+        return;
+      }
       if (!serviceId) {
         setIsLoading(false);
         return;
       }
       try {
         const res = await getLinearityOfMasLoadingByServiceIdForFixedRadioFluro(serviceId);
+        if (csvDataVersion) return;
         const data = res?.data;
         if (data) {
           setTestId(data._id || null);
@@ -225,7 +268,7 @@ const LinearityOfMasLoading: React.FC<Props> = ({
       }
     };
     load();
-  }, [serviceId, refreshKey, initialData]);
+  }, [serviceId, csvDataVersion]);
 
   const processedTable2 = useMemo(() => {
     const tol = parseFloat(tolerance) || 0.1;
@@ -512,7 +555,8 @@ const LinearityOfMasLoading: React.FC<Props> = ({
                         }`}
                       />
                     </td>
-                    {row.measuredOutputs.map((val, idx) => {
+                    {Array.from({ length: measHeaders.length }, (_, idx) => {
+                      const val = row.measuredOutputs[idx] ?? '';
                       const hasValue = val !== '' && !isNaN(parseFloat(val)) && parseFloat(val) > 0;
                       const isValid =
                         computed.measuredOutputsStatus && computed.measuredOutputsStatus.length > idx

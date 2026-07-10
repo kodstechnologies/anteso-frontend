@@ -26,6 +26,11 @@ import {
 } from "../../../../../../api";
 import { getDetails, getTools } from "../../../../../../api";
 import { createFixedRadioFluroUploadableExcel, FixedRadioFluroExportData } from "./exportFixedRadioFluroToExcel";
+import {
+  isFixedRadioFluroTableFormat,
+  parseFixedRadioFluroTableCSV,
+  parseFixedRadioFluroTableMatrix,
+} from "./parseFixedRadioFluroTableFormat";
 import { isExcelFileUrl } from "../../../../../../utils/spreadsheetFile";
 
 import Standards from "../../Standards";
@@ -326,6 +331,10 @@ const RadioFluro: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, qaTestDa
 
     // Parse CSV text into structured data
     const parseCSV = (text: string): any[] => {
+        if (isFixedRadioFluroTableFormat(text)) {
+            return parseFixedRadioFluroTableCSV(text);
+        }
+
         const lines = text.split('\n').map(line => line.trim()).filter(line => line);
         if (lines.length === 0) return [];
 
@@ -433,12 +442,18 @@ const RadioFluro: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, qaTestDa
 
     // Convert Excel file to CSV format
     const parseExcelToCSVFormat = (workbook: XLSX.WorkBook): any[] => {
-        const data: any[] = [];
         const firstSheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[firstSheetName];
         const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' }) as any[][];
 
-        if (jsonData.length === 0) return data;
+        if (jsonData.length === 0) return [];
+
+        const csvText = XLSX.utils.sheet_to_csv(worksheet);
+        if (isFixedRadioFluroTableFormat(csvText)) {
+            return parseFixedRadioFluroTableMatrix(jsonData);
+        }
+
+        const data: any[] = [];
 
         let fieldNameCol = -1;
         let valueCol = -1;
@@ -537,6 +552,26 @@ const RadioFluro: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, qaTestDa
             }
         }
         return data;
+    };
+
+    const normalizeCsvComparisonOperator = (raw: unknown): string => {
+        const s = String(raw ?? '').trim().replace(/\s+/g, '');
+        if (!s) return '';
+        const lower = s.toLowerCase();
+        if (s === '≤' || lower === 'le' || lower === 'lte' || lower.includes('less than or equal')) return '<=';
+        if (s === '≥' || lower === 'ge' || lower === 'gte' || lower.includes('greater than or equal')) return '>=';
+        if (s === '<' || lower === 'lt' || lower === 'less than') return '<';
+        if (s === '>' || lower === 'gt' || lower === 'greater than') return '>';
+        if (['<=', '>=', '<', '>', '='].includes(s)) return s;
+        return s;
+    };
+
+    const resolveMeasHeaders = (parsed: string[], colCount: number): string[] => {
+        const count = Math.max(colCount, 1);
+        if (parsed.length >= count) return parsed.slice(0, count);
+        const next = [...parsed];
+        while (next.length < count) next.push(`Meas ${next.length + 1}`);
+        return next;
     };
 
     // Process CSV data and populate component states.
@@ -649,6 +684,7 @@ const RadioFluro: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, qaTestDa
                     let observedTiltX = '';
                     let observedTiltY = '';
                     let toleranceValue = '2';
+                    let toleranceOperator = '<=';
 
                     data.forEach((row) => {
                         const field = (row['Field Name'] || '').trim();
@@ -660,6 +696,9 @@ const RadioFluro: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, qaTestDa
                         if (field === 'ObservedTilt_X') observedTiltX = value;
                         if (field === 'ObservedTilt_Y') observedTiltY = value;
                         if (field === 'Tolerance_Value') toleranceValue = value;
+                        if (field === 'Tolerance_Operator' || field === 'ToleranceOperator') {
+                            toleranceOperator = normalizeCsvComparisonOperator(value) || value || '<=';
+                        }
                     });
 
                     setCsvDataForComponents((prev: any) => ({
@@ -669,6 +708,8 @@ const RadioFluro: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, qaTestDa
                             observedTiltX,
                             observedTiltY,
                             toleranceValue,
+                            toleranceOperator,
+                            tolerance: { operator: toleranceOperator, value: toleranceValue },
                         }
                     }));
                 } catch (error: any) {
@@ -951,45 +992,89 @@ const RadioFluro: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, qaTestDa
                     const data = groupedData['Linearity of mAs Loading'];
                     const table1 = { fcd: '', kv: '' };
                     let tolerance = '0.1';
+                    let toleranceOperator = '<=';
+                    const measHeaders: string[] = [];
                     const table2Rows: any[] = [];
+                    let currentRow: any = null;
+                    let currentRowIdx = -1;
 
                     data.forEach((row) => {
                         const field = (row['Field Name'] || '').trim();
                         const value = (row['Value'] || '').trim();
-                        const rowIndex = parseInt(row['Row Index'] || '0');
+                        const rowIndex = parseInt(row['Row Index'] || '0', 10);
 
+                        if (field === 'MeasHeader' && value) measHeaders.push(value);
                         if (field === 'Table1_FCD' || field === 'Table1_FFD' || field === 'Table1_FDD') table1.fcd = value;
                         if (field === 'Table1_kV') table1.kv = value;
-                        if (field === 'Tolerance') tolerance = value;
+                        if (field === 'Tolerance' || field === 'Tolerance_value') tolerance = value;
+                        if (field === 'ToleranceOperator' || field === 'Tolerance_Operator') {
+                            toleranceOperator = normalizeCsvComparisonOperator(value) || value || '<=';
+                        }
 
-                        if (field.startsWith('Table2_')) {
+                        if (field === 'Table2_mAsApplied' || field === 'Table2_mAApplied' || field === 'Table2_ma') {
+                            currentRowIdx++;
+                            currentRow = { mAsApplied: value, measuredOutputs: [] as string[] };
+                            table2Rows[currentRowIdx] = currentRow;
+                        } else if (field.startsWith('Table2_Meas') && currentRow) {
+                            const m = field.match(/^Table2_Meas(\d+)$/i);
+                            if (m) {
+                                const mIdx = parseInt(m[1], 10) - 1;
+                                while (currentRow.measuredOutputs.length <= mIdx) currentRow.measuredOutputs.push('');
+                                currentRow.measuredOutputs[mIdx] = value;
+                            }
+                        } else if (field.startsWith('Table2_')) {
                             while (table2Rows.length <= rowIndex) {
-                                table2Rows.push({ mAsApplied: '', meas1: '', meas2: '', meas3: '', average: '', x: '', xMax: '', xMin: '', col: '' });
+                                table2Rows.push({ mAsApplied: '', measuredOutputs: [] as string[] });
                             }
                             const fieldName = field.replace('Table2_', '');
-                            if (fieldName === 'mAsApplied') table2Rows[rowIndex].mAsApplied = value;
-                            if (fieldName === 'Meas1') table2Rows[rowIndex].meas1 = value;
-                            if (fieldName === 'Meas2') table2Rows[rowIndex].meas2 = value;
-                            if (fieldName === 'Meas3') table2Rows[rowIndex].meas3 = value;
-                            if (fieldName === 'Average') table2Rows[rowIndex].average = value;
-                            if (fieldName === 'x') table2Rows[rowIndex].x = value;
-                            if (fieldName === 'xMax') table2Rows[rowIndex].xMax = value;
-                            if (fieldName === 'xMin') table2Rows[rowIndex].xMin = value;
-                            if (fieldName === 'col') table2Rows[rowIndex].col = value;
-                            // Remarks will be calculated automatically by the component
+                            const measMatch = fieldName.match(/^Meas(\d+)$/i);
+                            if (measMatch) {
+                                const colIndex = parseInt(measMatch[1], 10) - 1;
+                                while (table2Rows[rowIndex].measuredOutputs.length <= colIndex) {
+                                    table2Rows[rowIndex].measuredOutputs.push('');
+                                }
+                                table2Rows[rowIndex].measuredOutputs[colIndex] = value;
+                            } else if (fieldName === 'mAsApplied' || fieldName === 'mAApplied' || fieldName === 'ma') {
+                                table2Rows[rowIndex].mAsApplied = value;
+                            }
                         }
                     });
 
-                    // Filter out empty rows
-                    const filteredTable2Rows = table2Rows.filter(r => r.mAsApplied || r.meas1 || r.meas2 || r.meas3);
+                    const maxMeas = Math.max(
+                        ...table2Rows.map((r) => r.measuredOutputs?.length || 0),
+                        measHeaders.length,
+                        3
+                    );
+                    const headerLabels = resolveMeasHeaders(measHeaders, maxMeas);
+                    const filteredTable2Rows = table2Rows
+                        .filter(
+                            (r) =>
+                                r.mAsApplied ||
+                                (r.measuredOutputs || []).some((v: string) => String(v || '').trim() !== '')
+                        )
+                        .map((r) => {
+                            const measuredOutputs = [...(r.measuredOutputs || [])];
+                            while (measuredOutputs.length < maxMeas) measuredOutputs.push('');
+                            return { mAsApplied: r.mAsApplied, measuredOutputs };
+                        });
 
                     setCsvDataForComponents((prev: any) => ({
                         ...prev,
                         linearityOfMAsLoading: {
                             table1,
                             tolerance,
-                            table2Rows: filteredTable2Rows.length > 0 ? filteredTable2Rows : [],
-                        }
+                            toleranceOperator,
+                            measHeaders: headerLabels,
+                            measurementHeaders: headerLabels,
+                            table2: filteredTable2Rows,
+                            table2Rows: filteredTable2Rows.map((r: any) => ({
+                                mAsApplied: r.mAsApplied,
+                                measuredOutputs: r.measuredOutputs,
+                                meas1: r.measuredOutputs?.[0] ?? '',
+                                meas2: r.measuredOutputs?.[1] ?? '',
+                                meas3: r.measuredOutputs?.[2] ?? '',
+                            })),
+                        },
                     }));
                 } catch (error: any) {
                     console.error('Error processing Linearity of mAs Loading:', error);
@@ -1000,45 +1085,83 @@ const RadioFluro: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, qaTestDa
             if (groupedData['Output Consistency'] && groupedData['Output Consistency'].length > 0) {
                 try {
                     const data = groupedData['Output Consistency'];
-                    let toleranceValue = '5';
+                    let toleranceValue = '0.05';
+                    let toleranceOperator = '<=';
                     let ffdValue = '';
+                    const measHeaders: string[] = [];
                     const outputRows: any[] = [];
+                    let currentRow: any = null;
 
                     data.forEach((row) => {
                         const field = (row['Field Name'] || '').trim();
                         const value = (row['Value'] || '').trim();
-                        const rowIndex = parseInt(row['Row Index'] || '0');
+                        const rowIndex = parseInt(row['Row Index'] || '0', 10);
 
+                        if (field === 'MeasHeader' && value) measHeaders.push(value);
                         if (field === 'Tolerance_Value') toleranceValue = value;
+                        if (field === 'Tolerance_Operator') toleranceOperator = value;
                         if (field === 'FFD' || field === 'FDD') ffdValue = value;
 
-                        if (field.startsWith('OutputRow_')) {
+                        if (field === 'OutputRow_kV') {
+                            currentRow = { kv: value, mas: '', outputs: [] as { value: string }[] };
+                            outputRows.push(currentRow);
+                        } else if (field === 'OutputRow_mAs' && currentRow) {
+                            currentRow.mas = value;
+                        } else if (/^OutputRow_Meas\d+$/i.test(field) && currentRow) {
+                            const m = field.match(/^OutputRow_Meas(\d+)$/i);
+                            if (m) {
+                                const oIdx = parseInt(m[1], 10) - 1;
+                                while (currentRow.outputs.length <= oIdx) {
+                                    currentRow.outputs.push({ value: '' });
+                                }
+                                currentRow.outputs[oIdx] = { value };
+                            }
+                        } else if (field.startsWith('OutputRow_')) {
                             while (outputRows.length <= rowIndex) {
-                                outputRows.push({ kv: '', mAs: '', meas1: '', meas2: '', meas3: '', average: '', cv: '' });
+                                outputRows.push({ kv: '', mas: '', outputs: [] as { value: string }[] });
                             }
                             const fieldName = field.replace('OutputRow_', '');
-                            if (fieldName === 'kV') outputRows[rowIndex].kv = value;
-                            if (fieldName === 'mAs') outputRows[rowIndex].mAs = value;
-                            if (fieldName === 'Meas1') outputRows[rowIndex].meas1 = value;
-                            if (fieldName === 'Meas2') outputRows[rowIndex].meas2 = value;
-                            if (fieldName === 'Meas3') outputRows[rowIndex].meas3 = value;
-                            if (fieldName === 'Meas4') outputRows[rowIndex].meas4 = value;
-                            if (fieldName === 'Meas5') outputRows[rowIndex].meas5 = value;
-                            if (fieldName === 'Average') outputRows[rowIndex].average = value;
-                            if (fieldName === 'CoV') outputRows[rowIndex].cv = value;
+                            const rowRef = outputRows[rowIndex];
+                            if (fieldName === 'kV') rowRef.kv = value;
+                            if (fieldName === 'mAs') rowRef.mas = value;
+                            if (/^Meas\d+$/i.test(fieldName)) {
+                                const colIndex = parseInt(fieldName.replace(/^Meas/i, ''), 10) - 1;
+                                while (rowRef.outputs.length <= colIndex) {
+                                    rowRef.outputs.push({ value: '' });
+                                }
+                                rowRef.outputs[colIndex] = { value };
+                            }
                         }
                     });
 
-                    // Filter out empty rows
-                    const filteredOutputRows = outputRows.filter(r => r.kv || r.mAs || r.meas1 || r.meas2 || r.meas3);
+                    const maxMeas = Math.max(
+                        ...outputRows.map((r) => r.outputs?.length || 0),
+                        measHeaders.length,
+                        3
+                    );
+                    const headerLabels = resolveMeasHeaders(measHeaders, maxMeas);
+                    const normalizedRows = outputRows
+                        .filter(
+                            (r) =>
+                                r.kv ||
+                                r.mas ||
+                                (r.outputs || []).some((o: any) => String(o?.value ?? o ?? '').trim())
+                        )
+                        .map((r) => {
+                            const outputs = [...(r.outputs || [])];
+                            while (outputs.length < maxMeas) outputs.push({ value: '' });
+                            return { kv: r.kv, mas: r.mas, outputs };
+                        });
 
                     setCsvDataForComponents((prev: any) => ({
                         ...prev,
                         outputConsistency: {
                             ffd: ffdValue ? { value: ffdValue } : undefined,
-                            toleranceValue,
-                            outputRows: filteredOutputRows.length > 0 ? filteredOutputRows : [],
-                        }
+                            tolerance: { operator: toleranceOperator, value: toleranceValue },
+                            measurementHeaders: headerLabels,
+                            measHeaders: headerLabels,
+                            outputRows: normalizedRows,
+                        },
                     }));
                 } catch (error: any) {
                     console.error('Error processing Output Consistency:', error);
@@ -1049,7 +1172,6 @@ const RadioFluro: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, qaTestDa
             if (groupedData['Low Contrast Resolution'] && groupedData['Low Contrast Resolution'].length > 0) {
                 try {
                     const data = groupedData['Low Contrast Resolution'];
-                    let measuredLpPerMm = '';
                     let recommendedStandard = '';
                     let smallestHoleSize = '';
 
@@ -1057,7 +1179,6 @@ const RadioFluro: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, qaTestDa
                         const field = (row['Field Name'] || '').trim();
                         const value = (row['Value'] || '').trim();
 
-                        if (field === 'MeasuredLpPerMm') measuredLpPerMm = value;
                         if (field === 'RecommendedStandard') recommendedStandard = value;
                         if (field === 'SmallestHoleSize') smallestHoleSize = value;
                     });
@@ -1065,7 +1186,6 @@ const RadioFluro: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, qaTestDa
                     setCsvDataForComponents((prev: any) => ({
                         ...prev,
                         lowContrastResolution: {
-                            measuredLpPerMm,
                             recommendedStandard,
                             smallestHoleSize,
                         }
@@ -1081,7 +1201,6 @@ const RadioFluro: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, qaTestDa
                     const data = groupedData['High Contrast Resolution'];
                     let measuredLpPerMm = '';
                     let recommendedStandard = '';
-                    let smallestHoleSize = '';
 
                     data.forEach((row) => {
                         const field = (row['Field Name'] || '').trim();
@@ -1089,7 +1208,6 @@ const RadioFluro: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, qaTestDa
 
                         if (field === 'MeasuredLpPerMm') measuredLpPerMm = value;
                         if (field === 'RecommendedStandard') recommendedStandard = value;
-                        if (field === 'SmallestHoleSize') smallestHoleSize = value;
                     });
 
                     setCsvDataForComponents((prev: any) => ({
@@ -1097,7 +1215,6 @@ const RadioFluro: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, qaTestDa
                         highContrastResolution: {
                             measuredLpPerMm,
                             recommendedStandard,
-                            smallestHoleSize,
                         }
                     }));
                 } catch (error: any) {
@@ -1900,7 +2017,7 @@ const RadioFluro: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, qaTestDa
                                         <LinearityOfMasLoading 
                                             key={`linearity-mas-${refreshKey}`}
                                             serviceId={serviceId}
-                                            refreshKey={refreshKey}
+                                            csvDataVersion={csvDataVersion}
                                             initialData={csvDataForComponents.linearityOfMAsLoading}
                                         />
                                     ),
@@ -1914,7 +2031,7 @@ const RadioFluro: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, qaTestDa
                             <OutputConsistency 
                                 key={`output-${refreshKey}`}
                                 serviceId={serviceId}
-                                refreshKey={refreshKey}
+                                csvDataVersion={csvDataVersion}
                                 initialData={csvDataForComponents.outputConsistency}
                             />
                         )
@@ -1925,7 +2042,7 @@ const RadioFluro: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, qaTestDa
                             <LowContrastResolution 
                                 key={`low-contrast-${refreshKey}`}
                                 serviceId={serviceId}
-                                refreshKey={refreshKey}
+                                csvDataVersion={csvDataVersion}
                                 initialData={csvDataForComponents.lowContrastResolution}
                             />
                         )
@@ -1936,7 +2053,7 @@ const RadioFluro: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, qaTestDa
                             <HighContrastResolution 
                                 key={`high-contrast-${refreshKey}`}
                                 serviceId={serviceId}
-                                refreshKey={refreshKey}
+                                csvDataVersion={csvDataVersion}
                                 initialData={csvDataForComponents.highContrastResolution}
                             />
                         )

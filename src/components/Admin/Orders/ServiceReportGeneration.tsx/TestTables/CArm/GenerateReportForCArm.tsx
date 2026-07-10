@@ -27,6 +27,7 @@ import {
   proxyFile,
 } from "../../../../../../api";
 import { createCArmUploadableExcel, CArmExportData } from "./exportCArmToExcel";
+import { mergeWithRadiographyVerticalParse } from "../shared/mergeRadiographyVerticalParse";
 
 // Test-table imports (unchanged)
 import AccuracyOfIrradiationTime from "./AccuracyOfIrradiationTime";
@@ -137,6 +138,7 @@ const CArm: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
   const [csvUploading, setCsvUploading] = useState(false);
   const [csvDataForComponents, setCsvDataForComponents] = useState<any>({});
   const [refreshKey, setRefreshKey] = useState(0);
+  const [csvDataVersion, setCsvDataVersion] = useState(0);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   useEffect(() => {
     if (!serviceId) return;
@@ -520,12 +522,33 @@ const CArm: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
     localStorage.setItem(`carm_timer_choice_${serviceId}`, JSON.stringify(choice));
   };
 
-  const parseExcelToCSVFormat = (workbook: XLSX.WorkBook): any[] => {
+  const resolveCArmWorksheet = (workbook: XLSX.WorkBook, preferTimer: boolean | null): XLSX.WorkSheet => {
+    const names = workbook.SheetNames;
+    const findByPattern = (re: RegExp) => names.find((n) => re.test(n));
+
+    if (preferTimer === true) {
+      const name = findByPattern(/with\s*timer/i) ?? names[0];
+      return workbook.Sheets[name];
+    }
+    if (preferTimer === false) {
+      const name = findByPattern(/without\s*timer|no\s*timer/i) ?? names[names.length - 1] ?? names[0];
+      return workbook.Sheets[name];
+    }
+
+    if (names.length === 1) return workbook.Sheets[names[0]];
+
+    const withTimerName = findByPattern(/with\s*timer/i);
+    if (withTimerName) return workbook.Sheets[withTimerName];
+    return workbook.Sheets[names[0]];
+  };
+
+  const parseExcelToCSVFormat = (workbook: XLSX.WorkBook, preferTimer: boolean | null = null): any[] => {
     const data: any[] = [];
-    const firstSheetName = workbook.SheetNames[0];
-    const worksheet = workbook.Sheets[firstSheetName];
+    const worksheet = resolveCArmWorksheet(workbook, preferTimer);
     const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' }) as any[][];
     if (jsonData.length === 0) return data;
+
+    const finishParse = (parsed: any[]) => mergeWithRadiographyVerticalParse(parsed, jsonData, "carm");
 
     const norm = (v: any) => String(v ?? '').trim();
     const normUpper = (v: any) => norm(v).toUpperCase();
@@ -554,7 +577,7 @@ const CArm: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
           if (!testName || !fieldName) continue;
           data.push({ 'Test Name': testName, 'Field Name': fieldName, 'Value': value, 'Row Index': rowIndex });
         }
-        return data;
+        return finishParse(data);
       }
     }
 
@@ -708,6 +731,20 @@ const CArm: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
       let isReadingTest = false;
       const sectionRowCounter: Record<string, number> = {};
 
+      const resolveInternalField = (testName: string, header: string, map: Record<string, string>): string | null => {
+        const headerMatch = header.match(/^Header\s*(\d+)$/i);
+        if (headerMatch) return `Header_${headerMatch[1]}`;
+        const measMatch = header.match(/^Meas\s*(\d+)$/i);
+        if (measMatch) {
+          if (testName === 'Consistency of Radiation Output') return `Output_Meas${measMatch[1]}`;
+          if (testName === 'Total Filtration') return `Measurement_Meas${measMatch[1]}`;
+          if (testName === 'Linearity of mA Loading' || testName === 'Linearity of mAs Loading') {
+            return `Linearity_Meas${measMatch[1]}`;
+          }
+        }
+        return map[header] || null;
+      };
+
       for (let i = 0; i < jsonData.length; i++) {
         const row = (jsonData[i] || []).map(norm);
         const firstCell = row[0] || '';
@@ -723,6 +760,20 @@ const CArm: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
 
         if (isReadingTest && headers.length === 0 && row.some(c => c !== '')) {
           headers = row;
+          if (currentTestName === 'Consistency of Radiation Output') {
+            row.forEach((headerCell) => {
+              const h = (headerCell || '').trim();
+              const measMatch = h.match(/^Meas\s*(\d+)$/i);
+              if (measMatch) {
+                data.push({
+                  'Field Name': `Header_${measMatch[1]}`,
+                  'Value': h,
+                  'Row Index': '0',
+                  'Test Name': currentTestName,
+                });
+              }
+            });
+          }
           continue;
         }
 
@@ -739,16 +790,14 @@ const CArm: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
           row.forEach((value, cellIdx) => {
             const header = (headers[cellIdx] || '').trim();
             if (!header) return;
-            // Allow "Header 1/2/3" to map to Header_1/2/3 (used by some dynamic-column components)
-            const headerMatch = header.match(/^Header\s*(\d+)$/i);
-            const internalField = headerMatch ? `Header_${headerMatch[1]}` : map[header];
+            const internalField = resolveInternalField(currentTestName, header, map);
             if (internalField && value !== '') {
               data.push({ 'Field Name': internalField, 'Value': value, 'Row Index': String(rowIdx), 'Test Name': currentTestName });
             }
           });
         }
       }
-      if (data.length > 0) return data;
+      if (data.length > 0) return finishParse(data);
       // fall through to legacy format if nothing matched
     }
 
@@ -823,7 +872,7 @@ const CArm: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
         'Test Name': currentTestName,
       });
     }
-    return data;
+    return finishParse(data);
   };
 
   const handleCSVUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -837,7 +886,7 @@ const CArm: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
       try {
         const data = evt.target?.result;
         const workbook = XLSX.read(data, { type: 'binary' });
-        const parsedData = parseExcelToCSVFormat(workbook);
+        const parsedData = parseExcelToCSVFormat(workbook, hasTimer);
 
         if (parsedData.length > 0) {
           await processCSVData(parsedData);
@@ -912,13 +961,105 @@ const CArm: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
 
     const processed: any = {};
 
-    // Helper to extract data for specific components
-    // (This will be expanded as we see the specific structure needed by each component)
-    Object.keys(groupedData).forEach(testName => {
-      processed[testName] = groupedData[testName];
+    const buildTotalFiltrationImport = (rows: any[]) => {
+      const ma: string[] = [];
+      const meas: Record<number, { appliedKvp: string; measuredValues: string[] }> = {};
+      const tol: { sign?: string; value?: string } = {};
+      const total: { measured?: string; required?: string; atKvp?: string } = {};
+
+      rows.forEach((row: any) => {
+        const field = (row["Field Name"] || "").trim();
+        const val = String(row["Value"] ?? "").trim();
+        const rowIndex = parseInt(row["Row Index"], 10) || 0;
+        if (!field || !val) return;
+
+        if (field === "mAStations") {
+          if (!ma.includes(val)) ma.push(val);
+          return;
+        }
+        if (field.startsWith("Header_")) {
+          const idx = parseInt(field.replace("Header_", ""), 10) - 1;
+          while (ma.length <= idx) ma.push(`Meas ${ma.length + 1}`);
+          ma[idx] = val;
+          return;
+        }
+        if (field === "Tolerance_Sign") tol.sign = val;
+        else if (field === "Tolerance_Value") tol.value = val;
+        else if (field === "TotalFiltration_Measured") total.measured = val;
+        else if (field === "TotalFiltration_Required") total.required = val;
+        else if (field === "TotalFiltration_AtKvp") total.atKvp = val;
+        else if (field === "Measurement_AppliedKvp") {
+          if (!meas[rowIndex]) meas[rowIndex] = { appliedKvp: "", measuredValues: [] };
+          meas[rowIndex].appliedKvp = val;
+        } else if (field.startsWith("Measurement_Meas")) {
+          const m = field.match(/^Measurement_Meas(\d+)$/);
+          if (!m) return;
+          if (!meas[rowIndex]) meas[rowIndex] = { appliedKvp: "", measuredValues: [] };
+          const mIdx = parseInt(m[1], 10) - 1;
+          while (meas[rowIndex].measuredValues.length <= mIdx) meas[rowIndex].measuredValues.push("");
+          meas[rowIndex].measuredValues[mIdx] = val;
+        }
+      });
+
+      const measurements = Object.keys(meas)
+        .map((k) => parseInt(k, 10))
+        .sort((a, b) => a - b)
+        .map((idx) => meas[idx])
+        .filter((m) => m.appliedKvp || m.measuredValues.some((v) => v !== ""));
+
+      return {
+        mAStations: ma.length ? ma : undefined,
+        measurements,
+        tolerance: { sign: tol.sign || "±", value: tol.value || "2.0" },
+        totalFiltration: {
+          measured: total.measured || "",
+          required: total.required || "",
+          atKvp: total.atKvp || "",
+        },
+      };
+    };
+
+    Object.keys(groupedData).forEach((testName) => {
+      const rows = groupedData[testName];
+      if (testName === "Total Filtration") {
+        processed[testName] = buildTotalFiltrationImport(rows);
+        return;
+      }
+      if (testName === 'Consistency of Radiation Output') {
+        const measurementHeaders: string[] = [];
+        let maxMeasCol = 0;
+        rows.forEach((row: any) => {
+          const field = (row['Field Name'] || '').trim();
+          const value = (row['Value'] || '').trim();
+          const headerMatch = field.match(/^Header_(\d+)$/i);
+          if (headerMatch && value) {
+            const idx = parseInt(headerMatch[1], 10) - 1;
+            while (measurementHeaders.length <= idx) {
+              measurementHeaders.push(`Meas ${measurementHeaders.length + 1}`);
+            }
+            measurementHeaders[idx] = value;
+          }
+          const measMatch = field.match(/^Output_Meas(\d+)$/i);
+          if (measMatch) {
+            maxMeasCol = Math.max(maxMeasCol, parseInt(measMatch[1], 10));
+          }
+        });
+        const colCount = Math.max(measurementHeaders.length, maxMeasCol, 3);
+        while (measurementHeaders.length < colCount) {
+          measurementHeaders.push(`Meas ${measurementHeaders.length + 1}`);
+        }
+        processed[testName] = {
+          fieldRows: rows,
+          measurementHeaders: measurementHeaders.slice(0, colCount),
+          measHeaders: measurementHeaders.slice(0, colCount),
+        };
+        return;
+      }
+      processed[testName] = rows;
     });
 
     setCsvDataForComponents(processed);
+    setCsvDataVersion((v) => v + 1);
   };
 
   // Conditional returns after all hooks so hook count is consistent every render
@@ -1177,32 +1318,7 @@ const CArm: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
             </p>
           </div>
           <div className="flex gap-3">
-            <div className="flex gap-2">
-              {/* <a
-                href="/templates/CArm_Test_Data_Template_WithTimer.csv"
-                download="CArm_Test_Data_Template_WithTimer.csv"
-                className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors flex items-center gap-2 text-sm"
-              >
-                <CloudArrowUpIcon className="w-5 h-5" />
-                Template (With Timer)
-              </a>
-              <a
-                href="/templates/CArm_Test_Data_Template_NoTimer.csv"
-                download="CArm_Test_Data_Template_NoTimer.csv"
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors flex items-center gap-2 text-sm"
-              >
-                <CloudArrowUpIcon className="w-5 h-5" />
-                Template (No Timer)
-              </a> */}
-              {/* <a
-                href="/templates/CArm_Template.xlsx"
-                download="CArm_Template.xlsx"
-                className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors flex items-center gap-2 text-sm"
-              >
-                <CloudArrowUpIcon className="w-5 h-5" />
-                Excel Template (.xlsx)
-              </a> */}
-            </div>
+        
             <label className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors cursor-pointer flex items-center gap-2 text-sm">
               <CloudArrowUpIcon className="w-5 h-5" />
               {csvUploading ? 'Uploading...' : 'Upload Excel'}
@@ -1239,6 +1355,7 @@ const CArm: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
               key={`total-filtration-${refreshKey}`}
               serviceId={serviceId}
               refreshKey={refreshKey}
+              csvDataVersion={csvDataVersion}
               initialData={csvDataForComponents['Total Filtration']}
             />
           },
@@ -1247,7 +1364,7 @@ const CArm: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
             component: <ConsisitencyOfRadiationOutput
               key={`output-${refreshKey}`}
               serviceId={serviceId}
-              refreshKey={refreshKey}
+              csvDataVersion={csvDataVersion}
               initialData={csvDataForComponents['Consistency of Radiation Output']}
             />
           },

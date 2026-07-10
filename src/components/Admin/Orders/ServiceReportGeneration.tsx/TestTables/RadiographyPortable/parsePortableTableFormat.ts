@@ -26,6 +26,14 @@ const pushRow = (
 
 const splitLine = (line: string) => line.split(",").map((c) => (c || "").trim());
 
+const isExposureConditionRow = (line: string): boolean => {
+  const cond = splitLine(line);
+  const label0 = (cond[0] || "").toLowerCase();
+  if (!/^(fdd|fcd|ffd)(\s*\(cm\))?$/.test(label0)) return false;
+  const distanceVal = cond[1] || "";
+  return distanceVal !== "" && !isNaN(Number(distanceVal));
+};
+
 const resolveTestName = (label: string): string | null => {
   const u = label.trim().toUpperCase();
   if (u.includes("CONGRUENCE") && u.includes("RADIATION")) return "Congruence of Radiation";
@@ -338,10 +346,57 @@ export const parsePortableTableCSV = (text: string): PortableParsedRow[] => {
 
     // --- Linearity mA ---
     if (testName === "Linearity Of mA Loading") {
-      const header = splitLine(lines[i + 1] || "");
+      const nextLine = (lines[i + 1] || "").trim();
+
+      // Table layout: FCD/FDD row, header row, data rows (matches Excel template)
+      if (isExposureConditionRow(nextLine)) {
+        const cond = splitLine(nextLine);
+        for (let k = 0; k < cond.length - 1; k += 2) {
+          const lc = (cond[k] || "").toLowerCase();
+          const val = cond[k + 1] || "";
+          if (!val) continue;
+          if (/fdd|fcd|ffd/.test(lc)) pushRow(rows, testName, "Table1_fcd", val, 0);
+          else if (lc === "kv") pushRow(rows, testName, "Table1_kv", val, 0);
+          else if (/time/.test(lc)) pushRow(rows, testName, "Table1_time", val, 0);
+        }
+
+        let rowIdx = 0;
+        let j = i + 3;
+        while (j < lines.length) {
+          const l = lines[j].trim();
+          if (!l || l.startsWith("TEST:")) break;
+          const cells = splitLine(l);
+          const labelCell = cells[0] || "";
+          const valCell = cells[1] || "";
+          if (labelCell === "Tolerance Operator") {
+            pushRow(rows, testName, "Tolerance_operator", valCell, 0);
+          } else if (labelCell.startsWith("Tolerance")) {
+            pushRow(rows, testName, "Tolerance_Value", valCell, 0);
+          } else if (labelCell && !isNaN(Number(labelCell))) {
+            pushRow(rows, testName, "Table2_ma", labelCell, rowIdx);
+            for (let c = 1; c < cells.length; c++) {
+              const v = cells[c] || "";
+              if (v) pushRow(rows, testName, `Table2_meas${c}`, v, rowIdx);
+            }
+            rowIdx++;
+          }
+          j++;
+        }
+        i = j;
+        continue;
+      }
+
+      const header = splitLine(nextLine);
       const col = (name: string) =>
         header.findIndex((h) => h.toLowerCase() === name.toLowerCase());
-      const idxFcd = col("FCD (cm)") >= 0 ? col("FCD (cm)") : col("FCD");
+      const idxFcd =
+        col("FCD (cm)") >= 0
+          ? col("FCD (cm)")
+          : col("FDD (cm)") >= 0
+            ? col("FDD (cm)")
+            : col("FCD") >= 0
+              ? col("FCD")
+              : col("FDD");
       const idxKv = col("kV");
       const idxTime = col("Time (sec)") >= 0 ? col("Time (sec)") : col("Time");
       const idxMa = col("mA Applied") >= 0 ? col("mA Applied") : col("mAs Applied");

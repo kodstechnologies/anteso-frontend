@@ -1,5 +1,5 @@
 // src/components/TestTables/TotalFilterationForInventionalRadiology.tsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Plus, Trash2, Save, Edit3, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
 import {
@@ -22,7 +22,8 @@ interface TotalFilterationProps {
     testId?: string | null;
     onTestSaved?: (testId: string) => void;
     refreshKey?: number;
-    initialData?: any[];
+    csvDataVersion?: number;
+    initialData?: any;
 }
 
 const TotalFilteration: React.FC<TotalFilterationProps> = ({
@@ -30,6 +31,7 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
     testId: initialTestId = null,
     onTestSaved,
     refreshKey,
+    csvDataVersion,
     initialData,
 }) => {
     const [testId, setTestId] = useState<string | null>(initialTestId);
@@ -47,7 +49,7 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
 
     const [toleranceSign, setToleranceSign] = useState<"+" | "-" | "±">("±");
     const [toleranceValue, setToleranceValue] = useState("2.0");
-    const [totalFiltration, setTotalFiltration] = useState({ measured: "", required: "" });
+    const [totalFiltration, setTotalFiltration] = useState({ measured: "", required: "", atKvp: "" });
     const [filtrationTolerance, setFiltrationTolerance] = useState({
         forKvLessThan70: "1.5",
         forKvBetween70And100: "2.0",
@@ -81,89 +83,73 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
         return { averageKvp: avg, remarks: remark };
     };
 
-    // Handle CSV initial data
-    useEffect(() => {
-        if (initialData && initialData.length > 0) {
-            try {
-                const stations: string[] = [];
-                const measurements: RowData[] = [];
-                let tSign: "+" | "-" | "±" = "±";
-                let tVal = "2.0";
-                let tfMeas = "";
-                let tfReq = "";
+    const applyImportedData = useCallback((data: any) => {
+        if (!data) return;
 
-                initialData.forEach(row => {
-                    const field = row['Field Name'];
-                    const val = row['Value'];
-                    const rowIndex = parseInt(row['Row Index']) || 0;
+        try {
+            let sign: "+" | "-" | "±" = "±";
+            let tolVal = "2.0";
 
-                    if (field.startsWith('Header_')) {
-                        const idx = parseInt(field.replace('Header_', '')) - 1;
-                        while (stations.length <= idx) stations.push(`Meas ${stations.length + 1}`);
-                        stations[idx] = val;
-                    }
-                    if (field === 'mAStations') {
-                        if (!stations.includes(val)) stations.push(val);
-                    }
-                    if (field === 'Tolerance_Sign') tSign = val as any;
-                    if (field === 'Tolerance_Value') tVal = val;
-                    if (field === 'TotalFiltration_Measured') tfMeas = val;
-                    if (field === 'TotalFiltration_Required') tfReq = val;
-
-                    if (field.startsWith('Measurement_')) {
-                        while (measurements.length <= rowIndex) {
-                            measurements.push({ id: (measurements.length + 1).toString(), appliedKvp: "", measuredValues: [], averageKvp: "", remarks: "-" });
-                        }
-                        const subField = field.replace('Measurement_', '');
-                        if (subField === 'AppliedKvp') measurements[rowIndex].appliedKvp = val;
-                        if (subField === 'AverageKvp') measurements[rowIndex].averageKvp = val;
-                        if (subField.startsWith('Meas')) {
-                            const colIdx = parseInt(subField.replace('Meas', '')) - 1;
-                            while (measurements[rowIndex].measuredValues.length <= colIdx) {
-                                measurements[rowIndex].measuredValues.push("");
-                            }
-                            measurements[rowIndex].measuredValues[colIdx] = val;
-                        }
-                    }
-                });
-
-                const stationCount = stations.length > 0
-                    ? stations.length
-                    : Math.max(...measurements.map(m => m.measuredValues.length), 1);
-
-                if (stations.length > 0) setMAStations(stations);
-                if (measurements.length > 0) {
-                    setRows(
-                        measurements.map((m, i) => {
-                            const measuredValues = [...m.measuredValues];
-                            while (measuredValues.length < stationCount) measuredValues.push("");
-                            const metrics = computeRowMetrics(m.appliedKvp, measuredValues, tSign, tVal);
-                            return {
-                                ...m,
-                                id: (i + 1).toString(),
-                                measuredValues,
-                                ...metrics,
-                            };
-                        })
-                    );
-                }
-                setToleranceSign(tSign);
-                setToleranceValue(tVal);
-                setTotalFiltration({ measured: tfMeas, required: tfReq });
-                setIsSaved(false);
-            } catch (err) {
-                console.error("Error mapping CSV data for Total Filtration:", err);
+            if (data.tolerance) {
+                if (data.tolerance.sign) sign = data.tolerance.sign as "+" | "-" | "±";
+                if (data.tolerance.value) tolVal = String(data.tolerance.value);
             }
+
+            if (data.mAStations?.length > 0) {
+                setMAStations(data.mAStations.map(String));
+            }
+
+            if (data.measurements?.length > 0) {
+                const stationCount =
+                    data.mAStations?.length ?? data.measurements[0]?.measuredValues?.length ?? 2;
+                setRows(
+                    data.measurements.map((m: any, i: number) => {
+                        const measuredValues = [...(m.measuredValues ?? []).map(String)];
+                        while (measuredValues.length < stationCount) measuredValues.push("");
+                        const appliedKvp = String(m.appliedKvp ?? "");
+                        return {
+                            id: (i + 1).toString(),
+                            appliedKvp,
+                            measuredValues,
+                            ...computeRowMetrics(appliedKvp, measuredValues, sign, tolVal),
+                        };
+                    })
+                );
+            }
+
+            if (data.totalFiltration) {
+                setTotalFiltration((prev) => ({
+                    ...prev,
+                    measured: String(data.totalFiltration.measured ?? prev.measured),
+                    required: String(data.totalFiltration.required ?? prev.required),
+                    atKvp: String(data.totalFiltration.atKvp ?? prev.atKvp),
+                }));
+            }
+
+            setToleranceSign(sign);
+            setToleranceValue(tolVal);
+            setIsSaved(false);
+            setIsLoading(false);
+            toast.success("Total Filtration: Excel data loaded");
+        } catch (err) {
+            console.error("Error mapping CSV data for Total Filtration:", err);
         }
-    }, [initialData, refreshKey]);
+    }, []);
+
+    // Apply Excel/CSV import (skip DB load while import is active)
+    useEffect(() => {
+        if (!initialData || !csvDataVersion) return;
+        applyImportedData(initialData);
+    }, [csvDataVersion, initialData, applyImportedData, refreshKey]);
 
     // Load test data on mount (by testId if available, otherwise by serviceId)
     useEffect(() => {
         const loadTestData = async () => {
-            if (!serviceId || (initialData && initialData.length > 0)) {
-                if (initialData && initialData.length > 0) {
-                    setIsSaved(false);
-                }
+            if (csvDataVersion) {
+                setIsLoading(false);
+                return;
+            }
+            if (!serviceId) {
                 setIsLoading(false);
                 return;
             }
@@ -172,12 +158,12 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
                 let data = null;
 
                 if (initialTestId) {
-                    // If testId is passed → load directly
                     data = await getTotalFilterationForCArm(initialTestId);
                 } else {
-                    // Otherwise → check if test exists for this service
                     data = await getTotalFilterationByServiceIdForCArm(serviceId);
                 }
+
+                if (csvDataVersion) return;
 
                 if (data) {
                     setTestId(data._id || data.testId || null);
@@ -196,6 +182,7 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
                     setTotalFiltration({
                         measured: data.totalFiltration?.measured || "",
                         required: data.totalFiltration?.required || "",
+                        atKvp: data.totalFiltration?.atKvp || "",
                     });
                     if (data.filtrationTolerance) {
                         setFiltrationTolerance({
@@ -219,7 +206,7 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
         };
 
         loadTestData();
-    }, [initialTestId, serviceId]);
+    }, [initialTestId, serviceId, csvDataVersion]);
 
     // Save function (Create or Update)
     const saveTest = async () => {
@@ -325,19 +312,22 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
     };
 
     const getFiltrationRemark = (): "PASS" | "FAIL" | "-" => {
-        const m = parseFloat(totalFiltration.measured);
-        const kvp = parseFloat(totalFiltration.required); // "required" field stores atKvp in this component
-        if (isNaN(m)) return "-";
-        const t1 = parseFloat(filtrationTolerance.kvThreshold1) || 70;
-        const t2 = parseFloat(filtrationTolerance.kvThreshold2) || 100;
-        let required = NaN;
-        if (!isNaN(kvp)) {
-            if (kvp < t1) required = parseFloat(filtrationTolerance.forKvLessThan70) || 1.5;
-            else if (kvp <= t2) required = parseFloat(filtrationTolerance.forKvBetween70And100) || 2.0;
-            else required = parseFloat(filtrationTolerance.forKvGreaterThan100) || 2.5;
+        const kvp = parseFloat(totalFiltration.atKvp);
+        const value = parseFloat(totalFiltration.required);
+        const threshold1 = parseFloat(filtrationTolerance.kvThreshold1);
+        const threshold2 = parseFloat(filtrationTolerance.kvThreshold2);
+        if (isNaN(kvp) || isNaN(value)) return "-";
+
+        let requiredTolerance: number;
+        if (kvp < threshold1) {
+            requiredTolerance = parseFloat(filtrationTolerance.forKvLessThan70);
+        } else if (kvp >= threshold1 && kvp <= threshold2) {
+            requiredTolerance = parseFloat(filtrationTolerance.forKvBetween70And100);
+        } else {
+            requiredTolerance = parseFloat(filtrationTolerance.forKvGreaterThan100);
         }
-        if (isNaN(required)) return m >= 1.5 ? "PASS" : "FAIL";
-        return m >= required ? "PASS" : "FAIL";
+        if (isNaN(requiredTolerance)) return "-";
+        return value >= requiredTolerance ? "PASS" : "FAIL";
     };
 
     if (isLoading) {
@@ -520,40 +510,42 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
                 </div>
 
                 {/* Total Filtration */}
-                <div className="bg-white shadow-lg rounded-lg border border-gray-300 p-8">
+                <div className={`bg-white shadow-lg rounded-lg border p-8 ${getFiltrationRemark() === "FAIL" && totalFiltration.required !== "" && !isNaN(parseFloat(totalFiltration.required)) ? "border-red-300 bg-red-50" : "border-gray-300"}`}>
                     <h3 className="text-xl font-bold text-green-800 mb-6">Total Filtration</h3>
-                    <div className="flex items-center justify-center gap-12">
-                        <span className="text-xl font-medium text-gray-700">Total Filtration is</span>
-                        <div className="flex items-center gap-6">
-                            <div className="text-center">
-                                <input
-                                    type="number"
-                                    step="0.01"
-                                    value={totalFiltration.measured}
-                                    onChange={(e) => setTotalFiltration({ ...totalFiltration, measured: e.target.value })}
-                                    className="w-32 px-4 py-3 text-2xl font-bold text-center border-2 border-gray-400 rounded-lg focus:border-green-500 focus:ring-4 focus:ring-green-200"
-                                    placeholder="2.35"
-                                    disabled={isSaved}
-                                />
-                                <p className="text-sm text-gray-600 mt-1">Measured</p>
-                            </div>
-                            <span className="text-3xl font-bold text-gray-800">mm Al</span>
-                            <div className="text-center">
-                                <input
-                                    type="number"
-                                    step="0.01"
-                                    value={totalFiltration.required}
-                                    onChange={(e) => setTotalFiltration({ ...totalFiltration, required: e.target.value })}
-                                    className="w-32 px-4 py-3 text-2xl font-bold text-center border-2 border-gray-400 rounded-lg focus:border-blue-500 focus:ring-4 focus:ring-blue-200"
-                                    placeholder="2.50"
-                                    disabled={isSaved}
-                                />
-                                <p className="text-sm text-gray-600 mt-1">Required</p>
-                            </div>
+                    <div className="flex flex-col items-center justify-center gap-6">
+                        <div className="flex items-center justify-center gap-4 flex-wrap">
+                            <span className="text-xl font-medium text-gray-700">Total Filtration is (at</span>
+                            <input
+                                type="number"
+                                step="1"
+                                value={totalFiltration.atKvp}
+                                onChange={(e) => setTotalFiltration({ ...totalFiltration, atKvp: e.target.value })}
+                                disabled={isSaved}
+                                className={`w-24 px-3 py-2 text-lg font-bold text-center border-2 rounded-lg ${isSaved ? "border-gray-300 bg-gray-50 text-gray-500 cursor-not-allowed" : "border-gray-400 focus:border-green-500 focus:ring-4 focus:ring-green-200"}`}
+                                placeholder="80"
+                            />
+                            <span className="text-xl font-medium text-gray-700">kVp)</span>
+                            <input
+                                type="number"
+                                step="0.01"
+                                value={totalFiltration.required}
+                                onChange={(e) => setTotalFiltration({ ...totalFiltration, required: e.target.value })}
+                                disabled={isSaved}
+                                className={`w-32 px-4 py-3 text-2xl font-bold text-center border-2 rounded-lg ${isSaved
+                                    ? "border-gray-300 bg-gray-50 text-gray-500 cursor-not-allowed"
+                                    : getFiltrationRemark() === "FAIL" && totalFiltration.required !== "" && !isNaN(parseFloat(totalFiltration.required))
+                                        ? "border-red-500 bg-red-50 focus:border-red-600 focus:ring-4 focus:ring-red-200"
+                                        : "border-gray-400 focus:border-green-500 focus:ring-4 focus:ring-green-200"
+                                    }`}
+                                placeholder="2.50"
+                            />
+                            <span className="text-3xl font-bold text-gray-800">mm of Al</span>
                         </div>
-                        <span className={`text-5xl font-bold ${getFiltrationRemark() === "PASS" ? "text-green-600" : getFiltrationRemark() === "FAIL" ? "text-red-600" : "text-gray-400"}`}>
-                            {getFiltrationRemark()}
-                        </span>
+                        <div className="flex items-center justify-center">
+                            <span className={`text-5xl font-bold ${getFiltrationRemark() === "PASS" ? "text-green-600" : getFiltrationRemark() === "FAIL" ? "text-red-600" : "text-gray-400"}`}>
+                                {getFiltrationRemark()}
+                            </span>
+                        </div>
                     </div>
                 </div>
 

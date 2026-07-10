@@ -25,6 +25,10 @@ import {
   proxyFile,
 } from "../../../../../../api";
 import { createOArmUploadableExcel, OArmExportData } from "./exportOArmToExcel";
+import {
+  mergeTextWithRadiographyVerticalParse,
+  mergeWithRadiographyVerticalParse,
+} from "../shared/mergeRadiographyVerticalParse";
 import { isExcelFileUrl } from "../../../../../../utils/spreadsheetFile";
 
 // Test-table imports
@@ -466,6 +470,26 @@ const OArm: React.FC<OArmProps> = ({ serviceId, csvFileUrl }) => {
   };
 
   // ── CSV/Excel Parsing Infrastructure ─────────────────────────────────────
+  const resolveOArmWorksheet = (workbook: XLSX.WorkBook, preferTimer: boolean | null): XLSX.WorkSheet => {
+    const names = workbook.SheetNames;
+    const findByPattern = (re: RegExp) => names.find((n) => re.test(n));
+
+    if (preferTimer === true) {
+      const name = findByPattern(/with\s*timer/i) ?? names[0];
+      return workbook.Sheets[name];
+    }
+    if (preferTimer === false) {
+      const name = findByPattern(/without\s*timer|no\s*timer/i) ?? names[names.length - 1] ?? names[0];
+      return workbook.Sheets[name];
+    }
+
+    if (names.length === 1) return workbook.Sheets[names[0]];
+
+    const withTimerName = findByPattern(/with\s*timer/i);
+    if (withTimerName) return workbook.Sheets[withTimerName];
+    return workbook.Sheets[names[0]];
+  };
+
   const parseHorizontalData = (rows: any[][]): any[] => {
     const data: any[] = [];
     let currentTestName = '';
@@ -674,14 +698,13 @@ const OArm: React.FC<OArmProps> = ({ serviceId, csvFileUrl }) => {
 
   const parseCSV = (text: string): any[] => {
     const lines = text.split('\n').map(line => line.split(',').map(c => c.trim()));
-    return parseHorizontalData(lines);
+    return mergeTextWithRadiographyVerticalParse(parseHorizontalData(lines), text, "oarm");
   };
 
-  const parseExcelToCSVFormat = (workbook: XLSX.WorkBook): any[] => {
-    const firstSheetName = workbook.SheetNames[0];
-    const worksheet = workbook.Sheets[firstSheetName];
+  const parseExcelToCSVFormat = (workbook: XLSX.WorkBook, preferTimer: boolean | null = null): any[] => {
+    const worksheet = resolveOArmWorksheet(workbook, preferTimer ?? hasTimer);
     const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' }) as any[][];
-    return parseHorizontalData(jsonData);
+    return mergeWithRadiographyVerticalParse(parseHorizontalData(jsonData), jsonData, "oarm");
   };
 
   // When applyConfigFromExcel is true (file from ServiceDetails2 redirect), infer hasTimer from Excel and skip timer modal.
@@ -735,7 +758,7 @@ const OArm: React.FC<OArmProps> = ({ serviceId, csvFileUrl }) => {
       if (isExcel) {
         const arrayBuffer = await file.arrayBuffer();
         const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-        const csvData = parseExcelToCSVFormat(workbook);
+        const csvData = parseExcelToCSVFormat(workbook, hasTimer);
         await processCSVData(csvData);
       } else {
         const text = await file.text();
@@ -767,7 +790,7 @@ const OArm: React.FC<OArmProps> = ({ serviceId, csvFileUrl }) => {
           const blob = response.data instanceof Blob ? response.data : new Blob([response.data]);
           const arrayBuffer = await blob.arrayBuffer();
           const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-          csvData = parseExcelToCSVFormat(workbook);
+          csvData = parseExcelToCSVFormat(workbook, hasTimer);
         } else {
           toast.loading('Loading CSV data from file...', { id: 'csv-loading' });
           const response = await proxyFile(csvFileUrl);
@@ -997,13 +1020,15 @@ const OArm: React.FC<OArmProps> = ({ serviceId, csvFileUrl }) => {
               <CloudArrowUpIcon className="w-5 h-5" />
               {csvUploading ? 'Uploading...' : 'Upload CSV/Excel File'}
             </label>
-            {/* <a
-              href="/templates/OArm_Test_Data_Template.csv"
+            <a
+              href={hasTimer === false
+                ? "/templates/OArm_Test_Data_Template_NoTimer.xlsx"
+                : "/templates/OArm_Test_Data_Template_WithTimer.xlsx"}
               download
               className="px-6 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition"
             >
               Download Template
-            </a> */}
+            </a>
           </div>
           {csvFileUrl && (
             <p className="text-sm text-gray-600">
@@ -1073,7 +1098,7 @@ const OArm: React.FC<OArmProps> = ({ serviceId, csvFileUrl }) => {
 
         {[
           ...(hasTimer ? [{ title: "Accuracy of Irradiation Time", component: <AccuracyOfIrradiationTimeOArm serviceId={serviceId} csvData={csvDataForComponents['Accuracy of Irradiation Time']} /> }] : []),
-          { title: "Total Filteration", component: <TotalFilteration key={`total-filtration-${refreshKey}`} serviceId={serviceId} csvData={csvDataForComponents['Total Filtration']} /> },
+          { title: "Total Filteration", component: <TotalFilteration key={`total-filtration-${refreshKey}`} serviceId={serviceId} csvData={csvDataForComponents['Total Filtration']} csvDataVersion={csvDataVersion} /> },
           { title: "Consistency Of Radiation Output", component: <OutputConsisitency key={`output-consistency-${refreshKey}`} serviceId={serviceId} csvData={csvDataForComponents['Output Consistency']} /> },
           { title: "High Contrast Resolution", component: <HighContrastResolution key={`high-contrast-${refreshKey}`} serviceId={serviceId} csvData={csvDataForComponents['High Contrast Resolution']} /> },
           { title: "Low Contrast Resolution", component: <LowContrastResolution key={`low-contrast-${refreshKey}`} serviceId={serviceId} csvData={csvDataForComponents['Low Contrast Resolution']} /> },

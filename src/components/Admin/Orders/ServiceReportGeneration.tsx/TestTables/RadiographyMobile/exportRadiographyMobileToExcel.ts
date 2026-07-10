@@ -15,6 +15,143 @@ export interface RadiographyMobileExportData {
 
 const unwrap = (raw: any) => (raw && raw.data ? raw.data : raw);
 
+const pad = (n: number) => Array(n).fill("");
+
+/**
+ * Separate templates by timer mode:
+ * - With Timer: Accuracy of Irradiation Time + Linearity of mA Loading
+ * - No Timer: Linearity of mAs Loading Stations (no irradiation / mA sections)
+ */
+export const buildMobileTemplateRows = (hasTimer: boolean): any[][] => {
+  const rows: any[][] = [];
+
+  const sec = (title: string, lines: any[][]) => {
+    rows.push([`TEST: ${title}`, ...pad(9)]);
+    lines.forEach((line) => rows.push([...line, ...pad(Math.max(0, 10 - line.length))]));
+    rows.push([]);
+  };
+
+  sec("ACCURACY OF OPERATING POTENTIAL (kVp)", [
+    ["Tolerance Sign", "-"],
+    ["Tolerance Value (kVp)", "2"],
+    [],
+    ["Total Filtration Required (mm Al)", "2.5"],
+    ["Total Filtration At kVp", "80"],
+    ["Applied kVp", "50 mA", "100 mA"],
+    ["60", "59.8", "60.2"],
+    ["80", "79.5", "80.5"],
+    ["100", "99.2", "100.8"],
+    ["120", "119.5", "120.5"],
+  ]);
+
+  if (hasTimer) {
+    sec("ACCURACY OF IRRADIATION TIME", [
+      ["FDD (cm)", "100", "kV", "80", "mA", "100"],
+      ["Set Time (s)", "Measured Time (s)"],
+      ["0.1", "0.102"],
+      ["0.2", "0.198"],
+      ["0.5", "0.505"],
+      ["Tolerance Operator", "<="],
+      ["Tolerance Value (%)", "5"],
+    ]);
+  }
+
+  sec("OUTPUT CONSISTENCY", [
+    ["FDD (cm)", "100"],
+    ["kVp", "mAs", "Meas 1", "Meas 2", "Meas 3", "Meas 4", "Meas 5"],
+    ["80", "10", "0.85", "0.84", "0.86", "0.85", "0.85"],
+    ["Tolerance Operator", "<="],
+    ["Tolerance (CoV)", "0.05"],
+  ]);
+
+  sec("CENTRAL BEAM ALIGNMENT", [
+    ["FFD (cm)", "100", "kV", "80", "mAs", "10"],
+    ["Observed Tilt (cm)", "0.5"],
+    ["Tolerance (cm)", "1.5"],
+  ]);
+
+  sec("CONGRUENCE OF RADIATION", [
+    ["FFD (cm)", "100", "kV", "80", "mAs", "10"],
+    ["Dimension", "Observed Shift (cm)", "Edge Shift (cm)", "Tolerance (%)"],
+    ["Length", "0.2", "0.1", "2"],
+    ["Width", "0.3", "0.1", "2"],
+  ]);
+
+  sec("EFFECTIVE FOCAL SPOT", [
+    ["FFD (cm)", "60"],
+    ["Focus Type", "Stated Focal Spot of Tube (f)", "Measured Focal Spot (Nominal)"],
+    ["Small", "0.6", "0.65"],
+    ["Large", "1.2", "1.3"],
+  ]);
+
+  if (hasTimer) {
+    sec("LINEARITY OF mA LOADING STATIONS", [
+      ["FCD (cm)", "100", "kV", "80", "Time (sec)", "1"],
+      ["mA Applied", "Meas 1", "Meas 2", "Meas 3"],
+      ["50", "0.42", "0.43", "0.42"],
+      ["100", "0.85", "0.84", "0.86"],
+      ["200", "1.71", "1.70", "1.72"],
+      ["Tolerance Operator", "<="],
+      ["Tolerance (CoL)", "0.1"],
+    ]);
+  } else {
+    sec("LINEARITY OF mAs LOADING STATIONS", [
+      ["FDD (cm)", "100", "kV", "80"],
+      ["mAs Applied", "Meas 1", "Meas 2", "Meas 3"],
+      ["5", "0.43", "0.42", "0.43"],
+      ["10", "0.86", "0.85", "0.87"],
+      ["20", "1.72", "1.71", "1.73"],
+      ["Tolerance Operator", "<="],
+      ["Tolerance (CoL)", "0.1"],
+    ]);
+  }
+
+  sec("RADIATION LEAKAGE LEVEL", [
+    ["FDD (cm)", "100", "kV", "125", "mA", "20", "Time (min)", "2", "Workload", "20"],
+    ["Tolerance Value (mGy/h)", "1"],
+    ["Tolerance Operator", "<"],
+    ["Location", "Left", "Right", "Front", "Back", "Top"],
+    ["Tube - Left", "0.05", "0.04", "0.06", "0.05", "0.04"],
+    ["Collimator - Left", "0.02", "0.03", "0.02", "0.03", "0.02"],
+  ]);
+
+  return rows;
+};
+
+const writeWorkbookSafely = (wb: XLSX.WorkBook, outputPath: string) => {
+  try {
+    XLSX.writeFile(wb, outputPath);
+  } catch (e: any) {
+    if (e?.code === "EBUSY") {
+      const tmp = outputPath.replace(/\.xlsx$/i, ".tmp.xlsx");
+      XLSX.writeFile(wb, tmp);
+      console.warn(`Target locked; wrote ${tmp}`);
+      return;
+    }
+    throw e;
+  }
+};
+
+/** Write separate With Timer / No Timer Excel templates. */
+export const writeMobileTemplateWorkbook = (outputDir: string) => {
+  const withTimerPath = `${outputDir}/Radiography_Mobile_Template_WithTimer.xlsx`;
+  const noTimerPath = `${outputDir}/Radiography_Mobile_Template_NoTimer.xlsx`;
+  const legacyPath = `${outputDir}/Radiography_Mobile_Template.xlsx`;
+
+  const wbTimer = XLSX.utils.book_new();
+  const wsTimer = XLSX.utils.aoa_to_sheet(buildMobileTemplateRows(true));
+  wsTimer["!cols"] = Array.from({ length: 12 }, () => ({ wch: 18 }));
+  XLSX.utils.book_append_sheet(wbTimer, wsTimer, "With Timer");
+  writeWorkbookSafely(wbTimer, withTimerPath);
+  writeWorkbookSafely(wbTimer, legacyPath);
+
+  const wbNoTimer = XLSX.utils.book_new();
+  const wsNoTimer = XLSX.utils.aoa_to_sheet(buildMobileTemplateRows(false));
+  wsNoTimer["!cols"] = Array.from({ length: 12 }, () => ({ wch: 18 }));
+  XLSX.utils.book_append_sheet(wbNoTimer, wsNoTimer, "Without Timer");
+  writeWorkbookSafely(wbNoTimer, noTimerPath);
+};
+
 export const createRadiographyMobileUploadableExcel = (
   data: RadiographyMobileExportData
 ): XLSX.WorkBook => {
@@ -210,7 +347,19 @@ export const createRadiographyMobileUploadableExcel = (
     });
   }
 
+  if (allData.length === 0) {
+    const hasTimerFallback =
+      !!unwrap(data.accuracyOfIrradiationTime) ||
+      !!(unwrap(data.linearityOfMasLoading)?.table1?.[0]?.time);
+    const templateRows = buildMobileTemplateRows(hasTimerFallback);
+    const wsEmpty = XLSX.utils.aoa_to_sheet(templateRows);
+    wsEmpty["!cols"] = Array.from({ length: 12 }, () => ({ wch: 18 }));
+    XLSX.utils.book_append_sheet(wb, wsEmpty, "Radiography Mobile Test Data");
+    return wb;
+  }
+
   const ws = XLSX.utils.aoa_to_sheet(allData);
+  ws["!cols"] = Array.from({ length: 12 }, () => ({ wch: 18 }));
   XLSX.utils.book_append_sheet(wb, ws, "RadiographyMobile");
   return wb;
 };

@@ -207,7 +207,7 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
     setHasSaved(false);
     setIsEditing(true);
     setIsLoading(false);
-  }, [initialData]);
+  }, [initialData, refreshKey]);
 
   const handleSave = async () => {
     if (!serviceId) {
@@ -442,7 +442,7 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
         <table className="w-full">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700  border-r">FDD (cm)</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700  border-r">FCD (cm)</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-700  border-r">kV</th>
               {isMaLoading && (
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 ">Time (sec)</th>
@@ -502,10 +502,10 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-blue-50">
               <tr>
-                <th rowSpan={2} className="px-6 py-3 text-left text-xs font-medium text-gray-700  border-r">{isMaLoading ? 'mA' : 'mAs'}</th>
+                <th rowSpan={2} className={`px-4 py-3 text-left text-xs font-medium text-gray-700 border-r whitespace-nowrap ${isMaLoading ? 'min-w-[9rem] w-36' : 'min-w-[6rem] w-28'}`}>{isMaLoading ? 'mA' : 'mAs'}</th>
                 <th colSpan={measHeaders.length} className="px-6 py-3 text-center text-xs font-medium text-gray-700  border-r">
                   <div className="flex items-center justify-between px-4">
-                    <span>Radiation Output (mGy)</span>
+                    <span>{isMaLoading ? 'Output (mGy)' : 'Radiation Output (mGy)'}</span>
                     {!isViewMode && (
                       <button onClick={addMeasColumn} className="p-2 text-green-600 hover:bg-green-100 rounded-lg">
                         <Plus className="w-5 h-5" />
@@ -554,15 +554,15 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
                 const computed = processedRowById.get(row.id) || row;
                 return (
                 <tr key={row.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 border-r">
+                  <td className={`px-4 py-4 border-r ${isMaLoading ? 'min-w-[9rem] w-36' : 'min-w-[6rem] w-28'}`}>
                     <input
                       type="text"
                       value={row.mAsRange}
                       onChange={e => updateCell(row.id, 'mAsRange', e.target.value)}
                       disabled={isViewMode}
-                      className={`w-full px-3 py-2 text-center text-sm border rounded font-medium focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''
+                      className={`w-full min-w-[7rem] px-3 py-2 text-center text-sm border rounded font-medium focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''
                         }`}
-                      placeholder="10 - 20"
+                      placeholder={isMaLoading ? 'e.g. 50' : '10 - 20'}
                     />
                   </td>
                   {row.measuredOutputs.map((val, idx) => {

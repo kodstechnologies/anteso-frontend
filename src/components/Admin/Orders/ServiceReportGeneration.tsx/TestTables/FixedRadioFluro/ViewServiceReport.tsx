@@ -1480,7 +1480,13 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
 
                 {testData.outputConsistency.outputRows?.length > 0 && (() => {
                   const rows = testData.outputConsistency.outputRows;
-                  const measCount = Math.max(...rows.map((r: any) => (r.outputs ?? []).length), 1);
+                  const measHeaders = testData.outputConsistency.measurementHeaders?.length
+                    ? testData.outputConsistency.measurementHeaders
+                    : Array.from(
+                        { length: Math.max(...rows.map((r: any) => Math.max((r.outputs ?? []).length, (r.measuredOutputs ?? []).length)), 1) },
+                        (_, i) => `Meas ${i + 1}`
+                      );
+                  const measCount = measHeaders.length;
                   const tolVal = parseFloat(testData.outputConsistency.tolerance?.value ?? '0.05') || 0.05;
                   const tolOp = testData.outputConsistency.tolerance?.operator ?? '<=';
 
@@ -1505,8 +1511,8 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
                           <tr className="bg-blue-50">
                             <th className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>kV</th>
                             <th className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>mAs</th>
-                            {Array.from({ length: measCount }, (_, i) => (
-                              <th key={i} className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>Meas {i + 1}</th>
+                            {measHeaders.map((header: string, i: number) => (
+                              <th key={i} className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>{header}</th>
                             ))}
                             <th className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>Avg (X̄)</th>
                             <th className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>CoV</th>
@@ -1516,7 +1522,7 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
                         <tbody>
                           {rows.map((row: any, i: number) => {
                             const outputs: number[] = Array.from({ length: measCount }, (_, j) => {
-                              const raw = (row.outputs ?? [])[j];
+                              const raw = (row.outputs ?? [])[j] ?? (row.measuredOutputs ?? [])[j];
                               return getVal(raw, row, `meas${j + 1}`);
                             }).filter((n: number) => !isNaN(n) && n > 0);
 
@@ -1541,11 +1547,10 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
                                 <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{row.mas || (row.mAs || '-')}</td>
                                 {Array.from({ length: measCount }, (_, j) => {
                                   let val = '-';
-                                  const raw = (row.outputs ?? [])[j];
-                                  if (raw != null) {
+                                  const raw = (row.outputs ?? [])[j] ?? (row.measuredOutputs ?? [])[j];
+                                  if (raw != null && raw !== '') {
                                     val = (typeof raw === 'object' && 'value' in raw) ? raw.value : String(raw);
                                   } else {
-                                    // Fallback for CSV format (meas1, meas2, etc.)
                                     val = row[`meas${j + 1}`] || '-';
                                   }
                                   return (

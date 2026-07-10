@@ -405,8 +405,17 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
     return "±";
   };
 
-  const normalizeCsvComparisonOperator = (raw: unknown): string =>
-    String(raw ?? "").trim().replace(/\s+/g, "");
+  const normalizeCsvComparisonOperator = (raw: unknown): string => {
+    const s = String(raw ?? "").trim().replace(/\s+/g, "");
+    if (!s) return "";
+    const lower = s.toLowerCase();
+    if (s === "≤" || lower === "le" || lower === "lte" || lower.includes("less than or equal")) return "<=";
+    if (s === "≥" || lower === "ge" || lower === "gte" || lower.includes("greater than or equal")) return ">=";
+    if (s === "<" || lower === "lt" || lower === "less than") return "<";
+    if (s === ">" || lower === "gt" || lower === "greater than") return ">";
+    if (["<=", ">=", "<", ">"].includes(s)) return s;
+    return s;
+  };
 
   const rowsFromSpreadsheetText = (text: string): any[] => {
     const trimmed = text.trim();
@@ -647,25 +656,58 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
           if (kv) pushRow(testName, "TestConditions_kv", kv, 0);
           if (ma) pushRow(testName, "TestConditions_ma", ma, 0);
 
+          const headerCells = (lines[i + 2] || "").split(",").map((c) => c.trim());
+          const findCol = (...names: string[]) => {
+            for (const name of names) {
+              const idx = headerCells.findIndex((h) =>
+                h.toLowerCase().includes(name.toLowerCase())
+              );
+              if (idx >= 0) return idx;
+            }
+            return -1;
+          };
+          const setTimeCol = findCol("set time");
+          const measCol = findCol("measured time");
+          const tolOpCol = findCol("tolerance operator", "tol operator");
+          const tolValCol = findCol("tolerance value", "tol value");
+          const hasToleranceCols = tolOpCol >= 0 || tolValCol >= 0;
+
           let idx = 0;
           let j = i + 3; // data rows
           while (j < lines.length) {
             const l = lines[j].trim();
             if (!l || l.startsWith("TEST:")) break;
-            const cells = l.split(",");
-            const setTime = (cells[0] || "").trim();
-            const meas1 = (cells[1] || "").trim();
-            const meas2 = (cells[2] || "").trim();
-            if (setTime) {
-              pushRow(testName, "IrradiationTime_setTime", setTime, idx);
-              if (meas1) pushRow(testName, "IrradiationTime_measuredTime1", meas1, idx);
-              if (meas2) pushRow(testName, "IrradiationTime_measuredTime2", meas2, idx);
-              idx++;
-            } else {
-              const labelCell = (cells[0] || "").trim();
-              const valCell = (cells[1] || "").trim();
+            const cells = l.split(",").map((c) => c.trim());
+            const labelCell = cells[0] || "";
+
+            // Legacy format: tolerance on separate rows below data
+            if (labelCell === "Tolerance Operator" || labelCell.startsWith("Tolerance Value")) {
+              const valCell = cells[1] || "";
               if (labelCell === "Tolerance Operator") pushRow(testName, "Tolerance_operator", valCell, 0);
               if (labelCell.startsWith("Tolerance Value")) pushRow(testName, "Tolerance_value", valCell, 0);
+              j++;
+              continue;
+            }
+
+            const setTime = setTimeCol >= 0 ? (cells[setTimeCol] || "") : labelCell;
+            const meas1 = measCol >= 0 ? (cells[measCol] || "") : (cells[1] || "");
+            const meas2 = !hasToleranceCols && measCol < 0 ? (cells[2] || "") : "";
+
+            if (setTime || meas1) {
+              if (/^tolerance/i.test(setTime)) {
+                j++;
+                continue;
+              }
+              if (setTime) pushRow(testName, "IrradiationTime_setTime", setTime, idx);
+              if (meas1) pushRow(testName, "IrradiationTime_measuredTime1", meas1, idx);
+              if (meas2) pushRow(testName, "IrradiationTime_measuredTime2", meas2, idx);
+
+              const tolOp = tolOpCol >= 0 ? (cells[tolOpCol] || "").trim() : "";
+              const tolVal = tolValCol >= 0 ? (cells[tolValCol] || "").trim() : "";
+              if (tolOp) pushRow(testName, "Tolerance_operator", tolOp, 0);
+              if (tolVal) pushRow(testName, "Tolerance_value", tolVal, 0);
+
+              idx++;
             }
             j++;
           }
@@ -821,8 +863,30 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
             const l = lines[j].trim();
             if (!l || l.startsWith("TEST:")) break;
             const cells = l.split(",");
-            const kv = (cells[0] || "").trim();
-            const mas = (cells[1] || "").trim();
+            const labelCell = (cells[0] || "").trim();
+            const valCell = (cells[1] || "").trim();
+
+            // Tolerance rows must be checked before measurement rows
+            // (otherwise "Tolerance (CoV),0.05" is treated as kVp/mAs data)
+            if (/^tolerance\s*operator$/i.test(labelCell) || /^tol\s*operator$/i.test(labelCell)) {
+              const op = normalizeCsvComparisonOperator(valCell) || valCell;
+              if (op) pushRow(testName, "Tolerance_operator", op, 0);
+              j++;
+              continue;
+            }
+            if (
+              /^tolerance\s*value/i.test(labelCell) ||
+              /^tolerance\s*\(cov\)/i.test(labelCell) ||
+              /^tolerance$/i.test(labelCell) ||
+              /^tol\s*value/i.test(labelCell)
+            ) {
+              if (valCell) pushRow(testName, "Tolerance_value", valCell, 0);
+              j++;
+              continue;
+            }
+
+            const kv = labelCell;
+            const mas = valCell;
             if (kv || mas) {
               if (kv) pushRow(testName, "Measurement_kv", kv, idx);
               if (mas) pushRow(testName, "Measurement_mas", mas, idx);
@@ -834,10 +898,6 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
                 }
               }
               idx++;
-            } else {
-              const labelCell = (cells[0] || "").trim();
-              const valCell = (cells[1] || "").trim();
-              if (labelCell.startsWith("Tolerance")) pushRow(testName, "Tolerance", valCell, 0);
             }
             j++;
           }
@@ -893,14 +953,15 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
           continue;
         }
 
-        // 9) Radiation Protection Survey
-        if (label === "RADIATION PROTECTION SURVEY") {
+        // 9) Radiation Protection Survey (survey date is not taken from Excel — UI uses today)
+        if (label === "RADIATION PROTECTION SURVEY" || label === "RADIATION PROTECTION SURVEY REPORT") {
           const testName = "Radiation Protection Survey";
           const metaCells = (lines[i + 1] || "").split(",");
           for (let k = 0; k < metaCells.length - 1; k += 2) {
             const labelCell = (metaCells[k] || "").trim();
             const valCell = (metaCells[k + 1] || "").trim();
-            if (labelCell === "Survey Date" && valCell) pushRow(testName, "surveyDate", valCell, 0);
+            // Ignore Survey Date from Excel/CSV — UI always uses today's date
+            if (/^survey\s*date$/i.test(labelCell)) continue;
             if (labelCell === "Applied Current (mA)" && valCell) pushRow(testName, "appliedCurrent", valCell, 0);
             if (labelCell === "Applied Voltage (kV)" && valCell) pushRow(testName, "appliedVoltage", valCell, 0);
             if (labelCell === "Exposure Time (s)" && valCell) pushRow(testName, "exposureTime", valCell, 0);
@@ -1281,7 +1342,7 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
         };
       }
 
-      // Reproducibility of Radiation Output / Consistency (template: FFD, Measurement_kv, Measurement_mas, Measurement_output1/2, Tolerance)
+      // Reproducibility of Radiation Output / Consistency (template: FFD, Measurement_kv, Measurement_mas, Measurement_output1/2, Tolerance Operator/Value)
       if (groupedData['Consistency Of Radiation Output']) {
         const data = groupedData['Consistency Of Radiation Output'];
         let ffd = '100';
@@ -1299,7 +1360,9 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
           else if (key === 'MeasHeader' && val) measHeaders.push(val);
           else if (key === 'Tolerance_Value' || key === 'Tolerance_value') tol = val;
           else if (key === 'Tolerance') tol = val;
-          else if (key === 'Tolerance_Operator' || key === 'Tolerance_operator' || key === 'ToleranceOperator') tolOp = val;
+          else if (key === 'Tolerance_Operator' || key === 'Tolerance_operator' || key === 'ToleranceOperator') {
+            tolOp = normalizeCsvComparisonOperator(val) || val || tolOp;
+          }
           else if (key === 'Measurement_kv') {
             currentRowIdx++;
             currentRow = { kv: val, mas: '', outputs: [] };
@@ -1337,13 +1400,13 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
             }
           }
         });
-        data.forEach(row => {
-          if ((row['Key'] || '').trim() === 'Tolerance_Value' || (row['Key'] || '').trim() === 'Tolerance') tol = (row['Value'] || '').trim();
-        });
         newDataForComponents.consistencyOfRadiationOutput = {
           ffd,
           outputRows: rows.filter(Boolean),
-          tolerance: { value: tol, operator: tolOp },
+          tolerance: {
+            value: tol || '0.05',
+            operator: (normalizeCsvComparisonOperator(tolOp) || tolOp || '<=') as any,
+          },
           ...(measHeaders.length > 0 ? { measurementHeaders: measHeaders } : {}),
         };
       }
@@ -1386,7 +1449,6 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
       // Survey
       if (groupedData['Radiation Protection Survey']) {
         const data = groupedData['Radiation Protection Survey'];
-        let date = '';
         let curr = '';
         let volt = '';
         let time = '';
@@ -1396,8 +1458,8 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
           const key = row['Key'];
           const val = row['Value'];
           const idx = parseInt(row['Index']) || 0;
-          if (key === 'surveyDate') date = val;
-          else if (key === 'appliedCurrent') curr = val;
+          // surveyDate is not taken from Excel — UI uses today's date
+          if (key === 'appliedCurrent') curr = val;
           else if (key === 'appliedVoltage') volt = val;
           else if (key === 'exposureTime') time = val;
           else if (key === 'workload') wl = val;
@@ -1406,7 +1468,13 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
             locs[idx][key.split('_')[1]] = val;
           }
         });
-        newDataForComponents.radiationProtectionSurvey = { surveyDate: date, appliedCurrent: curr, appliedVoltage: volt, exposureTime: time, workload: wl, locations: locs };
+        newDataForComponents.radiationProtectionSurvey = {
+          appliedCurrent: curr,
+          appliedVoltage: volt,
+          exposureTime: time,
+          workload: wl,
+          locations: locs,
+        };
       }
 
       console.log('[CSV Debug] groupedData keys:', Object.keys(groupedData));
@@ -1802,17 +1870,7 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
           Generate Radiography (Fixed) QA Test Report
         </h1>
         <div className="flex flex-wrap gap-2 print:hidden">
-          {/* <button
-            onClick={() => {
-              const templateName = hasTimer
-                ? 'RadiographyFixed_Template_WithTimer.csv'
-                : 'RadiographyFixed_Template_NoTimer.csv';
-              window.open(`/templates/${templateName}`, '_blank');
-            }}
-            className="flex items-center gap-2 px-3 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition text-sm font-medium border border-blue-200"
-          >
-            Download Template
-          </button> */}
+        
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={csvUploading}

@@ -10,10 +10,11 @@ import {
 interface Props {
   serviceId: string;
   refreshKey?: number;
+  csvDataVersion?: number;
   initialData?: any;
 }
 
-const LowContrastResolution: React.FC<Props> = ({ serviceId, refreshKey, initialData }) => {
+const LowContrastResolution: React.FC<Props> = ({ serviceId, csvDataVersion, initialData }) => {
   const [smallestHoleSize, setSmallestHoleSize] = useState<string>('');
   const [recommendedStandard, setRecommendedStandard] = useState<string>('3.0');
   const [testId, setTestId] = useState<string | null>(null);
@@ -34,6 +35,10 @@ const LowContrastResolution: React.FC<Props> = ({ serviceId, refreshKey, initial
 
   // Load from backend
   useEffect(() => {
+    if (csvDataVersion) {
+      setIsLoading(false);
+      return;
+    }
     const load = async () => {
       if (!serviceId) {
         setIsLoading(false);
@@ -41,6 +46,7 @@ const LowContrastResolution: React.FC<Props> = ({ serviceId, refreshKey, initial
       }
       try {
         const res = await getLowContrastResolutionByServiceIdForFixedRadioFluro(serviceId);
+        if (csvDataVersion) return;
         const data = res?.data;
         if (data) {
           setTestId(data._id || null);
@@ -63,21 +69,21 @@ const LowContrastResolution: React.FC<Props> = ({ serviceId, refreshKey, initial
       }
     };
     load();
-  }, [serviceId]);
+  }, [serviceId, csvDataVersion]);
 
-  // Load CSV data when initialData is provided
+  // Load CSV/Excel data when imported
   useEffect(() => {
-    if (initialData && refreshKey !== undefined) {
-      console.log('LowContrastResolution: Loading CSV data', initialData);
-      if (initialData.measuredLpPerMm) {
-        // LowContrastResolution uses smallestHoleSize, not measuredLpPerMm
-      }
-      if (initialData.smallestHoleSize) setSmallestHoleSize(String(initialData.smallestHoleSize));
-      if (initialData.recommendedStandard) setRecommendedStandard(String(initialData.recommendedStandard));
-      setIsSaved(false);
-      setIsEditing(true);
+    if (!initialData || !csvDataVersion) return;
+    if (initialData.smallestHoleSize != null && String(initialData.smallestHoleSize).trim() !== '') {
+      setSmallestHoleSize(String(initialData.smallestHoleSize));
     }
-  }, [refreshKey, initialData]);
+    if (initialData.recommendedStandard != null && String(initialData.recommendedStandard).trim() !== '') {
+      setRecommendedStandard(String(initialData.recommendedStandard));
+    }
+    setIsSaved(false);
+    setIsEditing(true);
+    setIsLoading(false);
+  }, [csvDataVersion, initialData]);
 
   const handleSave = async () => {
     if (!smallestHoleSize.trim()) {

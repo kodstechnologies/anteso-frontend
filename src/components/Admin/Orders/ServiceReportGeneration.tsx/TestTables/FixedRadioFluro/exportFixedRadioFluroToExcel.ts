@@ -1,4 +1,6 @@
 import * as XLSX from "xlsx";
+import * as fs from "fs";
+import * as path from "path";
 
 export interface FixedRadioFluroExportData {
   reportHeader?: any;
@@ -19,6 +21,173 @@ export interface FixedRadioFluroExportData {
 }
 
 const unwrap = (raw: any) => (raw && raw.data ? raw.data : raw);
+
+const pad = (n: number) => Array(n).fill("");
+
+/** TEST: table layout templates (Radiography Fixed style) for With Timer / No Timer. */
+export const buildFixedRadioFluroTemplateRows = (hasTimer: boolean): any[][] => {
+  const rows: any[][] = [];
+
+  const sec = (title: string, lines: any[][]) => {
+    rows.push([`TEST: ${title}`, ...pad(9)]);
+    lines.forEach((line) => rows.push([...line, ...pad(Math.max(0, 10 - line.length))]));
+    rows.push([]);
+  };
+
+  sec("CONGRUENCE OF RADIATION & OPTICAL FIELD", [
+    ["FFD (cm)", "100", "kV", "80", "mAs", "10"],
+    ["Dimension", "Observed Shift (cm)", "Edge Shift (cm)", "Tolerance (%)"],
+    ["Length", "0.2", "0.1", "2"],
+    ["Width", "0.3", "0.1", "2"],
+  ]);
+
+  sec("CENTRAL BEAM ALIGNMENT", [
+    ["FFD (cm)", "100", "kV", "80", "mAs", "10"],
+    ["Observed Tilt X (cm)", "0.5"],
+    ["Observed Tilt Y (cm)", "0.3"],
+    ["Tolerance Operator", "<="],
+    ["Tolerance Value (cm)", "2"],
+  ]);
+
+  sec("EFFECTIVE FOCAL SPOT", [
+    ["FFD (cm)", "100"],
+    ["Focus Type", "Stated Focal Spot of Tube (f)", "Measured Focal Spot (Nominal)"],
+    ["Large Focus", "1.2", "1.25"],
+    ["Small Focus", "0.6", "0.65"],
+  ]);
+
+  if (hasTimer) {
+    sec("ACCURACY OF IRRADIATION TIME", [
+      ["FDD (cm)", "100", "kV", "80", "mA", "100"],
+      ["Set Time (ms)", "Measured Time (ms)", "Tolerance Operator", "Tolerance Value (%)"],
+      ["100", "98", "<=", "10"],
+      ["200", "202"],
+      ["500", "495"],
+    ]);
+  }
+
+  sec("TOTAL FILTRATION", [
+    ["Tolerance Sign", "±"],
+    ["Tolerance Value (kVp)", "2"],
+    ["Total Filtration Required (mm Al)", "2"],
+    ["Total Filtration At kVp", "80"],
+    ["mA Station 1", "50 mA"],
+    ["mA Station 2", "100 mA"],
+    ["Applied kVp", "Meas 1", "Meas 2"],
+    ["60", "60.2", "60.1"],
+    ["80", "80.1", "80.2"],
+    ["100", "100.2", "100.1"],
+  ]);
+
+  if (hasTimer) {
+    sec("LINEARITY OF mA LOADING", [
+      ["FDD (cm)", "100", "kV", "80", "Time (sec)", "2"],
+      ["mA Applied", "Meas 1", "Meas 2", "Meas 3"],
+      ["50", "1.25", "1.26", "1.24"],
+      ["100", "2.5", "2.51", "2.49"],
+      ["Tolerance Operator", "<="],
+      ["Tolerance (CoL)", "0.1"],
+    ]);
+  } else {
+    sec("LINEARITY OF mAs LOADING", [
+      ["FDD (cm)", "100", "kV", "80"],
+      ["mAs Applied", "Meas 1", "Meas 2", "Meas 3"],
+      ["10", "0.85", "0.84", "0.86"],
+      ["20", "1.71", "1.7", "1.72"],
+      ["Tolerance Operator", "<="],
+      ["Tolerance (CoL)", "0.1"],
+    ]);
+  }
+
+  sec("OUTPUT CONSISTENCY", [
+    ["FDD (cm)", "100"],
+    ["kVp", "mAs", "Meas 1", "Meas 2", "Meas 3", "Meas 4", "Meas 5"],
+    ["80", "100", "10.5", "10.4", "10.6", "10.5", "10.5"],
+    ["Tolerance Operator", "<="],
+    ["Tolerance Value (CoV)", "0.05"],
+  ]);
+
+  sec("LOW CONTRAST RESOLUTION", [
+    ["Smallest Hole Size", "2"],
+    ["Recommended Standard", "0.6"],
+  ]);
+
+  sec("HIGH CONTRAST RESOLUTION", [
+    ["Measured lp/mm", "2.5"],
+    ["Recommended Standard", "2"],
+  ]);
+
+  sec("EXPOSURE RATE AT TABLE TOP", [
+    ["Distance (cm)", "Applied kVp", "Applied mA", "Exposure (mGy/min)", "Remark"],
+    ["100", "80", "100", "5.2", "AEC Mode"],
+    ["100", "100", "200", "4.8", "Manual Mode"],
+    ["Tolerance AEC (%)", "10"],
+    ["Tolerance Non-AEC (%)", "5"],
+    ["Min Focus Distance (cm)", "30"],
+  ]);
+
+  sec("TUBE HOUSING LEAKAGE", [
+    ["FDD (cm)", "100", "kV", "80", "mA", "100", "Time (min)", "1", "Workload", "5000"],
+    ["Tolerance Value (mGy/h)", "1"],
+    ["Tolerance Operator", "<="],
+    ["Tolerance Time (h)", "1"],
+    ["Location", "Left", "Right", "Front", "Back", "Top"],
+    ["Tube", "0.05", "0.04", "0.06", "0.05", "0.07"],
+  ]);
+
+  sec("RADIATION PROTECTION SURVEY", [
+    [
+      "Applied Current (mA)",
+      "100",
+      "Applied Voltage (kV)",
+      "80",
+      "Exposure Time (s)",
+      "1",
+      "Workload (mA.min/week)",
+      "5000",
+    ],
+    ["LOCATION", "mR/hr", "Category"],
+    ["Control Room", "0.5", "worker"],
+    ["Corridor", "0.2", "public"],
+  ]);
+
+  return rows;
+};
+
+export const rowsToCsv = (rows: any[][]): string =>
+  rows.map((row) => row.map((c) => String(c ?? "")).join(",")).join("\n");
+
+export const writeFixedRadioFluroTemplateFiles = (outputDir: string) => {
+  const withTimer = buildFixedRadioFluroTemplateRows(true);
+  const noTimer = buildFixedRadioFluroTemplateRows(false);
+
+  const withTimerPath = path.join(outputDir, "FixedRadioFluro_Test_Data_Template_WithTimer.csv");
+  const noTimerPath = path.join(outputDir, "FixedRadioFluro_Test_Data_Template_NoTimer.csv");
+
+  const wb = XLSX.utils.book_new();
+  const wsTimer = XLSX.utils.aoa_to_sheet(withTimer);
+  const wsNoTimer = XLSX.utils.aoa_to_sheet(noTimer);
+  wsTimer["!cols"] = Array.from({ length: 12 }, () => ({ wch: 18 }));
+  wsNoTimer["!cols"] = Array.from({ length: 12 }, () => ({ wch: 18 }));
+  XLSX.utils.book_append_sheet(wb, wsTimer, "With Timer");
+  XLSX.utils.book_append_sheet(wb, wsNoTimer, "Without Timer");
+
+  try {
+    fs.writeFileSync(withTimerPath, rowsToCsv(withTimer), "utf8");
+    fs.writeFileSync(noTimerPath, rowsToCsv(noTimer), "utf8");
+    XLSX.writeFile(wb, path.join(outputDir, "FixedRadioFluro_Test_Data_Template.xlsx"));
+  } catch (e: any) {
+    if (e?.code === "EBUSY") {
+      fs.writeFileSync(withTimerPath.replace(/\.csv$/i, ".csv.new"), rowsToCsv(withTimer), "utf8");
+      fs.writeFileSync(noTimerPath.replace(/\.csv$/i, ".csv.new"), rowsToCsv(noTimer), "utf8");
+      const tmpXlsx = path.join(outputDir, "FixedRadioFluro_Test_Data_Template.tmp.xlsx");
+      XLSX.writeFile(wb, tmpXlsx);
+      console.warn(`Templates locked; wrote .csv.new files and ${tmpXlsx}`);
+      return;
+    }
+    throw e;
+  }
+};
 
 export const createFixedRadioFluroUploadableExcel = (
   data: FixedRadioFluroExportData
@@ -128,11 +297,22 @@ export const createFixedRadioFluroUploadableExcel = (
   if (lmas?.table2 && Array.isArray(lmas.table2) && lmas.table2.length > 0) {
     const t1 = lmas.table1?.[0] || lmas.table1 || {};
     allData.push(["TEST: LINEARITY OF mAs LOADING"]);
-    allData.push(["FCD", t1.fcd ?? "", "kV", t1.kv ?? ""]);
-    allData.push(["mAs Range", "Measured mR 1", "Measured mR 2", "Measured mR 3"]);
+    allData.push(["FDD (cm)", t1.fcd ?? t1.FDD ?? "", "kV", t1.kv ?? t1.kV ?? ""]);
+    const maxMeas = Math.max(
+      ...lmas.table2.map((r: any) => (r.measuredOutputs || []).length),
+      (lmas.measHeaders || lmas.measurementHeaders || []).length,
+      3
+    );
+    const measHeaders =
+      (lmas.measHeaders || lmas.measurementHeaders || []).length > 0
+        ? [...(lmas.measHeaders || lmas.measurementHeaders)]
+        : Array.from({ length: maxMeas }, (_, i) => `Meas ${i + 1}`);
+    while (measHeaders.length < maxMeas) measHeaders.push(`Meas ${measHeaders.length + 1}`);
+    allData.push(["mAs Applied", ...measHeaders.slice(0, maxMeas)]);
     lmas.table2.forEach((r: any) => {
-      const outs = r.measuredOutputs || [];
-      allData.push([r.mAsRange ?? r.mAsApplied ?? "", outs[0] ?? "", outs[1] ?? "", outs[2] ?? ""]);
+      const outs = [...(r.measuredOutputs || [])];
+      while (outs.length < maxMeas) outs.push("");
+      allData.push([r.mAsRange ?? r.mAsApplied ?? "", ...outs.slice(0, maxMeas)]);
     });
     addBlank();
   }
@@ -142,36 +322,50 @@ export const createFixedRadioFluroUploadableExcel = (
   if (oc?.outputRows && Array.isArray(oc.outputRows) && oc.outputRows.length > 0) {
     const ffdVal = oc.ffd?.value ?? oc.ffd ?? "";
     allData.push(["TEST: OUTPUT CONSISTENCY"]);
-    allData.push(["FFD", ffdVal]);
-    const maxOut = Math.max(...oc.outputRows.map((r: any) => (r.outputs || []).length));
-    const outHeaders = Array.from({ length: maxOut }, (_, i) => `Reading ${i + 1}`);
-    allData.push(["kVp", "mAs", ...outHeaders, "Mean", "CoV", "Remarks"]);
+    allData.push(["FDD (cm)", ffdVal]);
+    const maxOut = Math.max(
+      ...oc.outputRows.map((r: any) => (r.outputs || []).length),
+      (oc.measurementHeaders || oc.measHeaders || []).length,
+      3
+    );
+    const outHeaders =
+      (oc.measurementHeaders || oc.measHeaders || []).length > 0
+        ? [...(oc.measurementHeaders || oc.measHeaders)]
+        : Array.from({ length: maxOut }, (_, i) => `Meas ${i + 1}`);
+    while (outHeaders.length < maxOut) outHeaders.push(`Meas ${outHeaders.length + 1}`);
+    allData.push(["kVp", "mAs", ...outHeaders.slice(0, maxOut)]);
     oc.outputRows.forEach((r: any) => {
       const outs = (r.outputs || []).map((o: any) => (o?.value !== undefined ? o.value : o));
-      allData.push([r.kv ?? r.kvp ?? "", r.mas ?? "", ...outs, r.mean ?? "", r.cov ?? "", r.remarks ?? ""]);
+      while (outs.length < maxOut) outs.push("");
+      allData.push([r.kv ?? r.kvp ?? "", r.mas ?? "", ...outs.slice(0, maxOut)]);
     });
     addBlank();
   }
 
   // 9. Low Contrast Resolution
   const lcr = unwrap(data.lowContrastResolution);
-  if (lcr && (lcr.readings?.length > 0 || lcr.testRows?.length > 0)) {
-    const rows = (lcr.testRows || lcr.readings || []).map((r: any) => [
-      r.testName ?? r.detail ?? "",
-      r.result ?? r.value ?? "",
-    ]);
-    addSection("LOW CONTRAST RESOLUTION", ["Test", "Result"], rows);
+  if (lcr && (lcr.smallestHoleSize || lcr.recommendedStandard)) {
+    allData.push(["TEST: LOW CONTRAST RESOLUTION"]);
+    if (lcr.smallestHoleSize != null && String(lcr.smallestHoleSize).trim() !== "") {
+      allData.push(["Smallest Hole Size", lcr.smallestHoleSize]);
+    }
+    if (lcr.recommendedStandard != null && String(lcr.recommendedStandard).trim() !== "") {
+      allData.push(["Recommended Standard", lcr.recommendedStandard]);
+    }
+    addBlank();
   }
 
   // 10. High Contrast Resolution
   const hcr = unwrap(data.highContrastResolution);
-  if (hcr && (hcr.readings?.length > 0 || hcr.measurements?.length > 0)) {
-    const rows = (hcr.measurements || hcr.readings || []).map((r: any) => [
-      r.measuredLpPerMm ?? r.detail ?? "",
-      r.recommendedStandard ?? "",
-      r.smallestHoleSize ?? "",
-    ]);
-    addSection("HIGH CONTRAST RESOLUTION", ["Measured lp/mm", "Recommended", "Smallest Hole"], rows);
+  if (hcr && (hcr.measuredLpPerMm || hcr.recommendedStandard)) {
+    allData.push(["TEST: HIGH CONTRAST RESOLUTION"]);
+    if (hcr.measuredLpPerMm != null && String(hcr.measuredLpPerMm).trim() !== "") {
+      allData.push(["Measured lp/mm", hcr.measuredLpPerMm]);
+    }
+    if (hcr.recommendedStandard != null && String(hcr.recommendedStandard).trim() !== "") {
+      allData.push(["Recommended Standard", hcr.recommendedStandard]);
+    }
+    addBlank();
   }
 
   // 11. Exposure Rate Table Top

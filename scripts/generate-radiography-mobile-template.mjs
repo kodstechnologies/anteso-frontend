@@ -1,109 +1,24 @@
-import XLSX from "xlsx";
+/**
+ * Generate Radiography Mobile With Timer / No Timer Excel templates.
+ * Run from anteso-frontend: npx tsx src/components/Admin/Orders/ServiceReportGeneration.tsx/TestTables/RadiographyMobile/generateTemplate.ts
+ */
+import { spawnSync } from "node:child_process";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-const rows = [];
-const sec = (title, header, data) => {
-  rows.push([`TEST: ${title}`]);
-  rows.push(header);
-  for (const r of data) rows.push(r);
-  rows.push([]);
-};
-
-// 1) Accuracy of Operating Potential
-sec(
-  "ACCURACY OF OPERATING POTENTIAL",
-  ["mA Station", "Applied kV", "Meas 1", "Meas 2", "Meas 3", "Tolerance Sign", "Tolerance Value", "TF Measured", "TF Required", "TF At kVp"],
-  [
-    ["50 mA", "60", "", "", "", "±", "2.0", "", "2.5", "80"],
-    ["100 mA", "80", "", "", "", "", "", "", ""],
-    ["200 mA", "100", "", "", "", "", "", "", ""],
-  ]
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const root = path.join(__dirname, "..");
+const templateScript = path.join(
+  root,
+  "src/components/Admin/Orders/ServiceReportGeneration.tsx/TestTables/RadiographyMobile/generateTemplate.ts"
 );
 
-// 2) Accuracy of Irradiation Time (only if timer exists)
-sec(
-  "ACCURACY OF IRRADIATION TIME",
-  ["FDD (cm)", "kV", "mA", "Set Time (ms)", "Measured Time (ms)", "Tolerance Operator", "Tolerance Value"],
-  [
-    ["100", "80", "100", "100", "", "<=", "5"],
-    ["", "", "", "200", "", "", ""],
-    ["", "", "", "400", "", "", ""],
-  ]
-);
+const result = spawnSync("npx", ["tsx", templateScript], {
+  cwd: root,
+  stdio: "inherit",
+  shell: true,
+});
 
-// 3) Output Consistency
-sec(
-  "OUTPUT CONSISTENCY",
-  ["FDD (cm)", "Tol Operator", "Tol Value", "kV", "mAs", "Meas 1", "Meas 2", "Meas 3", "Meas 4", "Meas 5"],
-  [
-    ["100", "<=", "0.05", "80", "10", "", "", "", "", ""],
-    ["", "", "", "100", "20", "", "", "", "", ""],
-  ]
-);
-
-// 4) Central Beam Alignment
-sec(
-  "CENTRAL BEAM ALIGNMENT",
-  ["FFD (cm)", "kV", "mAs", "Observed Tilt", "Tolerance"],
-  [["100", "80", "10", "", "1.5"]]
-);
-
-// 5) Congruence of Radiation
-sec(
-  "CONGRUENCE OF RADIATION",
-  ["FFD (cm)", "kV", "mAs", "Dimension", "Observed Shift", "Edge Shift", "% FED", "Tolerance"],
-  [
-    ["100", "80", "10", "X", "", "", "", "2"],
-    ["", "", "", "Y", "", "", "", "2"],
-  ]
-);
-
-// 6) Effective Focal Spot
-sec(
-  "EFFECTIVE FOCAL SPOT",
-  ["FFD (cm)", "Focus Type", "Stated Focal Spot of Tube (f)", "Measured Focal Spot (Nominal)"],
-  [
-    ["100", "Small", "", ""],
-    ["", "Large", "", ""],
-  ]
-);
-
-// 7) Linearity — mA Loading (with timer): includes Time (sec)
-sec(
-  "LINEARITY OF MA LOADING",
-  ["FDD (cm)", "kV", "Time (sec)", "mA Applied", "Meas 1", "Meas 2", "Meas 3", "Tolerance Operator", "Tolerance"],
-  [
-    ["100", "80", "1", "50", "", "", "", "<=", "0.1"],
-    ["", "", "", "100", "", "", "", "", ""],
-    ["", "", "", "200", "", "", "", "", ""],
-  ]
-);
-
-// 7b) Linearity — mAs Loading (no timer)
-sec(
-  "LINEARITY OF MAS LOADING STATIONS",
-  ["FDD (cm)", "kV", "mAs Applied", "Meas 1", "Meas 2", "Meas 3", "Tolerance Operator", "Tolerance"],
-  [
-    ["100", "80", "10", "", "", "", "<=", "0.1"],
-    ["", "", "20", "", "", "", "", ""],
-    ["", "", "50", "", "", "", "", ""],
-  ]
-);
-
-// 8) Radiation Leakage Level
-sec(
-  "RADIATION LEAKAGE LEVEL",
-  ["FDD (cm)", "kV", "mA", "Time", "Workload", "Tol Value", "Tol Operator", "Location", "Left", "Right", "Front", "Back", "Top"],
-  [
-    ["100", "80", "100", "1.0", "5000", "1.0", "less than or equal to", "Tube", "", "", "", "", ""],
-    ["", "", "", "", "", "", "", "Collimator", "", "", "", "", ""],
-  ]
-);
-
-const ws = XLSX.utils.aoa_to_sheet(rows);
-const wb = XLSX.utils.book_new();
-XLSX.utils.book_append_sheet(wb, ws, "Test Data");
-XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), "Sample");
-XLSX.writeFile(wb, "public/templates/Radiography_Mobile_Template.xlsx");
-XLSX.writeFile(wb, "public/templates/RadiographyMobile_Test_Template.xlsx");
-console.log(`Wrote public/templates/Radiography_Mobile_Template.xlsx (${rows.length} rows)`);
-console.log(`Wrote public/templates/RadiographyMobile_Test_Template.xlsx`);
+if (result.status !== 0) {
+  process.exit(result.status ?? 1);
+}

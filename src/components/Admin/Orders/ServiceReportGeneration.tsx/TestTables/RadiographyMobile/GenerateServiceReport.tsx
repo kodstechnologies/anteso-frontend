@@ -445,6 +445,7 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
       "CONGRUENCE OF RADIATION": "Congruence of Radiation",
       "EFFECTIVE FOCAL SPOT": "Effective Focal Spot",
       "LINEARITY OF MAS LOADING STATIONS": "Linearity of mAs Loading Stations",
+      "LINEARITY OF MA LOADING STATIONS": "Linearity of mA Loading",
       "LINEARITY OF MA LOADING": "Linearity of mA Loading",
       "RADIATION LEAKAGE LEVEL": "Radiation Leakage Level",
       "TUBE HOUSING LEAKAGE": "Radiation Leakage Level",
@@ -640,10 +641,11 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
     const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" }) as any[][];
     if (jsonData.length === 0) return data;
 
-    // If file looks like CTScan-style horizontal template, parse that.
+    // If file looks like TEST: table template, use the dedicated table parser (handles mA/mAs sections).
     const firstNonEmpty = jsonData.find((r) => Array.isArray(r) && String(r[0] ?? "").trim() !== "");
     if (firstNonEmpty && /^TEST:\s*/i.test(String(firstNonEmpty[0] ?? "").trim())) {
-      return parseHorizontalData(jsonData);
+      const csv = XLSX.utils.sheet_to_csv(worksheet);
+      return parseTableCSVToRows(csv);
     }
 
     // Find "Field Name" / "Value" header columns (strip BOM and allow extra columns e.g. "Description")
@@ -726,6 +728,14 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
 
   // Parse Dental-style table CSV (RadiographyMobile_Timer_Template.csv) into the same
   // internal "Field Name"/"Value"/"Row Index"/"Test Name" rows used by processExcelData.
+  const isExposureConditionRow = (line: string): boolean => {
+    const cond = line.split(",").map((c) => (c || "").trim());
+    const label0 = (cond[0] || "").toLowerCase();
+    if (!/^(fdd|fcd|ffd)(\s*\(cm\))?$/.test(label0)) return false;
+    const distanceVal = cond[1] || "";
+    return distanceVal !== "" && !isNaN(Number(distanceVal));
+  };
+
   const parseTableCSVToRows = (text: string): any[] => {
     const lines = text.split(/\r?\n/);
     const rows: any[] = [];
@@ -745,7 +755,7 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
       if (!raw) { i++; continue; }
 
       if (raw.startsWith("TEST:")) {
-        const label = raw.slice(5).split(",")[0].trim();
+        const label = raw.slice(5).split(",")[0].trim().toUpperCase();
 
         // 1) Accuracy of Operating Potential (kVp)
         if (label.startsWith("ACCURACY OF OPERATING POTENTIAL")) {
@@ -1068,9 +1078,60 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
         }
 
         // 7) Linearity of mA Loading (with timer)
-        if (label === "LINEARITY OF MA LOADING") {
+        if (
+          label === "LINEARITY OF MA LOADING" ||
+          label === "LINEARITY OF MA LOADING STATIONS"
+        ) {
           const testName = "Linearity of mA Loading";
-          const header = (lines[i + 1] || "").split(",").map((h) => (h || "").trim());
+          const nextLine = (lines[i + 1] || "").trim();
+
+          // Table layout: FCD/FDD row, header row, data rows (RadiographyMobile_Timer_Template.csv)
+          if (isExposureConditionRow(nextLine)) {
+            const cond = nextLine.split(",");
+            for (let k = 0; k < cond.length - 1; k += 2) {
+              const lc = (cond[k] || "").trim().toLowerCase();
+              const val = (cond[k + 1] || "").trim();
+              if (!val) continue;
+              if (/fdd|fcd|ffd/.test(lc)) pushRow(testName, "Table1_FCD", val, 0);
+              else if (lc === "kv") pushRow(testName, "Table1_kV", val, 0);
+              else if (/time/.test(lc)) pushRow(testName, "Table1_Time", val, 0);
+            }
+
+            const headerCells = (lines[i + 2] || "").split(",").map((c) => (c || "").trim());
+            const firstHeader = (headerCells[0] || "").toLowerCase();
+            if (firstHeader.includes("applied")) {
+              headerCells.slice(1).forEach((h, hi) => {
+                if (h) pushRow(testName, "MeasHeader", h, hi);
+              });
+            }
+
+            let rowIdx = 0;
+            let j = i + 3;
+            while (j < lines.length) {
+              const l = lines[j].trim();
+              if (!l || l.startsWith("TEST:")) break;
+              const cells = l.split(",");
+              const labelCell = (cells[0] || "").trim();
+              const valCell = (cells[1] || "").trim();
+              if (labelCell === "Tolerance Operator") {
+                pushRow(testName, "ToleranceOperator", valCell, 0);
+              } else if (labelCell.startsWith("Tolerance")) {
+                pushRow(testName, "Tolerance", valCell, 0);
+              } else if (labelCell && !isNaN(Number(labelCell))) {
+                pushRow(testName, "Table2_mAsApplied", labelCell, rowIdx);
+                for (let c = 1; c < cells.length; c++) {
+                  const v = (cells[c] || "").trim();
+                  if (v) pushRow(testName, `Table2_Meas${c}`, v, rowIdx);
+                }
+                rowIdx++;
+              }
+              j++;
+            }
+            i = j;
+            continue;
+          }
+
+          const header = nextLine.split(",").map((h) => (h || "").trim());
           const col = (name: string) =>
             header.findIndex((h) => h.toLowerCase() === name.toLowerCase());
           const idxFcd =
@@ -1117,8 +1178,8 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
           continue;
         }
 
-        // 7b) Linearity of mAs Loading Stations
-        if (label === "LINEARITY OF mAs LOADING STATIONS") {
+        // 7b) Linearity of mAs Loading Stations (no timer)
+        if (label === "LINEARITY OF MAS LOADING STATIONS") {
           const testName = "Linearity of mAs Loading Stations";
           const cond = (lines[i + 1] || "").split(",");
           const fcd = cond[1] || "";
@@ -1433,13 +1494,16 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
           if (field.startsWith("Table1_")) {
             while (table1.length <= idx) table1.push({ fcd: "100", kv: "80", time: "" });
             const fn = field.replace("Table1_", "");
-            if (fn === "FCD" || fn === "FDD") table1[idx].fcd = value;
+            if (fn === "FCD" || fn === "FDD" || fn === "FFD") table1[idx].fcd = value;
             if (fn === "kV") table1[idx].kv = value;
             if (fn === "Time" || fn === "Timer") table1[idx].time = value;
           }
           if (field === "Tolerance") tolerance = value;
           if (field === "ToleranceOperator") toleranceOperator = value;
-          if (field === "MeasHeader" && !measHeaders.includes(value)) measHeaders.push(value);
+          if (field === "MeasHeader") {
+            while (measHeaders.length <= idx) measHeaders.push("");
+            measHeaders[idx] = value;
+          }
           if (field.startsWith("Table2_")) {
             while (table2.length <= idx) table2.push({ mAsRange: "", measuredOutputs: [], average: "", x: "", xMax: "", xMin: "", coL: "" });
             const fn = field.replace("Table2_", "");
@@ -1730,31 +1794,35 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
         <h1 className="text-3xl font-bold text-gray-800">
           Generate Radiography (Mobile) QA Test Report
         </h1>
-        {/* Download templates */}
-        {/* <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <a
-            href="/templates/RadiographyMobile_Timer_Template.csv"
+            href="/templates/Radiography_Mobile_Template_WithTimer.xlsx"
             download
             className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition text-xs font-medium"
           >
-            ⬇ Timer Template (CSV)
+            With Timer Template (XLSX)
+          </a>
+          <a
+            href="/templates/Radiography_Mobile_Template_NoTimer.xlsx"
+            download
+            className="px-3 py-2 bg-green-700 text-white rounded-lg hover:bg-green-800 transition text-xs font-medium"
+          >
+            No Timer Template (XLSX)
+          </a>
+          <a
+            href="/templates/RadiographyMobile_Timer_Template.csv"
+            download
+            className="px-3 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition text-xs font-medium"
+          >
+            With Timer Template (CSV)
           </a>
           <a
             href="/templates/RadiographyMobile_NoTimer_Template.csv"
             download
-            className="px-3 py-2 bg-green-700 text-white rounded-lg hover:bg-green-800 transition text-xs font-medium"
+            className="px-3 py-2 bg-emerald-700 text-white rounded-lg hover:bg-emerald-800 transition text-xs font-medium"
           >
-            ⬇ No-Timer Template (CSV)
+            No Timer Template (CSV)
           </a>
-          <a
-            href="/templates/RadiographyMobile_Test_Template.xlsx"
-            download
-            className="px-3 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition text-xs font-medium"
-          >
-            ⬇ XLSX Template
-          </a>
-        </div> */}
-        <div className="flex flex-wrap gap-2">
           <label className={`flex items-center gap-2 px-4 py-2 rounded-lg text-white transition cursor-pointer text-sm font-medium ${excelUploading ? "bg-gray-400 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700"}`}>
             <CloudArrowUpIcon className="w-5 h-5" />
             {excelUploading ? "Uploading..." : "Import Excel"}

@@ -85,10 +85,10 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, initialData, cs
     );
   }, [locations.map(l => l.mRPerHr).join(), appliedCurrent, workload]);
 
-  // Apply CSV/Excel initial data
+  // Apply CSV/Excel initial data (survey date always today — not taken from Excel)
   useEffect(() => {
     if (!initialData || !csvDataVersion) return;
-    if (initialData.surveyDate) setSurveyDate(initialData.surveyDate);
+    setSurveyDate(getTodayDate());
     if (initialData.appliedCurrent) setAppliedCurrent(String(initialData.appliedCurrent));
     if (initialData.appliedVoltage) setAppliedVoltage(String(initialData.appliedVoltage));
     if (initialData.exposureTime) setExposureTime(String(initialData.exposureTime));
@@ -232,7 +232,11 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, initialData, cs
         const data = res?.data;
         if (data) {
           setTestId(data._id || null);
-          setSurveyDate(data.surveyDate ? new Date(data.surveyDate).toISOString().split('T')[0] : "");
+          setSurveyDate(
+            data.surveyDate
+              ? new Date(data.surveyDate).toISOString().split('T')[0]
+              : getTodayDate()
+          );
           if (data.hasValidCalibration) setHasValidCalibration(data.hasValidCalibration);
           setAppliedCurrent(data.appliedCurrent || "100");
           setAppliedVoltage(data.appliedVoltage || "80");

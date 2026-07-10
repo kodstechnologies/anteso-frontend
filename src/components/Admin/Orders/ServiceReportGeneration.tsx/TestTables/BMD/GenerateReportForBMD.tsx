@@ -248,31 +248,67 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl, qaTes
       }
 
       if (title.includes('ACCURACY OF IRRADIATION TIME')) {
+        const headerLower = header.map((h) => String(h || '').trim().toLowerCase());
+        const setTimeIdx = headerLower.findIndex((h) => h.includes('set time'));
+        const measuredTimeIdx = headerLower.findIndex((h) => h.includes('measured time'));
+        const tolOperatorIdx = headerLower.findIndex((h) => h.includes('tol operator') || h.includes('tolerance operator'));
+        const tolValueIdx = headerLower.findIndex((h) => h.includes('tol value') || h.includes('tolerance value'));
+
         sectionRows.forEach((r, idx) => {
           if (idx === 0) {
             pushRow('TestConditions_FCD', r[0], 0, 'Accuracy of Irradiation Time');
             pushRow('TestConditions_kV', r[1], 0, 'Accuracy of Irradiation Time');
             pushRow('TestConditions_ma', r[2], 0, 'Accuracy of Irradiation Time');
-            pushRow('Tolerance_Operator', r[5], 0, 'Accuracy of Irradiation Time');
-            pushRow('Tolerance_Value', r[6], 0, 'Accuracy of Irradiation Time');
+            pushRow(
+              'Tolerance_Operator',
+              r[tolOperatorIdx >= 0 ? tolOperatorIdx : 6],
+              0,
+              'Accuracy of Irradiation Time'
+            );
+            pushRow(
+              'Tolerance_Value',
+              r[tolValueIdx >= 0 ? tolValueIdx : 7],
+              0,
+              'Accuracy of Irradiation Time'
+            );
           }
-          pushRow('IrradiationTime_SetTime', r[3], idx, 'Accuracy of Irradiation Time');
-          pushRow('IrradiationTime_MeasuredTime', r[4], idx, 'Accuracy of Irradiation Time');
+          pushRow(
+            'IrradiationTime_SetTime',
+            r[setTimeIdx >= 0 ? setTimeIdx : 3],
+            idx,
+            'Accuracy of Irradiation Time'
+          );
+          pushRow(
+            'IrradiationTime_MeasuredTime',
+            r[measuredTimeIdx >= 0 ? measuredTimeIdx : 4],
+            idx,
+            'Accuracy of Irradiation Time'
+          );
         });
       } else if (title.includes('ACCURACY OF OPERATING POTENTIAL')) {
         if (sectionRows.length > 0) {
           const first = sectionRows[0];
-          const labels = [first[2], first[3], first[4]].map((x) => String(x || '').trim()).filter(Boolean);
+          const appliedKvpIdx = header.findIndex((h) => String(h || '').trim().toLowerCase() === 'applied kvp');
+          const measStartIdx = appliedKvpIdx >= 0 ? appliedKvpIdx + 1 : 6;
+          const labels = first
+            .slice(2, appliedKvpIdx >= 0 ? appliedKvpIdx : 6)
+            .map((x) => String(x || '').trim())
+            .filter(Boolean);
           if (labels.length) pushRow('MeasColumnLabels', labels.join(','), 0, 'Accuracy of Operating Potential');
           pushRow('Tolerance_Sign', first[0], 0, 'Accuracy of Operating Potential');
           pushRow('Tolerance_Value', first[1], 0, 'Accuracy of Operating Potential');
+          // Parse data rows using detected column positions from header
+          sectionRows.forEach((r, idx) => {
+            pushRow('Table2_SetKV', r[appliedKvpIdx >= 0 ? appliedKvpIdx : 6], idx, 'Accuracy of Operating Potential');
+            const measCols = r.slice(measStartIdx).map((v) => String(v || '').trim());
+            measCols.forEach((val, mIdx) => {
+              if (val) {
+                pushRow(`Table2_Meas${mIdx + 1}`, val, idx, 'Accuracy of Operating Potential');
+              }
+            });
+          });
+          continue;
         }
-        sectionRows.forEach((r, idx) => {
-          pushRow('Table2_SetKV', r[5], idx, 'Accuracy of Operating Potential');
-          pushRow('Table2_Meas1', r[6], idx, 'Accuracy of Operating Potential');
-          pushRow('Table2_Meas2', r[7], idx, 'Accuracy of Operating Potential');
-          pushRow('Table2_Meas3', r[8], idx, 'Accuracy of Operating Potential');
-        });
       } else if (title.includes('TOTAL FILTRATION')) {
         if (sectionRows.length > 0) {
           pushRow('TotalFiltration_Measured', sectionRows[0][0], 0, 'Total Filtration');
@@ -282,59 +318,131 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl, qaTes
       } else if (title.includes('LINEARITY OF MA LOADING')) {
         if (sectionRows.length > 0) {
           const first = sectionRows[0];
-          pushRow('Table1_FCD', first[0], 0, 'Linearity of mA Loading');
-          pushRow('Table1_kV', first[1], 0, 'Linearity of mA Loading');
-          pushRow('Table1_Time', first[2], 0, 'Linearity of mA Loading');
-          pushRow('ToleranceOperator', first[3], 0, 'Linearity of mA Loading');
-          pushRow('Tolerance', first[4], 0, 'Linearity of mA Loading');
-          const labels = [first[5], first[6], first[7]].map((x) => String(x || '').trim()).filter(Boolean);
+          const headerLower = header.map((h) => String(h || '').trim().toLowerCase());
+          const fddIdx = headerLower.findIndex((h) => h.includes('fdd') || h.includes('ffd') || h.includes('fcd'));
+          const kvIdx = headerLower.findIndex((h) => h === 'kv' || h === 'kvp' || h.includes('k v'));
+          const timeIdx = headerLower.findIndex((h) => h.includes('time'));
+          const tolOpIdx = headerLower.findIndex((h) => h.includes('tol operator') || h.includes('tolerance operator'));
+          const tolValIdx = headerLower.findIndex((h) => h.includes('tol value') || h.includes('tolerance value'));
+          const maIdx = headerLower.findIndex((h) => h === 'ma' || h.includes('m a'));
+          const measIdxs = headerLower
+            .map((h, idx) => ({ h, idx }))
+            .filter((x) => /^meas\s*\d+$/i.test(x.h))
+            .map((x) => x.idx);
+          const headerLabelIdxs = headerLower
+            .map((h, idx) => ({ h, idx }))
+            .filter((x) => /^header\s*\d+$/i.test(x.h))
+            .map((x) => x.idx);
+
+          pushRow('Table1_FCD', first[fddIdx >= 0 ? fddIdx : 0], 0, 'Linearity of mA Loading');
+          pushRow('Table1_kV', first[kvIdx >= 0 ? kvIdx : 1], 0, 'Linearity of mA Loading');
+          pushRow('Table1_Time', first[timeIdx >= 0 ? timeIdx : 2], 0, 'Linearity of mA Loading');
+          pushRow('ToleranceOperator', first[tolOpIdx >= 0 ? tolOpIdx : 3], 0, 'Linearity of mA Loading');
+          pushRow('Tolerance', first[tolValIdx >= 0 ? tolValIdx : 4], 0, 'Linearity of mA Loading');
+          const labels = (headerLabelIdxs.length > 0
+            ? headerLabelIdxs.map((idx) => first[idx])
+            : [first[5], first[6], first[7]])
+            .map((x) => String(x || '').trim())
+            .filter(Boolean);
           if (labels.length) pushRow('MeasColumnLabels', labels.join(','), 0, 'Linearity of mA Loading');
+          sectionRows.forEach((r, idx) => {
+            pushRow('Table2_ma', r[maIdx >= 0 ? maIdx : 8], idx, 'Linearity of mA Loading');
+            if (measIdxs.length > 0) {
+              measIdxs.forEach((colIdx, mIdx) => {
+                pushRow(`Table2_Meas${mIdx + 1}`, r[colIdx], idx, 'Linearity of mA Loading');
+              });
+            } else {
+              pushRow('Table2_Meas1', r[9], idx, 'Linearity of mA Loading');
+              pushRow('Table2_Meas2', r[10], idx, 'Linearity of mA Loading');
+              pushRow('Table2_Meas3', r[11], idx, 'Linearity of mA Loading');
+            }
+          });
+          continue;
         }
-        sectionRows.forEach((r, idx) => {
-          pushRow('Table2_ma', r[8], idx, 'Linearity of mA Loading');
-          pushRow('Table2_Meas1', r[9], idx, 'Linearity of mA Loading');
-          pushRow('Table2_Meas2', r[10], idx, 'Linearity of mA Loading');
-          pushRow('Table2_Meas3', r[11], idx, 'Linearity of mA Loading');
-        });
       } else if (title.includes('REPRODUCIBILITY OF RADIATION OUTPUT')) {
         if (sectionRows.length > 0) {
           const first = sectionRows[0];
+          const headerLower = header.map((h) => String(h || '').trim().toLowerCase());
+          const kvIdx = headerLower.findIndex((h) => h === 'kv' || h === 'kvp' || h.includes('k v'));
+          const masIdx = headerLower.findIndex((h) => h === 'mas' || h.includes('m as'));
+          const measIdxs = headerLower
+            .map((h, idx) => ({ h, idx }))
+            .filter((x) => /^meas\s*\d+$/i.test(x.h))
+            .map((x) => x.idx);
+          const headerLabelIdxs = headerLower
+            .map((h, idx) => ({ h, idx }))
+            .filter((x) => /^header\s*\d+$/i.test(x.h))
+            .map((x) => x.idx);
+
           pushRow('FCD_Value', first[0], 0, 'Reproducibility of Radiation Output');
           pushRow('Tolerance_Operator', first[1], 0, 'Reproducibility of Radiation Output');
           pushRow('Tolerance_Value', first[2], 0, 'Reproducibility of Radiation Output');
-          const labels = [first[3], first[4], first[5], first[6], first[7]].map((x) => String(x || '').trim()).filter(Boolean);
+          const labels = (headerLabelIdxs.length > 0
+            ? headerLabelIdxs.map((idx) => first[idx])
+            : [first[3], first[4], first[5], first[6], first[7]])
+            .map((x) => String(x || '').trim())
+            .filter(Boolean);
           if (labels.length) pushRow('MeasColumnLabels', labels.join(','), 0, 'Reproducibility of Radiation Output');
+          sectionRows.forEach((r, idx) => {
+            pushRow('OutputRow_kV', r[kvIdx >= 0 ? kvIdx : 8], idx, 'Reproducibility of Radiation Output');
+            pushRow('OutputRow_mas', r[masIdx >= 0 ? masIdx : 9], idx, 'Reproducibility of Radiation Output');
+            if (measIdxs.length > 0) {
+              measIdxs.forEach((colIdx, mIdx) => {
+                pushRow(`OutputRow_Meas${mIdx + 1}`, r[colIdx], idx, 'Reproducibility of Radiation Output');
+              });
+            } else {
+              pushRow('OutputRow_Meas1', r[10], idx, 'Reproducibility of Radiation Output');
+              pushRow('OutputRow_Meas2', r[11], idx, 'Reproducibility of Radiation Output');
+              pushRow('OutputRow_Meas3', r[12], idx, 'Reproducibility of Radiation Output');
+              pushRow('OutputRow_Meas4', r[13], idx, 'Reproducibility of Radiation Output');
+              pushRow('OutputRow_Meas5', r[14], idx, 'Reproducibility of Radiation Output');
+            }
+          });
+          continue;
         }
-        sectionRows.forEach((r, idx) => {
-          pushRow('OutputRow_kV', r[8], idx, 'Reproducibility of Radiation Output');
-          pushRow('OutputRow_mas', r[9], idx, 'Reproducibility of Radiation Output');
-          pushRow('OutputRow_Meas1', r[10], idx, 'Reproducibility of Radiation Output');
-          pushRow('OutputRow_Meas2', r[11], idx, 'Reproducibility of Radiation Output');
-          pushRow('OutputRow_Meas3', r[12], idx, 'Reproducibility of Radiation Output');
-          pushRow('OutputRow_Meas4', r[13], idx, 'Reproducibility of Radiation Output');
-          pushRow('OutputRow_Meas5', r[14], idx, 'Reproducibility of Radiation Output');
-        });
       } else if (title.includes('RADIATION LEAKAGE LEVEL')) {
         if (sectionRows.length > 0) {
           const first = sectionRows[0];
-          pushRow('Settings_FCD', first[0], 0, 'Tube Housing Leakage');
-          pushRow('Settings_kV', first[1], 0, 'Tube Housing Leakage');
-          pushRow('Settings_ma', first[2], 0, 'Tube Housing Leakage');
-          pushRow('Settings_Time', first[3], 0, 'Tube Housing Leakage');
-          pushRow('Workload', first[4], 0, 'Tube Housing Leakage');
-          pushRow('ToleranceValue', first[5], 0, 'Tube Housing Leakage');
-          pushRow('ToleranceOperator', first[6], 0, 'Tube Housing Leakage');
-          const labels = [header[8], header[9], header[10], header[11], header[12]].map((x) => String(x || '').trim()).filter(Boolean);
+          const headerLower = header.map((h) => String(h || '').trim().toLowerCase());
+          const fddIdx = headerLower.findIndex((h) => h.includes('fdd') || h.includes('ffd') || h.includes('fcd'));
+          const kvIdx = headerLower.findIndex((h) => h === 'kv' || h === 'kvp' || h.includes('k v'));
+          const maIdx = headerLower.findIndex((h) => h === 'ma' || h.includes('m a'));
+          const timeIdx = headerLower.findIndex((h) => h.includes('time'));
+          const workloadIdx = headerLower.findIndex((h) => h.includes('workload'));
+          const tolValIdx = headerLower.findIndex((h) => h.includes('tol value') || h.includes('tolerance value'));
+          const tolOpIdx = headerLower.findIndex((h) => h.includes('tol operator') || h.includes('tolerance operator'));
+          const locationIdx = headerLower.findIndex((h) => h === 'location');
+          const frontIdx = headerLower.findIndex((h) => h === 'front');
+          const backIdx = headerLower.findIndex((h) => h === 'back');
+          const leftIdx = headerLower.findIndex((h) => h === 'left');
+          const rightIdx = headerLower.findIndex((h) => h === 'right');
+          const topIdx = headerLower.findIndex((h) => h === 'top');
+
+          pushRow('Settings_FCD', first[fddIdx >= 0 ? fddIdx : 0], 0, 'Tube Housing Leakage');
+          pushRow('Settings_kV', first[kvIdx >= 0 ? kvIdx : 1], 0, 'Tube Housing Leakage');
+          pushRow('Settings_ma', first[maIdx >= 0 ? maIdx : 2], 0, 'Tube Housing Leakage');
+          pushRow('Settings_Time', first[timeIdx >= 0 ? timeIdx : 3], 0, 'Tube Housing Leakage');
+          pushRow('Workload', first[workloadIdx >= 0 ? workloadIdx : 4], 0, 'Tube Housing Leakage');
+          pushRow('ToleranceValue', first[tolValIdx >= 0 ? tolValIdx : 6], 0, 'Tube Housing Leakage');
+          pushRow('ToleranceOperator', first[tolOpIdx >= 0 ? tolOpIdx : 7], 0, 'Tube Housing Leakage');
+          const labels = [
+            header[frontIdx >= 0 ? frontIdx : 9],
+            header[backIdx >= 0 ? backIdx : 10],
+            header[leftIdx >= 0 ? leftIdx : 11],
+            header[rightIdx >= 0 ? rightIdx : 12],
+            header[topIdx >= 0 ? topIdx : 13],
+          ].map((x) => String(x || '').trim()).filter(Boolean);
           if (labels.length) pushRow('MeasColumnLabels', labels.join(','), 0, 'Tube Housing Leakage');
+          sectionRows.forEach((r, idx) => {
+            pushRow('LeakageMeasurement_Location', r[locationIdx >= 0 ? locationIdx : 8], idx, 'Tube Housing Leakage');
+            pushRow('LeakageMeasurement_Front', r[frontIdx >= 0 ? frontIdx : 9], idx, 'Tube Housing Leakage');
+            pushRow('LeakageMeasurement_Back', r[backIdx >= 0 ? backIdx : 10], idx, 'Tube Housing Leakage');
+            pushRow('LeakageMeasurement_Left', r[leftIdx >= 0 ? leftIdx : 11], idx, 'Tube Housing Leakage');
+            pushRow('LeakageMeasurement_Right', r[rightIdx >= 0 ? rightIdx : 12], idx, 'Tube Housing Leakage');
+            pushRow('LeakageMeasurement_Top', r[topIdx >= 0 ? topIdx : 13], idx, 'Tube Housing Leakage');
+          });
+          continue;
         }
-        sectionRows.forEach((r, idx) => {
-          pushRow('LeakageMeasurement_Location', r[7], idx, 'Tube Housing Leakage');
-          pushRow('LeakageMeasurement_Front', r[8], idx, 'Tube Housing Leakage');
-          pushRow('LeakageMeasurement_Back', r[9], idx, 'Tube Housing Leakage');
-          pushRow('LeakageMeasurement_Left', r[10], idx, 'Tube Housing Leakage');
-          pushRow('LeakageMeasurement_Right', r[11], idx, 'Tube Housing Leakage');
-          pushRow('LeakageMeasurement_Top', r[12], idx, 'Tube Housing Leakage');
-        });
       } else if (title.includes('RADIATION PROTECTION SURVEY')) {
         if (sectionRows.length > 0) {
           const first = sectionRows[0];
@@ -499,11 +607,9 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl, qaTes
               };
             });
             setCsvDataVersion(prev => prev + 1);
-            toast.success('Accuracy of Operating Potential data loaded from CSV');
           }
         } catch (error: any) {
           console.error('Error processing Accuracy of Operating Potential:', error);
-          toast.error(`Failed to process Accuracy of Operating Potential: ${error?.message || 'Unknown error'}`);
         }
       }
 
@@ -554,11 +660,9 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl, qaTes
               }
             }));
             setCsvDataVersion(prev => prev + 1);
-            toast.success('Accuracy of Irradiation Time data loaded from CSV');
           }
         } catch (error: any) {
           console.error('Error processing Accuracy of Irradiation Time:', error);
-          toast.error(`Failed to process Accuracy of Irradiation Time: ${error?.message || 'Unknown error'}`);
         }
       }
 
@@ -570,6 +674,8 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl, qaTes
           const measurements: any[] = [];
           let toleranceSign = '±';
           let toleranceValue = '2.0';
+          let hasToleranceSignFromCsv = false;
+          let hasToleranceValueFromCsv = false;
           const totalFiltration = { measured: '', required: '', atKvp: '' };
           const filtrationTolerance = {
             forKvGreaterThan70: '1.5',
@@ -593,8 +699,14 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl, qaTes
               }
             }
 
-            if (field === 'Tolerance_Sign') toleranceSign = value;
-            if (field === 'Tolerance_Value') toleranceValue = value;
+            if (field === 'Tolerance_Sign' && value) {
+              toleranceSign = value;
+              hasToleranceSignFromCsv = true;
+            }
+            if (field === 'Tolerance_Value' && value) {
+              toleranceValue = value;
+              hasToleranceValueFromCsv = true;
+            }
 
             if (field === 'TotalFiltration_Measured') totalFiltration.measured = value;
             if (field === 'TotalFiltration_Required') totalFiltration.required = value;
@@ -653,7 +765,14 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl, qaTes
                   measurements.length > 0
                     ? measurements
                     : (prev.totalFiltration?.measurements || []),
-                tolerance: { sign: toleranceSign, value: toleranceValue },
+                tolerance: {
+                  sign: hasToleranceSignFromCsv
+                    ? toleranceSign
+                    : (prev.totalFiltration?.tolerance?.sign || '±'),
+                  value: hasToleranceValueFromCsv
+                    ? toleranceValue
+                    : (prev.totalFiltration?.tolerance?.value || '2.0'),
+                },
                 totalFiltration: {
                   measured: String(totalFiltration.measured || '').trim() !== ''
                     ? totalFiltration.measured
@@ -685,11 +804,9 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl, qaTes
               }
             }));
             setCsvDataVersion(prev => prev + 1);
-            toast.success('Total Filtration data loaded from CSV');
           }
         } catch (error: any) {
           console.error('Error processing Total Filtration:', error);
-          toast.error(`Failed to process Total Filtration: ${error?.message || 'Unknown error'}`);
         }
       }
 
@@ -764,11 +881,9 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl, qaTes
               }
             }));
             setCsvDataVersion(prev => prev + 1);
-            toast.success('Linearity of mA Loading data loaded from CSV');
           }
         } catch (error: any) {
           console.error('Error processing Linearity of mA Loading:', error);
-          toast.error(`Failed to process Linearity of mA Loading: ${error?.message || 'Unknown error'}`);
         }
       }
 
@@ -868,13 +983,11 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl, qaTes
               reproducibilityOfRadiationOutput: dataToSet,
             }));
             setCsvDataVersion(prev => prev + 1);
-            toast.success('Reproducibility of Radiation Output data loaded from CSV');
           } else {
             console.warn('No valid output rows found for Reproducibility of Radiation Output. All rows:', outputRows);
           }
         } catch (error: any) {
           console.error('Error processing Reproducibility of Radiation Output:', error);
-          toast.error(`Failed to process Reproducibility of Radiation Output: ${error?.message || 'Unknown error'}`);
         }
       }
 
@@ -962,11 +1075,9 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl, qaTes
               }
             }));
             setCsvDataVersion(prev => prev + 1);
-            toast.success('Tube Housing Leakage data loaded from CSV');
           }
         } catch (error: any) {
           console.error('Error processing Tube Housing Leakage:', error);
-          toast.error(`Failed to process Tube Housing Leakage: ${error?.message || 'Unknown error'}`);
         }
       }
 
@@ -1028,18 +1139,15 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl, qaTes
               }
             }));
             setCsvDataVersion(prev => prev + 1);
-            toast.success('Radiation Protection Survey data loaded from CSV');
           }
         } catch (error: any) {
           console.error('Error processing Radiation Protection Survey:', error);
-          toast.error(`Failed to process Radiation Protection Survey: ${error?.message || 'Unknown error'}`);
         }
       }
 
-      toast.success('CSV data processed successfully!');
     } catch (error: any) {
       console.error('Error processing CSV data:', error);
-      toast.error(`Failed to process CSV: ${error?.message || 'Unknown error'}`);
+      throw error;
     } finally {
       setCsvUploading(false);
     }
@@ -1067,6 +1175,7 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl, qaTes
         const text = e.target?.result as string;
         const csvData = parseCSV(text);
         await processCSVData(csvData);
+        toast.success('File data loaded and auto-filled successfully!');
       } catch (error: any) {
         console.error('Error reading CSV file:', error);
         toast.error(`Failed to read CSV file: ${error?.message || 'Unknown error'}`);

@@ -52,61 +52,81 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
   ]);
 
   const [tolerance, setTolerance] = useState<string>('0.1');
+  const [toleranceOperator, setToleranceOperator] = useState<string>('<=');
 
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [hasSaved, setHasSaved] = useState(false);
 
+  const applyImportedData = (rows: any[]) => {
+    if (!rows || rows.length === 0) return;
+    try {
+      const t1: Table1Row = { fcd: "", kv: "", time: "" };
+      const tableRows: Table2Row[] = [];
+      let tol = "0.1";
+      let tolOp = "<=";
+      const h: string[] = [];
+
+      rows.forEach((row) => {
+        const field = row["Field Name"];
+        const val = row["Value"];
+        const rowIndex = parseInt(row["Row Index"], 10) || 0;
+
+        if (field === "Linearity_FCD") t1.fcd = val;
+        if (field === "Linearity_kV") t1.kv = val;
+        if (field === "Linearity_Time") t1.time = val;
+        if (field === "Linearity_Tolerance") tol = val;
+        if (field === "Linearity_ToleranceValue") tol = val;
+        if (field === "Linearity_ToleranceOperator") tolOp = val;
+        if (field?.startsWith("Header_")) {
+          const idx = parseInt(field.replace("Header_", ""), 10) - 1;
+          while (h.length <= idx) h.push(`Meas ${h.length + 1}`);
+          h[idx] = val;
+        }
+
+        if (field?.startsWith("Linearity_")) {
+          while (tableRows.length <= rowIndex) {
+            tableRows.push({
+              id: (tableRows.length + 1).toString(),
+              ma: "",
+              measuredOutputs: [],
+              average: "",
+              x: "",
+              xMax: "",
+              xMin: "",
+              col: "",
+              remarks: "",
+            });
+          }
+          const subField = field.replace("Linearity_", "");
+          if (subField === "mA") tableRows[rowIndex].ma = val;
+          if (subField.startsWith("Meas")) {
+            const colIdx = parseInt(subField.replace("Meas", ""), 10) - 1;
+            while (tableRows[rowIndex].measuredOutputs.length <= colIdx) {
+              tableRows[rowIndex].measuredOutputs.push("");
+            }
+            tableRows[rowIndex].measuredOutputs[colIdx] = val;
+          }
+        }
+      });
+
+      if (t1.fcd || t1.kv || t1.time) setTable1Row(t1);
+      if (tableRows.length > 0) setTable2Rows(tableRows);
+      if (h.length > 0) setMeasHeaders(h);
+      setTolerance(tol);
+      setToleranceOperator(tolOp);
+      setHasSaved(false);
+      setIsEditing(true);
+    } catch (err) {
+      console.error("Error mapping CSV data for Linearity of mA:", err);
+    }
+  };
+
   // Handle CSV initial data
   useEffect(() => {
     if (initialData && initialData.length > 0) {
-      try {
-        const t1: Table1Row = { fcd: "", kv: "", time: "" };
-        const rows: Table2Row[] = [];
-        let tol = "0.1";
-        const h: string[] = [];
-
-        initialData.forEach(row => {
-          const field = row['Field Name'];
-          const val = row['Value'];
-          const rowIndex = row['Row Index'];
-
-          if (field === 'Linearity_FCD') t1.fcd = val;
-          if (field === 'Linearity_kV') t1.kv = val;
-          if (field === 'Linearity_Time') t1.time = val;
-          if (field === 'Linearity_Tolerance') tol = val;
-          if (field.startsWith('Header_')) {
-            const idx = parseInt(field.replace('Header_', '')) - 1;
-            while (h.length <= idx) h.push(`Meas ${h.length + 1}`);
-            h[idx] = val;
-          }
-
-          if (field.startsWith('Linearity_')) {
-            while (rows.length <= rowIndex) {
-              rows.push({ id: (rows.length + 1).toString(), ma: "", measuredOutputs: [], average: "", x: "", xMax: "", xMin: "", col: "", remarks: "" });
-            }
-            const subField = field.replace('Linearity_', '');
-            if (subField === 'mA') rows[rowIndex].ma = val;
-            if (subField.startsWith('Meas')) {
-              const colIdx = parseInt(subField.replace('Meas', '')) - 1;
-              while (rows[rowIndex].measuredOutputs.length <= colIdx) {
-                rows[rowIndex].measuredOutputs.push("");
-              }
-              rows[rowIndex].measuredOutputs[colIdx] = val;
-            }
-          }
-        });
-
-        if (t1.fcd || t1.kv || t1.time) setTable1Row(t1);
-        if (rows.length > 0) setTable2Rows(rows);
-        if (h.length > 0) setMeasHeaders(h);
-        setTolerance(tol);
-        setHasSaved(false);
-        setIsEditing(true);
-      } catch (err) {
-        console.error("Error mapping CSV data for Linearity of mA:", err);
-      }
+      applyImportedData(initialData);
     }
   }, [initialData, refreshKey]);
 
@@ -212,18 +232,42 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
     const xMax = xValues.length > 0 ? Math.max(...xValues).toFixed(4) : '—';
     const xMin = xValues.length > 0 ? Math.min(...xValues).toFixed(4) : '—';
     const colVal = xMax !== '—' && xMin !== '—' && (parseFloat(xMax) + parseFloat(xMin)) > 0
-      ? ((parseFloat(xMax) - parseFloat(xMin)) / (parseFloat(xMax) + parseFloat(xMin))).toFixed(4)
-      : '—';
-    const pass = colVal !== '—' && parseFloat(colVal) <= tol;
+      ? ((parseFloat(xMax) - parseFloat(xMin)) / (parseFloat(xMax) + parseFloat(xMin)))
+      : NaN;
+    const col = !isNaN(colVal) && colVal > 0 ? colVal.toFixed(4) : '—';
+
+    let pass = false;
+    if (col !== '—') {
+      const colNum = parseFloat(col);
+      switch (toleranceOperator) {
+        case '<':
+          pass = colNum < tol;
+          break;
+        case '>':
+          pass = colNum > tol;
+          break;
+        case '<=':
+          pass = colNum <= tol;
+          break;
+        case '>=':
+          pass = colNum >= tol;
+          break;
+        case '=':
+          pass = Math.abs(colNum - tol) < 0.0001;
+          break;
+        default:
+          pass = colNum <= tol;
+      }
+    }
 
     return rowsWithX.map(row => ({
       ...row,
       xMax,
       xMin,
-      col: colVal,
-      remarks: pass ? 'Pass' : colVal === '—' ? '' : 'Fail',
+      col,
+      remarks: pass ? 'Pass' : col === '—' ? '' : 'Fail',
     }));
-  }, [table2Rows, tolerance, table1Row.time]);
+  }, [table2Rows, tolerance, toleranceOperator, table1Row.time]);
 
   const hasValidTime = useMemo(() => {
     const timeSec = parseFloat(table1Row.time);
@@ -279,6 +323,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
             );
           }
           setTolerance(data.tolerance || '0.1');
+          setToleranceOperator(data.toleranceOperator || '<=');
           setHasSaved(true);
           setIsEditing(false);
         } else {
@@ -338,6 +383,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
         })),
         measHeaders,
         tolerance,
+        toleranceOperator,
       };
 
       let result;
@@ -596,14 +642,30 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
             </button>
           )}
           <div className="flex items-center gap-2 ml-auto">
-            <span className="text-sm font-medium text-gray-700 whitespace-nowrap">Tolerance (CoL) less than</span>
+            <span className="text-sm font-medium text-gray-700 whitespace-nowrap">Tolerance (CoL)</span>
+            <select
+              value={toleranceOperator}
+              onChange={(e) => setToleranceOperator(e.target.value)}
+              disabled={isViewMode}
+              className={`px-3 py-2 text-center font-bold border-2 border-blue-400 rounded-lg focus:ring-4 focus:ring-blue-200 ${
+                isViewMode ? "bg-gray-50 text-gray-500 cursor-not-allowed" : ""
+              }`}
+            >
+              <option value="<">&lt;</option>
+              <option value=">">&gt;</option>
+              <option value="<=">&lt;=</option>
+              <option value=">=">&gt;=</option>
+              <option value="=">=</option>
+            </select>
             <input
               type="number"
               step="0.001"
               value={tolerance}
-              onChange={e => setTolerance(e.target.value)}
+              onChange={(e) => setTolerance(e.target.value)}
               disabled={isViewMode}
-              className={`w-24 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'}`}
+              className={`w-24 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-bold border-2 border-blue-400 ${
+                isViewMode ? "bg-gray-50 text-gray-500 cursor-not-allowed" : ""
+              }`}
             />
           </div>
         </div>

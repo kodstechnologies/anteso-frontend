@@ -366,7 +366,20 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, on
             <tbody>
               {processedRows.map((row) => (
                 <tr key={row.id} className="hover:bg-gray-50 border-t">
-                  <td className="px-6 py-4 font-bold text-gray-800">{row.focusType}</td>
+                  <td className="px-6 py-4 font-bold text-gray-800">
+                    {isViewOnly ? (
+                      <span className="text-gray-900">{row.focusType}</span>
+                    ) : (
+                      <select
+                        value={row.focusType}
+                        onChange={(e) => updateRow(row.id, 'focusType', e.target.value)}
+                        className="block w-full min-w-[9rem] px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-purple-500 focus:border-purple-500 bg-white"
+                      >
+                        <option value="Small Focus">Small Focus</option>
+                        <option value="Large Focus">Large Focus</option>
+                      </select>
+                    )}
+                  </td>
                   <td className="px-6 py-4">
                     <input
                       type="number"

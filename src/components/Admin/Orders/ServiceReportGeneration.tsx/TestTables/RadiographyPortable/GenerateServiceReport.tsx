@@ -433,8 +433,10 @@ const RadiographyPortable: React.FC<{ serviceId: string; qaTestDate?: string | n
       },
       // mA linearity: exposure includes Time (sec). Table: mA, X (mGy/mA*s).
       'Linearity Of mA Loading': {
-        'FCD (cm)': 'Table1_fcd', 'kV': 'Table1_kv', 'Time (sec)': 'Table1_time',
-        'mA': 'Table2_ma', 'Meas 1': 'Table2_meas1', 'Meas 2': 'Table2_meas2', 'Meas 3': 'Table2_meas3',
+        'FCD (cm)': 'Table1_fcd', 'FDD (cm)': 'Table1_fcd', 'FCD': 'Table1_fcd', 'FDD': 'Table1_fcd',
+        'kV': 'Table1_kv', 'Time (sec)': 'Table1_time', 'Time': 'Table1_time',
+        'mA': 'Table2_ma', 'mA Applied': 'Table2_ma', 'mAs Applied': 'Table2_ma',
+        'Meas 1': 'Table2_meas1', 'Meas 2': 'Table2_meas2', 'Meas 3': 'Table2_meas3',
         'Meas 4': 'Table2_meas4', 'Meas 5': 'Table2_meas5',
         'Average': 'Table2_average', 'X (mGy/mA*s)': 'Table2_x', 'X (mGy/mA)': 'Table2_x',
         'Tolerance (%)': 'Tolerance_Value', 'Tolerance Operator': 'Tolerance_operator', 'Remarks': 'Table2_remarks'

@@ -22,6 +22,7 @@ interface TotalFilterationProps {
     testId?: string | null;
     onTestSaved?: (testId: string) => void;
     csvData?: any[];
+    csvDataVersion?: number;
 }
 
 const TotalFilteration: React.FC<TotalFilterationProps> = ({
@@ -29,6 +30,7 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
     testId: initialTestId = null,
     onTestSaved,
     csvData,
+    csvDataVersion,
 }) => {
     const [testId, setTestId] = useState<string | null>(initialTestId);
     const [isSaved, setIsSaved] = useState(!!initialTestId);
@@ -81,6 +83,10 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
 
     useEffect(() => {
         const loadTestData = async () => {
+            if (csvDataVersion) {
+                setIsLoading(false);
+                return;
+            }
             if (!serviceId || (csvData && csvData.length > 0)) {
                 if (csvData && csvData.length > 0) {
                     setIsSaved(false);
@@ -97,6 +103,8 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
                 } else {
                     data = await getTotalFilterationByServiceIdForOArm(serviceId);
                 }
+
+                if (csvDataVersion) return;
 
                 if (data) {
                     setTestId(data._id || data.testId || null);
@@ -139,11 +147,11 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
         };
 
         loadTestData();
-    }, [initialTestId, serviceId]);
+    }, [initialTestId, serviceId, csvDataVersion]);
 
     // Process CSV data when it arrives
     useEffect(() => {
-        if (!csvData || csvData.length === 0) return;
+        if (!csvDataVersion || !csvData || csvData.length === 0) return;
         console.log('TotalFilteration: Processing CSV data', csvData);
         try {
             const stations: string[] = [];
@@ -208,13 +216,16 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
                         : Array.from({ length: numStations }, (_, i) => `Meas ${i + 1}`)
                 );
                 setRows(newRows);
-                if (tfAtKvp || tfRequired) {
-                    setTotalFiltration(prev => ({
-                        ...prev,
-                        atKvp: tfAtKvp || prev.atKvp,
-                        required: tfRequired || prev.required,
-                    }));
-                }
+            }
+
+            if (tfAtKvp || tfRequired) {
+                setTotalFiltration(prev => ({
+                    ...prev,
+                    atKvp: tfAtKvp || prev.atKvp,
+                    required: tfRequired || prev.required,
+                }));
+            }
+            if (tfAtKvp || tfRequired || newRows.length > 0) {
                 setToleranceSign(tolSign);
                 setToleranceValue(tolVal);
                 setIsSaved(false);
@@ -223,7 +234,7 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
         } catch (err) {
             console.error('TotalFilteration CSV processing error:', err);
         }
-    }, [csvData]);
+    }, [csvData, csvDataVersion]);
 
     const saveTest = async () => {
         if (!serviceId) {

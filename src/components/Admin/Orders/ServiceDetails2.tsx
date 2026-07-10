@@ -2985,21 +2985,19 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                         <div className="flex gap-2">
                                                                             <button
                                                                                 onClick={() => handleEditToggle(workType.id)}
-                                                                                disabled={isPaymentComplete}
                                                                                 className={`flex items-center gap-2 px-5 py-2.5 text-sm font-semibold 
                                                                                 text-white rounded-xl 
                                                                                 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 
                                                                                 shadow-lg hover:shadow-xl 
                                                                                 hover:scale-105 active:scale-95 
-                                                                                transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100`}
+                                                                                transition-all duration-300`}
                                                                             >
                                                                                 <Edit className="h-4 w-4" />
                                                                                 Edit
                                                                             </button>
                                                                             <button
                                                                                 onClick={() => handleReassign(workType.id)}
-                                                                                disabled={isPaymentComplete}
-                                                                                className="flex items-center gap-2 px-3 py-1 text-sm bg-orange-100 text-orange-700 rounded-md hover:bg-orange-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-orange-100"
+                                                                                className="flex items-center gap-2 px-3 py-1 text-sm bg-orange-100 text-orange-700 rounded-md hover:bg-orange-200 transition-colors"
                                                                             >
                                                                                 <RefreshCw className="h-3 w-3" />
                                                                                 Reassign
@@ -3018,7 +3016,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                         Staff assigned at: {formatDate(workType.assignedAtStaff)}
                                                                     </span>
                                                                 </div>
-                                                                {canAssignQATest(workType) && !isPaymentComplete && editingWorkType[workType.id] && (
+                                                                {canAssignQATest(workType) && editingWorkType[workType.id] && (
                                                                     <div className="p-3 bg-blue-50 rounded-md border border-blue-200">
                                                                         <div className="flex gap-2 items-center">
                                                                             <label className="text-sm font-medium text-blue-700">Update Status:</label>

@@ -30,14 +30,15 @@ interface Props {
   testId?: string | null;
   onTestSaved?: (testId: string) => void;
   refreshKey?: number;
-  initialData?: any[];
+  csvDataVersion?: number;
+  initialData?: any;
 }
 
 const OutputConsistencyForCArm: React.FC<Props> = ({
   serviceId,
   testId: propTestId = null,
   onTestSaved,
-  refreshKey,
+  csvDataVersion,
   initialData,
 }) => {
   const [testId, setTestId] = useState<string | null>(propTestId);
@@ -69,74 +70,100 @@ const OutputConsistencyForCArm: React.FC<Props> = ({
   const [headers, setHeaders] = useState<string[]>(INITIAL_HEADERS);
   const [tolerance, setTolerance] = useState<string>('0.02'); // Decimal: 2% = 0.02
 
-  // Handle CSV initial data
-  useEffect(() => {
-    if (initialData && initialData.length > 0) {
-      try {
-        const p: Parameters = { id: '1', ffd: '100', time: '1.0' };
-        const rows: OutputRow[] = [];
-        let tol = '0.02';
-        const h: string[] = [];
+  const applyImportedData = (data: any) => {
+    if (!data) return;
 
-        initialData.forEach(row => {
-          const field = row['Field Name'];
-          const val = row['Value'];
-          const rowIndex = row['Row Index'];
+    const fieldRows: any[] = Array.isArray(data)
+      ? data
+      : Array.isArray(data.fieldRows)
+        ? data.fieldRows
+        : [];
 
-          if (field === 'Parameters_FFD') p.ffd = val;
-          if (field === 'Parameters_Time') p.time = val;
-          if (field === 'Output_Tolerance') tol = val;
-          if (field.startsWith('Header_')) {
-            const idx = parseInt(field.replace('Header_', '')) - 1;
-            while (h.length <= idx) h.push(`Meas ${h.length + 1}`);
-            h[idx] = val;
-          }
+    const importedHeaderList = Array.isArray(data?.measurementHeaders)
+      ? data.measurementHeaders
+      : Array.isArray(data?.measHeaders)
+        ? data.measHeaders
+        : [];
 
-          if (field.startsWith('Output_')) {
-            while (rows.length <= rowIndex) {
-              rows.push({ 
-                id: (rows.length + 1).toString(), 
-                kvp: "", 
-                ma: "", 
-                outputs: Array(h.length || INITIAL_HEADERS.length).fill(""), 
-                mean: "", 
-                cov: "", 
-                remark: "" 
-              });
-            }
-            const subField = field.replace('Output_', '');
-            if (subField === 'kV') rows[rowIndex].kvp = val;
-            if (subField === 'mA') rows[rowIndex].ma = val;
-            if (subField.startsWith('Meas')) {
-              const colIdx = parseInt(subField.replace('Meas', '')) - 1;
-              while (rows[rowIndex].outputs.length <= colIdx) {
-                rows[rowIndex].outputs.push("");
-              }
-              rows[rowIndex].outputs[colIdx] = val;
-            }
-          }
-        });
+    try {
+      const p: Parameters = { id: '1', ffd: '100', time: '1.0' };
+      const rows: OutputRow[] = [];
+      let tol = '0.02';
+      const h: string[] = [...importedHeaderList];
+      let maxMeasCol = 0;
 
-        if (p.ffd || p.time) setParameters(p);
-        if (rows.length > 0) {
-          // Ensure all rows have the correct number of outputs
-          const finalHeaders = h.length > 0 ? h : INITIAL_HEADERS;
-          const normalizedRows = rows.map(row => ({
-            ...row,
-            outputs: row.outputs.length === finalHeaders.length 
-              ? row.outputs 
-              : Array(finalHeaders.length).fill('')
-          }));
-          setOutputRows(normalizedRows);
+      fieldRows.forEach((row) => {
+        const field = row['Field Name'];
+        const val = row['Value'];
+        const rowIndex = parseInt(String(row['Row Index'] ?? '0'), 10) || 0;
+
+        if (field === 'Parameters_FFD') p.ffd = val;
+        if (field === 'Parameters_Time') p.time = val;
+        if (field === 'Output_Tolerance') tol = val;
+        if (field?.startsWith('Header_')) {
+          const idx = parseInt(field.replace('Header_', ''), 10) - 1;
+          while (h.length <= idx) h.push(`Meas ${h.length + 1}`);
+          h[idx] = val;
         }
-        if (h.length > 0) setHeaders(h);
-        setTolerance(tol);
-        setIsSaved(false);
-      } catch (err) {
-        console.error("Error mapping CSV data for Output Consistency:", err);
+
+        if (field?.startsWith('Output_')) {
+          const measMatch = field.match(/^Output_Meas(\d+)$/i);
+          if (measMatch) maxMeasCol = Math.max(maxMeasCol, parseInt(measMatch[1], 10));
+
+          const colCount = Math.max(h.length, maxMeasCol, INITIAL_HEADERS.length);
+          while (rows.length <= rowIndex) {
+            rows.push({
+              id: (rows.length + 1).toString(),
+              kvp: '',
+              ma: '',
+              outputs: Array(colCount).fill(''),
+              mean: '',
+              cov: '',
+              remark: '',
+            });
+          }
+          const subField = field.replace('Output_', '');
+          if (subField === 'kV') rows[rowIndex].kvp = val;
+          if (subField === 'mA') rows[rowIndex].ma = val;
+          if (subField.startsWith('Meas')) {
+            const colIdx = parseInt(subField.replace('Meas', ''), 10) - 1;
+            while (rows[rowIndex].outputs.length <= colIdx) {
+              rows[rowIndex].outputs.push('');
+            }
+            rows[rowIndex].outputs[colIdx] = val;
+          }
+        }
+      });
+
+      const colCount = Math.max(h.length, maxMeasCol, importedHeaderList.length, 3);
+      const finalHeaders = h.length > 0
+        ? [...h, ...Array(Math.max(0, colCount - h.length)).fill('')].map((label, i) => label || `Meas ${i + 1}`).slice(0, colCount)
+        : Array.from({ length: colCount }, (_, i) => `Meas ${i + 1}`);
+
+      if (p.ffd || p.time) setParameters(p);
+      if (rows.length > 0) {
+        setOutputRows(
+          rows.map((row) => {
+            const outputs = [...row.outputs];
+            while (outputs.length < finalHeaders.length) outputs.push('');
+            return { ...row, outputs: outputs.slice(0, finalHeaders.length) };
+          })
+        );
       }
+      setHeaders(finalHeaders);
+      setTolerance(tol);
+      setIsSaved(false);
+    } catch (err) {
+      console.error('Error mapping CSV data for Output Consistency:', err);
     }
-  }, [initialData, refreshKey]);
+  };
+
+  // Apply Excel/CSV import
+  useEffect(() => {
+    if (!initialData || !csvDataVersion) return;
+    applyImportedData(initialData);
+    setIsLoading(false);
+  }, [csvDataVersion, initialData]);
 
   // Auto-calculate Mean, COV (decimal), and Remark per row
   const processedRows = useMemo(() => {
@@ -179,10 +206,11 @@ const OutputConsistencyForCArm: React.FC<Props> = ({
   // Load test data
   useEffect(() => {
     const loadTest = async () => {
-      if (!serviceId || (initialData && initialData.length > 0)) {
-        if (initialData && initialData.length > 0) {
-          setIsSaved(false);
-        }
+      if (csvDataVersion) {
+        setIsLoading(false);
+        return;
+      }
+      if (!serviceId) {
         setIsLoading(false);
         return;
       }
@@ -194,6 +222,7 @@ const OutputConsistencyForCArm: React.FC<Props> = ({
         } else {
           data = await getOutputConsistencyByServiceIdForCArm(serviceId);
         }
+        if (csvDataVersion) return;
 
         if (data) {
           setTestId(data._id || data.testId);
@@ -251,7 +280,7 @@ const OutputConsistencyForCArm: React.FC<Props> = ({
       }
     };
     loadTest();
-  }, [propTestId, serviceId]);
+  }, [propTestId, serviceId, csvDataVersion]);
 
   // Save / Update
   const handleSave = async () => {

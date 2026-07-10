@@ -191,6 +191,9 @@ const OutputConsistencyForOArm: React.FC<Props> = ({
       csvData.forEach((item: any) => {
         const field = item['Field Name'];
         const val = item['Value'];
+        if (field === 'Param_FFD' && val) setParameters(p => ({ ...p, ffd: String(val) }));
+        if (field === 'Param_Time' && val) setParameters(p => ({ ...p, time: String(val) }));
+        if (field === 'Tolerance_Value' && val) setTolerance(String(val));
         if (field?.startsWith('Header_')) {
           const idx = parseInt(field.replace('Header_', ''), 10) - 1;
           while (h.length <= idx) h.push(`Meas ${h.length + 1}`);
@@ -211,10 +214,10 @@ const OutputConsistencyForOArm: React.FC<Props> = ({
         return Array.from({ length: maxIdx + 1 }, (_, i) => (r[`Row_Output_${i}`] != null ? String(r[`Row_Output_${i}`]) : ''));
       };
 
-      // Extract parameters from first row
-      const firstRow = rowMap[1] || {};
-      if (firstRow['Param_FFD']) setParameters(p => ({ ...p, ffd: firstRow['Param_FFD'] }));
-      if (firstRow['Param_Time']) setParameters(p => ({ ...p, time: firstRow['Param_Time'] }));
+      // Extract parameters from row 0 (vertical format) or first data row (horizontal format)
+      const paramRow = rowMap[0] || rowMap[1] || {};
+      if (paramRow['Param_FFD']) setParameters(p => ({ ...p, ffd: paramRow['Param_FFD'] }));
+      if (paramRow['Param_Time']) setParameters(p => ({ ...p, time: paramRow['Param_Time'] }));
 
       const newRows: any[] = [];
       Object.keys(rowMap).forEach(idxStr => {

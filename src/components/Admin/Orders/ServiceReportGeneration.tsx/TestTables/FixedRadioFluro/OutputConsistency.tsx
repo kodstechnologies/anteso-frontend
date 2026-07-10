@@ -37,16 +37,16 @@ interface Props {
   serviceId: string;
   testId?: string;
   onTestSaved?: (testId: string) => void;
-  refreshKey?: number;
   initialData?: any;
+  csvDataVersion?: number;
 }
 
 const ConsistencyOfRadiationOutput: React.FC<Props> = ({ 
   serviceId, 
   testId: propTestId,
   onTestSaved,
-  refreshKey,
-  initialData
+  initialData,
+  csvDataVersion,
 }) => {
   const [testId, setTestId] = useState<string | null>(propTestId || null);
   const [isSaved, setIsSaved] = useState(false);
@@ -54,7 +54,10 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [ffd, setFFD] = useState<FCDData>({ value: '' });
-  const [measurementCount, setMeasurementCount] = useState<number>(5);
+  const [measurementCount, setMeasurementCount] = useState<number>(3);
+  const [measurementHeaders, setMeasurementHeaders] = useState<string[]>([
+    'Meas 1', 'Meas 2', 'Meas 3',
+  ]);
 
   const [tolerance, setTolerance] = useState<Tolerance>({
     operator: '<=',
@@ -66,12 +69,99 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
       id: '1',
       kv: '80',
       mas: '100',
-      outputs: Array(5).fill({ value: '' }),
+      outputs: Array(3).fill({ value: '' }),
       avg: '',
       cv: '',
       remark: '',
     },
   ]);
+
+  // Apply CSV/Excel initial data
+  useEffect(() => {
+    if (!initialData || !csvDataVersion) return;
+
+    if (initialData.ffd != null) {
+      setFFD({ value: String(initialData.ffd?.value ?? initialData.ffd) });
+    }
+
+    const tol = initialData.tolerance;
+    if (tol) {
+      setTolerance({
+        operator: (tol.operator ?? '<=') as Tolerance['operator'],
+        value: String(tol.value ?? '0.05'),
+      });
+    } else if (initialData.toleranceValue) {
+      setTolerance({
+        operator: (initialData.toleranceOperator || '<=') as Tolerance['operator'],
+        value: String(initialData.toleranceValue),
+      });
+    }
+
+    if (initialData.outputRows?.length > 0) {
+      const maxOutputs = Math.max(
+        ...initialData.outputRows.map((r: any) => {
+          if (Array.isArray(r.outputs)) return r.outputs.length;
+          if (Array.isArray(r.measuredOutputs)) return r.measuredOutputs.length;
+          let maxKey = 0;
+          for (let j = 1; j <= 20; j++) {
+            if (r[`meas${j}`] !== undefined) maxKey = j;
+          }
+          return maxKey;
+        }),
+        3
+      );
+      const count = Math.max(maxOutputs, 1);
+      setMeasurementCount(count);
+
+      const importedHeaders = Array.isArray(initialData.measurementHeaders)
+        ? initialData.measurementHeaders
+        : Array.isArray(initialData.measHeaders)
+          ? initialData.measHeaders
+          : Array.isArray(initialData.headers)
+            ? initialData.headers
+            : [];
+      if (importedHeaders.length > 0) {
+        const next = [...importedHeaders];
+        while (next.length < count) next.push(`Meas ${next.length + 1}`);
+        setMeasurementHeaders(next.slice(0, count));
+      } else {
+        setMeasurementHeaders(Array.from({ length: count }, (_, i) => `Meas ${i + 1}`));
+      }
+
+      setOutputRows(
+        initialData.outputRows.map((r: any, i: number) => {
+          let rawOutputs: { value: string }[] = [];
+          if (Array.isArray(r.outputs)) {
+            rawOutputs = r.outputs.map((o: any) => ({ value: String(o?.value ?? o ?? '') }));
+          } else if (Array.isArray(r.measuredOutputs)) {
+            rawOutputs = r.measuredOutputs.map((v: any) => ({ value: String(v ?? '') }));
+          } else {
+            let maxKey = 0;
+            for (let j = 1; j <= 20; j++) {
+              if (r[`meas${j}`] !== undefined) maxKey = j;
+            }
+            for (let j = 1; j <= maxKey; j++) {
+              rawOutputs.push({ value: String(r[`meas${j}`] ?? '') });
+            }
+          }
+          while (rawOutputs.length < count) rawOutputs.push({ value: '' });
+          return {
+            id: String(i + 1),
+            kv: String(r.kv ?? ''),
+            mas: String(r.mas ?? r.mAs ?? ''),
+            outputs: rawOutputs,
+            avg: '',
+            cv: '',
+            remark: '' as const,
+          };
+        })
+      );
+    }
+
+    setIsSaved(false);
+    setIsEditing(true);
+    setIsLoading(false);
+  }, [csvDataVersion, initialData]);
 
   // Calculate avg, CoV and remark – same formula as RadiographyFixed (decimal CoV)
   const rowsWithCalc = useMemo(() => {
@@ -119,6 +209,19 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
   const updateMeasurementCount = (count: number) => {
     if (count < 3 || count > 10) return;
     setMeasurementCount(count);
+    setMeasurementHeaders(prev => {
+      const diff = count - prev.length;
+      if (diff > 0) {
+        return [
+          ...prev,
+          ...Array.from({ length: diff }, (_, i) => `Meas ${prev.length + i + 1}`),
+        ];
+      }
+      if (diff < 0) {
+        return prev.slice(0, count);
+      }
+      return prev;
+    });
 
     setOutputRows(prev =>
       prev.map(row => {
@@ -145,6 +248,12 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
     }
     const newCount = measurementCount + 1;
     setMeasurementCount(newCount);
+    setMeasurementHeaders(prev => {
+      const next = [...prev];
+      next.splice(afterIndex + 1, 0, `Meas ${afterIndex + 2}`);
+      while (next.length < newCount) next.push(`Meas ${next.length + 1}`);
+      return next.slice(0, newCount);
+    });
     setOutputRows(prev =>
       prev.map(row => {
         const newOutputs = [...row.outputs];
@@ -165,6 +274,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
     }
     const newCount = measurementCount - 1;
     setMeasurementCount(newCount);
+    setMeasurementHeaders(prev => prev.filter((_, i) => i !== index));
     setOutputRows(prev =>
       prev.map(row => ({
         ...row,
@@ -208,6 +318,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
       prev.map(row => {
         if (row.id !== rowId) return row;
         const outputs = [...row.outputs];
+        while (outputs.length <= index) outputs.push({ value: '' });
         outputs[index] = { value: value.replace(/[^0-9.-]/g, '') };
         return { ...row, outputs };
       })
@@ -215,8 +326,20 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
     setIsSaved(false);
   };
 
+  const updateMeasurementHeader = (index: number, value: string) => {
+    setMeasurementHeaders(prev => {
+      const next = [...prev];
+      next[index] = value || `Meas ${index + 1}`;
+      return next;
+    });
+    setIsSaved(false);
+  };
+
   // Load existing test data
   useEffect(() => {
+    if (csvDataVersion) {
+      return;
+    }
     if (!serviceId) {
       setIsLoading(false);
       return;
@@ -226,6 +349,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
       setIsLoading(true);
       try {
         const data = await getOutputConsistencyByServiceIdForFixedRadioFluro(serviceId);
+        if (csvDataVersion) return;
         if (data?.data) {
           const testData = data.data;
           setTestId(testData._id);
@@ -234,8 +358,20 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
           }
           if (testData.outputRows && testData.outputRows.length > 0) {
             const firstRow = testData.outputRows[0];
-            const numMeas = firstRow.outputs?.length || 5;
+            const numMeas = firstRow.outputs?.length || 3;
             setMeasurementCount(numMeas);
+            const savedHeaders = Array.isArray(testData.measurementHeaders)
+              ? testData.measurementHeaders
+              : Array.isArray(testData.measHeaders)
+                ? testData.measHeaders
+                : [];
+            if (savedHeaders.length > 0) {
+              const next = [...savedHeaders];
+              while (next.length < numMeas) next.push(`Meas ${next.length + 1}`);
+              setMeasurementHeaders(next.slice(0, numMeas));
+            } else {
+              setMeasurementHeaders(Array.from({ length: numMeas }, (_, i) => `Meas ${i + 1}`));
+            }
             setOutputRows(testData.outputRows.map((r: any) => ({
               id: Date.now().toString() + Math.random(),
               kv: r.kv || '',
@@ -264,38 +400,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
     };
 
     loadTest();
-  }, [serviceId]);
-
-  // Load CSV data when initialData is provided
-  useEffect(() => {
-    if (initialData && refreshKey !== undefined) {
-      console.log('OutputConsistency: Loading CSV data', initialData);
-      if (initialData.toleranceValue) {
-        setTolerance({ operator: '<=' as const, value: initialData.toleranceValue });
-      }
-      if (initialData.ffd) {
-        const v = initialData.ffd?.value ?? initialData.ffd;
-        setFFD({ value: String(v) });
-      }
-      if (initialData.outputRows && initialData.outputRows.length > 0) {
-        setOutputRows(initialData.outputRows.map((r: any, i: number) => ({
-          id: String(i + 1),
-          kv: String(r.kv || ''),
-          mAs: String(r.mAs || ''),
-          outputs: [
-            { value: String(r.meas1 || '') },
-            { value: String(r.meas2 || '') },
-            { value: String(r.meas3 || '') },
-            { value: String(r.meas4 || '') },
-            { value: String(r.meas5 || '') },
-          ],
-          avg: String(r.average || ''),
-          cv: String(r.cv || ''),
-        })));
-      }
-      setIsSaved(false);
-    }
-  }, [refreshKey, initialData]);
+  }, [serviceId, csvDataVersion]);
 
   const handleSave = async () => {
     if (!serviceId) {
@@ -307,6 +412,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
     try {
       const payload = {
         ffd,
+        measurementHeaders,
         outputRows: rowsWithCalc.map(r => ({
           kv: r.kv,
           mas: r.mas,
@@ -430,12 +536,18 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
                   >
                     <div className="flex flex-col items-center gap-1">
                       <div className="flex items-center gap-1">
-                        <span>Meas {i + 1}</span>
+                        <input
+                          type="text"
+                          value={measurementHeaders[i] || `Meas ${i + 1}`}
+                          onChange={e => updateMeasurementHeader(i, e.target.value)}
+                          disabled={isViewMode}
+                          className={`w-24 px-1 py-0.5 text-xs border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+                        />
                         {!isViewMode && measurementCount < 10 && (
                           <button
                             onClick={() => addMeasurementColumn(i)}
                             className="text-green-600 hover:bg-green-100 p-0.5 rounded transition"
-                            title="Add column after this"
+                            title="Add measurement column"
                           >
                             <Plus className="w-3 h-3" />
                           </button>
@@ -485,11 +597,11 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
                       placeholder="100"
                     />
                   </td>
-                  {row.outputs.map((meas, i) => (
+                  {Array.from({ length: measurementCount }, (_, i) => (
                     <td key={i} className="px-2 py-4 border-r">
                       <input
                         type="text"
-                        value={meas.value}
+                        value={row.outputs[i]?.value ?? ''}
                         onChange={e => updateMeasurement(row.id, i, e.target.value)}
                         disabled={isViewMode}
                         className={`w-20 px-2 py-1.5 text-center border rounded text-xs focus:border-blue-400 ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}

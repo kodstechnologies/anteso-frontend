@@ -254,12 +254,30 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
       if (initialData.tolerance) {
         setTolerance(String(initialData.tolerance));
       }
+      if (initialData.toleranceOperator) {
+        const op = String(initialData.toleranceOperator).trim();
+        setToleranceOperator(['<', '>', '<=', '>=', '='].includes(op) ? op : '<=');
+      }
       if (initialData.table2Rows && initialData.table2Rows.length > 0) {
+        const maxMeas = Math.max(
+          3,
+          ...(Array.isArray(initialData.measHeaders) ? [initialData.measHeaders.length] : []),
+          ...initialData.table2Rows.map((r: any) =>
+            Array.isArray(r.measuredOutputs) && r.measuredOutputs.length > 0
+              ? r.measuredOutputs.length
+              : [r.meas1, r.meas2, r.meas3, r.meas4, r.meas5].filter((v: any) => v != null && String(v).trim() !== '').length
+          )
+        );
+        if (Array.isArray(initialData.measHeaders) && initialData.measHeaders.length > 0) {
+          setMeasHeaders(initialData.measHeaders);
+        } else {
+          setMeasHeaders(Array.from({ length: maxMeas }, (_, i) => `Meas ${i + 1}`));
+        }
         setTable2Rows(initialData.table2Rows.map((r: any, i: number) => {
           const outputs = Array.isArray(r.measuredOutputs) && r.measuredOutputs.length > 0
             ? r.measuredOutputs.map((v: any) => String(v ?? ''))
-            : [r.meas1, r.meas2, r.meas3].map((v: any) => String(v ?? ''));
-          while (outputs.length < 3) outputs.push('');
+            : [r.meas1, r.meas2, r.meas3, r.meas4, r.meas5].map((v: any) => String(v ?? ''));
+          while (outputs.length < maxMeas) outputs.push('');
           return {
             id: String(i + 1),
             ma: String(r.ma ?? r.mAApplied ?? r.mAsApplied ?? ''),

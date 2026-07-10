@@ -71,9 +71,11 @@ export const buildPortableTemplateRows = (hasTimer: boolean): any[][] => {
 
   if (hasTimer) {
     sec("LINEARITY OF MA LOADING", [
-      ["FCD (cm)", "kV", "Time (sec)", "mA Applied", "Meas 1", "Meas 2", "Meas 3"],
-      ["100", "80", "1", "50", "0.42", "0.43", "0.42"],
-      ["", "", "", "100", "0.85", "0.84", "0.86"],
+      ["FCD (cm)", "100", "kV", "80", "Time (sec)", "1"],
+      ["mA Applied", "Meas 1", "Meas 2", "Meas 3"],
+      ["50", "0.42", "0.43", "0.42"],
+      ["100", "0.85", "0.84", "0.86"],
+      ["200", "1.71", "1.70", "1.72"],
       ["Tolerance Operator", "<="],
       ["Tolerance (CoL)", "0.1"],
     ]);

@@ -50,10 +50,18 @@ const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, 
   const [observedTilt, setObservedTilt] = useState<string>('1.5');
 
   // Tolerance (Acceptance Criteria)
-  const [toleranceOperator, setToleranceOperator] = useState<'<' | '>' | '='>('=');
-  const [toleranceValue, setToleranceValue] = useState<string>('1.5');
+  const [toleranceOperator, setToleranceOperator] = useState<'<' | '>' | '=' | '<=' | '>='>('<=');
+  const [toleranceValue, setToleranceValue] = useState<string>('2');
 
-  const operators = ['=', '<', '>'] as const;
+  const operators = ['<=', '>=', '=', '<', '>'] as const;
+
+  const normalizeOperator = (raw: unknown): '<' | '>' | '=' | '<=' | '>=' => {
+    const s = String(raw ?? '').trim().replace(/\s+/g, '');
+    if (s === '≤' || s.toLowerCase() === 'lte' || s.toLowerCase() === 'le') return '<=';
+    if (s === '≥' || s.toLowerCase() === 'gte' || s.toLowerCase() === 'ge') return '>=';
+    if (s === '<=' || s === '>=' || s === '<' || s === '>' || s === '=') return s;
+    return '<=';
+  };
 
   // Auto-calculate Pass/Fail based on TOLERANCE
   const evaluation = useMemo(() => {
@@ -64,12 +72,25 @@ const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, 
       return { remark: '' as const, pass: false };
     }
 
-    // Operator-based comparison; '=' passes when observed matches tolerance.
-    const pass = toleranceOperator === '<'
-      ? observed < tolerance
-      : toleranceOperator === '>'
-        ? observed > tolerance
-        : Math.abs(observed - tolerance) < 0.0001;
+    let pass = false;
+    switch (toleranceOperator) {
+      case '<':
+        pass = observed < tolerance;
+        break;
+      case '>':
+        pass = observed > tolerance;
+        break;
+      case '<=':
+        pass = observed <= tolerance;
+        break;
+      case '>=':
+        pass = observed >= tolerance;
+        break;
+      case '=':
+      default:
+        pass = Math.abs(observed - tolerance) < 0.0001;
+        break;
+    }
 
     return {
       remark: pass ? 'Pass' : 'Fail' as 'Pass' | 'Fail',
@@ -83,6 +104,10 @@ const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, 
   // Load existing data
   useEffect(() => {
     const load = async () => {
+      if (initialData && refreshKey !== undefined) {
+        setIsLoading(false);
+        return;
+      }
       if (!serviceId) {
         setIsLoading(false);
         return;
@@ -104,8 +129,7 @@ const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, 
             setObservedTilt(String(data.observedTilt.value ?? ''));
           }
           if (data.tolerance) {
-            const op = data.tolerance.operator;
-            setToleranceOperator(op === '>' ? '>' : op === '<' ? '<' : '=');
+            setToleranceOperator(normalizeOperator(data.tolerance.operator));
             setToleranceValue(String(data.tolerance.value ?? '2'));
           }
           setIsSaved(true);
@@ -123,12 +147,11 @@ const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, 
       }
     };
     load();
-  }, [serviceId, propTestId]);
+  }, [serviceId, propTestId, refreshKey, initialData]);
 
   // Load CSV data when initialData is provided
   useEffect(() => {
     if (initialData && refreshKey !== undefined) {
-      console.log('CentralBeamAlignment: Loading CSV data', initialData);
       if (initialData.testConditions) {
         setTechniqueRow({
           id: '1',
@@ -138,66 +161,24 @@ const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, 
         });
       }
       if (initialData.observedTiltX !== undefined) {
-        setObservedTilt(initialData.observedTiltX);
+        setObservedTilt(String(initialData.observedTiltX));
       }
       if (initialData.toleranceValue) {
         setToleranceValue(String(initialData.toleranceValue));
       }
       if (initialData.toleranceOperator) {
-        const op = initialData.toleranceOperator;
-        setToleranceOperator(op === '>' ? '>' : op === '<' ? '<' : '=');
+        setToleranceOperator(normalizeOperator(initialData.toleranceOperator));
       } else if (initialData.tolerance?.operator) {
-        const op = initialData.tolerance.operator;
-        setToleranceOperator(op === '>' ? '>' : op === '<' ? '<' : '=');
+        setToleranceOperator(normalizeOperator(initialData.tolerance.operator));
       }
+      if (initialData.tolerance?.value) {
+        setToleranceValue(String(initialData.tolerance.value));
+      }
+      setIsSaved(false);
       setIsEditing(true);
+      setIsLoading(false);
     }
   }, [refreshKey, initialData]);
-
-  // Load existing data
-  useEffect(() => {
-    const load = async () => {
-      if (!serviceId) {
-        setIsLoading(false);
-        return;
-      }
-      try {
-        const res = await getCentralBeamAlignmentByServiceIdForFixedRadioFluro(serviceId);
-        const data = res?.data;
-        if (data) {
-          setTestId(data._id || null);
-          if (data.techniqueFactors) {
-            setTechniqueRow({
-              id: '1',
-              fcd: String(data.techniqueFactors.fcd ?? ''),
-              kv: String(data.techniqueFactors.kv ?? ''),
-              mas: String(data.techniqueFactors.mas ?? ''),
-            });
-          }
-          if (data.observedTilt) {
-            setObservedTilt(String(data.observedTilt.value ?? ''));
-          }
-          if (data.tolerance) {
-            const op = data.tolerance.operator;
-            setToleranceOperator(op === '>' ? '>' : op === '<' ? '<' : '=');
-            setToleranceValue(String(data.tolerance.value ?? '2'));
-          }
-          setIsSaved(true);
-          setIsEditing(false);
-        } else {
-          setIsEditing(true);
-        }
-      } catch (err: any) {
-        if (err.response?.status !== 404) {
-          toast.error('Failed to load Central Beam Alignment data');
-        }
-        setIsEditing(true);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    load();
-  }, [serviceId, propTestId]);
 
   // Update technique fields
   const updateTechnique = (field: keyof TechniqueRow, value: string) => {

@@ -204,6 +204,11 @@ const LinearityOfMasLoadingStationsForOArm: React.FC<Props> = ({ serviceId, test
       csvData.forEach((item: any) => {
         const field = item['Field Name'];
         const val = item['Value'];
+        if (field === 'Tolerance_Value' && val) setTolerance(String(val));
+        if (field === 'Tolerance_Operator' && val) setToleranceOperator(String(val));
+        if (field === 'Exposure_FCD' && val) setTable1Row(p => ({ ...p, fcd: String(val) }));
+        if (field === 'Exposure_KV' && val) setTable1Row(p => ({ ...p, kv: String(val) }));
+        if (field === 'Exposure_Time' && val) setTable1Row(p => ({ ...p, time: String(val) }));
         if (field?.startsWith('Header_')) {
           const idx = parseInt(field.replace('Header_', ''), 10) - 1;
           while (h.length <= idx) h.push(`Meas ${h.length + 1}`);
@@ -224,13 +229,15 @@ const LinearityOfMasLoadingStationsForOArm: React.FC<Props> = ({ serviceId, test
         return Array.from({ length: maxIdx + 1 }, (_, i) => (r[`Row_Meas_${i}`] != null ? String(r[`Row_Meas_${i}`]) : ''));
       };
       
+      const condRow = rowMap[0] || {};
       const firstRow = rowMap[1] || {};
-      if (firstRow['Exposure_FCD'] || firstRow['Exposure_KV'] || firstRow['Exposure_Time']) {
+      const exposureRow = condRow['Exposure_FCD'] ? condRow : firstRow;
+      if (exposureRow['Exposure_FCD'] || exposureRow['Exposure_KV'] || exposureRow['Exposure_Time']) {
         setTable1Row(p => ({
           ...p,
-          fcd: firstRow['Exposure_FCD'] || p.fcd,
-          kv: firstRow['Exposure_KV'] || p.kv,
-          time: firstRow['Exposure_Time'] != null && firstRow['Exposure_Time'] !== '' ? String(firstRow['Exposure_Time']) : p.time,
+          fcd: exposureRow['Exposure_FCD'] || p.fcd,
+          kv: exposureRow['Exposure_KV'] || p.kv,
+          time: exposureRow['Exposure_Time'] != null && exposureRow['Exposure_Time'] !== '' ? String(exposureRow['Exposure_Time']) : p.time,
         }));
       }
       
