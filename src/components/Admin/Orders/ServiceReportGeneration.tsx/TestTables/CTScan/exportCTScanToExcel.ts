@@ -1,5 +1,6 @@
 // Helper file for CT Scan Excel export with proper table structures
 import * as XLSX from "xlsx";
+import { normalizeCsvComparisonOperator } from "../shared/parseRadiographyStyleTableFormat";
 
 const getOperatingPotentialMaValue = (row: any, label: string): string | number => {
     if (row?.ma != null && typeof row.ma === 'object') {
@@ -382,7 +383,7 @@ export const createCTScanExcelWithTables = (data: CTScanExportData, hasTimer: bo
             allData.push(['Tolerance']);
             allData.push([
                 'Value', data.radiationLeakage.toleranceValue || '',
-                'Operator', data.radiationLeakage.toleranceOperator || '',
+                'Operator', normalizeCsvComparisonOperator(data.radiationLeakage.toleranceOperator || '<='),
                 'Time', data.radiationLeakage.toleranceTime || ''
             ]);
             allData.push([]);
@@ -756,7 +757,7 @@ export const createCTScanUploadableExcel = (data: CTScanExportData, hasTimer: bo
             data.radiationLeakage.workload || '',
             data.radiationLeakage.workloadUnit || '',
             data.radiationLeakage.tolerance || '',
-            data.radiationLeakage.toleranceOperator || '',
+            normalizeCsvComparisonOperator(data.radiationLeakage.toleranceOperator || '<='),
             data.radiationLeakage.toleranceTime || ''
         ];
 

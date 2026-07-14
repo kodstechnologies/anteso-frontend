@@ -39,7 +39,7 @@ mAs,Slice Thickness (mm),Time (s),Tolerance,Header 1,Header 2,Header 3,Header 4,
 ,,,,,,,,,,,,
 TEST: RADIATION LEAKAGE LEVEL - TUBE A,,,,,,,,,,,,
 kV,mA,Time (sec),Workload,Workload Unit,Tol Value,Tol Operator,Tol Time,Location,Front,Back,Left,Right
-120,100,1,500,mA·min/week,1,less than or equal to,1,Tube,0.05,0.03,0.06,0.04
+120,100,1,500,mA·min/week,1,<=,1,Tube,0.05,0.03,0.06,0.04
 ,,,,,,,,Collimator,0.02,0.02,0.03,0.01
 ,,,,,,,,,,,,
 TEST: LOW CONTRAST RESOLUTION - TUBE A,,,,,,,,,,,,
@@ -91,7 +91,7 @@ mAs,Slice Thickness (mm),Time (s),Tolerance,Header 1,Header 2,Header 3,Header 4,
 ,,,,,,,,,,,,
 TEST: RADIATION LEAKAGE LEVEL - TUBE B,,,,,,,,,,,,
 kV,mA,Time (sec),Workload,Workload Unit,Tol Value,Tol Operator,Tol Time,Location,Front,Back,Left,Right
-120,100,1,500,mA·min/week,1,less than or equal to,1,Tube,0.04,0.03,0.05,0.04
+120,100,1,500,mA·min/week,1,<=,1,Tube,0.04,0.03,0.05,0.04
 ,,,,,,,,Collimator,0.02,0.02,0.03,0.01
 ,,,,,,,,,,,,
 TEST: LOW CONTRAST RESOLUTION - TUBE B,,,,,,,,,,,,

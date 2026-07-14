@@ -12,7 +12,7 @@ Set kV,Header 1,Header 2,Header 3,Meas 1,Meas 2,Meas 3,Time (ms),Slice Thickness
 
 TEST: MEASUREMENT OF MA LINEARITY
 kVp,Slice Thickness (mm),Time (ms),Tolerance,Header 1,Header 2,Header 3,mA Applied,Meas 1,Meas 2,Meas 3
-80,5.0,100,0.1,Run 1,Run 2,Run 3,10,10.1,10.2,10.3
+80,5.0,100,0.1,Meas 1,Meas 2,Meas 3,10,10.1,10.2,10.3
 ,,,,,,,20,20.2,20.1,20.3
 ,,,,,,,50,50.5,50.4,50.6
 ,,,,,,,100,101.0,100.8,101.2

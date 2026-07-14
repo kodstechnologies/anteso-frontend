@@ -9,6 +9,27 @@ import {
   updateRadiationLeakage,
 } from '../../../../../../api';
 import toast from 'react-hot-toast';
+import { normalizeCsvComparisonOperator } from '../shared/parseRadiographyStyleTableFormat';
+
+type ToleranceOp = '<' | '<=' | '>' | '>=' | '=';
+
+const compareByToleranceOp = (result: number, tol: number, op: string): boolean => {
+  const normalized = normalizeCsvComparisonOperator(op) as ToleranceOp;
+  switch (normalized) {
+    case '<':
+      return result < tol;
+    case '<=':
+      return result <= tol;
+    case '>':
+      return result > tol;
+    case '>=':
+      return result >= tol;
+    case '=':
+      return Math.abs(result - tol) < 0.01;
+    default:
+      return result <= tol;
+  }
+};
 
 interface SettingsRow {
   fcd: string;
@@ -62,7 +83,7 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
   const [workload, setWorkload] = useState<string>('');
   const [workloadUnit, setWorkloadUnit] = useState<string>('mA·min/week');
   const [toleranceValue, setToleranceValue] = useState<string>('1');
-  const [toleranceOperator, setToleranceOperator] = useState<'less than or equal to' | 'greater than or equal to' | '='>('less than or equal to');
+  const [toleranceOperator, setToleranceOperator] = useState<ToleranceOp>('<=');
   const [toleranceTime, setToleranceTime] = useState<string>('1');
 
   const [isSaving, setIsSaving] = useState(false);
@@ -99,11 +120,7 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
         const tol = parseFloat(toleranceValue) || 0;
         if (tol > 0) {
           const mgyVal = calculatedResult / 114;
-          let pass = false;
-          if (toleranceOperator === 'less than or equal to') pass = mgyVal <= tol;
-          if (toleranceOperator === 'greater than or equal to') pass = mgyVal >= tol;
-          if (toleranceOperator === '=') pass = Math.abs(mgyVal - tol) < 0.01;
-          remark = pass ? 'Pass' : 'Fail';
+          remark = compareByToleranceOp(mgyVal, tol, toleranceOperator) ? 'Pass' : 'Fail';
         }
       }
 
@@ -119,11 +136,7 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
     const result = globalMaxResultMGy;
     const tol = parseFloat(toleranceValue) || 0;
     if (!toleranceValue || result === 0) return '';
-    let pass = false;
-    if (toleranceOperator === 'less than or equal to') pass = result <= tol;
-    if (toleranceOperator === 'greater than or equal to') pass = result >= tol;
-    if (toleranceOperator === '=') pass = Math.abs(result - tol) < 0.01;
-    return pass ? 'Pass' : 'Fail';
+    return compareByToleranceOp(result, tol, toleranceOperator) ? 'Pass' : 'Fail';
   }, [globalMaxResultMGy, toleranceValue, toleranceOperator]);
 
   // === CSV Data Injection ===
@@ -178,7 +191,7 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
       if (wl) setWorkload(wl);
       if (wlUnit) setWorkloadUnit(wlUnit);
       if (tol) setToleranceValue(tol);
-      if (tolOp) setToleranceOperator(tolOp as any);
+      if (tolOp) setToleranceOperator(normalizeCsvComparisonOperator(tolOp) as ToleranceOp);
       if (tolTime) setToleranceTime(tolTime);
 
       if (!testId) {
@@ -286,7 +299,7 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
           setWorkload(rec.workload || '');
           setWorkloadUnit(rec.workloadUnit || 'mA·min/week');
           setToleranceValue(rec.toleranceValue ?? rec.tolerance ?? '');
-          setToleranceOperator(rec.toleranceOperator || 'less than or equal to');
+          setToleranceOperator(normalizeCsvComparisonOperator(rec.toleranceOperator || '<=') as ToleranceOp);
           setToleranceTime(rec.toleranceTime || '1');
 
           setHasSaved(true);
@@ -332,7 +345,7 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
         remark: row.remark,
       })),
       toleranceValue,
-      toleranceOperator,
+      toleranceOperator: normalizeCsvComparisonOperator(toleranceOperator),
       toleranceTime,
       remark: finalRemark,
       tubeId: tubeId === null ? 'null' : tubeId,
@@ -538,13 +551,15 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
           />
           <select
             value={toleranceOperator}
-            onChange={(e) => setToleranceOperator(e.target.value as any)}
+            onChange={(e) => setToleranceOperator(e.target.value as ToleranceOp)}
             disabled={isViewMode}
             className={`px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'
               }`}
           >
-            <option value="less than or equal to">less than or equal to</option>
-            <option value="greater than or equal to">greater than or equal to</option>
+            <option value="<=">≤</option>
+            <option value=">=">≥</option>
+            <option value="<">{'<'}</option>
+            <option value=">">{'>'}</option>
             <option value="=">{'='}</option>
           </select>
           <span className="text-sm text-gray-600">in</span>

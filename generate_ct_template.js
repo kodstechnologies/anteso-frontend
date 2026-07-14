@@ -38,14 +38,14 @@ addSection('MEASUREMENT OF OPERATING POTENTIAL',
     ]
 );
 
-// 3. MEASUREMENT OF MA LINEARITY
+// 3. MEASUREMENT OF MA LINEARITY (dynamic Header 1-N + Meas 1-N)
 addSection('MEASUREMENT OF MA LINEARITY',
-    ['kVp', 'Slice Thickness (mm)', 'Time (ms)', 'mA Applied', 'Meas 1', 'Meas 2', 'Meas 3'],
+    ['kVp', 'Slice Thickness (mm)', 'Time (ms)', 'Tolerance', 'Header 1', 'Header 2', 'Header 3', 'mA Applied', 'Meas 1', 'Meas 2', 'Meas 3'],
     [
-        ['80', '5.0', '100', '10', '10.1', '10.2', '10.3'],
-        ['80', '5.0', '100', '20', '20.2', '20.1', '20.3'],
-        ['80', '5.0', '100', '50', '50.5', '50.4', '50.6'],
-        ['80', '5.0', '100', '100', '101.0', '100.8', '101.2']
+        ['80', '5.0', '100', '0.1', 'Run 1', 'Run 2', 'Run 3', '10', '10.1', '10.2', '10.3'],
+        ['', '', '', '', '', '', '', '20', '20.2', '20.1', '20.3'],
+        ['', '', '', '', '', '', '', '50', '50.5', '50.4', '50.6'],
+        ['', '', '', '', '', '', '', '100', '101.0', '100.8', '101.2']
     ]
 );
 
@@ -98,7 +98,7 @@ addSection('Reproducibility of Radiation Output (Consistency Test)',
 addSection('Radiation Leakage Level from X-Ray Tube House',
     ['kV', 'mA', 'Time (sec)', 'Workload', 'Workload Unit', 'Tol Value', 'Tol Operator', 'Tol Time', 'Location', 'Front', 'Back', 'Left', 'Right'],
     [
-        ['120', '100', '1.0', '500', 'mA·min/week', '1.0', 'less than or equal to', '1', 'Tube', '0.05', '0.03', '0.06', '0.04'],
+        ['120', '100', '1.0', '500', 'mA·min/week', '1.0', '<=', '1', 'Tube', '0.05', '0.03', '0.06', '0.04'],
         ['', '', '', '', '', '', '', '', 'Collimator', '0.02', '0.02', '0.03', '0.01']
     ]
 );

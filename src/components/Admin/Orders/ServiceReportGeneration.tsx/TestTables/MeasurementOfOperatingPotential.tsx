@@ -1,5 +1,5 @@
 // components/TestTables/MeasurementOfOperatingPotential.tsx
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Loader2, Edit3, Save, Plus, Trash2 } from 'lucide-react';
 import {
     addMeasurementOfOperatingPotential,
@@ -34,6 +34,8 @@ interface Props {
 
 const MeasurementOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: propTestId, tubeId, onRefresh, csvData }) => {
     const [testId, setTestId] = useState<string | null>(propTestId || null);
+    const csvDataRef = useRef(csvData);
+    csvDataRef.current = csvData;
 
     // Table 1: Only 1 row
     const [table1Row, setTable1Row] = useState<Table1Row>({ time: '', sliceThickness: '' });
@@ -206,9 +208,51 @@ const MeasurementOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: p
         );
     };
 
-    // === CSV Data Injection (apply after load finishes so saved data does not overwrite import) ===
+    // === CSV Data Injection — apply immediately (do not wait for API load) ===
     useEffect(() => {
-        if (isLoading || !csvData || csvData.length === 0) return;
+        if (!csvData || csvData.length === 0) return;
+
+        // Dynamic mA station headers from Excel Header 1-N (or Table2_ma* fields)
+        const maHeaderFields = csvData
+            .filter((r) => String(r['Field Name'] || '') === 'MaHeader')
+            .map((r) => String(r['Value'] ?? '').trim())
+            .filter(Boolean);
+        const maLabelsFromMeta = csvData.find(r => r['Field Name'] === 'MaColumnLabels')?.['Value'];
+        const orderedFromMeta = maHeaderFields.length > 0
+            ? maHeaderFields
+            : maLabelsFromMeta
+                ? String(maLabelsFromMeta).split(',').map(s => s.trim()).filter(Boolean)
+                : [];
+
+        const maLabelFromField = (field: string): string | null => {
+            const m = field.match(/^Table2_ma_?(.+)$/i);
+            if (!m) return null;
+            const label = m[1].trim();
+            // Ignore non-label payloads
+            if (!label || /^setkv$/i.test(label)) return null;
+            return label;
+        };
+        const importedMaLabels = [
+            ...new Set(
+                csvData
+                    .map(r => maLabelFromField(String(r['Field Name'] || '')))
+                    .filter((l): l is string => !!l)
+            ),
+        ].sort((a, b) => {
+            const na = Number(a), nb = Number(b);
+            if (!isNaN(na) && !isNaN(nb)) return na - nb;
+            return a.localeCompare(b);
+        });
+
+        const labels = orderedFromMeta.length > 0
+            ? orderedFromMeta
+            : importedMaLabels.length > 0
+                ? importedMaLabels
+                : null;
+        if (labels && labels.length > 0) {
+            setMaColumnLabels(labels);
+        }
+        const activeLabels = labels && labels.length > 0 ? labels : ['10', '100', '200'];
 
         const t1Time = csvData.find(r => r['Field Name'] === 'Table1_kvp' || r['Field Name'] === 'Table1_Time')?.['Value'];
         const t1Slice = csvData.find(r => r['Field Name'] === 'Table1_ma' || r['Field Name'] === 'Table1_SliceThickness')?.['Value'];
@@ -220,33 +264,6 @@ const MeasurementOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: p
                 sliceThickness: t1Slice || prev.sliceThickness
             }));
         }
-
-        // Prefer explicit column order from Excel/CSV, then field names, then current labels
-        const maLabelsFromMeta = csvData.find(r => r['Field Name'] === 'MaColumnLabels')?.['Value'];
-        const orderedFromMeta = maLabelsFromMeta
-            ? String(maLabelsFromMeta).split(',').map(s => s.trim()).filter(Boolean)
-            : [];
-
-        const maLabelFromField = (field: string): string | null => {
-            const m = field.match(/^Table2_ma_?(.+)$/i);
-            return m ? m[1] : null;
-        };
-        const importedMaLabels = [...new Set(
-            csvData
-                .map(r => maLabelFromField(String(r['Field Name'] || '')))
-                .filter((l): l is string => !!l)
-        )].sort((a, b) => {
-            const na = Number(a), nb = Number(b);
-            if (!isNaN(na) && !isNaN(nb)) return na - nb;
-            return a.localeCompare(b);
-        });
-
-        const labels = orderedFromMeta.length > 0
-            ? orderedFromMeta
-            : importedMaLabels.length > 0
-                ? importedMaLabels
-                : maColumnLabels;
-        if (labels.length > 0) setMaColumnLabels(labels);
 
         const t2ByIndex: Record<number, Record<string, string>> = {};
         csvData.forEach((row: any) => {
@@ -263,7 +280,7 @@ const MeasurementOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: p
             const newRows = t2Indices.map(idx => {
                 const r = t2ByIndex[idx];
                 const ma: Record<string, string> = {};
-                for (const label of labels) {
+                for (const label of activeLabels) {
                     ma[label] = r[`ma${label}`] ?? r[`ma_${label}`] ?? '';
                 }
                 const row: Table2Row = {
@@ -272,9 +289,9 @@ const MeasurementOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: p
                     ma,
                     avgKvp: '',
                     remarks: '',
-                    failedCells: emptyFailed(labels)
+                    failedCells: emptyFailed(activeLabels)
                 };
-                return calculateRowValuesForLabels(row, labels);
+                return calculateRowValuesForLabels(row, activeLabels);
             });
             setTable2Rows(newRows);
         }
@@ -290,9 +307,10 @@ const MeasurementOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: p
             setToleranceSign(s.includes('plus') ? 'plus' : s.includes('minus') ? 'minus' : 'both');
         }
 
+        setIsLoading(false);
         setIsEditing(true);
         setHasSaved(false);
-    }, [csvData, isLoading, calculateRowValues]);
+    }, [csvData, calculateRowValuesForLabels]);
 
     // === Form Valid ===
     const isFormValid = useMemo(() => {
@@ -311,6 +329,11 @@ const MeasurementOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: p
                 setIsLoading(false);
                 return;
             }
+    // Prefer Excel/CSV injection — do not overwrite with saved API data
+            if (csvData && csvData.length > 0) {
+                setIsLoading(false);
+                return;
+            }
 
             try {
                 setIsLoading(true);
@@ -321,6 +344,12 @@ const MeasurementOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: p
                     rec = response.data || response;
                 } else {
                     rec = await getMeasurementOfOperatingPotentialByServiceId(serviceId, tubeId || null);
+                }
+
+                // Excel arrived while request was in flight — keep CSV headers
+                if (csvDataRef.current && csvDataRef.current.length > 0) {
+                    setIsLoading(false);
+                    return;
                 }
 
                 if (rec) {
@@ -396,7 +425,7 @@ const MeasurementOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: p
             }
         };
         load();
-    }, [serviceId, propTestId, tubeId]);
+    }, [serviceId, propTestId, tubeId, csvData]);
 
     // === Save / Update ===
     const handleSave = async () => {

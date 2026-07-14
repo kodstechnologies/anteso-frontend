@@ -187,14 +187,23 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
       },
       'Central Beam Alignment': {
         'FCD (cm)': 'Table1_fcd', 'FDD (cm)': 'Table1_fcd', 'FFD (cm)': 'Table1_fcd',
-        'kV': 'Table1_kv', 'mA': 'Table1_ma', 'Time': 'Table1_time',
-        'Result': 'Table2_Result', 'Tolerance': 'Tolerance'
+        'kV': 'Table1_kv', 'mA': 'Table1_ma', 'mAs': 'Table1_ma', 'Time': 'Table1_time',
+        'Result': 'Table2_Result',
+        'Observed Tilt': 'Table2_Result',
+        'Observed Tilt (cm)': 'Table2_Result',
+        'Tolerance': 'Tolerance',
+        'Tolerance Value': 'Tolerance',
+        'Tolerance Value (cm)': 'Tolerance',
+        'Tol Value': 'Tolerance',
+        'Tolerance Operator': 'ToleranceOperator',
+        'Tol Operator': 'ToleranceOperator',
       },
       'Effective Focal Spot Size': {
         'FCD (cm)': 'Table1_fcd', 'FDD (cm)': 'Table1_fcd', 'FFD (cm)': 'Table1_fcd',
         'kV': 'Table1_kv', 'mA': 'Table1_ma',
         'Focus': 'Table1_focalSpotSize', 'Focal Spot Size': 'Table1_focalSpotSize', 'Focus Type': 'Table1_focalSpotSize',
         'Stated Focal Spot (f)': 'Table2_StatedNominal', 'Stated Nominal': 'Table2_StatedNominal',
+        'Stated Focal Spot of Tube (f)': 'Table2_StatedNominal',
         'Stated Focal Spot (mm)': 'Table2_StatedNominal',
         'Measured Focal Spot (Nominal)': 'Table2_MeasuredNominal', 'Measured Nominal': 'Table2_MeasuredNominal',
         'Measured Focal Spot (Nominal) (mm)': 'Table2_MeasuredNominal',
@@ -263,7 +272,8 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
       'Radiation Protection Survey Report': {
         'Location': 'Table1_location', 'mR/hr': 'Table1_mRPerHr', 'Category': 'Table1_category',
         'Applied Voltage': 'Table1_appliedVoltage', 'Applied Current': 'Table1_appliedCurrent', 'Exposure Time': 'Table1_exposureTime',
-        'Survey Date': 'Table1_surveyDate', 'Calibration Valid': 'Table1_hasValidCalibration', 'Workload': 'Table1_workload'
+        'Workload': 'Table1_workload'
+        // Survey Date / Calibration Valid are not imported from Excel — filled from today/QA date and tools
       }
     };
 
@@ -364,7 +374,73 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
         continue;
       }
 
+      // CENTRAL BEAM ALIGNMENT — Radiography Fixed / C-Arm-family vertical layout
+      if (isReadingTest && currentTestNameBase === 'Central Beam Alignment' && currentTestName) {
+        if (row.every((c) => !c)) {
+          isReadingTest = false;
+          headers = [];
+          continue;
+        }
+        const label = String(firstCell || '').trim();
+        // Horizontal header row: FFD (cm),kV,mA,... (second cell is a column name, not a value)
+        const second = String(row[1] || '').trim();
+        const isHorizontalHeader =
+          headers.length === 0 &&
+          /^(FFD|FDD|FCD)\s*\(cm\)$/i.test(label) &&
+          second !== '' &&
+          !/^\d/.test(second) &&
+          row.some((c) => /^(kV|mA|Time|Result|Observed|Tol)/i.test(String(c || '').trim()));
+
+        if (isHorizontalHeader) {
+          headers = row;
+          continue;
+        }
+
+        if (headers.length > 0) {
+          sectionRowCounter[currentTestName] = (sectionRowCounter[currentTestName] || 0) + 1;
+          pushLegacyRow(row, sectionRowCounter[currentTestName]);
+          continue;
+        }
+
+        // Vertical / interleaved: FFD (cm),100,kV,80,mA,100,Time,0.1
+        if (/^(FFD|FDD|FCD)/i.test(label)) {
+          for (let ci = 0; ci < row.length - 1; ci += 2) {
+            const k = String(row[ci] || '').trim();
+            const v = String(row[ci + 1] || '').trim();
+            if (!k || !v) continue;
+            if (/^(FFD|FDD|FCD)/i.test(k)) pushField('Table1_fcd', v, 0, currentTestName);
+            else if (/^kV$/i.test(k)) pushField('Table1_kv', v, 0, currentTestName);
+            else if (/^(mA|mAs)$/i.test(k)) pushField('Table1_ma', v, 0, currentTestName);
+            else if (/^Time/i.test(k)) pushField('Table1_time', v, 0, currentTestName);
+          }
+          continue;
+        }
+        if (/Observed Tilt/i.test(label) || /^Result$/i.test(label)) {
+          pushField('Table2_Result', row[1] ?? '', 0, currentTestName);
+          continue;
+        }
+        if (/Tolerance Operator|Tol Operator/i.test(label)) {
+          pushField('ToleranceOperator', row[1] ?? '', 0, currentTestName);
+          continue;
+        }
+        if (/Tolerance Value|Tol Value|^Tolerance$/i.test(label)) {
+          pushField('Tolerance', row[1] ?? '', 0, currentTestName);
+          continue;
+        }
+        continue;
+      }
+
       if (isReadingTest && headers.length === 0 && row.some(c => c)) {
+        // EFFECTIVE FOCAL SPOT SIZE: optional FFD (cm),100 preamble (Radiography Fixed style)
+        if (
+          currentTestNameBase === 'Effective Focal Spot Size' &&
+          /^(FFD|FDD|FCD)\s*\(cm\)$/i.test(String(firstCell || '').trim()) &&
+          row[1] &&
+          /^\d/.test(String(row[1]).trim())
+        ) {
+          pushField('Table1_fcd', String(row[1]).trim(), 0, currentTestName!);
+          continue;
+        }
         headers = row;
         continue;
       }
@@ -1507,6 +1583,7 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
               <RadiationProtectionInterventionalRadiology
                 serviceId={serviceId}
                 tubeId={null}
+                qaTestDate={qaTestDate}
                 csvData={csvDataForComponents['Radiation Protection Survey Report']}
               />
             ),
@@ -1599,7 +1676,7 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
           // ===== COMMON TESTS =====
           {
             title: "Radiation Protection Survey Report",
-            component: <RadiationProtectionInterventionalRadiology serviceId={serviceId} tubeId={null} csvData={csvDataForComponents['Radiation Protection Survey Report']} />,
+            component: <RadiationProtectionInterventionalRadiology serviceId={serviceId} tubeId={null} qaTestDate={qaTestDate} csvData={csvDataForComponents['Radiation Protection Survey Report']} />,
           },
         ] as any)
           .map((item: any, idx: number) => (

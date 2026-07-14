@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Plus, Trash2, Loader2, Edit3, Save } from 'lucide-react';
 import {
   addOutputConsistency,
@@ -34,6 +34,8 @@ interface Props {
 
 const OutputConsistency: React.FC<Props> = ({ serviceId, testId: propTestId, tubeId, onRefresh, csvData }) => {
   const [testId, setTestId] = useState<string | null>(propTestId || null);
+  const csvDataRef = useRef(csvData);
+  csvDataRef.current = csvData;
 
   // Table 1 - Fixed parameters
   const [parameters, setParameters] = useState<Table1Row>({
@@ -126,7 +128,7 @@ const OutputConsistency: React.FC<Props> = ({ serviceId, testId: propTestId, tub
       // Table 2: Output Measurements
       const measHeaderValues = csvData
         .filter((r) => r['Field Name'] === 'MeasHeader')
-        .map((r) => r['Value'])
+        .map((r) => String(r['Value'] ?? '').trim())
         .filter(Boolean);
       const maxResultIdx = csvData
         .filter((r) => /^Result_\d+$/i.test(String(r['Field Name'] || '')))
@@ -240,6 +242,11 @@ const OutputConsistency: React.FC<Props> = ({ serviceId, testId: propTestId, tub
         setIsLoading(false);
         return;
       }
+      // Prefer Excel/CSV injection — do not overwrite dynamic headers with API data
+      if (csvData && csvData.length > 0) {
+        setIsLoading(false);
+        return;
+      }
 
       try {
         setIsLoading(true);
@@ -250,6 +257,12 @@ const OutputConsistency: React.FC<Props> = ({ serviceId, testId: propTestId, tub
           data = response;
         } else {
           data = await getOutputConsistencyByServiceId(serviceId, tubeId ?? null);
+        }
+
+        // Excel arrived while request was in flight — keep CSV MeasHeader values
+        if (csvDataRef.current && csvDataRef.current.length > 0) {
+          setIsLoading(false);
+          return;
         }
 
         if (data) {
@@ -307,7 +320,7 @@ const OutputConsistency: React.FC<Props> = ({ serviceId, testId: propTestId, tub
     };
 
     load();
-  }, [serviceId, propTestId, tubeId]);
+  }, [serviceId, propTestId, tubeId, csvData]);
 
   // Save / Update
   const handleSave = async () => {

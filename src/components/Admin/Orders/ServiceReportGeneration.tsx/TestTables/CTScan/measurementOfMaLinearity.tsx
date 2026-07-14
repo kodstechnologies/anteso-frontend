@@ -1,5 +1,5 @@
 // components/TestTables/measurementOfMaLinearity.tsx
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Plus, Trash2, Loader2, Edit3, Save } from 'lucide-react';
 import {
     addMeasurementOfMaLinearity,
@@ -38,6 +38,8 @@ interface Props {
 
 const MeasurementOfMaLinearity: React.FC<Props> = ({ serviceId, testId: propTestId, tubeId, onRefresh, csvData }) => {
     const [testId, setTestId] = useState<string | null>(propTestId || null);
+    const csvDataRef = useRef(csvData);
+    csvDataRef.current = csvData;
 
     // Table 1: Single row
     const [table1Row, setTable1Row] = useState<Table1Row>({ kvp: '', sliceThickness: '', time: '' });
@@ -187,85 +189,89 @@ const MeasurementOfMaLinearity: React.FC<Props> = ({ serviceId, testId: propTest
         return table1Row.time.trim() !== '' && !Number.isNaN(timeVal) && timeVal > 0;
     }, [table1Row.time]);
 
-    // === CSV Data Injection ===
+    // === CSV Data Injection — apply Header 1-N immediately ===
     useEffect(() => {
-        if (csvData && csvData.length > 0) {
-            // Table 1: kvp, sliceThickness, time
-            const kvp = csvData.find(r => r['Field Name'] === 'Table1_kvp')?.['Value'];
-            const slice = csvData.find(r => r['Field Name'] === 'Table1_SliceThickness')?.['Value'];
-            const time = csvData.find(r => r['Field Name'] === 'Table1_Time')?.['Value'];
+        if (!csvData || csvData.length === 0) return;
 
-            if (kvp || slice || time) {
-                setTable1Row(prev => ({
-                    ...prev,
-                    kvp: kvp || prev.kvp,
-                    sliceThickness: slice || prev.sliceThickness,
-                    time: time || prev.time
-                }));
-            }
+        // Dynamic column headers from Excel Header 1-N (always apply, even before rows)
+        const measHeaderLabels = csvData
+            .filter((r) => String(r['Field Name'] || '') === 'MeasHeader')
+            .map((r) => String(r['Value'] ?? '').trim())
+            .filter(Boolean);
 
-            // Table 2
-            const rowIndices = [...new Set(csvData
-                .filter(r => r['Field Name'].startsWith('Table2_'))
-                .map(r => parseInt(r['Row Index']))
-                .filter(i => !isNaN(i) && i > 0)
-            )];
+        const resultFields = csvData.filter((r) =>
+            String(r['Field Name'] || '').startsWith('Table2_Result_')
+        );
+        const maxResultIdx = resultFields.reduce((max, r) => {
+            const idx = parseInt(String(r['Field Name']).replace('Table2_Result_', ''), 10);
+            return isNaN(idx) ? max : Math.max(max, idx);
+        }, -1);
 
-            if (rowIndices.length > 0) {
-                const measHeaderLabels = csvData
-                    .filter((r) => r['Field Name'] === 'MeasHeader')
-                    .map((r) => r['Value'])
-                    .filter(Boolean);
-                const resultFields = csvData.filter(r => r['Field Name'].startsWith('Table2_Result_'));
-                const maxResultIdx = resultFields.reduce((max, r) => {
-                    const idx = parseInt(r['Field Name'].replace('Table2_Result_', ''));
-                    return isNaN(idx) ? max : Math.max(max, idx);
-                }, 0);
+        const numMeas = measHeaderLabels.length > 0
+            ? measHeaderLabels.length
+            : maxResultIdx >= 0
+                ? maxResultIdx + 1
+                : 3;
+        const newHeaders = measHeaderLabels.length > 0
+            ? measHeaderLabels
+            : Array.from({ length: numMeas }, (_, i) => `Meas ${i + 1}`);
+        setMeasHeaders(newHeaders);
 
-                const numMeas = measHeaderLabels.length > 0
-                    ? measHeaderLabels.length
-                    : Math.max(3, maxResultIdx + 1);
-                const newHeaders = measHeaderLabels.length > 0
-                    ? measHeaderLabels
-                    : Array.from({ length: numMeas }, (_, i) => `Meas ${i + 1}`);
-                setMeasHeaders(newHeaders);
+        // Table 1: kvp, sliceThickness, time
+        const kvp = csvData.find(r => r['Field Name'] === 'Table1_kvp')?.['Value'];
+        const slice = csvData.find(r => r['Field Name'] === 'Table1_SliceThickness')?.['Value'];
+        const time = csvData.find(r => r['Field Name'] === 'Table1_Time')?.['Value'];
 
-                const newRows = rowIndices.map(idx => {
-                    const rowData = csvData.filter(r => parseInt(r['Row Index']) === idx);
-                    const mAsApplied = rowData.find(r => r['Field Name'] === 'Table2_mAsApplied')?.['Value'] || '';
-
-                    // Support multiple measurements (Meas 1, Meas 2, ...)
-                    const outputs = Array(numMeas).fill('');
-                    newHeaders.forEach((_, hIdx) => {
-                        const val = rowData.find(r => r['Field Name'] === `Table2_Result_${hIdx}`)?.['Value'];
-                        if (val) outputs[hIdx] = val;
-                    });
-
-                    return {
-                        id: Date.now().toString() + Math.random(),
-                        mAsApplied,
-                        measuredOutputs: outputs,
-                        average: '',
-                        x: '',
-                        xMax: '',
-                        xMin: '',
-                        col: '',
-                        remarks: '',
-                        failedCells: Array(numMeas).fill(false),
-                    };
-                });
-                setTable2Rows(newRows);
-            }
-
-            // Tolerance
-            const tol = csvData.find(r => r['Field Name'] === 'Tolerance')?.['Value'];
-            if (tol) setTolerance(tol);
-
-            if (!testId) {
-                setIsEditing(true);
-            }
+        if (kvp || slice || time) {
+            setTable1Row(prev => ({
+                ...prev,
+                kvp: kvp || prev.kvp,
+                sliceThickness: slice || prev.sliceThickness,
+                time: time || prev.time
+            }));
         }
-    }, [csvData]); // Intentionally not including measHeaders to avoid loops, assume headers stable or default
+
+        // Table 2
+        const rowIndices = [...new Set(csvData
+            .filter(r => String(r['Field Name'] || '').startsWith('Table2_'))
+            .map(r => parseInt(String(r['Row Index']), 10))
+            .filter(i => !isNaN(i) && i > 0)
+        )].sort((a, b) => a - b);
+
+        if (rowIndices.length > 0) {
+            const newRows = rowIndices.map(idx => {
+                const rowData = csvData.filter(r => parseInt(String(r['Row Index']), 10) === idx);
+                const mAsApplied = rowData.find(r => r['Field Name'] === 'Table2_mAsApplied')?.['Value'] || '';
+
+                const outputs = Array(numMeas).fill('');
+                newHeaders.forEach((_, hIdx) => {
+                    const val = rowData.find(r => r['Field Name'] === `Table2_Result_${hIdx}`)?.['Value'];
+                    if (val) outputs[hIdx] = val;
+                });
+
+                return {
+                    id: Date.now().toString() + Math.random(),
+                    mAsApplied,
+                    measuredOutputs: outputs,
+                    average: '',
+                    x: '',
+                    xMax: '',
+                    xMin: '',
+                    col: '',
+                    remarks: '',
+                    failedCells: Array(numMeas).fill(false),
+                };
+            });
+            setTable2Rows(newRows);
+        }
+
+        const tol = csvData.find(r => r['Field Name'] === 'Tolerance')?.['Value'];
+        if (tol) setTolerance(String(tol));
+
+        setIsLoading(false);
+        setIsEditing(true);
+        setHasSaved(false);
+    }, [csvData]);
 
     // === Form Valid ===
     const isFormValid = useMemo(() => {
@@ -285,6 +291,11 @@ const MeasurementOfMaLinearity: React.FC<Props> = ({ serviceId, testId: propTest
                 setIsLoading(false);
                 return;
             }
+            // Prefer Excel/CSV injection — do not overwrite measurementHeaders
+            if (csvData && csvData.length > 0) {
+                setIsLoading(false);
+                return;
+            }
 
             try {
                 setIsLoading(true);
@@ -295,6 +306,12 @@ const MeasurementOfMaLinearity: React.FC<Props> = ({ serviceId, testId: propTest
                     rec = response.data || response;
                 } else {
                     rec = await getMeasurementOfMaLinearityByServiceId(serviceId, tubeId || null);
+                }
+
+                // Excel arrived while request was in flight — keep CSV MeasHeader values
+                if (csvDataRef.current && csvDataRef.current.length > 0) {
+                    setIsLoading(false);
+                    return;
                 }
 
                 if (rec) {
@@ -346,7 +363,7 @@ const MeasurementOfMaLinearity: React.FC<Props> = ({ serviceId, testId: propTest
             }
         };
         load();
-    }, [serviceId, propTestId, tubeId]);
+    }, [serviceId, propTestId, tubeId, csvData]);
 
     // === Save / Update ===
     // === Save / Update ===

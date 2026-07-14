@@ -119,8 +119,6 @@ export const handleExportToExcel = (details: any, tools: any[]) => {
     ["TubeHousingLeakage", "ToleranceOperator", "0", "<=", "Operator"],
     ["TubeHousingLeakage", "ToleranceValue", "0", "1", "Value (mGy/h)"],
 
-    ["RadiationProtectionInterventionalRadiology", "SurveyDate", "0", "", "Survey Date (YYYY-MM-DD)"],
-    ["RadiationProtectionInterventionalRadiology", "HasValidCalibration", "0", "Yes", "Calibration Valid? (Yes/No)"],
     ["RadiationProtectionInterventionalRadiology", "AppliedCurrent", "0", "100", "Applied mA"],
     ["RadiationProtectionInterventionalRadiology", "AppliedVoltage", "0", "80", "Applied kV"],
     ["RadiationProtectionInterventionalRadiology", "ExposureTime", "0", "0.5", "Exposure Time (s)"],

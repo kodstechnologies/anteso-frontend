@@ -27,6 +27,7 @@ import {
 import { getDetails, getTools } from "../../../../../../api";
 import { createCTScanUploadableExcel, CTScanExportData } from "./exportCTScanToExcel";
 import { isExcelFileUrl } from "../../../../../../utils/spreadsheetFile";
+import { normalizeCsvComparisonOperator } from "../shared/parseRadiographyStyleTableFormat";
 
 import Standards from "../../Standards";
 import Notes from "../../Notes";
@@ -449,24 +450,36 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
 
         const pushField = (field: string, value: string, rowIndex: number, testName: string) => {
             if (!field || String(value ?? '').trim() === '') return;
+            const normalizedValue = field === 'ToleranceOperator'
+                ? normalizeCsvComparisonOperator(value)
+                : String(value).trim();
             data.push({
                 'Field Name': field,
-                'Value': String(value).trim(),
+                'Value': normalizedValue,
                 'Row Index': rowIndex,
                 'Test Name': testName,
             });
         };
 
         const colIdx = (hdr: string[], ...names: string[]) => {
+            const norm = (s: string) => String(s || '').trim().toLowerCase().replace(/\s+/g, ' ');
             for (const name of names) {
-                const idx = hdr.findIndex((h) => String(h || '').toLowerCase().includes(name.toLowerCase()));
+                const target = norm(name);
+                // Prefer exact match (avoids "mA" matching unintended columns via includes)
+                let idx = hdr.findIndex((h) => norm(h) === target);
+                if (idx >= 0) return idx;
+            }
+            for (const name of names) {
+                const target = norm(name);
+                if (target.length < 3) continue; // skip short tokens like "mA" for includes fallback
+                const idx = hdr.findIndex((h) => norm(h).includes(target));
                 if (idx >= 0) return idx;
             }
             return -1;
         };
 
-        const isHeaderLabelCol = (h: string) => /^header\s*\d+$/i.test(String(h || '').trim());
-        const isMeasCol = (h: string) => /^meas\s*\d+$/i.test(String(h || '').trim());
+        const isHeaderLabelCol = (h: string) => /^header\s*[_\-]?\s*\d+$/i.test(String(h || '').trim());
+        const isMeasCol = (h: string) => /^(?:meas(?:ured)?(?:\s*output)?|output)\s*[_\-]?\s*\d+$/i.test(String(h || '').trim());
 
         const resolveMeasColumns = (hdr: string[], anchorNames: string[]) => {
             const explicit = hdr
@@ -569,7 +582,7 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
                             if (tol) pushField('Tolerance', tol, 0, currentTestName);
                             headers.forEach((h, hi) => {
                                 if (isHeaderLabelCol(h)) {
-                                    const label = row[hi] ?? '';
+                                    const label = String(row[hi] ?? '').trim();
                                     if (label) pushField('MeasHeader', label, 0, currentTestName);
                                 }
                             });
@@ -618,6 +631,7 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
                             if (maLabels.length > 0) {
                                 sectionMaLabels[currentTestName] = maLabels;
                                 pushField('MaColumnLabels', maLabels.join(','), 0, currentTestName);
+                                maLabels.forEach((label) => pushField('MaHeader', label, 0, currentTestName));
                             }
                             const time = row[colIdx(headers, 'Time (ms)', 'Time')] ?? '';
                             const slice = row[colIdx(headers, 'Slice Thickness (mm)', 'Slice Thickness')] ?? '';
@@ -642,10 +656,9 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
                 }
 
                 if (currentTestNameBase === 'Measurement of mA Linearity') {
-                    const hasHeaderMeas = headers.some(isHeaderLabelCol) && (
-                        headers.some(isMeasCol) || resolveMeasColumns(headers, ['mA Applied', 'Meas 1']).length > 0
-                    );
-                    if (hasHeaderMeas) {
+                    const hasHeaderCols = headers.some(isHeaderLabelCol);
+                    const hasMeasCols = headers.some(isMeasCol) || resolveMeasColumns(headers, ['mA Applied', 'Meas 1']).length > 0;
+                    if (hasHeaderCols && hasMeasCols) {
                         if (rowIdx === 1) {
                             const kvp = row[colIdx(headers, 'kVp', 'kV')] ?? '';
                             const slice = row[colIdx(headers, 'Slice Thickness (mm)', 'Slice Thickness')] ?? '';
@@ -657,9 +670,30 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
                             if (tol) pushField('Tolerance', tol, 0, currentTestName);
                             headers.forEach((h, hi) => {
                                 if (isHeaderLabelCol(h)) {
-                                    const label = row[hi] ?? '';
+                                    const label = String(row[hi] ?? '').trim();
                                     if (label) pushField('MeasHeader', label, 0, currentTestName);
                                 }
+                            });
+                        }
+                        pushField('Table2_mAsApplied', row[colIdx(headers, 'mA Applied', 'mA', 'mAs Applied')] ?? '', rowIdx, currentTestName);
+                        resolveMeasColumns(headers, ['mA Applied', 'mA', 'mAs Applied', 'Meas 1']).forEach(({ idx }, mi) => {
+                            pushField(`Table2_Result_${mi}`, row[idx] ?? '', rowIdx, currentTestName);
+                        });
+                        continue;
+                    }
+                    // Legacy: Meas 1..N only (no Header 1-N) — still emit MeasHeader so UI shows labels
+                    if (hasMeasCols) {
+                        if (rowIdx === 1) {
+                            const kvp = row[colIdx(headers, 'kVp', 'kV')] ?? '';
+                            const slice = row[colIdx(headers, 'Slice Thickness (mm)', 'Slice Thickness')] ?? '';
+                            const time = row[colIdx(headers, 'Time (ms)', 'Time')] ?? '';
+                            const tol = row[colIdx(headers, 'Tolerance', 'Tol Value')] ?? '';
+                            if (kvp) pushField('Table1_kvp', kvp, 0, currentTestName);
+                            if (slice) pushField('Table1_SliceThickness', slice, 0, currentTestName);
+                            if (time) pushField('Table1_Time', time, 0, currentTestName);
+                            if (tol) pushField('Tolerance', tol, 0, currentTestName);
+                            headers.forEach((h) => {
+                                if (isMeasCol(h)) pushField('MeasHeader', String(h).trim(), 0, currentTestName);
                             });
                         }
                         pushField('Table2_mAsApplied', row[colIdx(headers, 'mA Applied', 'mA', 'mAs Applied')] ?? '', rowIdx, currentTestName);
@@ -1526,9 +1560,9 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
                                         <ChevronDownIcon className={`w-6 h-6 transition-transform ${open ? "rotate-180" : ""}`} />
                                     </Disclosure.Button>
                                     <Disclosure.Panel className="border border-gray-300 rounded-b-lg p-6 bg-gray-50 mb-6">
-                                        {React.isValidElement(item.component)
-                                            ? React.cloneElement(item.component as React.ReactElement<{ key?: string }>, { key: item.title })
-                                            : item.component}
+                                        <div key={`${item.title}-${refreshKey}-${csvDataVersion}`}>
+                                            {item.component}
+                                        </div>
                                     </Disclosure.Panel>
                                 </>
                             )}

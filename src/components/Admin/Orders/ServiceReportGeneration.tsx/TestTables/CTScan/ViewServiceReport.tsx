@@ -12,6 +12,7 @@ import { generatePDF, estimateReportPages } from "../../../../../../utils/genera
 import { ReportPdfPageHeader } from "../RadiographyFixed/component/Header";
 import { ReportPdfPageFooterEnd } from "../RadiographyFixed/component/FooterEnd";
 import { ReportPdfPageDeclaration } from "../RadiographyFixed/component/Declaration";
+import { normalizeCsvComparisonOperator } from "../shared/parseRadiographyStyleTableFormat";
 
 interface Tool {
   slNumber: string;
@@ -2095,7 +2096,7 @@ const ViewServiceReportCTScan: React.FC = () => {
                           <div className="bg-blue-50 p-4 print:p-1 border-l-4 border-blue-500 rounded-r">
                             <p className="text-[11px] print:text-[8px] leading-relaxed">
                               <strong>Tolerance:</strong> Maximum Leakage Radiation Level at 1 meter from the Focus should be{' '}
-                              {data.toleranceOperator === 'less than or equal to' ? '<=' : data.toleranceOperator === 'greater than or equal to' ? '>=' : '='}{' '}
+                              {normalizeCsvComparisonOperator(data.toleranceOperator || '<=')}{' '}
                               <strong>{data.toleranceValue || data.tolerance || '1'} mGy ({parseFloat(data.toleranceValue || data.tolerance || '1') * 114} mR) in one hour.</strong>
                             </p>
                           </div>

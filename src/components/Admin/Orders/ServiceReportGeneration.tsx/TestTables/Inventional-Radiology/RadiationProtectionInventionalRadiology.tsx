@@ -23,16 +23,25 @@ interface Props {
     tubeId?: string | null;
     onTestSaved?: (testId: string) => void;
     csvData?: any[];
+    /** QA / submitted test date — used for survey date when available; else today */
+    qaTestDate?: string | null;
 }
 
-const RadiationProtectionInterventionalRadiology: React.FC<Props> = ({ serviceId, testId: propTestId, tubeId, onTestSaved, csvData }) => {
+const RadiationProtectionInterventionalRadiology: React.FC<Props> = ({ serviceId, testId: propTestId, tubeId, onTestSaved, csvData, qaTestDate }) => {
     const todayDate = new Date().toISOString().split("T")[0];
+    const defaultSurveyDate = (() => {
+        if (qaTestDate) {
+            const d = new Date(qaTestDate);
+            if (!isNaN(d.getTime())) return d.toISOString().split("T")[0];
+        }
+        return todayDate;
+    })();
     const [testId, setTestId] = useState<string | null>(null);
     const [isSaved, setIsSaved] = useState(false);
     const [isEditing, setIsEditing] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
-    const [surveyDate, setSurveyDate] = useState<string>(todayDate);
+    const [surveyDate, setSurveyDate] = useState<string>(defaultSurveyDate);
     const [hasValidCalibration, setHasValidCalibration] = useState<string>("");
 
     const [appliedCurrent, setAppliedCurrent] = useState<string>("100");
@@ -204,8 +213,9 @@ const RadiationProtectionInterventionalRadiology: React.FC<Props> = ({ serviceId
                 const data = res?.data;
                 if (data) {
                     setTestId(data._id || null);
-                    setSurveyDate(data.surveyDate ? new Date(data.surveyDate).toISOString().split('T')[0] : todayDate);
-                    setHasValidCalibration(data.hasValidCalibration || "");
+                    const savedDate = data.surveyDate ? new Date(data.surveyDate).toISOString().split('T')[0] : "";
+                    setSurveyDate(savedDate || defaultSurveyDate);
+                    // Calibration is set from tools check — do not override from saved Excel/CSV
                     setAppliedCurrent(data.appliedCurrent || "100");
                     setAppliedVoltage(data.appliedVoltage || "80");
                     setExposureTime(data.exposureTime || "0.5");
@@ -226,30 +236,26 @@ const RadiationProtectionInterventionalRadiology: React.FC<Props> = ({ serviceId
                     setIsSaved(true);
                     setIsEditing(false);
                 } else {
-                    setSurveyDate(todayDate);
+                    setSurveyDate(defaultSurveyDate);
                     setIsEditing(true);
                 }
             } catch (err: any) {
                 if (err.response?.status !== 404) {
                     toast.error("Failed to load radiation protection survey");
                 }
-                setSurveyDate(todayDate);
+                setSurveyDate(defaultSurveyDate);
                 setIsEditing(true);
             } finally {
                 setIsLoading(false);
             }
         };
         load();
-    }, [serviceId, tubeId, csvData]);
+    }, [serviceId, tubeId, csvData, defaultSurveyDate]);
 
-    // CSV Data Injection
+    // CSV Data Injection — survey date & calibration are NOT taken from Excel
     useEffect(() => {
         if (csvData && csvData.length > 0) {
-            const surveyDateVal = csvData.find(r => r['Field Name'] === 'Table1_surveyDate')?.['Value'];
-            setSurveyDate(surveyDateVal || todayDate);
-
-            const calibVal = csvData.find(r => r['Field Name'] === 'Table1_hasValidCalibration')?.['Value'];
-            if (calibVal) setHasValidCalibration(calibVal);
+            setSurveyDate(defaultSurveyDate);
 
             const maVal = csvData.find(r => r['Field Name'] === 'Table1_appliedCurrent')?.['Value'];
             if (maVal) setAppliedCurrent(maVal);
@@ -290,7 +296,7 @@ const RadiationProtectionInterventionalRadiology: React.FC<Props> = ({ serviceId
             }
             setIsSaved(false);
         }
-    }, [csvData, isSaved]);
+    }, [csvData, isSaved, defaultSurveyDate]);
 
     const handleSave = async () => {
         if (!serviceId) {

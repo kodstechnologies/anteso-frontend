@@ -47,18 +47,40 @@ export const createInventionalRadiologySavedExcel = (
   }
 
   const cba = unwrap(data.centralBeamAlignment);
-  if (cba?.measurements?.length > 0) {
-    const rows = cba.measurements.map((m: any) => [m.observedTilt ?? "", m.tolerance ?? ""]);
-    addSection("CENTRAL BEAM ALIGNMENT", ["Observed Tilt", "Tolerance"], rows);
+  if (cba?.techniqueFactors || cba?.observedTilt || cba?.measurements?.length > 0) {
+    const tf = cba.techniqueFactors || {};
+    const obs =
+      cba.observedTilt?.value ??
+      cba.measurements?.[0]?.observedTilt ??
+      cba.observedTilt ??
+      "";
+    const tol = cba.tolerance || {};
+    allData.push(["TEST: CENTRAL BEAM ALIGNMENT"]);
+    allData.push([
+      "FFD (cm)",
+      tf.fcd ?? "",
+      "kV",
+      tf.kv ?? "",
+      "mA",
+      tf.mas ?? tf.ma ?? "",
+      "Time",
+      tf.time ?? "",
+    ]);
+    allData.push(["Observed Tilt (cm)", obs]);
+    allData.push(["Tolerance Operator", tol.operator ?? "<="]);
+    allData.push(["Tolerance Value (cm)", tol.value ?? ""]);
+    addBlank();
   }
 
   const efs = unwrap(data.effectiveFocalSpot);
   if (efs?.focalSpots?.length > 0 || efs?.table2?.length > 0) {
     const spots = efs.focalSpots || efs.table2 || [];
     allData.push(["TEST: EFFECTIVE FOCAL SPOT SIZE"]);
-    allData.push(["Stated Focal Spot (mm)", "Measured Focal Spot (Nominal) (mm)"]);
+    if (efs.fcd) allData.push(["FFD (cm)", efs.fcd]);
+    allData.push(["Focus Type", "Stated Focal Spot (mm)", "Measured Focal Spot (Nominal) (mm)"]);
     spots.forEach((r: any) => {
       allData.push([
+        r.focusType ?? "",
         r.statedNominal ?? r.statedWidth ?? "",
         r.measuredNominal ?? r.measuredWidth ?? "",
       ]);
@@ -235,21 +257,29 @@ export const createInventionalRadiologySavedExcel = (
 
   const rps = unwrap(data.radiationProtectionSurvey);
   if (rps) {
-    allData.push(["TEST: RADIATION PROTECTION SURVEY"]);
+    allData.push(["TEST: RADIATION PROTECTION SURVEY REPORT"]);
     allData.push([
-      "Survey Date",
-      rps.surveyDate ?? "",
-      "Applied Current (mA)",
-      rps.appliedCurrent ?? "",
-      "Applied Voltage (kV)",
-      rps.appliedVoltage ?? "",
-      "Exposure Time (s)",
-      rps.exposureTime ?? "",
+      "Location",
+      "mR/hr",
+      "Category",
+      "Applied Voltage",
+      "Applied Current",
+      "Exposure Time",
+      "Workload",
     ]);
-    if (Array.isArray(rps.locations) && rps.locations.length > 0) {
-      allData.push(["Location", "Max. Radiation Level (mR/hr)", "Result"]);
-      rps.locations.forEach((l: any) => allData.push([l.location ?? "", l.mRPerHr ?? "", l.category ?? ""]));
-    }
+    const locs = Array.isArray(rps.locations) ? rps.locations : [];
+    locs.forEach((l: any, idx: number) => {
+      allData.push([
+        l.location ?? "",
+        l.mRPerHr ?? "",
+        l.category ?? "",
+        idx === 0 ? (rps.appliedVoltage ?? "") : "",
+        idx === 0 ? (rps.appliedCurrent ?? "") : "",
+        idx === 0 ? (rps.exposureTime ?? "") : "",
+        idx === 0 ? (rps.workload ?? "") : "",
+      ]);
+    });
+    addBlank();
   }
 
   const ws = XLSX.utils.aoa_to_sheet(allData);
