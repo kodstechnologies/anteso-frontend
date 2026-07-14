@@ -81,10 +81,10 @@ const OutputConsistencyForCArm: React.FC<Props> = ({
         ? data.fieldRows
         : [];
 
-    const importedHeaderList = Array.isArray(data?.measurementHeaders)
-      ? data.measurementHeaders
+    const importedHeaderList: string[] = Array.isArray(data?.measurementHeaders)
+      ? data.measurementHeaders.map((item: unknown) => String(item ?? '').trim()).filter(Boolean)
       : Array.isArray(data?.measHeaders)
-        ? data.measHeaders
+        ? data.measHeaders.map((item: unknown) => String(item ?? '').trim()).filter(Boolean)
         : [];
 
     try {

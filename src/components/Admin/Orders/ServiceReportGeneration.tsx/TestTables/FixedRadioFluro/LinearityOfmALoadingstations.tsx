@@ -254,10 +254,6 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
       if (initialData.tolerance) {
         setTolerance(String(initialData.tolerance));
       }
-      if (initialData.toleranceOperator) {
-        const op = String(initialData.toleranceOperator).trim();
-        setToleranceOperator(['<', '>', '<=', '>=', '='].includes(op) ? op : '<=');
-      }
       if (initialData.table2Rows && initialData.table2Rows.length > 0) {
         const maxMeas = Math.max(
           3,

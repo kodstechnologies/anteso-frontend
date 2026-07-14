@@ -80,7 +80,7 @@ const extractMeasHeadersFromMasRow = (row: any[]): string[] => {
 const readMeasHeadersFromCsv = (csvData: any[]): string[] => {
   const meta = csvData.find((r) => String(r?.[0] ?? '').trim() === '__MEAS_HEADERS__');
   if (meta) {
-    return meta.slice(1).map((c) => preserveExcelHeaderCell(c)).filter(Boolean);
+    return meta.slice(1).map((c:any) => preserveExcelHeaderCell(c)).filter(Boolean);
   }
   const masHeaderRow = csvData.find((row) => isMasRangeHeaderRow(row));
   return masHeaderRow ? extractMeasHeadersFromMasRow(masHeaderRow) : [];

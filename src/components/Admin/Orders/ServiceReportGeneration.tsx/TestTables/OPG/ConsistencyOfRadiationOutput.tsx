@@ -232,7 +232,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
   const readMeasHeadersFromCsv = (rows: any[]): string[] => {
     const meta = rows.find((r) => String(r?.[0] ?? '').trim() === '__MEAS_HEADERS__');
     if (meta) {
-      return meta.slice(1).map((c) => preserveExcelHeaderCell(c)).filter(Boolean);
+      return meta.slice(1).map((c:any) => preserveExcelHeaderCell(c)).filter(Boolean);
     }
     const consistencyHeaderRow = rows.find(
       (r) => String(r?.[0] || '').trim().toLowerCase() === 'kvp'
