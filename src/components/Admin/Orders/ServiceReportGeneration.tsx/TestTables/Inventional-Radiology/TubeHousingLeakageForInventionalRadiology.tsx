@@ -8,6 +8,27 @@ import {
   getTubeHousingLeakageByServiceIdForInventionalRadiology,
   updateTubeHousingLeakageForInventionalRadiology,
 } from '../../../../../../api';
+import { normalizeCsvComparisonOperator } from '../shared/parseRadiographyStyleTableFormat';
+
+type ToleranceOp = '<' | '<=' | '>' | '>=' | '=';
+
+const compareByToleranceOp = (result: number, tol: number, op: string): boolean => {
+  const normalized = normalizeCsvComparisonOperator(op) as ToleranceOp;
+  switch (normalized) {
+    case '<':
+      return result < tol;
+    case '<=':
+      return result <= tol;
+    case '>':
+      return result > tol;
+    case '>=':
+      return result >= tol;
+    case '=':
+      return Math.abs(result - tol) < 0.01;
+    default:
+      return result <= tol;
+  }
+};
 
 interface SettingsRow {
   fcd: string;
@@ -63,7 +84,7 @@ export default function TubeHousingLeakageForInventionalRadiology({
 
   const [workload, setWorkload] = useState<string>('');
   const [toleranceValue, setToleranceValue] = useState<string>('1');
-  const [toleranceOperator, setToleranceOperator] = useState<'less than or equal to' | 'greater than or equal to' | '='>('less than or equal to');
+  const [toleranceOperator, setToleranceOperator] = useState<ToleranceOp>('<=');
   const [toleranceTime, setToleranceTime] = useState<string>('1');
 
   const [isSaving, setIsSaving] = useState(false);
@@ -83,7 +104,9 @@ export default function TubeHousingLeakageForInventionalRadiology({
     if (s) setSettings(prev => ({ ...prev, fcd: String(s.fcd ?? prev.fcd), kv: String(s.kv ?? prev.kv), ma: String(s.ma ?? prev.ma), time: String(s.time ?? prev.time) }));
     if (initialData.workload !== undefined) setWorkload(String(initialData.workload));
     if (initialData.toleranceValue !== undefined) setToleranceValue(String(initialData.toleranceValue));
-    if (initialData.toleranceOperator) setToleranceOperator(initialData.toleranceOperator as any);
+    if (initialData.toleranceOperator) {
+      setToleranceOperator(normalizeCsvComparisonOperator(initialData.toleranceOperator) as ToleranceOp);
+    }
     if (initialData.toleranceTime !== undefined) setToleranceTime(String(initialData.toleranceTime));
     if (initialData.leakageMeasurements?.length > 0) {
       setLeakageRows(initialData.leakageMeasurements.map((r: any) => ({
@@ -123,10 +146,7 @@ export default function TubeHousingLeakageForInventionalRadiology({
 
         const tol = parseFloat(toleranceValue) || 0;
         if (tol > 0) {
-          let pass = false;
-          if (toleranceOperator === 'less than or equal to') pass = mgyValue <= tol;
-          if (toleranceOperator === 'greater than or equal to') pass = mgyValue >= tol;
-          if (toleranceOperator === '=') pass = Math.abs(mgyValue - tol) < 0.01;
+          const pass = compareByToleranceOp(mgyValue, tol, toleranceOperator);
           remark = pass ? 'Pass' : 'Fail';
         }
       }
@@ -172,10 +192,7 @@ export default function TubeHousingLeakageForInventionalRadiology({
     const result = parseFloat(globalMaxResultMGy || '0') || 0;
     const tol = parseFloat(toleranceValue) || 0;
     if (!toleranceValue || globalMaxResultMR === 0) return '';
-    let pass = false;
-    if (toleranceOperator === 'less than or equal to') pass = result <= tol;
-    if (toleranceOperator === 'greater than or equal to') pass = result >= tol;
-    if (toleranceOperator === '=') pass = Math.abs(result - tol) < 0.01;
+    const pass = compareByToleranceOp(result, tol, toleranceOperator);
     return pass ? 'Pass' : 'Fail';
   }, [globalMaxResultMGy, toleranceValue, toleranceOperator, globalMaxResultMR]);
 
@@ -247,7 +264,7 @@ export default function TubeHousingLeakageForInventionalRadiology({
           });
           setWorkload(data.workload ?? '');
           setToleranceValue(data.toleranceValue ?? '');
-          setToleranceOperator(data.toleranceOperator ?? 'less than or equal to');
+          setToleranceOperator(normalizeCsvComparisonOperator(data.toleranceOperator ?? '<=') as ToleranceOp);
           setToleranceTime(data.toleranceTime ?? '1');
 
           if (Array.isArray(data.leakageMeasurements) && data.leakageMeasurements.length > 0) {
@@ -309,6 +326,8 @@ export default function TubeHousingLeakageForInventionalRadiology({
     if (workloadVal) setWorkload(workloadVal);
     const tolVal = csvData.find(r => r['Field Name'] === 'Table1_toleranceValue' || r['Field Name'] === 'ToleranceValue')?.['Value'];
     if (tolVal) setToleranceValue(tolVal);
+    const tolOp = csvData.find(r => r['Field Name'] === 'ToleranceOperator')?.['Value'];
+    if (tolOp) setToleranceOperator(normalizeCsvComparisonOperator(tolOp) as ToleranceOp);
 
     const leakageFromCsv = csvData.filter(r => r['Field Name']?.startsWith('Table2_') || r['Field Name']?.startsWith('Table1_Location'));
     if (leakageFromCsv.length > 0) {
@@ -583,13 +602,15 @@ export default function TubeHousingLeakageForInventionalRadiology({
             <strong>Tolerance:</strong> Maximum Leakage Radiation Level at 1 meter from the Focus should be{' '}
             <select
               value={toleranceOperator}
-              onChange={(e) => setToleranceOperator(e.target.value as any)}
+              onChange={(e) => setToleranceOperator(e.target.value as ToleranceOp)}
               disabled={isViewMode}
               className={`px-2 py-1 border rounded text-sm font-medium ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
             >
-              <option value="less than or equal to">&lt;</option>
-              <option value="greater than or equal to">&gt;</option>
-              <option value="=">{'='}</option>
+              <option value="<">&lt;</option>
+              <option value="<=">&lt;=</option>
+              <option value=">">&gt;</option>
+              <option value=">=">&gt;=</option>
+              <option value="=">=</option>
             </select>
             {' '}
             <input

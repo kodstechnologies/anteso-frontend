@@ -8,6 +8,60 @@ import {
   oarmOutputConsistencySection,
   totalFiltrationSection,
 } from "../shared/radiographyStyleExcelSections";
+import { normalizeCsvComparisonOperator } from "../shared/parseRadiographyStyleTableFormat";
+
+/** Mark measurement header and mAs label cells as text so Excel does not corrupt them. */
+const applyTextFormatGuards = (ws: XLSX.WorkSheet, rows: any[][]) => {
+  let inLinearityMas = false;
+  let seenMasHeader = false;
+
+  rows.forEach((row, r) => {
+    const first = String(row[0] ?? "").trim();
+
+    if (/^TEST:\s*LINEARITY OF MAS LOADING/i.test(first)) {
+      inLinearityMas = true;
+      seenMasHeader = false;
+      return;
+    }
+    if (/^TEST:/i.test(first)) {
+      inLinearityMas = false;
+      seenMasHeader = false;
+    }
+
+    const markText = (rowIdx: number, colIdx: number) => {
+      const addr = XLSX.utils.encode_cell({ r: rowIdx, c: colIdx });
+      const existing = ws[addr];
+      const value = existing?.v ?? row[colIdx];
+      if (value === undefined || value === null || value === "") return;
+      ws[addr] = { t: "s", v: String(value) };
+    };
+
+    if (inLinearityMas) {
+      if (/^mAs(\s*Range)?$/i.test(first)) {
+        seenMasHeader = true;
+        row.forEach((cell, c) => {
+          if (c > 0 && String(cell ?? "").trim()) markText(r, c);
+        });
+        return;
+      }
+      if (seenMasHeader && /^\d+(\.\d+)?$/.test(first)) {
+        markText(r, 0);
+      }
+    }
+
+    if (/^kVp$/i.test(first) && /^mAs$/i.test(String(row[1] ?? "").trim())) {
+      row.forEach((cell, c) => {
+        if (c > 1 && String(cell ?? "").trim()) markText(r, c);
+      });
+    }
+  });
+};
+
+const aoaToTextSafeSheet = (rows: any[][]) => {
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  applyTextFormatGuards(ws, rows);
+  return ws;
+};
 
 export interface OArmExportData {
   reportHeader?: any;
@@ -137,27 +191,49 @@ export const createOArmUploadableExcel = (data: OArmExportData): XLSX.WorkBook =
   }
 
   const leak = unwrap(data.tubeHousingLeakage);
-  if (leak?.readings?.length || leak?.measurements?.length) {
-    const settings = leak.settings || leak.testConditions || {};
-    const rows = (leak.readings || leak.measurements || []).map((r: any) => [
-      settings.fcd ?? settings.fdd ?? "",
-      settings.kv ?? "",
-      settings.ma ?? "",
-      settings.time ?? "",
-      leak.workload ?? settings.workload ?? "",
-      r.location ?? "",
-      r.left ?? r.values?.left ?? "",
-      r.right ?? r.values?.right ?? "",
-      r.front ?? r.values?.front ?? "",
-      r.back ?? r.values?.back ?? "",
-      r.top ?? r.values?.top ?? "",
-    ]);
-    addSection(
-      allData,
-      "TUBE HOUSING LEAKAGE",
-      ["FDD (cm)", "kV", "mA", "Time (sec)", "Workload", "Location", "Left", "Right", "Front", "Back", "Top"],
-      rows
-    );
+  if (leak?.leakageMeasurements?.length || leak?.readings?.length || leak?.measurements?.length) {
+    const s = Array.isArray(leak.settings) ? leak.settings[0] : leak.settings || leak.testConditions || {};
+    const tolOp = normalizeCsvComparisonOperator(leak.toleranceOperator ?? "<=");
+    const measurements = leak.leakageMeasurements || leak.readings || leak.measurements || [];
+    const headerRow = [
+      "FDD (cm)",
+      "kV",
+      "mA",
+      "Time (sec)",
+      "Workload (mA·min/week)",
+      "Tol Value",
+      "Tol Operator",
+      "Location",
+      "Front",
+      "Back",
+      "Left",
+      "Right",
+      "Top",
+    ];
+    const dataRows = measurements.map((r: any, idx: number) => {
+      const base =
+        idx === 0
+          ? [
+              s.fcd ?? s.fdd ?? leak.fcd ?? "",
+              s.kv ?? s.kvp ?? leak.kv ?? "",
+              s.ma ?? leak.ma ?? "",
+              s.time ?? leak.time ?? "",
+              leak.workload ?? s.workload ?? "",
+              leak.toleranceValue ?? "",
+              tolOp,
+            ]
+          : ["", "", "", "", "", "", ""];
+      return [
+        ...base,
+        r.location ?? "",
+        r.front ?? r.values?.front ?? "",
+        r.back ?? r.values?.back ?? "",
+        r.left ?? r.values?.left ?? "",
+        r.right ?? r.values?.right ?? "",
+        r.top ?? r.values?.top ?? "",
+      ];
+    });
+    addSection(allData, "TUBE HOUSING LEAKAGE", headerRow, dataRows);
   }
 
   const lmas = unwrap(data.linearityOfMasLoading);
@@ -178,7 +254,7 @@ export const createOArmUploadableExcel = (data: OArmExportData): XLSX.WorkBook =
     } else {
       allData.push(["TEST: LINEARITY OF MAS LOADING"]);
       allData.push(["FDD (cm)", t1.fcd ?? "", "kV", t1.kv ?? ""]);
-      allData.push(["mAs Range", ...measHeaders]);
+      allData.push(["mAs", ...measHeaders]);
       lmas.table2.forEach((r: any) => {
         const outs = r.measuredOutputs || [];
         allData.push([r.mAsApplied ?? r.mAsRange ?? "", ...measHeaders.map((_: string, i: number) => outs[i] ?? "")]);
@@ -232,10 +308,24 @@ export const buildOArmTemplateRows = (hasTimer: boolean): any[][] => {
   templateSec(
     rows,
     "TUBE HOUSING LEAKAGE",
-    ["FDD (cm)", "kV", "mA", "Time (sec)", "Workload", "Location", "Left", "Right", "Front", "Back", "Top"],
     [
-      ["100", "120", "21", "2.0", "500", "Tube", "0.05", "0.03", "0.06", "0.04", "0.02"],
-      ["", "", "", "", "", "Collimator", "0.02", "0.02", "0.03", "0.01", "0.01"],
+      "FDD (cm)",
+      "kV",
+      "mA",
+      "Time (sec)",
+      "Workload (mA·min/week)",
+      "Tol Value",
+      "Tol Operator",
+      "Location",
+      "Front",
+      "Back",
+      "Left",
+      "Right",
+      "Top",
+    ],
+    [
+      ["100", "120", "21", "2.0", "500", "1.0", "<=", "Tube", "0.05", "0.03", "0.06", "0.04", "0.02"],
+      ["", "", "", "", "", "", "", "Collimator", "0.02", "0.02", "0.03", "0.01", ""],
     ]
   );
 
@@ -263,18 +353,18 @@ export const writeOArmTemplateFiles = (outputDir: string) => {
   const combinedXlsxPath = path.join(outputDir, "OArm_Template.xlsx");
 
   const wbCombined = XLSX.utils.book_new();
-  const wsWithTimer = XLSX.utils.aoa_to_sheet(withTimer);
-  const wsNoTimer = XLSX.utils.aoa_to_sheet(noTimer);
+  const wsWithTimer = aoaToTextSafeSheet(withTimer);
+  const wsNoTimer = aoaToTextSafeSheet(noTimer);
   wsWithTimer["!cols"] = Array.from({ length: 16 }, () => ({ wch: 18 }));
   wsNoTimer["!cols"] = Array.from({ length: 16 }, () => ({ wch: 18 }));
   XLSX.utils.book_append_sheet(wbCombined, wsWithTimer, "With Timer");
   XLSX.utils.book_append_sheet(wbCombined, wsNoTimer, "Without Timer");
 
   const wbWithTimer = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wbWithTimer, XLSX.utils.aoa_to_sheet(withTimer), "With Timer");
+  XLSX.utils.book_append_sheet(wbWithTimer, aoaToTextSafeSheet(withTimer), "With Timer");
 
   const wbNoTimer = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wbNoTimer, XLSX.utils.aoa_to_sheet(noTimer), "Without Timer");
+  XLSX.utils.book_append_sheet(wbNoTimer, aoaToTextSafeSheet(noTimer), "Without Timer");
 
   const writeAll = () => {
     fs.writeFileSync(withTimerCsvPath, rowsToCsv(withTimer), "utf8");

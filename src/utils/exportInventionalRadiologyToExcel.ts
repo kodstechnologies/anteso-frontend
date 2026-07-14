@@ -116,7 +116,7 @@ export const handleExportToExcel = (details: any, tools: any[]) => {
     ["TubeHousingLeakage", "Table2_Front", "0", "", "Front (mGy/h)"],
     ["TubeHousingLeakage", "Table2_Back", "0", "", "Back (mGy/h)"],
     ["TubeHousingLeakage", "Table2_Top", "0", "", "Top (mGy/h)"],
-    ["TubeHousingLeakage", "ToleranceOperator", "0", "less than or equal to", "Operator"],
+    ["TubeHousingLeakage", "ToleranceOperator", "0", "<=", "Operator"],
     ["TubeHousingLeakage", "ToleranceValue", "0", "1", "Value (mGy/h)"],
 
     ["RadiationProtectionInterventionalRadiology", "SurveyDate", "0", "", "Survey Date (YYYY-MM-DD)"],

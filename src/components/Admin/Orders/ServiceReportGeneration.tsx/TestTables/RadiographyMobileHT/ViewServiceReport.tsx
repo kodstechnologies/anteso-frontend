@@ -4,6 +4,7 @@ import { useSearchParams } from "react-router-dom";
 import { getReportHeaderForRadiographyMobileHT, getDetails, getTools } from "../../../../../../api";
 import { generatePDF } from "../../../../../../utils/generatePDF";
 import MainTestTableForRadiographyMobileHT from "./MainTestTableForRadiographyMobileHT";
+import { normalizeCsvComparisonOperator } from "../shared/parseRadiographyStyleTableFormat";
 import { ReportPdfPageHeader } from "../RadiographyFixed/component/Header";
 import { ReportPdfPageFooter } from "../RadiographyFixed/component/Footer";
 import { ReportPdfPageFooterEnd } from "../RadiographyFixed/component/FooterEnd";
@@ -1348,7 +1349,7 @@ const ViewServiceReportRadiographyMobileHT: React.FC = () => {
                       <div className="bg-blue-50 p-4 print:p-1 border-l-4 border-blue-500 rounded-r">
                         <p className="text-[11px] print:text-[8px] leading-relaxed">
                           <strong>Tolerance:</strong> Maximum Leakage Radiation Level at 1 meter from the Focus should be{' '}
-                          {testData.radiationLeakageLevel.toleranceOperator === 'less than or equal to' ? '<' : testData.radiationLeakageLevel.toleranceOperator === 'greater than or equal to' ? '>' : '='}{' '}
+                          {normalizeCsvComparisonOperator(testData.radiationLeakageLevel.toleranceOperator || '<=')}{' '}
                           <strong>{testData.radiationLeakageLevel.toleranceValue || '1'} mGy ({parseFloat(testData.radiationLeakageLevel.toleranceValue || '1') * 114} mR) in one hour.</strong>
                         </p>
                       </div>

@@ -431,6 +431,10 @@ const GenerateReportForDentalHandHeld: React.FC<DentalProps> = ({ serviceId, qaT
                 'Measured (mm Al)': 'Measured',
                 'Required (mm Al)': 'Required',
                 'At kVp': 'atKvp',
+                // Radiography Fixed style vertical key-value rows for Total Filtration
+                'Total Filtration Measured (mm Al)': 'Measured',
+                'Total Filtration Required (mm Al)': 'Required',
+                'Total Filtration At kVp': 'atKvp',
                 'kV': 'kV', 'kVp': 'kVp',
             },
             'accuracyOfIrradiationTime': {
@@ -684,8 +688,30 @@ const GenerateReportForDentalHandHeld: React.FC<DentalProps> = ({ serviceId, qaT
         });
 
         if (Object.keys(grouped).length > 0) {
-            const hasTimerSection = !!(grouped['accuracyOfIrradiationTime']?.length);
-            if (hasTimerSection || applyConfigFromExcel) {
+            const savedChoice = serviceId ? localStorage.getItem(`dental_hand_held_timer_choice_${serviceId}`) : null;
+            const hasTimerSection = !!(
+                grouped['accuracyOfIrradiationTime']?.length ||
+                grouped['linearityOfMaLoading']?.length ||
+                grouped['LinearityOfTime']?.length
+            );
+            const hasMasSection = !!grouped['linearityOfMasLoading']?.length;
+
+            if (savedChoice !== null) {
+                setHasTimer(JSON.parse(savedChoice));
+                setShowTimerModal(false);
+            } else if (hasTimerSection && !hasMasSection) {
+                setHasTimer(true);
+                setShowTimerModal(false);
+                if (serviceId) {
+                    localStorage.setItem(`dental_hand_held_timer_choice_${serviceId}`, JSON.stringify(true));
+                }
+            } else if (hasMasSection && !hasTimerSection) {
+                setHasTimer(false);
+                setShowTimerModal(false);
+                if (serviceId) {
+                    localStorage.setItem(`dental_hand_held_timer_choice_${serviceId}`, JSON.stringify(false));
+                }
+            } else if (hasTimerSection || applyConfigFromExcel) {
                 setHasTimer(hasTimerSection);
                 setShowTimerModal(false);
                 if (serviceId) {
@@ -1083,7 +1109,21 @@ const GenerateReportForDentalHandHeld: React.FC<DentalProps> = ({ serviceId, qaT
             <section className="mb-10 bg-blue-50 p-6 rounded-lg border-2 border-blue-200">
                 <h2 className="text-xl font-semibold text-blue-700 mb-4">Upload Excel</h2>
                 <div className="flex flex-col gap-4">
-                    <div className="flex items-center gap-4">
+                    <div className="flex flex-wrap items-center gap-4">
+                        <a
+                            href="/templates/DentalHandHeld_Test_Data_Template_WithTimer.xlsx"
+                            download
+                            className="px-4 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition text-sm"
+                        >
+                            Download Template (With Timer)
+                        </a>
+                        <a
+                            href="/templates/DentalHandHeld_Test_Data_Template_NoTimer.xlsx"
+                            download
+                            className="px-4 py-2 bg-green-700 text-white font-semibold rounded-lg hover:bg-green-800 transition text-sm"
+                        >
+                            Download Template (No Timer)
+                        </a>
                         <input
                             ref={fileInputRef}
                             type="file"

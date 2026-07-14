@@ -158,9 +158,16 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
           data = res?.data;
         }
 
-        if (data && !(csvData && csvData.length > 0)) {
+        const hasCsvRows = !!(csvData && csvData.length > 0);
+
+        if (data) {
           setTestId(data._id || data.testId);
           setFfd(data.ffd || '');
+          setTolerance(data.tolerance || '0.05');
+          setToleranceOperator(data.toleranceOperator || '<=');
+        }
+
+        if (data && !hasCsvRows) {
           setOutputRows(
             data.outputRows?.map((row: any, i: number) => {
               const covVal = row.cov ? parseFloat(row.cov) : 0;
@@ -197,10 +204,10 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
             }) || outputRows
           );
           setHeaders(data.measurementHeaders || headers);
-          setTolerance(data.tolerance || '0.05');
-          setToleranceOperator(data.toleranceOperator || '<=');
           setIsSaved(true);
-        } else {
+        } else if (!data) {
+          setIsSaved(false);
+        } else if (hasCsvRows) {
           setIsSaved(false);
         }
       } catch (err: any) {
@@ -218,8 +225,8 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
   useEffect(() => {
     if (isLoading || !csvData || csvData.length === 0) return;
 
-    const ffdVal = csvData.find((r: any) => r['Field Name'] === 'FFD')?.['Value'];
-    if (ffdVal) {
+    const ffdVal = csvData.find((r: any) => ['FFD', 'FCD', 'FDD'].includes(r['Field Name']))?.['Value'];
+    if (ffdVal !== undefined && ffdVal !== null && String(ffdVal).trim() !== '') {
       setFfd(String(ffdVal));
     }
 

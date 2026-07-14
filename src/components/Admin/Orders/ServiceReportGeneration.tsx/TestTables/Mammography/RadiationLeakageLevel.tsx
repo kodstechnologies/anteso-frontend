@@ -9,6 +9,22 @@ import {
   updateRadiationLeakageLevelForMammography,
 } from '../../../../../../api';
 
+type RadiationLeakageToleranceOperator = 'less than or equal to' | 'greater than or equal to' | '=';
+
+const normalizeRadiationLeakageToleranceOperator = (
+  raw: string | undefined
+): RadiationLeakageToleranceOperator => {
+  const v = String(raw ?? '').trim().toLowerCase();
+  if (!v) return 'less than or equal to';
+  if (v.includes('less than or equal') || v === '<=' || v === '=<') return 'less than or equal to';
+  if (v.includes('greater than or equal') || v === '>=' || v === '=>') return 'greater than or equal to';
+  if (v === '<' || (v.includes('less than') && !v.includes('equal'))) return 'less than or equal to';
+  if (v === '>' || (v.includes('greater than') && !v.includes('equal'))) return 'greater than or equal to';
+  if (v === '=' || v === '==') return '=';
+  if (raw === 'less than or equal to' || raw === 'greater than or equal to' || raw === '=') return raw;
+  return 'less than or equal to';
+};
+
 interface SettingsRow {
   fcd: string;
   kv: string;
@@ -62,7 +78,7 @@ export default function RadiationLeakageLevel({ serviceId, testId: propTestId, o
 
   const [workload, setWorkload] = useState<string>('');
   const [toleranceValue, setToleranceValue] = useState<string>('1');
-  const [toleranceOperator, setToleranceOperator] = useState<'less than or equal to' | 'greater than or equal to' | '='>('less than or equal to');
+  const [toleranceOperator, setToleranceOperator] = useState<RadiationLeakageToleranceOperator>('less than or equal to');
   const [toleranceTime, setToleranceTime] = useState<string>('1');
 
   const [isSaving, setIsSaving] = useState(false);
@@ -262,7 +278,7 @@ export default function RadiationLeakageLevel({ serviceId, testId: propTestId, o
         setToleranceValue(initialData.toleranceValue);
       }
       if (initialData.toleranceOperator) {
-        setToleranceOperator(initialData.toleranceOperator);
+        setToleranceOperator(normalizeRadiationLeakageToleranceOperator(initialData.toleranceOperator));
       }
       if (initialData.toleranceTime) {
         setToleranceTime(initialData.toleranceTime);
@@ -309,7 +325,9 @@ export default function RadiationLeakageLevel({ serviceId, testId: propTestId, o
           if (data.fcd) setSettings({ fcd: data.fcd, kv: data.kv || '', ma: data.ma || '', time: data.time || '' });
           if (data.workload) setWorkload(data.workload);
           if (data.toleranceValue) setToleranceValue(data.toleranceValue);
-          if (data.toleranceOperator) setToleranceOperator(data.toleranceOperator);
+          if (data.toleranceOperator) {
+            setToleranceOperator(normalizeRadiationLeakageToleranceOperator(data.toleranceOperator));
+          }
           if (data.toleranceTime) setToleranceTime(data.toleranceTime);
           if (Array.isArray(data.leakageMeasurements) && data.leakageMeasurements.length > 0) {
             // Ensure Tube is always first, then Collimator if it exists

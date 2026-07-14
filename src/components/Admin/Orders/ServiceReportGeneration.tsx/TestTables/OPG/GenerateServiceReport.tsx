@@ -114,6 +114,23 @@ const OPG: React.FC<{ serviceId: string; qaTestDate?: string | null; csvFileUrl?
     };
 
     // Parse Excel rows into sectioned data (used by file upload and csvFileUrl load); must be defined before useEffects
+    const preserveExcelHeaderCell = (header: string): string => {
+        const h = String(header ?? '').trim();
+        if (!h || /^\d{1,2}-[A-Za-z]{3}$/i.test(h)) return '';
+        return h;
+    };
+
+    const extractMeasHeaderLabelsFromRow = (row: any[], startIdx = 1): string[] => {
+        const headers: string[] = [];
+        for (let i = startIdx; i < row.length; i++) {
+            const s = preserveExcelHeaderCell(row[i]);
+            if (!s) continue;
+            if (/^(average|mean|cov|remarks|mr\/mas|average kvp|applied kvp)$/i.test(s)) break;
+            headers.push(s);
+        }
+        return headers;
+    };
+
     const parseHorizontalData = (rows: any[]) => {
         const result: any = {};
         let currentSection = '';
@@ -170,29 +187,48 @@ const OPG: React.FC<{ serviceId: string; qaTestDate?: string | null; csvFileUrl?
             }
             if (currentSection) {
                 const headerOnlyMarkers = ['Applied kVp', 'Set Time (mSec)', 'mA Station', 'mAs Range', 'kVp', 'Location', 'LOCATION', 'Survey Date'];
-                if (firstCell && headerOnlyMarkers.includes(firstCell)) {
+                const firstLower = firstCell?.toLowerCase() || '';
+                let measHeaderLabelsToInject: string[] = [];
+                if (firstCell && headerOnlyMarkers.some((m) => m.toLowerCase() === firstLower)) {
                     const keepForCustomHeaders =
-                        (currentSection === 'accuracyOfOperatingPotential' && firstCell === 'Applied kVp') ||
-                        (currentSection === 'linearityOfMaLoading' && firstCell === 'mA Station') ||
-                        (currentSection === 'linearityOfMasLoading' && firstCell === 'mAs Range') ||
-                        (currentSection === 'consistencyOfRadiationOutput' && firstCell === 'kVp');
+                        (currentSection === 'accuracyOfOperatingPotential' && firstLower === 'applied kvp') ||
+                        (currentSection === 'linearityOfMaLoading' && firstLower === 'ma station') ||
+                        (currentSection === 'linearityOfMasLoading' && firstLower === 'mas range') ||
+                        (currentSection === 'consistencyOfRadiationOutput' && firstLower === 'kvp');
                     if (keepForCustomHeaders) {
-                        // Keep these rows so table components can read dynamic measurement headers.
+                        const startIdx =
+                            currentSection === 'consistencyOfRadiationOutput' && firstLower === 'kvp'
+                                ? 2
+                                : 1;
+                        measHeaderLabelsToInject = extractMeasHeaderLabelsFromRow(row, startIdx);
                     } else {
                     // Keep Location header for radiation leakage import (column mapping)
-                    if (!(currentSection === 'radiationLeakageLevel' && firstCell === 'Location')) {
+                    if (!(currentSection === 'radiationLeakageLevel' && firstLower === 'location')) {
                         return;
                     }
                     }
                 }
+                // Drop legacy Survey Date settings rows — date must not come from Excel
+                if (currentSection === 'radiationProtectionSurvey' && firstLower === 'survey date') {
+                    return;
+                }
                 if (row.length > 0) {
+                    const pushMeasHeaderMeta = (target: any[]) => {
+                        if (measHeaderLabelsToInject.length > 0) {
+                            target.push(['__MEAS_HEADERS__', ...measHeaderLabelsToInject]);
+                        }
+                    };
                     if (currentSection === 'linearityOfMaLoading') {
                         if (!result.linearityOfMaLoading) result.linearityOfMaLoading = [];
+                        pushMeasHeaderMeta(result.linearityOfMaLoading);
                         result.linearityOfMaLoading.push(row);
                     } else if (currentSection === 'linearityOfMasLoading') {
                         if (!result.linearityOfMasLoading) result.linearityOfMasLoading = [];
+                        pushMeasHeaderMeta(result.linearityOfMasLoading);
                         result.linearityOfMasLoading.push(row);
                     } else {
+                        if (!result[currentSection]) result[currentSection] = [];
+                        pushMeasHeaderMeta(result[currentSection]);
                         result[currentSection].push(row);
                     }
                 }
@@ -518,11 +554,28 @@ const OPG: React.FC<{ serviceId: string; qaTestDate?: string | null; csvFileUrl?
                 setCsvData(parsed);
 
                 if (parsed && Object.keys(parsed).length > 0) {
-                    const hasTimerSection = !!(parsed.accuracyOfIrradiationTime?.length);
-                    setHasTimer(hasTimerSection);
-                    setShowTimerModal(false);
-                    if (serviceId) {
-                        localStorage.setItem(`opg_timer_choice_${serviceId}`, JSON.stringify(hasTimerSection));
+                    const savedChoice = serviceId ? localStorage.getItem(`opg_timer_choice_${serviceId}`) : null;
+                    if (savedChoice !== null) {
+                        setHasTimer(JSON.parse(savedChoice));
+                        setShowTimerModal(false);
+                    } else {
+                        const hasTimerSection = !!(parsed.accuracyOfIrradiationTime?.length || parsed.linearityOfMaLoading?.length);
+                        const hasMasSection = !!parsed.linearityOfMasLoading?.length;
+                        if (hasTimerSection && !hasMasSection) {
+                            setHasTimer(true);
+                            if (serviceId) {
+                                localStorage.setItem(`opg_timer_choice_${serviceId}`, JSON.stringify(true));
+                            }
+                            setShowTimerModal(false);
+                        } else if (hasMasSection && !hasTimerSection) {
+                            setHasTimer(false);
+                            if (serviceId) {
+                                localStorage.setItem(`opg_timer_choice_${serviceId}`, JSON.stringify(false));
+                            }
+                            setShowTimerModal(false);
+                        } else {
+                            setShowTimerModal(true);
+                        }
                     }
                 }
 
@@ -594,8 +647,32 @@ const OPG: React.FC<{ serviceId: string; qaTestDate?: string | null; csvFileUrl?
 
             const parsed = parseHorizontalData(jsonData as any[]);
             console.log("Parsed CSV Data:", parsed);
-            console.log("Radiation Leakage Level rows:", parsed.radiationLeakageLevel);
             setCsvData(parsed);
+
+            const savedChoice = serviceId ? localStorage.getItem(`opg_timer_choice_${serviceId}`) : null;
+            if (savedChoice !== null) {
+                setHasTimer(JSON.parse(savedChoice));
+                setShowTimerModal(false);
+            } else {
+                const hasTimerSection = !!(parsed?.accuracyOfIrradiationTime?.length || parsed?.linearityOfMaLoading?.length);
+                const hasMasSection = !!parsed?.linearityOfMasLoading?.length;
+                if (hasTimerSection && !hasMasSection) {
+                    setHasTimer(true);
+                    if (serviceId) {
+                        localStorage.setItem(`opg_timer_choice_${serviceId}`, JSON.stringify(true));
+                    }
+                    setShowTimerModal(false);
+                } else if (hasMasSection && !hasTimerSection) {
+                    setHasTimer(false);
+                    if (serviceId) {
+                        localStorage.setItem(`opg_timer_choice_${serviceId}`, JSON.stringify(false));
+                    }
+                    setShowTimerModal(false);
+                } else {
+                    setShowTimerModal(true);
+                }
+            }
+
             toast.success("Excel data imported successfully!");
         };
         reader.readAsBinaryString(file);
@@ -658,13 +735,7 @@ const OPG: React.FC<{ serviceId: string; qaTestDate?: string | null; csvFileUrl?
 
             {/* Excel Actions */}
             <div className="flex flex-wrap gap-4 justify-center mb-8">
-                {/* <a
-                    href="/templates/Dental_OPG_Test_Data_Template.csv"
-                    download
-                    className="px-6 py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition shadow"
-                >
-                    Download Excel Template
-                </a> */}
+      
 
                 <div className="relative">
                     <input

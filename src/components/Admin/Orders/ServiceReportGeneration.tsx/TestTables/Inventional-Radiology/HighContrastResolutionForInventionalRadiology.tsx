@@ -79,7 +79,10 @@ const HighContrastResolutionForInventionalRadiology: React.FC<Props> = ({
       const measuredVal = csvData.find((r: any) => r['Field Name'] === 'Table1_measuredLpPerMm')?.['Value'];
       if (measuredVal) setMeasuredLpPerMm(String(measuredVal));
       const standardVal = csvData.find((r: any) => r['Field Name'] === 'Table1_recommendedStandard')?.['Value'];
-      if (standardVal) setRecommendedStandard(String(standardVal));
+      if (standardVal) {
+        const numeric = String(standardVal).match(/[\d.]+/);
+        setRecommendedStandard(numeric ? numeric[0] : String(standardVal));
+      }
       // When values are loaded from CSV/Excel, don't treat the test as "saved" yet.
       // Only mark as saved after the user explicitly clicks Save/Update.
       setIsSaved(false);

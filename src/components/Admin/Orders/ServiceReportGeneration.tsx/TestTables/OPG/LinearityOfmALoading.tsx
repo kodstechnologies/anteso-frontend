@@ -215,6 +215,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
         setIsLoading(false);
         return;
       }
+      setIsLoading(true);
       try {
         const res = await getLinearityOfMaLoadingByServiceIdForOPG(serviceId);
         const data = res?.data;
@@ -243,7 +244,12 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
               );
               if (data.table2[0]?.measuredOutputs?.length) {
                 const count = data.table2[0].measuredOutputs.length;
-                setMeasHeaders(Array.from({ length: count }, (_, i) => `Measured mR ${i + 1}`));
+                const savedHeaders = Array.isArray(data.measHeaders) && data.measHeaders.length > 0
+                  ? data.measHeaders
+                  : Array.from({ length: count }, (_, i) => `Measured mR ${i + 1}`);
+                setMeasHeaders(savedHeaders);
+              } else if (Array.isArray(data.measHeaders) && data.measHeaders.length > 0) {
+                setMeasHeaders(data.measHeaders);
               }
             }
             setTolerance(data.tolerance || '0.1');
@@ -279,16 +285,42 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
     return s === 'timer' || s === 'time' || s.startsWith('time ') || s.startsWith('timer ');
   };
 
+  const isMaStationHeaderRow = (row: any[]) => {
+    const c0 = String(row?.[0] ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
+    return c0 === 'ma station' || c0.startsWith('ma station');
+  };
+
+  const preserveExcelHeaderCell = (header: unknown): string => {
+    const h = String(header ?? '').trim();
+    if (!h || /^\d{1,2}-[A-Za-z]{3}$/i.test(h)) return '';
+    return h;
+  };
+
+  const readMeasHeadersFromCsv = (rows: any[]): string[] => {
+    const meta = rows.find((r) => String(r?.[0] ?? '').trim() === '__MEAS_HEADERS__');
+    if (meta) {
+      return meta.slice(1).map((c) => preserveExcelHeaderCell(c)).filter(Boolean);
+    }
+    const headerRow = rows.find((row) => isMaStationHeaderRow(row));
+    if (!headerRow) return [];
+    return headerRow
+      .slice(1)
+      .map((c: any) => preserveExcelHeaderCell(c))
+      .filter((s: string) => s && !/^mr\/mas$/i.test(s));
+  };
+
   // CSV Data Injection — apply after load finishes so server data does not overwrite import
   useEffect(() => {
     if (isLoading || !csvData || csvData.length === 0) return;
 
     let newTable2Rows: Table2Row[] = [];
     let foundSettings = false;
-    let customMeasHeaders: string[] = [];
+    let customMeasHeaders = readMeasHeadersFromCsv(csvData);
 
     csvData.forEach((row, idx) => {
         const firstCell = row[0]?.toString()?.trim();
+
+        if (String(firstCell || '') === '__MEAS_HEADERS__') return;
 
         // 1. Parameter Row: FCD, 100, kV, 70, Time, 0.1 — only rows with Time/Timer (mA loading)
         const hasFcd = row.some((c: any) => isFcdLabel(c));
@@ -305,18 +337,8 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
           });
           foundSettings = true;
         }
-        // Header row: mA Station,<custom headers>,...,mR/mAs
-        else if (String(firstCell || '').toLowerCase() === 'ma station') {
-          const parsed = row
-            .slice(1)
-            .map((c: any) => String(c || '').trim())
-            .filter((s: string) => s && !/^mr\/mas$/i.test(s));
-          if (parsed.length > 0) {
-            customMeasHeaders = parsed;
-          }
-        }
         // 2. Data Rows
-        else if (firstCell && !isNaN(parseFloat(firstCell))) {
+        else if (firstCell && !isMaStationHeaderRow(row) && !isNaN(parseFloat(firstCell))) {
           // Format in Template: mA Station, Meas 1, Meas 2... 
           // Format in Export: mA Station, Meas 1, Meas 2, Average, mR/mAs
           const ma = row[0]?.toString() || '';
@@ -358,29 +380,44 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
         }
       });
 
-      if (newTable2Rows.length > 0) {
-        // Update headers exactly matching the import count (min 3)
-        const maxMeasFromImport = Math.max(...newTable2Rows.map(r => r.measuredOutputs.length));
-        const finalHeaderCount = maxMeasFromImport || 3;
+      if (customMeasHeaders.length > 0 || newTable2Rows.length > 0) {
+        const maxMeasFromImport = newTable2Rows.length > 0
+          ? Math.max(...newTable2Rows.map(r => r.measuredOutputs.length))
+          : 0;
+        const finalHeaderCount = Math.max(maxMeasFromImport, customMeasHeaders.length, 3);
 
-        setMeasHeaders(prev => {
-          const base = (customMeasHeaders.length > 0 ? customMeasHeaders : prev).slice(0, finalHeaderCount);
+        setMeasHeaders(() => {
+          const base = (customMeasHeaders.length > 0
+            ? customMeasHeaders
+            : Array.from({ length: finalHeaderCount }, (_, i) => `Measured mR ${i + 1}`)
+          ).slice(0, finalHeaderCount);
           while (base.length < finalHeaderCount) {
             base.push(`Measured mR ${base.length + 1}`);
           }
           return base;
         });
 
-        // Pad all rows to match finalHeaderCount
-        const paddedRows = newTable2Rows.map(row => {
-          const paddedMeas = [...row.measuredOutputs];
-          while (paddedMeas.length < finalHeaderCount) {
-            paddedMeas.push('');
-          }
-          return { ...row, measuredOutputs: paddedMeas };
-        });
+        if (newTable2Rows.length > 0) {
+          const paddedRows = newTable2Rows.map(row => {
+            const paddedMeas = [...row.measuredOutputs];
+            while (paddedMeas.length < finalHeaderCount) {
+              paddedMeas.push('');
+            }
+            return { ...row, measuredOutputs: paddedMeas };
+          });
 
-        setTable2Rows(paddedRows);
+          setTable2Rows(paddedRows);
+        } else if (customMeasHeaders.length > 0) {
+          setTable2Rows(prev =>
+            prev.map(r => ({
+              ...r,
+              measuredOutputs: Array(finalHeaderCount).fill('').map((_, i) => r.measuredOutputs[i] ?? ''),
+            }))
+          );
+        }
+
+        setHasSaved(false);
+        setIsEditing(true);
       }
 
     if (!testId && (newTable2Rows.length > 0 || foundSettings)) setIsEditing(true);

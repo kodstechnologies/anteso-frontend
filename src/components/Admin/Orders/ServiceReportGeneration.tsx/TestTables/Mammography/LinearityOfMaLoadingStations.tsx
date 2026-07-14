@@ -498,10 +498,9 @@ const LinearityOfMaLoadingStations: React.FC<Props> = ({ serviceId, testId: prop
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-blue-50">
             <tr>
-              {/* Header – make mA column wider */}
               <th
                 rowSpan={2}
-                className="px-6 py-3 w-28 text-left text-xs font-medium text-gray-700  tracking-wider border-r whitespace-nowrap"
+                className="px-6 py-3 w-40 min-w-[10rem] text-left text-xs font-medium text-gray-700 tracking-wider border-r whitespace-nowrap"
               >
                 mA
               </th>
@@ -550,13 +549,13 @@ const LinearityOfMaLoadingStations: React.FC<Props> = ({ serviceId, testId: prop
           <tbody className="bg-white divide-y divide-gray-200">
             {processedTable2.rows.map((p, index) => (
               <tr key={p.id} className="hover:bg-gray-50">
-                <td className="px-4 py-2 border-r">
+                <td className="px-4 py-2 border-r w-40 min-w-[10rem]">
                   <input
                     type="text"
                     value={p.ma}
                     onChange={e => updateTable2Cell(p.id, 'ma', e.target.value)}
                     disabled={isViewMode}
-                    className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'}`}
+                    className={`w-full min-w-[7rem] px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'}`}
                     placeholder="100"
                   />
                 </td>

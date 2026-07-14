@@ -68,6 +68,33 @@ const isMammographyMeasColumn = (testName: string, header: string): boolean => {
     return fixed ? !fixed.has(trimmed) : false;
 };
 
+/** Section-level fields in table layout — not tied to output row index. */
+const MAMMOGRAPHY_SECTION_METADATA_FIELDS: Record<string, Set<string>> = {
+    'Reproducibility of Output': new Set(['FDD', 'Tolerance', 'ToleranceOperator']),
+    'Linearity of mAs Loading Stations': new Set(['Table1_FCD', 'Table1_kV', 'Tolerance', 'ToleranceOperator']),
+    'Linearity of mA Loading Stations': new Set(['Table1_FCD', 'Table1_kV', 'Table1_Time', 'Tolerance', 'ToleranceOperator']),
+};
+
+const normalizeMammographyToleranceOperator = (raw: string): string => {
+    const v = String(raw ?? '').trim().toLowerCase();
+    if (!v) return '<=';
+    if (v.includes('less than or equal') || v === '<=' || v === '=<') return '<=';
+    if (v.includes('greater than or equal') || v === '>=' || v === '=>') return '>=';
+    if (v === '<' || v.includes('less than')) return '<';
+    if (v === '>' || v.includes('greater than')) return '>';
+    if (v === '=' || v === '==') return '=';
+    return String(raw ?? '').trim() || '<=';
+};
+
+const normalizeRadiationLeakageToleranceOperator = (
+    raw: string
+): 'less than or equal to' | 'greater than or equal to' | '=' => {
+    const op = normalizeMammographyToleranceOperator(raw);
+    if (op === '<=' || op === '<') return 'less than or equal to';
+    if (op === '>=' || op === '>') return 'greater than or equal to';
+    return '=';
+};
+
 /** Convert CSV measurement column label to table2 ma key (e.g. "10 mA" → ma10, "400 mA" → ma400). */
 const mammographyHeaderToMaKey = (label: string): string => {
     const t = (label || '').trim();
@@ -348,7 +375,7 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
             'Total Filtration & Aluminium': {
                 'Target Window': 'TargetWindow', 'Added Filter (mm)': 'AddedFilterThickness', 'HVT at 28 kVp': 'ResultHVT28kVp',
                 'kVp': 'Table_kVp', 'mAs': 'Table_mAs', 'Al Equiv (mm)': 'Table_AlEquivalence', 'HVT': 'Table_HVT',
-                'Rec Min': 'Table_RecommendedValue_Min', 'Rec Max': 'Table_RecommendedValue_Max', 'Rec kVp': 'Table_RecommendedValue_kVp',
+                'Rec Min': 'Table_RecommendedValue_Min', 'Rec Max': 'Table_RecommendedValue_Max',
             },
             'Reproducibility of Output': {
                 'FCD': 'FDD', 'FCD (cm)': 'FDD',
@@ -358,6 +385,9 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
                 'Tolerance': 'Tolerance',
                 'Tolerance Operator': 'ToleranceOperator',
                 'Tol Operator': 'ToleranceOperator',
+                'Tol Value': 'Tolerance',
+                'Tolerance Value': 'Tolerance',
+                'Tolerance Value (CoV)': 'Tolerance',
             },
             'Radiation Leakage Level': {
                 'FCD': 'Settings_FCD', 'FCD (cm)': 'Settings_FCD',
@@ -437,6 +467,26 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
                         }
                     }
                     if (internalField && value !== '') {
+                        const metadataFields = MAMMOGRAPHY_SECTION_METADATA_FIELDS[currentTestName];
+                        if (metadataFields?.has(internalField)) {
+                            const trimmedVal = String(value).trim();
+                            if (!trimmedVal) return;
+                            if (internalField === 'Tolerance') {
+                                const n = parseFloat(trimmedVal);
+                                if (!isNaN(n) && n === 0) return;
+                            }
+                            const normalizedValue =
+                                internalField === 'ToleranceOperator'
+                                    ? normalizeMammographyToleranceOperator(trimmedVal)
+                                    : trimmedVal;
+                            data.push({
+                                'Field Name': internalField,
+                                'Value': normalizedValue,
+                                'Row Index': '0',
+                                'Test Name': currentTestName,
+                            });
+                            return;
+                        }
                         data.push({
                             'Field Name': internalField,
                             'Value': value,
@@ -479,9 +529,28 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
         return parseMammographyGridCSV(text);
     };
 
-    const parseExcelToCSVFormat = (workbook: XLSX.WorkBook): any[] => {
-        const firstSheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[firstSheetName];
+    const resolveMammographyWorksheet = (workbook: XLSX.WorkBook, preferTimer: boolean | null = null): XLSX.WorkSheet => {
+        const names = workbook.SheetNames;
+        const findByPattern = (re: RegExp) => names.find((n) => re.test(n));
+
+        if (preferTimer === true) {
+            const name = findByPattern(/with\s*timer/i) ?? names[0];
+            return workbook.Sheets[name];
+        }
+        if (preferTimer === false) {
+            const name = findByPattern(/without\s*timer|no\s*timer/i) ?? names[names.length - 1] ?? names[0];
+            return workbook.Sheets[name];
+        }
+        if (names.length === 1) return workbook.Sheets[names[0]];
+        const noTimerName = findByPattern(/without\s*timer|no\s*timer/i);
+        if (noTimerName) return workbook.Sheets[noTimerName];
+        const withTimerName = findByPattern(/with\s*timer/i);
+        if (withTimerName) return workbook.Sheets[withTimerName];
+        return workbook.Sheets[names[0]];
+    };
+
+    const parseExcelToCSVFormat = (workbook: XLSX.WorkBook, preferTimer: boolean | null = null): any[] => {
+        const worksheet = resolveMammographyWorksheet(workbook, preferTimer);
         const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' }) as any[][];
         return parseHorizontalData(jsonData);
     };
@@ -647,23 +716,17 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
                 console.log(`  ${key}: ${groupedData[key].length} rows`);
             });
 
-            if (applyConfigFromExcel && Object.keys(groupedData).length > 0) {
+            if (Object.keys(groupedData).length > 0) {
                 const hasTimerSection = !!(
                     groupedData['Accuracy of Irradiation Time']?.length ||
                     groupedData['Linearity of mA Loading Stations']?.length
                 );
-                setHasTimer(hasTimerSection);
-                setShowTimerModal(false);
-                if (serviceId) {
-                    localStorage.setItem(`mammography-timer-${serviceId}`, String(hasTimerSection));
-                }
-            } else if (
-                groupedData['Accuracy of Irradiation Time']?.length ||
-                groupedData['Linearity of mA Loading Stations']?.length
-            ) {
-                setHasTimer(true);
-                if (serviceId) {
-                    localStorage.setItem(`mammography-timer-${serviceId}`, 'true');
+                if (applyConfigFromExcel || hasTimer === null) {
+                    setHasTimer(hasTimerSection);
+                    setShowTimerModal(false);
+                    if (serviceId) {
+                        localStorage.setItem(`mammography-timer-${serviceId}`, String(hasTimerSection));
+                    }
                 }
             }
 
@@ -1027,7 +1090,12 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
                             if (fieldName === 'HVT') tableRows[rowIndex].hvt = parseFloat(value) || null;
                             if (fieldName === 'RecommendedValue_Min') tableRows[rowIndex].recommendedValue.minValue = parseFloat(value) || null;
                             if (fieldName === 'RecommendedValue_Max') tableRows[rowIndex].recommendedValue.maxValue = parseFloat(value) || null;
-                            if (fieldName === 'RecommendedValue_kVp') tableRows[rowIndex].recommendedValue.kvp = parseFloat(value) || null;
+                        }
+                    });
+
+                    tableRows.forEach((tr) => {
+                        if (tr.kvp != null && tr.recommendedValue) {
+                            tr.recommendedValue.kvp = tr.kvp;
                         }
                     });
 
@@ -1077,8 +1145,17 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
                         if (field === 'MeasHeader' && value && !outputMeasHeaders.includes(value)) {
                             outputMeasHeaders.push(value);
                         }
-                        if (field === 'Tolerance') tolerance = value;
-                        if (field === 'ToleranceOperator') toleranceOperator = value;
+                        if (field === 'Tolerance') {
+                            const v = String(value ?? '').trim();
+                            if (v) {
+                                const n = parseFloat(v);
+                                if (!isNaN(n) && n > 0) tolerance = v;
+                                else if (rowIndex === 0) tolerance = v;
+                            }
+                        }
+                        if (field === 'ToleranceOperator' && value) {
+                            toleranceOperator = normalizeMammographyToleranceOperator(value);
+                        }
 
                         if (field.startsWith('OutputRow_')) {
                             while (outputRows.length <= rowIndex) {
@@ -1150,7 +1227,9 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
                         if (field === 'Settings_time') settings.time = value;
                         if (field === 'Workload') workload = value;
                         if (field === 'ToleranceValue') toleranceValue = value;
-                        if (field === 'ToleranceOperator') toleranceOperator = value as any;
+                        if (field === 'ToleranceOperator') {
+                            toleranceOperator = normalizeRadiationLeakageToleranceOperator(value);
+                        }
                         if (field === 'ToleranceTime') toleranceTime = value;
 
                         if (field.startsWith('LeakageMeasurement_')) {
@@ -1377,7 +1456,7 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
                 try {
                     const arrayBuffer = e.target?.result as ArrayBuffer;
                     const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-                    const csvData = parseExcelToCSVFormat(workbook);
+                    const csvData = parseExcelToCSVFormat(workbook, hasTimer);
                     console.log('Parsed Excel rows:', csvData.length);
                     if (csvData.length > 0) await processCSVData(csvData);
                     else toast.error('No data found in Excel file');
@@ -1435,7 +1514,7 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
                     const XLSX = await import('xlsx');
                     const arrayBuffer = await blob.arrayBuffer();
                     const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-                    csvData = parseExcelToCSVFormat(workbook);
+                    csvData = parseExcelToCSVFormat(workbook, null);
                 } else {
                     const text = await blob.text();
                     csvData = parseCSVOrHorizontal(text);
@@ -1834,13 +1913,7 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
                     Generate Mammography QA Test Report
                 </h1>
                 <div className="flex items-center gap-4">
-                    {/* <a
-                        href="/templates/Mammography_Test_Data_Template.csv"
-                        download="Mammography_Test_Data_Template.csv"
-                        className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition border border-gray-300"
-                    >
-                        Download template (CSV)
-                    </a> */}
+                    
                     <label className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition cursor-pointer">
                         <CloudArrowUpIcon className="w-5 h-5" />
                         {csvUploading ? 'Uploading...' : 'Upload CSV / Excel'}

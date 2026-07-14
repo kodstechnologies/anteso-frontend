@@ -503,7 +503,7 @@ const LinearityOfMasLoadingAcrossRanges: React.FC<Props> = ({
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-blue-50">
               <tr>
-                <th rowSpan={2} className="px-6 py-3 text-left text-xs font-medium text-gray-700 border-r">
+                <th rowSpan={2} className="px-6 py-3 w-40 min-w-[10rem] text-left text-xs font-medium text-gray-700 border-r whitespace-nowrap">
                   mAs
                 </th>
                 <th colSpan={measHeaders.length} className="px-6 py-3 text-center text-xs font-medium text-gray-700 border-r">
@@ -570,13 +570,13 @@ const LinearityOfMasLoadingAcrossRanges: React.FC<Props> = ({
                 const computed = processedRowById.get(row.id) || row;
                 return (
                   <tr key={row.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 border-r">
+                    <td className="px-6 py-4 border-r w-40 min-w-[10rem]">
                       <input
                         type="text"
                         value={row.mAsRange}
                         onChange={e => updateCell(row.id, 'mAsRange', e.target.value)}
                         disabled={isViewMode}
-                        className={`w-full px-3 py-2 text-center text-sm border rounded font-medium focus:ring-2 focus:ring-blue-500 ${
+                        className={`w-full min-w-[7rem] px-3 py-2 text-center text-sm border rounded font-medium focus:ring-2 focus:ring-blue-500 ${
                           isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''
                         }`}
                         placeholder="10"

@@ -25,7 +25,8 @@ export const totalFiltrationSection = (): any[][] => [
 
 export const outputConsistencySection = (): any[][] => [
   ["FDD (cm)", "100"],
-  ["kVp", "mAs", "Output 1", "Output 2", "Output 3", "Output 4", "Output 5"],
+  ["Time (s)", "1.0"],
+  ["kVp", "mAs", "Measured Output 1", "Measured Output 2", "Measured Output 3", "Measured Output 4", "Measured Output 5"],
   ["80", "100", "10.5", "10.4", "10.6", "10.5", "10.5"],
   ["100", "100", "12.1", "12.0", "12.2", "12.1", "12.0"],
   ["Tolerance Operator", "<="],
@@ -36,7 +37,7 @@ export const outputConsistencySection = (): any[][] => [
 export const oarmOutputConsistencySection = (): any[][] => [
   ["FDD (cm)", "100"],
   ["Time (s)", "1.0"],
-  ["kVp", "mAs", "Meas 1", "Meas 2", "Meas 3", "Meas 4", "Meas 5"],
+  ["kVp", "mAs", "Measured Output 1", "Measured Output 2", "Measured Output 3", "Measured Output 4", "Measured Output 5"],
   ["80", "100", "1.52", "1.53", "1.51", "1.54", "1.52"],
   ["Tolerance Operator", "<="],
   ["Tolerance Value (CoV)", "0.02"],
@@ -54,11 +55,11 @@ export const linearityMaSection = (): any[][] => [
 
 export const linearityMasSection = (): any[][] => [
   ["FDD (cm)", "100", "kV", "80"],
-  ["mAs Range", "Measured Output 1", "Measured Output 2", "Measured Output 3"],
-  ["5 - 10", "0.50", "0.51", "0.49"],
-  ["10 - 20", "1.00", "1.01", "0.99"],
-  ["20 - 50", "2.50", "2.51", "2.49"],
-  ["50 - 100", "5.00", "5.01", "4.99"],
+  ["mAs", "Measured Output 1", "Measured Output 2", "Measured Output 3"],
+  ["5", "0.50", "0.51", "0.49"],
+  ["10", "1.00", "1.01", "0.99"],
+  ["20", "2.50", "2.51", "2.49"],
+  ["50", "5.00", "5.01", "4.99"],
   ["Tolerance Operator", "<="],
   ["Tolerance Value (CoL)", "0.1"],
 ];

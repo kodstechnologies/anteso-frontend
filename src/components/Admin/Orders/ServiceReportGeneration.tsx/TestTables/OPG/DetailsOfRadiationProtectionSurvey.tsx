@@ -161,7 +161,10 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, testId: propTes
         const data = res?.data;
         if (data) {
           setTestId(data._id || null);
-          setSurveyDate(data.surveyDate ? new Date(data.surveyDate).toISOString().split('T')[0] : "");
+          const hasCsvImport = csvData && csvData.length > 0;
+          if (!hasCsvImport) {
+            setSurveyDate(data.surveyDate ? new Date(data.surveyDate).toISOString().split('T')[0] : "");
+          }
           setHasValidCalibration(data.hasValidCalibration || "");
           setAppliedCurrent(data.appliedCurrent || "100");
           setAppliedVoltage(data.appliedVoltage || "80");
@@ -195,7 +198,7 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, testId: propTes
       }
     };
     load();
-  }, [serviceId]);
+  }, [serviceId, csvData]);
 
   // Auto-check calibration validity
   useEffect(() => {
@@ -252,34 +255,41 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, testId: propTes
     checkCalibration();
   }, [serviceId]);
 
-  // CSV Data Injection
+  // CSV Data Injection — equipment settings from Excel; survey date always from SRF / user
   useEffect(() => {
-    if (csvData && csvData.length > 0) {
+    if (!csvData || csvData.length === 0) return;
+
+    const refreshSurveyDateFromSrf = async () => {
+      if (!serviceId) return;
+      try {
+        const detailsRes = await getDetails(serviceId);
+        const details = detailsRes?.data;
+        const srfDate = toInputDate(details?.srfDate || details?.orderCreatedAt);
+        if (srfDate) setSurveyDate(srfDate);
+      } catch {
+        // Keep existing survey date if SRF lookup fails.
+      }
+    };
+
+    refreshSurveyDateFromSrf();
+
       let newLocations: LocationData[] = [];
       let foundSettings = false;
 
       csvData.forEach(row => {
         const firstCell = row[0]?.toString()?.trim();
 
-        // 1. Settings Row
-        if (firstCell === 'Survey Date') {
-          // Survey Date, 2024-01-01, Applied Current (mA), 10, Applied Voltage (kV), 80, Exposure Time (s), 1.0, Workload (mA.min/week), 100
-          const dateVal = row[1]?.toString() || '';
-          if (dateVal) {
-            // Handle various date formats if needed, but template is YYYY-MM-DD
-            setSurveyDate(dateVal);
-          }
+        // 1. Settings Row — import equipment settings only; survey date comes from SRF / user input
+        const mIndex = row.findIndex((c: any) => c?.toString()?.includes('Applied Current'));
+        const kIndex = row.findIndex((c: any) => c?.toString()?.includes('Applied Voltage'));
+        const tIndex = row.findIndex((c: any) => c?.toString()?.includes('Exposure Time'));
+        const wIndex = row.findIndex((c: any) => c?.toString()?.includes('Workload'));
 
-          const mIndex = row.findIndex((c: any) => c?.toString()?.includes('Applied Current'));
-          const kIndex = row.findIndex((c: any) => c?.toString()?.includes('Applied Voltage'));
-          const tIndex = row.findIndex((c: any) => c?.toString()?.includes('Exposure Time'));
-          const wIndex = row.findIndex((c: any) => c?.toString()?.includes('Workload'));
-
+        if (firstCell === 'Survey Date' || mIndex !== -1) {
           if (mIndex !== -1) setAppliedCurrent(row[mIndex + 1]?.toString() || '');
           if (kIndex !== -1) setAppliedVoltage(row[kIndex + 1]?.toString() || '');
           if (tIndex !== -1) setExposureTime(row[tIndex + 1]?.toString() || '');
           if (wIndex !== -1) setWorkload(row[wIndex + 1]?.toString() || '');
-
           foundSettings = true;
         }
         // 2. Data Rows (after header)
@@ -304,8 +314,7 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, testId: propTes
       }
 
       if (!testId && (newLocations.length > 0 || foundSettings)) setIsEditing(true);
-    }
-  }, [csvData]);
+  }, [csvData, serviceId]);
 
   const handleSave = async () => {
     if (!serviceId) {

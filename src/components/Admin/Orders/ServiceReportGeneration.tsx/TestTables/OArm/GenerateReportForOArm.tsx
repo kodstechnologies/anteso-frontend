@@ -29,6 +29,7 @@ import {
   mergeTextWithRadiographyVerticalParse,
   mergeWithRadiographyVerticalParse,
 } from "../shared/mergeRadiographyVerticalParse";
+import { normalizeCsvComparisonOperator } from "../shared/parseRadiographyStyleTableFormat";
 import { isExcelFileUrl } from "../../../../../../utils/spreadsheetFile";
 
 // Test-table imports
@@ -548,6 +549,9 @@ const OArm: React.FC<OArmProps> = ({ serviceId, csvFileUrl }) => {
         'kV': 'Settings_KV', 'mA': 'Settings_MA',
         'Time': 'Settings_Time', 'Time (sec)': 'Settings_Time',
         'Workload': 'Workload',
+        'Workload (mA·min/week)': 'Workload',
+        'Tol Value': 'Leakage_ToleranceValue',
+        'Tol Operator': 'Leakage_ToleranceOperator',
         'Location': 'Leakage_Location', 'Left': 'Leakage_Left', 'Right': 'Leakage_Right',
         'Front': 'Leakage_Front', 'Back': 'Leakage_Back', 'Top': 'Leakage_Top',
       },
@@ -683,9 +687,13 @@ const OArm: React.FC<OArmProps> = ({ serviceId, csvFileUrl }) => {
             ? `Header_${headerMatch[1]}`
             : map[header];
           if (internalField) {
+            const normalizedValue =
+              internalField === 'Leakage_ToleranceOperator'
+                ? normalizeCsvComparisonOperator(value)
+                : value;
             data.push({
               'Field Name': internalField,
-              'Value': value,
+              'Value': normalizedValue,
               'Row Index': rowIdx,
               'Test Name': currentTestName,
             });

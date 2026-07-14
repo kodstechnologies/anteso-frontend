@@ -33,6 +33,7 @@ interface Props {
   testId?: string;
   onRefresh?: () => void;
   refreshKey?: number;
+  csvDataVersion?: number;
   initialData?: any;
 }
 
@@ -41,6 +42,7 @@ const LinearityOfMasLoading: React.FC<Props> = ({
   testId: propTestId,
   onRefresh,
   refreshKey,
+  csvDataVersion,
   initialData,
 }) => {
   const [testId, setTestId] = useState<string | null>(propTestId || null);
@@ -60,7 +62,7 @@ const LinearityOfMasLoading: React.FC<Props> = ({
   const [tolerance, setTolerance] = useState<string>('0.1');
   const [toleranceOperator, setToleranceOperator] = useState<string>('<');
 
-  const applyLegacyCsvArray = (rows: any[]) => {
+  const applyLegacyCsvArray = (rows: any[], headerSeed: string[] = []) => {
     const cond = { fcd: '100', kv: '80' };
     const tableRows: Table2Row[] = [];
     let tol = '0.1';
@@ -74,15 +76,15 @@ const LinearityOfMasLoading: React.FC<Props> = ({
 
       if (field === 'Linearity_FCD') cond.fcd = val;
       if (field === 'Linearity_kV') cond.kv = val;
-      if (field === 'Linearity_ToleranceValue') tol = val;
+      if (field === 'Linearity_ToleranceValue' || field === 'Linearity_Tolerance') tol = val;
       if (field === 'Linearity_ToleranceOperator') tolOp = val;
-      if (field.startsWith('Header_')) {
-        const idx = parseInt(field.replace('Header_', '')) - 1;
-        while (h.length <= idx) h.push(`Meas ${h.length + 1}`);
-        h[idx] = val;
+      if (field?.startsWith('Header_')) {
+        const idx = parseInt(field.replace('Header_', ''), 10) - 1;
+        while (h.length <= idx) h.push('');
+        h[idx] = String(val ?? '').trim();
       }
 
-      if (field.startsWith('Linearity_')) {
+      if (field?.startsWith('Linearity_')) {
         while (tableRows.length <= rowIndex) {
           tableRows.push({
             id: (tableRows.length + 1).toString(),
@@ -109,15 +111,22 @@ const LinearityOfMasLoading: React.FC<Props> = ({
       }
     });
 
+    if (h.length === 0 && headerSeed.length > 0) {
+      headerSeed.forEach((label, idx) => {
+        while (h.length <= idx) h.push('');
+        h[idx] = String(label ?? '').trim();
+      });
+    }
+
+    const resolveHeaders = (count: number) =>
+      Array.from({ length: count }, (_, i) => h[i]?.trim() || `Meas ${i + 1}`);
+
     setExposureCondition(cond);
     if (tableRows.length > 0) {
       const maxOutputs = Math.max(...tableRows.map(r => r.measuredOutputs.length), 1);
-      const headerCount = h.length > 0 ? Math.max(h.length, maxOutputs) : Math.max(maxOutputs, 3);
-      setMeasHeaders(
-        h.length > 0
-          ? h
-          : Array.from({ length: headerCount }, (_, i) => `Meas ${i + 1}`)
-      );
+      const headerCount = Math.max(h.length, maxOutputs, headerSeed.length, 1);
+      const resolvedHeaders = resolveHeaders(headerCount);
+      setMeasHeaders(resolvedHeaders);
       setTable2Rows(
         tableRows.map((r, i) => {
           const outputs = [...r.measuredOutputs];
@@ -125,9 +134,21 @@ const LinearityOfMasLoading: React.FC<Props> = ({
           return { ...r, id: (i + 1).toString(), measuredOutputs: outputs, measuredOutputsStatus: [] };
         })
       );
+    } else if (h.length > 0 || headerSeed.length > 0) {
+      const headerCount = Math.max(h.length, headerSeed.length, 1);
+      const resolvedHeaders = resolveHeaders(headerCount);
+      setMeasHeaders(resolvedHeaders);
+      setTable2Rows(prev =>
+        prev.map(r => ({
+          ...r,
+          measuredOutputs: Array(headerCount).fill('').map((_, i) => r.measuredOutputs[i] ?? ''),
+        }))
+      );
     }
     setTolerance(tol);
     setToleranceOperator(tolOp);
+    setHasSaved(false);
+    setIsEditing(true);
   };
 
   const applyInitialData = (data: any) => {
@@ -135,6 +156,18 @@ const LinearityOfMasLoading: React.FC<Props> = ({
 
     if (Array.isArray(data)) {
       if (data.length > 0) applyLegacyCsvArray(data);
+      return;
+    }
+
+    const fieldRows: any[] = Array.isArray(data.fieldRows) ? data.fieldRows : [];
+    const headerSeed: string[] = Array.isArray(data.measurementHeaders)
+      ? data.measurementHeaders
+      : Array.isArray(data.measHeaders)
+        ? data.measHeaders
+        : [];
+
+    if (fieldRows.length > 0) {
+      applyLegacyCsvArray(fieldRows, headerSeed);
       return;
     }
 
@@ -175,13 +208,12 @@ const LinearityOfMasLoading: React.FC<Props> = ({
   };
 
   useEffect(() => {
-    if (initialData && refreshKey !== undefined) {
-      applyInitialData(initialData);
-      setHasSaved(false);
-      setIsEditing(true);
-      setIsLoading(false);
-    }
-  }, [refreshKey, initialData]);
+    if (!initialData || !csvDataVersion) return;
+    applyInitialData(initialData);
+    setHasSaved(false);
+    setIsEditing(true);
+    setIsLoading(false);
+  }, [csvDataVersion, initialData, refreshKey]);
 
   const addMeasColumn = () => {
     setMeasHeaders(p => [...p, `Meas ${p.length + 1}`]);
@@ -241,13 +273,14 @@ const LinearityOfMasLoading: React.FC<Props> = ({
 
   useEffect(() => {
     const load = async () => {
-      if (initialData && refreshKey !== undefined) return;
+      if (csvDataVersion) return;
       if (!serviceId) {
         setIsLoading(false);
         return;
       }
       try {
         const res = await getLinearityOfMasLoadingStationsByServiceIdForCArm(serviceId);
+        if (csvDataVersion) return;
         const data = res?.data;
         if (data) {
           setTestId(data._id || null);
@@ -291,7 +324,7 @@ const LinearityOfMasLoading: React.FC<Props> = ({
       }
     };
     load();
-  }, [serviceId, refreshKey, initialData]);
+  }, [serviceId, refreshKey, initialData, csvDataVersion]);
 
   const processedTable2 = useMemo(() => {
     const tol = parseFloat(tolerance) || 0.1;
@@ -302,7 +335,7 @@ const LinearityOfMasLoading: React.FC<Props> = ({
       const avg = outputs.length > 0 ? outputs.reduce((a, b) => a + b, 0) / outputs.length : null;
       const avgDisplay = avg !== null ? parseFloat(avg.toFixed(4)).toFixed(4) : '—';
 
-      const match = row.mAsRange.match(/(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)/);
+      const match = row.mAsRange.match(/(\d+(?:\.\d+)?)\s*(?:-|to)\s*(\d+(?:\.\d+)?)/i);
       const midMas = match
         ? (parseFloat(match[1]) + parseFloat(match[2])) / 2
         : parseFloat(row.mAsRange) || 0;

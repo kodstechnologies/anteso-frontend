@@ -181,7 +181,8 @@ const DentalConeBeamCT: React.FC<{ serviceId: string; qaTestDate?: string | null
                 'Remarks': 'Remarks', 'remarks': 'Remarks',
                 'Meas 1': 'Measured_0', 'Meas 2': 'Measured_1', 'Meas 3': 'Measured_2', 'Meas 4': 'Measured_3', 'Meas 5': 'Measured_4',
                 'meas 1': 'Measured_0', 'meas 2': 'Measured_1', 'meas 3': 'Measured_2', 'meas 4': 'Measured_3', 'meas 5': 'Measured_4',
-                'FFD': 'FFD', 'ffd': 'FFD'
+                'FFD': 'FFD', 'ffd': 'FFD',
+                'FCD': 'FFD', 'fcd': 'FFD', 'FDD': 'FFD', 'fdd': 'FFD'
             },
             'radiationLeakageLevel': {
                 'Location': 'Table2_Area', 'location': 'Table2_Area',
@@ -286,6 +287,7 @@ const DentalConeBeamCT: React.FC<{ serviceId: string; qaTestDate?: string | null
                 'Meas 1', 'Meas 2', 'Meas 3', 'Meas 4', 'Meas 5',
                 'meas 1', 'meas 2', 'meas 3', 'meas 4', 'meas 5',
                 'FFD', 'ffd',
+                'FCD', 'fcd', 'FDD', 'fdd',
             ]),
         };
         const isDynamicMeasHeader = (testName: string, header: string, map: Record<string, string>) => {
@@ -345,7 +347,7 @@ const DentalConeBeamCT: React.FC<{ serviceId: string; qaTestDate?: string | null
             // Detect special "settings" rows that contain multiple label/value pairs on one line
             if (isReadingTest && headers.length === 0 && currentTestName) {
                 const map = headerMap[currentTestName] || {};
-                const allowsMultiPair = ['linearityOfMaLoading', 'radiationLeakageLevel', 'radiationProtectionSurvey', 'accuracyOfIrradiationTime'].includes(currentTestName);
+                const allowsMultiPair = ['linearityOfMaLoading', 'radiationLeakageLevel', 'radiationProtectionSurvey', 'accuracyOfIrradiationTime', 'consistencyOfRadiationOutput'].includes(currentTestName);
                 if (allowsMultiPair) {
                     // In mA linearity section, rows like
                     // "mA Station,33,12,123,,mR/mAs" are table headers,
@@ -983,13 +985,7 @@ const DentalConeBeamCT: React.FC<{ serviceId: string; qaTestDate?: string | null
 
             {/* Excel Actions */}
             <div className="flex flex-wrap gap-4 justify-center mb-8">
-                {/* <a
-                    href="/templates/Dental_CBCT_Test_Data_Template.csv"
-                    download
-                    className="px-6 py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition shadow"
-                >
-                    Download Excel Template
-                </a> */}
+             
 
                 <div className="relative">
                     <input

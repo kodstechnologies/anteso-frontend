@@ -14,13 +14,13 @@ function generateTemplate(isDoubleTube) {
     const tests = [
         { title: 'ACCURACY OF IRRADIATION TIME', headers: ['FDD (cm)', 'kV', 'mA', 'Set Time (mSec)', 'Measured Time (mSec)', 'Tolerance Operator', 'Tolerance Value'] },
         { title: 'CENTRAL BEAM ALIGNMENT', headers: ['FFD (cm)', 'kV', 'mA', 'Time', 'Result', 'Tolerance'] },
-        { title: 'EFFECTIVE FOCAL SPOT SIZE', headers: ['FFD (cm)', 'Focus', 'Stated Focal Spot (f)', 'Measured Focal Spot (Nominal)'] },
+        { title: 'EFFECTIVE FOCAL SPOT SIZE', headers: ['Stated Focal Spot (mm)', 'Measured Focal Spot (Nominal) (mm)'] },
         { title: 'ACCURACY OF OPERATING POTENTIAL', headers: ['mA', 'Time', 'Set kV', 'Measured kV', 'Tolerance Operator', 'Tolerance Value'] },
         { title: 'TOTAL FILTRATION', headers: ['Applied KV', 'Applied MA', 'Applied Time', 'Measured TF', 'Criteria'] },
         { title: 'CONSISTENCY OF RADIATION OUTPUT', headers: ['FDD (cm)', 'kV', 'mA', 'Time', 'Tolerance', 'Header 1', 'Header 2', 'Header 3', 'Header 4', 'Header 5', 'Meas 1', 'Meas 2', 'Meas 3', 'Meas 4', 'Meas 5'] },
         { title: 'MEASUREMENT OF MA LINEARITY', headers: ['kVp', 'Slice Thickness (mm)', 'Time (ms)', 'Tolerance', 'Header 1', 'Header 2', 'Header 3', 'mA Applied', 'Meas 1', 'Meas 2', 'Meas 3'] },
-        { title: 'LOW CONTRAST RESOLUTION', headers: ['kV', 'mA', 'Time', 'Observed Resolution', 'Criteria'] },
-        { title: 'HIGH CONTRAST RESOLUTION', headers: ['kV/mAs', 'Measured Resolution', 'Criteria'] },
+        { title: 'LOW CONTRAST RESOLUTION', headers: ['Smallest Hole Size (mm)', 'Recommended Standard'] },
+        { title: 'HIGH CONTRAST RESOLUTION', headers: ['Measured Resolution (lp/mm)', 'Recommended Standard (lp/mm)'] },
         { title: 'EXPOSURE RATE AT TABLE TOP', headers: ['Max Exposure (AEC Mode) (cGy/Min)', 'Max Exposure (Manual Mode) (cGy/Min)', 'Min. Focus to Tabletop Distance', 'Distance (cm)', 'kV', 'mA', 'Mode', 'Measured Rate', 'Criteria'] },
         { title: 'TUBE HOUSING LEAKAGE', headers: ['kV', 'mA', 'Time', 'FDD (cm)', 'Workload', 'Location', 'Left', 'Right', 'Front', 'Back', 'Top', 'Tolerance Operator', 'Tolerance Value'] },
         { title: 'RADIATION PROTECTION SURVEY REPORT', headers: ['Location', 'mR/hr', 'Category', 'Applied Voltage', 'Applied Current', 'Exposure Time', 'Survey Date', 'Calibration Valid', 'Workload'] }
@@ -32,14 +32,16 @@ function generateTemplate(isDoubleTube) {
         tubeSuffixes.forEach(suffix => {
             rows.push([`TEST: ${test.title}${suffix}`]);
             rows.push(test.headers);
+            if (test.title === 'EFFECTIVE FOCAL SPOT SIZE') {
+                rows.push(['2', '1.25']);
+                rows.push(['0.6', '0.65']);
+            } else if (test.title === 'LOW CONTRAST RESOLUTION') {
+                rows.push(['1.0', '>= 1.0 mm']);
+            } else if (test.title === 'HIGH CONTRAST RESOLUTION') {
+                rows.push(['2.0', '>= 2.0 lp/mm']);
+            } else {
             // Add a sample row
             const sampleRow = test.headers.map(h => {
-                if (test.title === 'EFFECTIVE FOCAL SPOT SIZE') {
-                    if (h === 'FFD (cm)') return '100';
-                    if (h === 'Focus') return 'Large Focus';
-                    if (h === 'Stated Focal Spot (f)') return '2';
-                    if (h === 'Measured Focal Spot (Nominal)') return '1.25';
-                }
                 if (test.title === 'MEASUREMENT OF MA LINEARITY') {
                     if (h === 'kVp') return '80';
                     if (h === 'Slice Thickness (mm)') return '5';
@@ -68,6 +70,7 @@ function generateTemplate(isDoubleTube) {
                 return '';
             });
             rows.push(sampleRow);
+            }
             rows.push(['']); // Blank row after each test section
         });
     });

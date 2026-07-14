@@ -1333,8 +1333,11 @@ const ViewServiceReportDentalIntra: React.FC = () => {
                     <div className="bg-gray-50 p-4 print:p-1 rounded border" style={{ padding: '2px 4px' }}>
                       <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
                         <strong>Tolerance:</strong> Maximum Leakage Radiation Level at 1 meter from the Focus should be{" "}
-                        {leakageData?.tolerance?.operator === 'less than or equal to' ? '<' :
-                          leakageData?.tolerance?.operator === 'greater than or equal to' ? '>' : '='}{" "}
+                        {(() => {
+                          const op = normalizeComparisonOperator(leakageData?.tolerance?.operator || '<=');
+                          const symbol = op === '<=' ? '≤' : op === '>=' ? '≥' : op;
+                          return symbol;
+                        })()}{" "}
                         {leakageData?.tolerance?.value || "1"} mGy (114 mR) in one hour.
                       </p>
                     </div>

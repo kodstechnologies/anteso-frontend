@@ -39,12 +39,9 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
 
-    const [mAStations, setMAStations] = useState<string[]>(["50 mA", "100 mA"]);
+    const [mAStations, setMAStations] = useState<string[]>([]);
     const [rows, setRows] = useState<RowData[]>([
-        { id: "1", appliedKvp: "60", measuredValues: ["", ""], averageKvp: "", remarks: "-" },
-        { id: "2", appliedKvp: "80", measuredValues: ["", ""], averageKvp: "", remarks: "-" },
-        { id: "3", appliedKvp: "100", measuredValues: ["", ""], averageKvp: "", remarks: "-" },
-        { id: "4", appliedKvp: "120", measuredValues: ["", ""], averageKvp: "", remarks: "-" },
+        { id: "1", appliedKvp: "", measuredValues: [], averageKvp: "", remarks: "-" },
     ]);
 
     const [toleranceSign, setToleranceSign] = useState<"+" | "-" | "±">("±");
@@ -100,8 +97,13 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
             }
 
             if (data.measurements?.length > 0) {
-                const stationCount =
-                    data.mAStations?.length ?? data.measurements[0]?.measuredValues?.length ?? 2;
+                const stationCount = Math.max(
+                    data.mAStations?.length ?? 0,
+                    ...data.measurements.map((m: any) => (m.measuredValues ?? []).length)
+                );
+                if (!data.mAStations?.length && stationCount > 0) {
+                    setMAStations(Array.from({ length: stationCount }, () => ""));
+                }
                 setRows(
                     data.measurements.map((m: any, i: number) => {
                         const measuredValues = [...(m.measuredValues ?? []).map(String)];
@@ -167,7 +169,7 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
 
                 if (data) {
                     setTestId(data._id || data.testId || null);
-                    setMAStations(data.mAStations || ["50 mA", "100 mA"]);
+                    setMAStations(data.mAStations?.length > 0 ? data.mAStations : []);
                     setRows(
                         data.measurements?.map((m: any) => ({
                             id: Date.now().toString() + Math.random(),
@@ -259,7 +261,7 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
 
     // All your logic functions (with setIsSaved(false) removed from auto-trigger)
     const addMAColumn = () => {
-        setMAStations(prev => [...prev, "200 mA"]);
+        setMAStations(prev => [...prev, ""]);
         setRows(prev => prev.map(row => ({ ...row, measuredValues: [...row.measuredValues, ""] })));
     };
 

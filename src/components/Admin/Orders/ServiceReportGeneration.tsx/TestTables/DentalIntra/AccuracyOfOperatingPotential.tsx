@@ -173,23 +173,30 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
                     setMAStations(labels);
                 }
             }
-            // Total Filtration
-            const tfMeasured = csvData.find(r => r['Field Name'] === 'Measured')?.['Value'];
+            // Total Filtration — Radiography Fixed style vertical rows ('Measured', 'Required', 'atKvp'),
+            // with fallback to legacy horizontal row (Applied_kVp on the same row as 'Measured')
+            const tfMeasuredEntry = csvData.find(r => r['Field Name'] === 'Measured');
+            const tfMeasured = tfMeasuredEntry?.['Value'];
             const tfRequired = csvData.find(r => r['Field Name'] === 'Required')?.['Value'];
-            // Fallback to Applied_kVp if atKvp is missing (due to map conflict)
-            const tfAtKvp = csvData.find(r => r['Field Name'] === 'atKvp' || r['Field Name'] === 'Applied_kVp')?.['Value'];
-
+            let tfAtKvp = csvData.find(r => r['Field Name'] === 'atKvp')?.['Value'];
+            if (!tfAtKvp && tfMeasuredEntry) {
+                const tfRowIdx = tfMeasuredEntry['Row Index'];
+                tfAtKvp = csvData.find(r => r['Row Index'] === tfRowIdx && r['Field Name'] === 'Applied_kVp')?.['Value'];
+            }
             if (tfMeasured || tfRequired || tfAtKvp) {
                 setTotalFiltration({
                     measured: tfMeasured || "",
                     required: tfRequired || "",
-                    atKvp: tfAtKvp || ""
+                    atKvp: tfAtKvp || "",
                 });
             }
 
-            // Measurement Rows
+            // Measurement Rows — exclude Total Filtration rows (those use Measured/Required, not Measured_N)
             const rowIndices = [...new Set(csvData
-                .filter(r => r['Field Name'] && (r['Field Name'] === 'Applied_kVp' || r['Field Name'].startsWith('Measured_')))
+                .filter(r => r['Field Name'] === 'Applied_kVp')
+                .filter(r => csvData.some(
+                    x => x['Row Index'] === r['Row Index'] && /^Measured_\d+$/.test(String(x['Field Name'] || ''))
+                ))
                 .map(r => parseInt(r['Row Index']))
                 .filter(i => !isNaN(i) && i >= 0)
             )].sort((a, b) => a - b);

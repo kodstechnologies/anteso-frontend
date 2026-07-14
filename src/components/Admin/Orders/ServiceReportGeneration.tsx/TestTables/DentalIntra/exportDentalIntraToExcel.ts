@@ -1,4 +1,5 @@
 import * as XLSX from "xlsx";
+import { normalizeCsvComparisonOperator } from "../shared/parseRadiographyStyleTableFormat";
 
 export interface DentalIntraExportData {
     accuracyOfOperatingPotential?: any;
@@ -115,7 +116,9 @@ export const createDentalIntraUploadableExcel = (data: DentalIntraExportData, ha
             data.radiationLeakageLevel.workload || '',
             data.radiationLeakageLevel.workloadUnit || '',
             data.radiationLeakageLevel.toleranceValue || '',
-            data.radiationLeakageLevel.toleranceOperator || '',
+            data.radiationLeakageLevel.toleranceOperator
+              ? normalizeCsvComparisonOperator(data.radiationLeakageLevel.toleranceOperator)
+              : '<=',
             data.radiationLeakageLevel.toleranceTime || ''
         ]);
 
@@ -125,7 +128,9 @@ export const createDentalIntraUploadableExcel = (data: DentalIntraExportData, ha
             data.radiationLeakageLevel.workload || '',
             data.radiationLeakageLevel.workloadUnit || '',
             data.radiationLeakageLevel.toleranceValue || '',
-            data.radiationLeakageLevel.toleranceOperator || '',
+            data.radiationLeakageLevel.toleranceOperator
+              ? normalizeCsvComparisonOperator(data.radiationLeakageLevel.toleranceOperator)
+              : '<=',
             data.radiationLeakageLevel.toleranceTime || ''
             ]);
         }
@@ -141,16 +146,15 @@ export const createDentalIntraUploadableExcel = (data: DentalIntraExportData, ha
     if (data.radiationProtectionSurvey) {
         // Similar to CT Scan RPS
         // Check `DetailsOfRadiationProtection.tsx` for fields if possible, but guessing standard fields
-        const rows = (data.radiationProtectionSurvey.locations || []).map((row: any) => [
-            row.location || '',
-            row.exposureLevel || '', // or mRPerHr
-            row.category || '',
-            data.radiationProtectionSurvey.surveyDate ? data.radiationProtectionSurvey.surveyDate.split('T')[0] : '', // Format date
-            data.radiationProtectionSurvey.equipment || '', // Valid Calibration?
+        const locationRows = (data.radiationProtectionSurvey.locations || []).map((row: any) => [
+            data.radiationProtectionSurvey.appliedVoltage || '',
+            data.radiationProtectionSurvey.appliedCurrent || '',
+            data.radiationProtectionSurvey.exposureTime || '',
             data.radiationProtectionSurvey.workload || '',
-            data.radiationProtectionSurvey.occupancyFactor || ''
+            row.location || '',
+            row.mRPerHr || row.exposureLevel || '',
         ]);
-        addSection('DETAILS OF RADIATION PROTECTION SURVEY', ['Location', 'Exposure Level', 'Category', 'Date', 'Equipment/Calibration', 'Workload', 'Occupancy Factor'], rows);
+        addSection('RADIATION PROTECTION SURVEY REPORT', ['kV', 'mA', 'Time', 'Workload', 'Location', 'mR/hr'], locationRows);
     }
 
     const ws = XLSX.utils.aoa_to_sheet(allData);

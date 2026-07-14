@@ -9,6 +9,21 @@ import {
   getTubeHousingLeakageByServiceIdForOArm,
   updateTubeHousingLeakageForOArm,
 } from '../../../../../../api';
+import { normalizeCsvComparisonOperator } from '../shared/parseRadiographyStyleTableFormat';
+
+type ToleranceOperator = '<=' | '>=' | '<' | '>' | '=';
+
+const evaluateTolerance = (actual: number, limit: number, operator: string): boolean => {
+  const op = normalizeCsvComparisonOperator(operator) as ToleranceOperator;
+  switch (op) {
+    case '<': return actual < limit;
+    case '>': return actual > limit;
+    case '>=': return actual >= limit;
+    case '=': return Math.abs(actual - limit) < 0.01;
+    case '<=':
+    default: return actual <= limit;
+  }
+};
 
 interface SettingsRow {
   fcd: string;
@@ -60,7 +75,7 @@ export default function TubeHousingLeakageForOArm({ serviceId, testId: propTestI
 
   const [workload, setWorkload] = useState<string>('');
   const [toleranceValue, setToleranceValue] = useState<string>('1');
-  const [toleranceOperator, setToleranceOperator] = useState<'less than or equal to' | 'greater than or equal to' | '='>('less than or equal to');
+  const [toleranceOperator, setToleranceOperator] = useState<ToleranceOperator>('<=');
   const formatToleranceEquivalentMR = (value: string): string => {
     const numeric = Number(value);
     if (!Number.isFinite(numeric)) return '0.000';
@@ -126,7 +141,7 @@ export default function TubeHousingLeakageForOArm({ serviceId, testId: propTestI
 
           setWorkload(data.workload?.toString() || '');
           setToleranceValue(data.toleranceValue?.toString() || '1.0');
-          setToleranceOperator(data.toleranceOperator || 'less than or equal to');
+          setToleranceOperator(normalizeCsvComparisonOperator(data.toleranceOperator) as ToleranceOperator);
           setHasSaved(true);
           setIsEditing(false);
         } else {
@@ -172,6 +187,10 @@ export default function TubeHousingLeakageForOArm({ serviceId, testId: propTestI
         });
       }
       if (firstRow['Workload']) setWorkload(firstRow['Workload']);
+      if (firstRow['Leakage_ToleranceValue']) setToleranceValue(firstRow['Leakage_ToleranceValue']);
+      if (firstRow['Leakage_ToleranceOperator']) {
+        setToleranceOperator(normalizeCsvComparisonOperator(firstRow['Leakage_ToleranceOperator']) as ToleranceOperator);
+      }
 
       // Extract leakage rows
       const newLeakageRows: LeakageRow[] = [];
@@ -222,9 +241,7 @@ export default function TubeHousingLeakageForOArm({ serviceId, testId: propTestI
         resultMGy = mgyVal.toFixed(4);
         const tol = parseFloat(toleranceValue) || 0;
         if (tol > 0) {
-          if (toleranceOperator === 'less than or equal to') remark = mgyVal <= tol ? 'Pass' : 'Fail';
-          else if (toleranceOperator === 'greater than or equal to') remark = mgyVal >= tol ? 'Pass' : 'Fail';
-          else if (toleranceOperator === '=') remark = Math.abs(mgyVal - tol) < 0.01 ? 'Pass' : 'Fail';
+          remark = evaluateTolerance(mgyVal, tol, toleranceOperator) ? 'Pass' : 'Fail';
         }
       }
       return { ...row, max: maxStr, resultMR, resultMGy, remark };
@@ -245,10 +262,7 @@ export default function TubeHousingLeakageForOArm({ serviceId, testId: propTestI
     const result = parseFloat(highestLeakageMGy || '0') || 0;
     const limit = parseFloat(toleranceValue) || 0;
 
-    if (toleranceOperator === 'less than or equal to') return result <= limit ? 'Pass' : 'Fail';
-    if (toleranceOperator === 'greater than or equal to') return result >= limit ? 'Pass' : 'Fail';
-    if (toleranceOperator === '=') return Math.abs(result - limit) < 0.01 ? 'Pass' : 'Fail';
-    return '';
+    return evaluateTolerance(result, limit, toleranceOperator) ? 'Pass' : 'Fail';
   }, [highestLeakageMGy, toleranceValue, toleranceOperator, highestLeakageMR]);
 
   const updateSettings = (field: keyof SettingsRow, value: string) => {
@@ -565,13 +579,15 @@ export default function TubeHousingLeakageForOArm({ serviceId, testId: propTestI
           <span className="font-medium">Leakage should be</span>
           <select
             value={toleranceOperator}
-            onChange={e => setToleranceOperator(e.target.value as any)}
+            onChange={e => setToleranceOperator(e.target.value as ToleranceOperator)}
             disabled={isViewMode}
             className={`px-4 py-2 border rounded-lg font-medium ${isViewMode ? 'bg-gray-100' : ''}`}
           >
-            <option value="less than or equal to">less than or equal to</option>
-            <option value="greater than or equal to">greater than or equal to</option>
-            <option value="=">equal to</option>
+            <option value="<=">&lt;=</option>
+            <option value="<">&lt;</option>
+            <option value=">=">&gt;=</option>
+            <option value=">">&gt;</option>
+            <option value="=">=</option>
           </select>
           <input
             type="text"

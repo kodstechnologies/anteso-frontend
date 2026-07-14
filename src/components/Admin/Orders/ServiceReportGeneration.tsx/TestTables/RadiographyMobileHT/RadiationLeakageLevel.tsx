@@ -8,6 +8,27 @@ import {
   getRadiationLeakageLevelByServiceIdForRadiographyMobileHT,
   updateRadiationLeakageLevelForRadiographyMobileHT,
 } from '../../../../../../api';
+import { normalizeCsvComparisonOperator } from '../shared/parseRadiographyStyleTableFormat';
+
+type ToleranceOp = '<' | '<=' | '>' | '>=' | '=';
+
+const compareByToleranceOp = (result: number, tol: number, op: string): boolean => {
+  const normalized = normalizeCsvComparisonOperator(op) as ToleranceOp;
+  switch (normalized) {
+    case '<':
+      return result < tol;
+    case '<=':
+      return result <= tol;
+    case '>':
+      return result > tol;
+    case '>=':
+      return result >= tol;
+    case '=':
+      return Math.abs(result - tol) < 0.01;
+    default:
+      return result <= tol;
+  }
+};
 
 interface SettingsRow {
   fcd: string;
@@ -54,7 +75,7 @@ export default function RadiationLeakageLevel({ serviceId, testId: propTestId, o
 
   const [workload, setWorkload] = useState<string>('');
   const [toleranceValue, setToleranceValue] = useState<string>('1');
-  const [toleranceOperator, setToleranceOperator] = useState<'less than or equal to' | 'greater than or equal to' | '='>('less than or equal to');
+  const [toleranceOperator, setToleranceOperator] = useState<ToleranceOp>('<=');
   const [toleranceTime, setToleranceTime] = useState<string>('1');
 
   const [isSaving, setIsSaving] = useState(false);
@@ -67,7 +88,9 @@ export default function RadiationLeakageLevel({ serviceId, testId: propTestId, o
     if (initialData.settings) setSettings(prev => ({ ...prev, fcd: initialData.settings.fcd ?? prev.fcd, kv: initialData.settings.kv ?? prev.kv, ma: initialData.settings.ma ?? prev.ma, time: initialData.settings.time ?? prev.time }));
     if (initialData.workload) setWorkload(initialData.workload);
     if (initialData.toleranceValue) setToleranceValue(initialData.toleranceValue);
-    if (initialData.toleranceOperator) setToleranceOperator(initialData.toleranceOperator);
+    if (initialData.toleranceOperator) {
+      setToleranceOperator(normalizeCsvComparisonOperator(initialData.toleranceOperator) as ToleranceOp);
+    }
     if (initialData.leakageMeasurements?.length) setLeakageRows(initialData.leakageMeasurements.map((r: any) => ({ location: r.location || 'Tube', left: r.left ?? '', right: r.right ?? '', front: r.front ?? '', back: r.back ?? '', top: r.top ?? '', max: '', result: '', unit: 'mR/h', mgy: '' })));
   }, [initialData]);
 
@@ -103,10 +126,7 @@ export default function RadiationLeakageLevel({ serviceId, testId: propTestId, o
         // Calculate Pass/Fail for this row
         const tol = parseFloat(toleranceValue) || 0;
         if (tol > 0) {
-          let pass = false;
-          if (toleranceOperator === 'less than or equal to') pass = mgyValue <= tol;
-          if (toleranceOperator === 'greater than or equal to') pass = mgyValue >= tol;
-          if (toleranceOperator === '=') pass = Math.abs(mgyValue - tol) < 0.01;
+          const pass = compareByToleranceOp(mgyValue, tol, toleranceOperator);
           remark = pass ? 'Pass' : 'Fail';
         }
       }
@@ -160,12 +180,7 @@ export default function RadiationLeakageLevel({ serviceId, testId: propTestId, o
 
     if (!toleranceValue || globalMaxResultMR === 0) return '';
 
-    let pass = false;
-    if (toleranceOperator === 'less than or equal to') pass = result <= tol;
-    if (toleranceOperator === 'greater than or equal to') pass = result >= tol;
-    if (toleranceOperator === '=') pass = Math.abs(result - tol) < 0.01;
-
-    return pass ? 'Pass' : 'Fail';
+    return compareByToleranceOp(result, tol, toleranceOperator) ? 'Pass' : 'Fail';
   }, [globalMaxResultMGy, toleranceValue, toleranceOperator, globalMaxResultMR]);
 
   const updateSettings = (field: keyof SettingsRow, value: string) => {
@@ -243,7 +258,9 @@ export default function RadiationLeakageLevel({ serviceId, testId: propTestId, o
           if (data.fcd) setSettings({ fcd: data.fcd, kv: data.kv || '', ma: data.ma || '', time: data.time || '' });
           if (data.workload) setWorkload(data.workload);
           if (data.toleranceValue) setToleranceValue(data.toleranceValue);
-          if (data.toleranceOperator) setToleranceOperator(data.toleranceOperator);
+          if (data.toleranceOperator) {
+            setToleranceOperator(normalizeCsvComparisonOperator(data.toleranceOperator) as ToleranceOp);
+          }
           if (data.toleranceTime) setToleranceTime(data.toleranceTime);
           if (Array.isArray(data.leakageMeasurements) && data.leakageMeasurements.length > 0) {
             // Ensure Tube is always first, then Collimator if it exists
@@ -570,13 +587,15 @@ export default function RadiationLeakageLevel({ serviceId, testId: propTestId, o
             <strong>Tolerance:</strong> Maximum Leakage Radiation Level at 1 meter from the Focus should be{' '}
             <select
               value={toleranceOperator}
-              onChange={(e) => setToleranceOperator(e.target.value as any)}
+              onChange={(e) => setToleranceOperator(e.target.value as ToleranceOp)}
               disabled={isViewMode}
               className={`px-2 py-1 border rounded text-sm font-medium ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
             >
-              <option value="less than or equal to">&lt;</option>
-              <option value="greater than or equal to">&gt;</option>
-              <option value="=">{'='}</option>
+              <option value="<">&lt;</option>
+              <option value="<=">&lt;=</option>
+              <option value=">">&gt;</option>
+              <option value=">=">&gt;=</option>
+              <option value="=">=</option>
             </select>
             {' '}
             <input

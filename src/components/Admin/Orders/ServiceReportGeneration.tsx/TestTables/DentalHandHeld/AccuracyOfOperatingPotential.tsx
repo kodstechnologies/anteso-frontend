@@ -223,26 +223,32 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
             }
         }
 
-        const tfRowIdx = csvData.find(r => r['Field Name'] === 'Measured' || r['Field Name'] === 'atKvp')?.['Row Index'];
-        if (tfRowIdx !== undefined) {
-            const tfRow = csvData.filter(r => parseInt(r['Row Index']) === parseInt(String(tfRowIdx)));
-            const measured = tfRow.find(r => r['Field Name'] === 'Measured')?.['Value'];
-            const required = tfRow.find(r => r['Field Name'] === 'Required')?.['Value'];
-            const atKvp = tfRow.find(r => r['Field Name'] === 'atKvp' || r['Field Name'] === 'Applied_kVp')?.['Value'];
-            if (measured || required || atKvp) {
+            // Total Filtration — Radiography Fixed style vertical rows ('Measured', 'Required', 'atKvp'),
+            // with fallback to legacy horizontal row (Applied_kVp on the same row as 'Measured')
+            const tfMeasuredEntry = csvData.find(r => r['Field Name'] === 'Measured');
+            const tfMeasured = tfMeasuredEntry?.['Value'];
+            const tfRequired = csvData.find(r => r['Field Name'] === 'Required')?.['Value'];
+            let tfAtKvp = csvData.find(r => r['Field Name'] === 'atKvp')?.['Value'];
+            if (!tfAtKvp && tfMeasuredEntry) {
+                const tfRowIdx = tfMeasuredEntry['Row Index'];
+                tfAtKvp = csvData.find(r => r['Row Index'] === tfRowIdx && r['Field Name'] === 'Applied_kVp')?.['Value'];
+            }
+            if (tfMeasured || tfRequired || tfAtKvp) {
                 setTotalFiltration({
-                    measured: measured ? String(measured) : "",
-                    required: required ? String(required) : "",
-                    atKvp: atKvp ? String(atKvp) : "",
+                    measured: tfMeasured ? String(tfMeasured) : "",
+                    required: tfRequired ? String(tfRequired) : "",
+                    atKvp: tfAtKvp ? String(tfAtKvp) : "",
                 });
             }
-        }
 
-        const rowIndices = [...new Set(csvData
-            .filter(r => r['Field Name'] && (r['Field Name'] === 'Applied_kVp' || r['Field Name'].startsWith('Measured_')))
-            .map(r => parseInt(r['Row Index']))
-            .filter(i => !isNaN(i) && i >= 0)
-        )].sort((a, b) => a - b);
+            const rowIndices = [...new Set(csvData
+                .filter(r => r['Field Name'] === 'Applied_kVp')
+                .filter(r => csvData.some(
+                    x => x['Row Index'] === r['Row Index'] && /^Measured_\d+$/.test(String(x['Field Name'] || ''))
+                ))
+                .map(r => parseInt(r['Row Index']))
+                .filter(i => !isNaN(i) && i >= 0)
+            )].sort((a, b) => a - b);
 
         if (rowIndices.length > 0) {
             const newRows = rowIndices.map(idx => {

@@ -9,6 +9,21 @@ import {
   updateTubeHousingLeakageForCArm,
   getTubeHousingLeakageByIdCArm,
 } from "../../../../../../api";
+import { normalizeCsvComparisonOperator } from "../shared/parseRadiographyStyleTableFormat";
+
+type ToleranceOperator = '<=' | '>=' | '<' | '>' | '=';
+
+const evaluateTolerance = (actual: number, limit: number, operator: string): boolean => {
+  const op = normalizeCsvComparisonOperator(operator) as ToleranceOperator;
+  switch (op) {
+    case '<': return actual < limit;
+    case '>': return actual > limit;
+    case '>=': return actual >= limit;
+    case '=': return Math.abs(actual - limit) < 0.01;
+    case '<=':
+    default: return actual <= limit;
+  }
+};
 
 interface SettingsRow {
   fcd: string;
@@ -60,7 +75,7 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
 
   const [workload, setWorkload] = useState<string>('');
   const [toleranceValue, setToleranceValue] = useState<string>('1');
-  const [toleranceOperator, setToleranceOperator] = useState<'less than or equal to' | 'greater than or equal to' | '='>('less than or equal to');
+  const [toleranceOperator, setToleranceOperator] = useState<ToleranceOperator>('<=');
   const [toleranceTime] = useState<string>('1');
 
   // Handle CSV initial data
@@ -70,7 +85,7 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
         const s: SettingsRow = { fcd: "100", kv: "120", ma: "21", time: "2.0" };
         let w = "";
         let tVal = "1.0";
-        let tOp: any = "less than or equal to";
+        let tOp: ToleranceOperator = "<=";
 
         const rowMap: Record<number, Partial<LeakageRow> & { location?: LeakageRow['location'] }> = {};
 
@@ -85,7 +100,7 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
           if (field === 'Leakage_Time') s.time = val;
           if (field === 'Leakage_Workload') w = val;
           if (field === 'Leakage_ToleranceValue') tVal = val;
-          if (field === 'Leakage_ToleranceOperator') tOp = val;
+          if (field === 'Leakage_ToleranceOperator') tOp = normalizeCsvComparisonOperator(val) as ToleranceOperator;
 
           if (field === 'Leakage_Location') {
             if (!rowMap[rowIndex]) {
@@ -176,9 +191,7 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
         resultMGy = (leakageMR / 114).toFixed(3);
         if (tol > 0) {
           const mgyVal = parseFloat(resultMGy) || 0;
-          if (toleranceOperator === 'less than or equal to') remark = mgyVal <= tol ? 'Pass' : 'Fail';
-          else if (toleranceOperator === 'greater than or equal to') remark = mgyVal >= tol ? 'Pass' : 'Fail';
-          else if (toleranceOperator === '=') remark = Math.abs(mgyVal - tol) < 0.01 ? 'Pass' : 'Fail';
+          remark = evaluateTolerance(mgyVal, tol, toleranceOperator) ? 'Pass' : 'Fail';
         }
       }
 
@@ -211,10 +224,7 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
     const result = parseFloat(highestLeakageMGy || '0') || 0;
     const limit = parseFloat(toleranceValue) || 0;
 
-    if (toleranceOperator === 'less than or equal to') return result <= limit ? 'Pass' : 'Fail';
-    if (toleranceOperator === 'greater than or equal to') return result >= limit ? 'Pass' : 'Fail';
-    if (toleranceOperator === '=') return Math.abs(result - limit) < 0.01 ? 'Pass' : 'Fail';
-    return '';
+    return evaluateTolerance(result, limit, toleranceOperator) ? 'Pass' : 'Fail';
   }, [highestLeakageMGy, toleranceValue, toleranceOperator, highestLeakageMR]);
 
   const updateSettings = (field: keyof SettingsRow, value: string) => {
@@ -302,7 +312,7 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
 
           setWorkload(data.workload?.toString() || '');
           setToleranceValue(data.toleranceValue?.toString() || '1.0');
-          setToleranceOperator(data.toleranceOperator || 'less than or equal to');
+          setToleranceOperator(normalizeCsvComparisonOperator(data.toleranceOperator) as ToleranceOperator);
 
           if (data.leakageMeasurements && Array.isArray(data.leakageMeasurements)) {
             setLeakageRows(
@@ -591,13 +601,15 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
             <strong>Tolerance:</strong> Maximum Leakage Radiation Level at 1 meter from the Focus should be{' '}
             <select
               value={toleranceOperator}
-              onChange={e => setToleranceOperator(e.target.value as any)}
+              onChange={e => setToleranceOperator(e.target.value as ToleranceOperator)}
               disabled={isViewMode}
               className={`px-2 py-1 border rounded text-sm font-medium ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
             >
-              <option value="less than or equal to">&lt;</option>
-              <option value="greater than or equal to">&gt;</option>
-              <option value="=">{'='}</option>
+              <option value="<=">&lt;=</option>
+              <option value="<">&lt;</option>
+              <option value=">=">&gt;=</option>
+              <option value=">">&gt;</option>
+              <option value="=">=</option>
             </select>
             {' '}
             <input

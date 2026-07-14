@@ -64,42 +64,51 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
     // Load existing test data
     useEffect(() => {
         const loadTest = async () => {
-            if (!serviceId) return;
+            if (!serviceId) {
+                setIsLoading(false);
+                return;
+            }
             setIsLoading(true);
             try {
                 const res = await getAccuracyOfOperatingPotentialByServiceIdForOPG(serviceId);
                 const data = res?.data;
+                const hasCsvImport = csvData && csvData.length > 0;
                 if (data) {
                     setTestId(data._id || null);
-                    setMAStations(data.mAStations || ["50 mA", "100 mA"]);
-                    setFfd(data.ffd || "");
-                    setRows(
-                        data.measurements?.map((m: any, i: number) => ({
-                            id: String(i + 1),
-                            appliedKvp: m.appliedKvp || "",
-                            measuredValues: m.measuredValues || [],
-                            averageKvp: m.averageKvp || "",
-                            remarks: m.remarks || "-",
-                        })) || rows
-                    );
-                    setToleranceSign(data.tolerance?.sign || data.tolerance?.type || "±");
-                    setToleranceValue(data.tolerance?.value || "2.0");
-                    setTotalFiltration({
-                        measured: data.totalFiltration?.measured || "",
-                        required: data.totalFiltration?.required || "",
-                        atKvp: data.totalFiltration?.atKvp || "",
-                    });
-                    if (data.filtrationTolerance) {
-                        setFiltrationTolerance({
-                            forKvGreaterThan70: data.filtrationTolerance.forKvGreaterThan70 || "1.5",
-                            forKvBetween70And100: data.filtrationTolerance.forKvBetween70And100 || "2.0",
-                            forKvGreaterThan100: data.filtrationTolerance.forKvGreaterThan100 || "2.5",
-                            kvThreshold1: data.filtrationTolerance.kvThreshold1 || "70",
-                            kvThreshold2: data.filtrationTolerance.kvThreshold2 || "100",
+                    if (!hasCsvImport) {
+                        setMAStations(data.mAStations || ["50 mA", "100 mA"]);
+                        setFfd(data.ffd || "");
+                        setRows(
+                            data.measurements?.map((m: any, i: number) => ({
+                                id: String(i + 1),
+                                appliedKvp: m.appliedKvp || "",
+                                measuredValues: m.measuredValues || [],
+                                averageKvp: m.averageKvp || "",
+                                remarks: m.remarks || "-",
+                            })) || rows
+                        );
+                        setToleranceSign(data.tolerance?.sign || data.tolerance?.type || "±");
+                        setToleranceValue(data.tolerance?.value || "2.0");
+                        setTotalFiltration({
+                            measured: data.totalFiltration?.measured || "",
+                            required: data.totalFiltration?.required || "",
+                            atKvp: data.totalFiltration?.atKvp || "",
                         });
+                        if (data.filtrationTolerance) {
+                            setFiltrationTolerance({
+                                forKvGreaterThan70: data.filtrationTolerance.forKvGreaterThan70 || "1.5",
+                                forKvBetween70And100: data.filtrationTolerance.forKvBetween70And100 || "2.0",
+                                forKvGreaterThan100: data.filtrationTolerance.forKvGreaterThan100 || "2.5",
+                                kvThreshold1: data.filtrationTolerance.kvThreshold1 || "70",
+                                kvThreshold2: data.filtrationTolerance.kvThreshold2 || "100",
+                            });
+                        }
+                        setIsSaved(true);
+                        setIsEditing(false);
+                    } else {
+                        setIsSaved(false);
+                        setIsEditing(true);
                     }
-                    setIsSaved(true);
-                    setIsEditing(false);
                     if (data._id && !initialTestId) {
                         onTestSaved?.(data._id);
                     }
@@ -116,23 +125,27 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
             }
         };
         loadTest();
-    }, [serviceId]);
+    }, [serviceId, csvData]);
 
-    // CSV Data Injection
+    // CSV Data Injection — apply after load so server data does not overwrite import
     useEffect(() => {
-        if (csvData && csvData.length > 0) {
-            const headerRow = csvData.find(r => String(r?.[0] || '').trim() === 'Applied kVp');
-            if (headerRow) {
-                const customHeaders: string[] = [];
-                headerRow.slice(1).forEach((c: any) => {
-                    const s = String(c || '').trim();
-                    if (!s) return;
-                    if (/^average\s*kvp$/i.test(s) || /^remarks$/i.test(s)) return;
-                    customHeaders.push(s);
-                });
-                if (customHeaders.length > 0) {
-                    setMAStations(customHeaders);
+        if (isLoading || !csvData || csvData.length === 0) return;
+
+            const readCustomHeaders = (): string[] => {
+                const meta = csvData.find((r) => String(r?.[0] ?? '').trim() === '__MEAS_HEADERS__');
+                if (meta) {
+                    return meta.slice(1).map((c: any) => String(c ?? '').trim()).filter(Boolean);
                 }
+                const headerRow = csvData.find(r => String(r?.[0] || '').trim() === 'Applied kVp');
+                if (!headerRow) return [];
+                return headerRow.slice(1)
+                    .map((c: any) => String(c || '').trim())
+                    .filter((s: string) => s && !/^average\s*kvp$/i.test(s) && !/^remarks$/i.test(s));
+            };
+
+            const customHeaders = readCustomHeaders();
+            if (customHeaders.length > 0) {
+                setMAStations(customHeaders);
             }
 
             // Check for Total Filtration row
@@ -156,7 +169,12 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
                 });
             }
 
-            const dataRows = csvData.filter(r => r[0] !== 'TotalFiltration' && !isNaN(parseFloat(r[0])));
+            const dataRows = csvData.filter(r => {
+                const first = String(r?.[0] ?? '').trim();
+                if (!first || first === '__MEAS_HEADERS__' || first === 'Applied kVp') return false;
+                if (first === 'TotalFiltration' || first === 'Total Filtration') return false;
+                return !isNaN(parseFloat(first));
+            });
 
             if (dataRows.length > 0) {
                 const newRows = dataRows.map((row, idx) => {
@@ -203,27 +221,28 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
 
                 setRows(newRows);
 
-                // Update mA headers count exactly matching the import count (min 2)
-                const maxMeas = Math.max(...newRows.map(r => r.measuredValues.length));
-                const finalCount = maxMeas || 2;
-                setMAStations(prev => {
-                    const base = (headerRow
-                        ? String(headerRow[0]).trim() === 'Applied kVp'
-                            ? headerRow.slice(1)
-                                .map((c: any) => String(c || '').trim())
-                                .filter((s: string) => s && !/^average\s*kvp$/i.test(s) && !/^remarks$/i.test(s))
-                            : prev
-                        : prev).slice(0, finalCount);
+                const maxMeas = Math.max(...newRows.map(r => r.measuredValues.length), 0);
+                const finalCount = Math.max(maxMeas, customHeaders.length, 2);
+                setMAStations(() => {
+                    const base = (customHeaders.length > 0
+                        ? customHeaders
+                        : Array.from({ length: finalCount }, (_, i) => `mA ${i + 1}`)
+                    ).slice(0, finalCount);
                     while (base.length < finalCount) {
                         base.push(`mA ${base.length + 1}`);
                     }
                     return base;
                 });
 
-                if (!testId) setIsEditing(true);
+                setIsSaved(false);
+                setIsEditing(true);
+            } else if (customHeaders.length > 0) {
+                const finalCount = Math.max(customHeaders.length, 2);
+                setMAStations(customHeaders.slice(0, finalCount));
+                setIsSaved(false);
+                setIsEditing(true);
             }
-        }
-    }, [csvData]);
+    }, [csvData, isLoading]);
 
     // Save function
     const saveTest = async () => {

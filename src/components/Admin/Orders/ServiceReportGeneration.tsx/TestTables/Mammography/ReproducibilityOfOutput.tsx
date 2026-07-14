@@ -204,8 +204,8 @@ const ReproducibilityOfOutput: React.FC<{
           }))
         );
       }
-      if (initialData.tolerance) {
-        setTolerance(initialData.tolerance);
+      if (initialData.tolerance !== undefined && String(initialData.tolerance).trim() !== '') {
+        setTolerance(String(initialData.tolerance));
       }
       if (initialData.toleranceOperator) {
         setToleranceOperator(initialData.toleranceOperator);

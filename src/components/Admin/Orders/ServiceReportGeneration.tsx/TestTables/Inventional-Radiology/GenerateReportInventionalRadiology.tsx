@@ -195,7 +195,9 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
         'kV': 'Table1_kv', 'mA': 'Table1_ma',
         'Focus': 'Table1_focalSpotSize', 'Focal Spot Size': 'Table1_focalSpotSize', 'Focus Type': 'Table1_focalSpotSize',
         'Stated Focal Spot (f)': 'Table2_StatedNominal', 'Stated Nominal': 'Table2_StatedNominal',
+        'Stated Focal Spot (mm)': 'Table2_StatedNominal',
         'Measured Focal Spot (Nominal)': 'Table2_MeasuredNominal', 'Measured Nominal': 'Table2_MeasuredNominal',
+        'Measured Focal Spot (Nominal) (mm)': 'Table2_MeasuredNominal',
         'Measured Dimension (W)': 'Table2_MeasuredWidth', 'Measured Dimension (L)': 'Table2_MeasuredLength',
         'Tolerance Width': 'ToleranceWidth', 'Tolerance Length': 'ToleranceLength',
       },
@@ -229,10 +231,17 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
         'Tolerance': 'Tolerance',
       },
       'Low Contrast Resolution': {
+        'Smallest Hole Size (mm)': 'Table1_smallestHoleSize',
+        'Hole Size': 'Table1_smallestHoleSize',
+        'Recommended Standard': 'Table1_recommendedStandard',
+        'Standard': 'Table1_recommendedStandard',
         'kV': 'Table1_kv', 'mA': 'Table1_ma', 'Time': 'Table1_time',
         'Observed Resolution': 'Table1_smallestHoleSize', 'Criteria': 'Table1_recommendedStandard'
       },
       'High Contrast Resolution': {
+        'Measured Resolution (lp/mm)': 'Table1_measuredLpPerMm',
+        'lp/mm': 'Table1_measuredLpPerMm',
+        'Recommended Standard (lp/mm)': 'Table1_recommendedStandard',
         'kV/mAs': 'Table1_kvmAs',
         'Measured Resolution': 'Table1_measuredLpPerMm', 'Criteria': 'Table1_recommendedStandard'
       },
@@ -370,14 +379,29 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
         const rowIdx = sectionRowCounter[currentTestName];
 
         if (currentTestNameBase === 'Effective Focal Spot Size') {
+          const statedIdx = colIdx(headers, 'Stated Focal Spot (mm)', 'Stated Focal Spot (f)', 'Stated Nominal', 'Stated Focal Spot');
+          const measuredIdx = colIdx(headers, 'Measured Focal Spot (Nominal) (mm)', 'Measured Focal Spot (Nominal)', 'Measured Nominal');
+          const focusCol = colIdx(headers, 'Focus', 'Focal Spot Size', 'Focus Type');
+          const isTwoColFormat = statedIdx >= 0 && measuredIdx >= 0 && focusCol < 0;
+
+          if (isTwoColFormat) {
+            const stated = row[statedIdx] ?? '';
+            const measured = row[measuredIdx] ?? '';
+            if (stated || measured) {
+              const focusType = rowIdx === 2 ? 'Small Focus' : 'Large Focus';
+              pushField('Table1_focalSpotSize', focusType, rowIdx, currentTestName);
+              if (stated) pushField('Table2_StatedNominal', stated, rowIdx, currentTestName);
+              if (measured) pushField('Table2_MeasuredNominal', measured, rowIdx, currentTestName);
+            }
+          } else {
           const focusType = row[colIdx(headers, 'Focus', 'Focal Spot Size', 'Focus Type')] ?? '';
           if (rowIdx === 1) {
             pushField('Table1_fcd', row[colIdx(headers, 'FFD (cm)', 'FDD (cm)', 'FCD (cm)', 'FFD', 'FDD', 'FCD')] ?? '', 0, currentTestName);
           }
           if (focusType) {
             pushField('Table1_focalSpotSize', focusType, rowIdx, currentTestName);
-            const stated = row[colIdx(headers, 'Stated Focal Spot (f)', 'Stated Nominal', 'Stated Focal Spot')] ?? '';
-            const measured = row[colIdx(headers, 'Measured Focal Spot (Nominal)', 'Measured Nominal')] ?? '';
+            const stated = row[colIdx(headers, 'Stated Focal Spot (f)', 'Stated Nominal', 'Stated Focal Spot', 'Stated Focal Spot (mm)')] ?? '';
+            const measured = row[colIdx(headers, 'Measured Focal Spot (Nominal)', 'Measured Nominal', 'Measured Focal Spot (Nominal) (mm)')] ?? '';
             if (stated) pushField('Table2_StatedNominal', stated, rowIdx, currentTestName);
             if (measured) pushField('Table2_MeasuredNominal', measured, rowIdx, currentTestName);
             // Legacy width/length format fallback
@@ -388,6 +412,7 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
             if (!measured && w && l) {
               pushField('Table2_MeasuredNominal', ((parseFloat(w) + parseFloat(l)) / 2).toFixed(2), rowIdx, currentTestName);
             }
+          }
           }
         } else if (currentTestNameBase === 'Accuracy Of Operating Potential') {
           const hasCArmMeas = headers.some(isHeaderLabelCol) && (headers.some(isMeasCol) || colIdx(headers, 'Set kV', 'Applied kVp') >= 0);

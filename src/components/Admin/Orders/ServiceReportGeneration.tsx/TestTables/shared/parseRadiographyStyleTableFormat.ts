@@ -20,7 +20,7 @@ const normalizeCsvToleranceSign = (raw: unknown): string => {
   return v;
 };
 
-const normalizeCsvComparisonOperator = (raw: unknown): string => {
+export const normalizeCsvComparisonOperator = (raw: unknown): string => {
   const v = String(raw ?? "").trim().toLowerCase();
   if (!v) return "<=";
   if (v.includes("less than or equal") || v === "<=" || v === "=<") return "<=";
@@ -36,6 +36,34 @@ const formatMaStation = (val: string): string => {
   if (!v) return v;
   return /\bmA\b/i.test(v) ? v : `${v} mA`;
 };
+
+export const isExcelDateArtifact = (value: string): boolean =>
+  /^\d{1,2}-[A-Za-z]{3}$/i.test(String(value ?? "").trim());
+
+export const isMeasHeaderLabel = (label: string): boolean =>
+  /^(?:Meas|Measured(?:\s*Output)?|Output)\s*\d+$/i.test(String(label ?? "").trim());
+
+/** Keep Excel header text; only substitute when the cell is empty or an Excel date artifact. */
+export const normalizeMeasHeaderLabel = (header: string, fallbackIndex: number): string => {
+  const h = String(header ?? "").trim();
+  if (!h || isExcelDateArtifact(h)) return `Meas ${fallbackIndex + 1}`;
+  return h;
+};
+
+/** Coerce mAs row label from Excel (reject date-format corruption). */
+export const coerceMasRangeLabel = (value: string): string | null => {
+  const v = String(value ?? "").trim();
+  if (!v || /^Tolerance/i.test(v)) return null;
+  if (v === "mAs Range" || v === "mAs Applied" || v === "mAs") return null;
+  if (isExcelDateArtifact(v)) return null;
+  if (/^\d+(\.\d+)?$/.test(v)) return v;
+  if (/\d/.test(v) && (/\s+to\s+/i.test(v) || /\s*-\s*/.test(v))) {
+    return v.replace(/\s+to\s+/gi, " - ");
+  }
+  return v;
+};
+
+const isMasRangeRowLabel = (value: string): boolean => coerceMasRangeLabel(value) !== null;
 
 type MapperCtx = { device: RadiographyStyleDevice; rows: StyleParsedRow[] };
 
@@ -102,11 +130,11 @@ const mapTotalFiltration = (ctx: MapperCtx, lines: string[], startIdx: number): 
 
   const measHeaders = headerCells.slice(1).filter(Boolean);
   measHeaders.forEach((h, idx) => {
-    const stationLabel = maStations[idx] || h;
+    const stationLabel = maStations[idx] || normalizeMeasHeaderLabel(h, idx);
     if (ctx.device === "carm") {
       push(ctx, testName, `Header_${idx + 1}`, stationLabel, 0);
     } else if (!maStations.length) {
-      push(ctx, testName, `Header_${idx + 1}`, h, 0);
+      push(ctx, testName, `Header_${idx + 1}`, normalizeMeasHeaderLabel(h, idx), 0);
     }
   });
 
@@ -152,7 +180,7 @@ const mapOutputConsistency = (ctx: MapperCtx, lines: string[], startIdx: number)
 
   const outputHeaders = headerCells.slice(2).map((h) => h.trim()).filter(Boolean);
   outputHeaders.forEach((h, headerIdx) => {
-    push(ctx, testName, `Header_${headerIdx + 1}`, h, 0);
+    push(ctx, testName, `Header_${headerIdx + 1}`, normalizeMeasHeaderLabel(h, headerIdx), 0);
   });
 
   let idx = 0;
@@ -167,6 +195,7 @@ const mapOutputConsistency = (ctx: MapperCtx, lines: string[], startIdx: number)
     if (/^tolerance\s*operator$/i.test(labelCell)) {
       const op = normalizeCsvComparisonOperator(valCell);
       if (ctx.device === "oarm") push(ctx, testName, "Tolerance_Operator", op, 0);
+      else push(ctx, testName, "Output_ToleranceOperator", op, 0);
       j++;
       continue;
     }
@@ -209,7 +238,9 @@ const mapLinearityMa = (ctx: MapperCtx, lines: string[], startIdx: number): numb
 
   const headerCells = splitLine(lines[startIdx + 2] || "");
   const measHeaders = headerCells.slice(1).map((h) => h.trim()).filter(Boolean);
-  measHeaders.forEach((h, i) => push(ctx, testName, `Header_${i + 1}`, h, 0));
+  measHeaders.forEach((h, i) =>
+    push(ctx, testName, `Header_${i + 1}`, normalizeMeasHeaderLabel(h, i), 0)
+  );
 
   let idx = 0;
   let j = startIdx + 3;
@@ -263,7 +294,9 @@ const mapLinearityMas = (ctx: MapperCtx, lines: string[], startIdx: number): num
 
   const headerCells = splitLine(lines[startIdx + 2] || "");
   const measHeaders = headerCells.slice(1).map((h) => h.trim()).filter(Boolean);
-  measHeaders.forEach((h, i) => push(ctx, testName, `Header_${i + 1}`, h, 0));
+  measHeaders.forEach((h, i) =>
+    push(ctx, testName, `Header_${i + 1}`, normalizeMeasHeaderLabel(h, i), 0)
+  );
 
   let idx = 0;
   let j = startIdx + 3;
@@ -288,9 +321,11 @@ const mapLinearityMas = (ctx: MapperCtx, lines: string[], startIdx: number): num
       j++;
       continue;
     }
-    if (first !== "mAs Range" && first !== "mAs Applied" && first) {
+    if (isMasRangeRowLabel(first)) {
       const rowIdx = ctx.device === "oarm" ? idx + 1 : idx;
-      push(ctx, testName, ctx.device === "oarm" ? "Row_mAsRange" : "Linearity_mAsRange", first, rowIdx);
+      const rangeLabel = coerceMasRangeLabel(first) ?? first;
+      push(ctx, testName, ctx.device === "oarm" ? "Row_mAsRange" : "Linearity_mAsRange", rangeLabel, rowIdx);
+      push(ctx, testName, "Linearity_mAs", rangeLabel, rowIdx);
       for (let c = 1; c < cells.length; c++) {
         if (cells[c]) {
           if (ctx.device === "oarm") push(ctx, testName, `Row_Meas_${c - 1}`, cells[c], rowIdx);

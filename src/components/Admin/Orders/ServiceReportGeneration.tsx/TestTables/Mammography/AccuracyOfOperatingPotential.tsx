@@ -312,14 +312,13 @@ const AccuracyOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: prop
   const isFormValid = useMemo(() => {
     return (
       !!serviceId &&
-      table1Row.time.trim() &&
-      table1Row.sliceThickness.trim() &&
+      table2Rows.length > 0 &&
       table2Rows.every((r) =>
         r.setKV.trim() &&
         r.maColumns.some(col => col.value.trim()) // At least one mA value filled
       )
     );
-  }, [serviceId, table1Row, table2Rows]);
+  }, [serviceId, table2Rows]);
 
   // === Load CSV Initial Data ===
   useEffect(() => {
@@ -586,7 +585,7 @@ const AccuracyOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: prop
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th rowSpan={2} className="px-6 py-3 text-left text-xs font-medium text-gray-600 tracking-wider border-r">
+                <th rowSpan={2} className="px-6 py-3 w-40 min-w-[10rem] text-left text-xs font-medium text-gray-600 tracking-wider border-r whitespace-nowrap">
                   Applied kVp
                 </th>
                 <th colSpan={globalMAColumns.length} className="px-6 py-3 text-center text-xs font-medium text-gray-600 tracking-wider border-r">
@@ -645,13 +644,13 @@ const AccuracyOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: prop
                 const isFail = row.remarks === 'Fail';
                 return (
                   <tr key={row.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-3 border-r">
+                    <td className="px-6 py-3 border-r w-40 min-w-[10rem]">
                       <input
                         type="number"
                         value={baseRow.setKV}
                         onChange={(e) => updateTable2SetKV(row.id, e.target.value)}
                         disabled={isViewMode}
-                        className={`w-full px-3 py-2 text-center border rounded text-sm focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'
+                        className={`w-full min-w-[7rem] px-3 py-2 text-center border rounded text-sm focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'
                           }`}
                         placeholder="28"
                       />

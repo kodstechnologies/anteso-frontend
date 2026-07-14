@@ -147,9 +147,9 @@ const MainTestTableForCArm: React.FC<MainTestTableProps> = ({ testData, hasTimer
     }
   }
 
-  // Accuracy of Irradiation Time(sec) — CArm uses irradiationTime; align with RadiographyFixed
+  // Accuracy of Irradiation Time(sec) — only when unit has a timer
   const irrBlock = testData.accuracyOfIrradiationTime || testData.irradiationTime;
-  if (irrBlock?.irradiationTimes && Array.isArray(irrBlock.irradiationTimes)) {
+  if (hasTimer && irrBlock?.irradiationTimes && Array.isArray(irrBlock.irradiationTimes)) {
     const validRows = irrBlock.irradiationTimes.filter((row: any) => row.setTime || row.measuredTime);
     if (validRows.length > 0) {
       const toleranceOperator = irrBlock.tolerance?.operator || "<=";

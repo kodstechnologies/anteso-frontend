@@ -453,6 +453,10 @@ const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId, qaTestDate,
                 'Measured (mm Al)': 'Measured',
                 'Required (mm Al)': 'Required',
                 'At kVp': 'atKvp',
+                // Radiography Fixed style vertical key-value rows for Total Filtration
+                'Total Filtration Measured (mm Al)': 'Measured',
+                'Total Filtration Required (mm Al)': 'Required',
+                'Total Filtration At kVp': 'atKvp',
                 'kV': 'kV', 'kVp': 'kVp',
             },
             'accuracyOfIrradiationTime': {
@@ -496,6 +500,8 @@ const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId, qaTestDate,
                 'kV': 'kV', 'mA': 'mA', 'Time': 'Time', 'Workload': 'Workload'
             }
         };
+
+        const skipProtectionSurveyFields = new Set(['Date', 'Survey Date', 'survey date']);
 
         const sectionRowCounter: { [key: string]: number } = {};
         const testsWithMeasLabelMeta = new Set([
@@ -672,6 +678,9 @@ const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId, qaTestDate,
                         }
                     }
                     if (internalField && value) {
+                        if (currentTestName === 'radiationProtectionSurvey' && skipProtectionSurveyFields.has(header)) {
+                            return;
+                        }
                         data.push({
                             'Field Name': internalField,
                             'Value': value,
@@ -711,8 +720,30 @@ const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId, qaTestDate,
         });
 
         if (Object.keys(grouped).length > 0) {
-            const hasTimerSection = !!(grouped['accuracyOfIrradiationTime']?.length);
-            if (hasTimerSection || applyConfigFromExcel) {
+            const savedChoice = serviceId ? localStorage.getItem(`dental_intra_timer_choice_${serviceId}`) : null;
+            const hasTimerSection = !!(
+                grouped['accuracyOfIrradiationTime']?.length ||
+                grouped['linearityOfMaLoading']?.length ||
+                grouped['LinearityOfTime']?.length
+            );
+            const hasMasSection = !!grouped['linearityOfMasLoading']?.length;
+
+            if (savedChoice !== null) {
+                setHasTimer(JSON.parse(savedChoice));
+                setShowTimerModal(false);
+            } else if (hasTimerSection && !hasMasSection) {
+                setHasTimer(true);
+                setShowTimerModal(false);
+                if (serviceId) {
+                    localStorage.setItem(`dental_intra_timer_choice_${serviceId}`, JSON.stringify(true));
+                }
+            } else if (hasMasSection && !hasTimerSection) {
+                setHasTimer(false);
+                setShowTimerModal(false);
+                if (serviceId) {
+                    localStorage.setItem(`dental_intra_timer_choice_${serviceId}`, JSON.stringify(false));
+                }
+            } else if (hasTimerSection || applyConfigFromExcel) {
                 setHasTimer(hasTimerSection);
                 setShowTimerModal(false);
                 if (serviceId) {
@@ -1114,7 +1145,8 @@ const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId, qaTestDate,
             <section className="mb-10 bg-blue-50 p-6 rounded-lg border-2 border-blue-200">
                 <h2 className="text-xl font-semibold text-blue-700 mb-4">Upload Test Data (CSV/Excel)</h2>
                 <div className="flex flex-col gap-4">
-                    <div className="flex items-center gap-4">
+                    <div className="flex flex-wrap items-center gap-4">
+                      
                         <input
                             ref={fileInputRef}
                             type="file"

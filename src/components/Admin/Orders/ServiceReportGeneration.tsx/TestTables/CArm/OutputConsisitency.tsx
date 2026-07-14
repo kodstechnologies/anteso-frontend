@@ -38,6 +38,7 @@ const OutputConsistencyForCArm: React.FC<Props> = ({
   serviceId,
   testId: propTestId = null,
   onTestSaved,
+  refreshKey,
   csvDataVersion,
   initialData,
 }) => {
@@ -69,6 +70,7 @@ const OutputConsistencyForCArm: React.FC<Props> = ({
 
   const [headers, setHeaders] = useState<string[]>(INITIAL_HEADERS);
   const [tolerance, setTolerance] = useState<string>('0.02'); // Decimal: 2% = 0.02
+  const [toleranceOperator, setToleranceOperator] = useState<string>('<=');
 
   const applyImportedData = (data: any) => {
     if (!data) return;
@@ -89,7 +91,8 @@ const OutputConsistencyForCArm: React.FC<Props> = ({
       const p: Parameters = { id: '1', ffd: '100', time: '1.0' };
       const rows: OutputRow[] = [];
       let tol = '0.02';
-      const h: string[] = [...importedHeaderList];
+      let tolOp = '<=';
+      const h: string[] = [];
       let maxMeasCol = 0;
 
       fieldRows.forEach((row) => {
@@ -100,17 +103,18 @@ const OutputConsistencyForCArm: React.FC<Props> = ({
         if (field === 'Parameters_FFD') p.ffd = val;
         if (field === 'Parameters_Time') p.time = val;
         if (field === 'Output_Tolerance') tol = val;
+        if (field === 'Output_ToleranceOperator') tolOp = val;
         if (field?.startsWith('Header_')) {
           const idx = parseInt(field.replace('Header_', ''), 10) - 1;
-          while (h.length <= idx) h.push(`Meas ${h.length + 1}`);
-          h[idx] = val;
+          while (h.length <= idx) h.push('');
+          h[idx] = String(val ?? '').trim();
         }
 
         if (field?.startsWith('Output_')) {
           const measMatch = field.match(/^Output_Meas(\d+)$/i);
           if (measMatch) maxMeasCol = Math.max(maxMeasCol, parseInt(measMatch[1], 10));
 
-          const colCount = Math.max(h.length, maxMeasCol, INITIAL_HEADERS.length);
+          const colCount = Math.max(h.length, maxMeasCol, importedHeaderList.length, 1);
           while (rows.length <= rowIndex) {
             rows.push({
               id: (rows.length + 1).toString(),
@@ -135,12 +139,18 @@ const OutputConsistencyForCArm: React.FC<Props> = ({
         }
       });
 
-      const colCount = Math.max(h.length, maxMeasCol, importedHeaderList.length, 3);
-      const finalHeaders = h.length > 0
-        ? [...h, ...Array(Math.max(0, colCount - h.length)).fill('')].map((label, i) => label || `Meas ${i + 1}`).slice(0, colCount)
-        : Array.from({ length: colCount }, (_, i) => `Meas ${i + 1}`);
+      if (h.length === 0 && importedHeaderList.length > 0) {
+        importedHeaderList.forEach((label, idx) => {
+          while (h.length <= idx) h.push('');
+          h[idx] = String(label ?? '').trim();
+        });
+      }
+
+      const colCount = Math.max(h.length, maxMeasCol, importedHeaderList.length, 1);
+      const finalHeaders = Array.from({ length: colCount }, (_, i) => h[i]?.trim() || `Meas ${i + 1}`);
 
       if (p.ffd || p.time) setParameters(p);
+
       if (rows.length > 0) {
         setOutputRows(
           rows.map((row) => {
@@ -149,21 +159,29 @@ const OutputConsistencyForCArm: React.FC<Props> = ({
             return { ...row, outputs: outputs.slice(0, finalHeaders.length) };
           })
         );
+      } else if (finalHeaders.length > 0) {
+        setOutputRows((prev) =>
+          prev.map((row) => {
+            const outputs = [...row.outputs];
+            while (outputs.length < finalHeaders.length) outputs.push('');
+            return { ...row, outputs: outputs.slice(0, finalHeaders.length) };
+          })
+        );
       }
       setHeaders(finalHeaders);
       setTolerance(tol);
+      setToleranceOperator(tolOp);
       setIsSaved(false);
     } catch (err) {
       console.error('Error mapping CSV data for Output Consistency:', err);
     }
   };
 
-  // Apply Excel/CSV import
   useEffect(() => {
     if (!initialData || !csvDataVersion) return;
     applyImportedData(initialData);
     setIsLoading(false);
-  }, [csvDataVersion, initialData]);
+  }, [csvDataVersion, initialData, refreshKey]);
 
   // Auto-calculate Mean, COV (decimal), and Remark per row
   const processedRows = useMemo(() => {

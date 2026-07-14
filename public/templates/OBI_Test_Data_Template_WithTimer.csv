@@ -40,7 +40,7 @@ FDD (cm),kV,Time (sec),Tolerance,Header 1,,Header 2,Header 3,mA,33,11,111,,
 ,,,,,,,,,,,,,
 TEST: TUBE HOUSING LEAKAGE,,,,,,,,,,,,,
 FDD (cm),kV,mA,Time (sec),Workload,,Tol Value,Tol Operator,Location,Left,Right,Front,Back,Top
-100,80,100,1,5000,,1,less than or equal to,Tube,0.5,0.3,0.4,0.2,0.6
+100,80,100,1,5000,,1,<=,Tube,0.5,0.3,0.4,0.2,0.6
 ,,,,,,,,Collimator,0.3,0.4,0.5,0.3,0.7
 ,,,,,,,,,,,,,
 TEST: RADIATION PROTECTION SURVEY,,,,,,,,,,,,,

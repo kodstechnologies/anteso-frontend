@@ -9,6 +9,7 @@ import { ReportPdfPageFooter } from "../RadiographyFixed/component/Footer";
 import { ReportPdfPageFooterEnd } from "../RadiographyFixed/component/FooterEnd";
 import { ReportPdfPageNoteQR } from "../RadiographyFixed/component/NoteQR";
 import { ReportPdfPageDeclaration } from "../RadiographyFixed/component/Declaration";
+import { normalizeCsvComparisonOperator } from "../shared/parseRadiographyStyleTableFormat";
 
 interface Tool {
   slNumber: string;
@@ -590,7 +591,7 @@ const ViewServiceReport: React.FC = () => {
                 const maValue = parseFloat(tubeHousingLeakage.ma || "0");
                 const workloadValue = parseFloat(tubeHousingLeakage.workload || "0");
                 const toleranceVal = parseFloat(tubeHousingLeakage.toleranceValue || "1");
-                const toleranceOperator = tubeHousingLeakage.toleranceOperator || "less than or equal to";
+                const toleranceOperator = normalizeCsvComparisonOperator(tubeHousingLeakage.toleranceOperator || "<=");
 
                 const values = [row.left, row.right, row.front, row.back, row.top]
                   .map(v => parseFloat(v) || 0)
@@ -609,8 +610,10 @@ const ViewServiceReport: React.FC = () => {
 
                   if (!remark || remark === "-" || remark === "") {
                     let pass = false;
-                    if (toleranceOperator === "less than or equal to") pass = resMGy <= toleranceVal;
-                    else if (toleranceOperator === "greater than or equal to") pass = resMGy >= toleranceVal;
+                    if (toleranceOperator === "<=") pass = resMGy <= toleranceVal;
+                    else if (toleranceOperator === ">=") pass = resMGy >= toleranceVal;
+                    else if (toleranceOperator === "<") pass = resMGy < toleranceVal;
+                    else if (toleranceOperator === ">") pass = resMGy > toleranceVal;
                     else pass = Math.abs(resMGy - toleranceVal) < 0.01;
                     remark = pass ? "Pass" : "Fail";
                   }
@@ -698,11 +701,11 @@ const ViewServiceReport: React.FC = () => {
             <div className="bg-blue-50 p-4 print:p-1 border-l-4 border-blue-500 rounded-r">
               <p className="text-[11px] print:text-[8px] leading-relaxed">
                 <strong>Tolerance:</strong> Maximum Leakage Radiation Level at 1 meter from the Focus should be{' '}
-                {tubeHousingLeakage.toleranceOperator === 'less than or equal to'
+                {tubeHousingLeakage.toleranceOperator === '<='
                   ? '≤'
-                  : tubeHousingLeakage.toleranceOperator === 'greater than or equal to'
+                  : tubeHousingLeakage.toleranceOperator === '>='
                     ? '≥'
-                    : '='}{' '}
+                    : normalizeCsvComparisonOperator(tubeHousingLeakage.toleranceOperator || '<=')}{' '}
                 <strong>
                   {tubeHousingLeakage.toleranceValue || '1'} mGy ({parseFloat(tubeHousingLeakage.toleranceValue || '1') * 114} mR) in one hour.
                 </strong>

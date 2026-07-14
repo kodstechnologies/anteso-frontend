@@ -163,8 +163,13 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
         if (data) {
           setTestId(data._id || data.testId);
           setFfd(data.ffd || '');
-          setOutputRows(
-            data.outputRows?.map((row: any, i: number) => {
+          setTolerance(data.tolerance || '0.05');
+          setToleranceOperator(data.toleranceOperator || '<=');
+
+          const hasCsvImport = csvData && csvData.length > 0;
+          if (!hasCsvImport) {
+            setOutputRows(
+              data.outputRows?.map((row: any, i: number) => {
               const covVal = row.cov ? parseFloat(row.cov) : 0;
               const tolVal = data.tolerance ? parseFloat(data.tolerance) : 0.05;
               let remarks: 'Pass' | 'Fail' | '' = '';
@@ -200,9 +205,10 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
             }) || outputRows
           );
           setHeaders(data.measurementHeaders || headers);
-          setTolerance(data.tolerance || '0.05');
-          setToleranceOperator(data.toleranceOperator || '<=');
           setIsSaved(true);
+          } else {
+            setIsSaved(false);
+          }
         } else {
           setIsSaved(false);
         }
@@ -215,19 +221,41 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
     };
 
     loadTest();
-  }, [propTestId, serviceId]);
+  }, [propTestId, serviceId, csvData]);
+
+  const preserveExcelHeaderCell = (header: unknown): string => {
+    const h = String(header ?? '').trim();
+    if (!h || /^\d{1,2}-[A-Za-z]{3}$/i.test(h)) return '';
+    return h;
+  };
+
+  const readMeasHeadersFromCsv = (rows: any[]): string[] => {
+    const meta = rows.find((r) => String(r?.[0] ?? '').trim() === '__MEAS_HEADERS__');
+    if (meta) {
+      return meta.slice(1).map((c) => preserveExcelHeaderCell(c)).filter(Boolean);
+    }
+    const consistencyHeaderRow = rows.find(
+      (r) => String(r?.[0] || '').trim().toLowerCase() === 'kvp'
+    );
+    return consistencyHeaderRow ? extractMeasHeadersFromRow(consistencyHeaderRow) : [];
+  };
+
+  const extractMeasHeadersFromRow = (headerRow: any[]): string[] => {
+    const headers: string[] = [];
+    for (let i = 2; i < headerRow.length; i++) {
+      const s = preserveExcelHeaderCell(headerRow[i]);
+      if (!s) continue;
+      if (/^mean$/i.test(s) || /^cov$/i.test(s) || /^remarks$/i.test(s)) break;
+      headers.push(s);
+    }
+    return headers;
+  };
 
   // CSV Data Injection
   useEffect(() => {
-    if (csvData && csvData.length > 0) {
-      const consistencyHeaderRow = csvData.find(r => String(r?.[0] || '').trim().toLowerCase() === 'kvp');
-      let customHeadersFromCsv: string[] = [];
-      if (consistencyHeaderRow) {
-        customHeadersFromCsv = consistencyHeaderRow
-          .slice(2)
-          .map((c: any) => String(c || '').trim())
-          .filter((s: string) => s && !/^mean$/i.test(s) && !/^cov$/i.test(s) && !/^remarks$/i.test(s));
-      }
+    if (isLoading || !csvData || csvData.length === 0) return;
+
+      const customHeadersFromCsv = readMeasHeadersFromCsv(csvData);
 
       // Filter valid rows (must have kVp and be numeric)
       // Check for FFD row
@@ -237,7 +265,11 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
         if (fIdx !== -1 && ffdRow[fIdx + 1]) setFfd(ffdRow[fIdx + 1].toString());
       }
 
-      const validRows = csvData.filter(r => r[0] && !isNaN(parseFloat(r[0])));
+      const validRows = csvData.filter(r => {
+        const first = String(r?.[0] ?? '').trim();
+        if (!first || first === '__MEAS_HEADERS__') return false;
+        return !isNaN(parseFloat(first));
+      });
 
       if (validRows.length > 0) {
         const newRows = validRows.map((row, idx) => {
@@ -287,14 +319,17 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
           return row;
         });
 
-        // Update headers if needed
-        const maxMeasFromImport = Math.max(...newRows.map(r => r.outputs.length));
-        const finalHeaderCount = maxMeasFromImport || 3;
+        // Update headers — custom Excel labels take priority over data column count
+        const maxMeasFromImport = Math.max(...newRows.map(r => r.outputs.length), 0);
+        const finalHeaderCount = Math.max(maxMeasFromImport, customHeadersFromCsv.length, 3);
 
-        setHeaders(prev => {
-          const base = (customHeadersFromCsv.length > 0 ? customHeadersFromCsv : prev).slice(0, finalHeaderCount);
+        setHeaders(() => {
+          const base = (customHeadersFromCsv.length > 0
+            ? customHeadersFromCsv
+            : Array.from({ length: finalHeaderCount }, (_, i) => `Meas ${i + 1}`)
+          ).slice(0, finalHeaderCount);
           while (base.length < finalHeaderCount) {
-            base.push(`Measured mR ${base.length + 1}`);
+            base.push(`Meas ${base.length + 1}`);
           }
           return base;
         });
@@ -309,10 +344,25 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
         });
 
         setOutputRows(paddedRows);
-        if (!testId) setIsSaved(false); // Edit mode
+        if (!testId) setIsSaved(false);
+      } else if (customHeadersFromCsv.length > 0) {
+        const finalHeaderCount = Math.max(customHeadersFromCsv.length, 3);
+        setHeaders(() => {
+          const base = customHeadersFromCsv.slice(0, finalHeaderCount);
+          while (base.length < finalHeaderCount) {
+            base.push(`Meas ${base.length + 1}`);
+          }
+          return base;
+        });
+        setOutputRows(prev =>
+          prev.map(r => ({
+            ...r,
+            outputs: Array(finalHeaderCount).fill('').map((_, i) => r.outputs[i] ?? ''),
+          }))
+        );
+        if (!testId) setIsSaved(false);
       }
-    }
-  }, [csvData]);
+  }, [csvData, isLoading]);
 
   // Save / Update
   const handleSave = async () => {
@@ -568,11 +618,11 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
                       placeholder="100"
                     />
                   </td>
-                  {row.outputs.map((val, idx) => (
+                  {headers.map((_, idx) => (
                     <td key={idx} className="px-2 py-2 border-r">
                       <input
                         type="text"
-                        value={val}
+                        value={row.outputs[idx] ?? ''}
                         onChange={(e) => updateOutputCell(row.id, idx, e.target.value)}
                         disabled={isViewMode}
                         className="w-24 px-2 py-1 border rounded text-center text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:bg-gray-50 disabled:cursor-not-allowed"

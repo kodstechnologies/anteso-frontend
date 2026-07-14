@@ -9,6 +9,27 @@ import {
   updateRadiationLeakageLevelForDentalIntra,
 } from '../../../../../../api';
 import toast from 'react-hot-toast';
+import { normalizeCsvComparisonOperator } from '../shared/parseRadiographyStyleTableFormat';
+
+type ToleranceOp = '<' | '<=' | '>' | '>=' | '=';
+
+const compareByToleranceOp = (result: number, tol: number, op: string): boolean => {
+  const normalized = normalizeCsvComparisonOperator(op) as ToleranceOp;
+  switch (normalized) {
+    case '<':
+      return result < tol;
+    case '<=':
+      return result <= tol;
+    case '>':
+      return result > tol;
+    case '>=':
+      return result >= tol;
+    case '=':
+      return Math.abs(result - tol) < 0.001;
+    default:
+      return result <= tol;
+  }
+};
 
 interface SettingsRow {
   ffd: string;
@@ -58,7 +79,7 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
   const [workload, setWorkload] = useState<string>('');
   const [workloadUnit, setWorkloadUnit] = useState<string>('mA·min/week');
   const [toleranceValue, setToleranceValue] = useState<string>('1');
-  const [toleranceOperator, setToleranceOperator] = useState<'less than or equal to' | 'greater than or equal to' | '='>('less than or equal to');
+  const [toleranceOperator, setToleranceOperator] = useState<ToleranceOp>('<=');
   const [toleranceTime, setToleranceTime] = useState<string>('1');
 
   const [isSaving, setIsSaving] = useState(false);
@@ -127,10 +148,7 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
 
     if (!toleranceValue || globalMaxResultMGy === '—') return '';
 
-    let pass = false;
-    if (toleranceOperator === 'less than or equal to') pass = result <= tol;
-    if (toleranceOperator === 'greater than or equal to') pass = result >= tol;
-    if (toleranceOperator === '=') pass = Math.abs(result - tol) < 0.001;
+    let pass = compareByToleranceOp(result, tol, toleranceOperator);
 
     return pass ? 'Pass' : 'Fail';
   }, [globalMaxResultMGy, toleranceValue, toleranceOperator]);
@@ -207,7 +225,7 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
         setWorkload(rec.workload || '');
         setWorkloadUnit(rec.workloadUnit || '');
         setToleranceValue(rec.toleranceValue || '');
-        setToleranceOperator(rec.toleranceOperator || 'less than or equal to');
+        setToleranceOperator(normalizeCsvComparisonOperator(rec.toleranceOperator || '<=') as ToleranceOp);
         setToleranceTime(rec.toleranceTime || '');
 
         setHasSaved(true);
@@ -250,7 +268,7 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
       if (wl) setWorkload(wl);
       if (wlUnit) setWorkloadUnit(wlUnit);
       if (tolVal) setToleranceValue(tolVal);
-      if (tolOp) setToleranceOperator(tolOp as any);
+      if (tolOp) setToleranceOperator(normalizeCsvComparisonOperator(tolOp) as ToleranceOp);
       if (tolTime) setToleranceTime(tolTime);
 
       // Leakage Rows
@@ -440,8 +458,8 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
 
       {/* ==================== Workload Input ==================== */}
       <div className="bg-white shadow-md rounded-lg p-6">
-        <label className="block text-sm font-medium text-gray-700 mb-2">Workload</label>
-        <div className="flex items-center gap-2 max-w-xs">
+        <label className="block text-sm font-medium text-gray-700 mb-2">Workload (mA·min/week)</label>
+        <div className="max-w-xs">
           <input
             type="text"
             value={workload}
@@ -449,14 +467,6 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
             disabled={isViewMode}
             className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'}`}
             placeholder="500"
-          />
-          <input
-            type="text"
-            value={workloadUnit}
-            onChange={(e) => setWorkloadUnit(e.target.value)}
-            disabled={isViewMode}
-            className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'}`}
-            placeholder="mA·min/week"
           />
         </div>
       </div>
@@ -602,7 +612,7 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
                 <label className="text-sm font-medium text-gray-700 w-48">Max Leakage ({row.location}) =</label>
                 <div className="flex-1">
                   <div className="text-sm text-gray-700 mb-2">
-                    ({workload || '—'} {workloadUnit || 'mA·min/week'} × {maxExposureLevel} max Exposure Level) / (60 × {maVal || '—'} mA used for measurement)
+                    ({workload || '—'} × {maxExposureLevel} max Exposure Level) / (60 × {maVal || '—'} mA used for measurement)
                   </div>
                   <div className="mt-2">
                     <span className="text-sm font-medium text-gray-700">Calculated Max Leakage:</span>
@@ -633,7 +643,7 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
                 </span>
                 <div className="flex-1">
                   <div className="text-sm text-gray-600 mb-2">
-                    Formula: ({workload || '—'} {workloadUnit || 'mA·min/week'} × {maxValue} max Exposure Level ({row.unit === 'mGy/h' ? `${maxValue} mGy/h (= ${(parseFloat(maxValue || '0') * 114).toFixed(2)} mR/hr)` : `${maxValue} mR/hr`})) / (60 × {maVal || '—'} mA used for measurement) ÷ 114
+                    Formula: ({workload || '—'} × {maxValue} max Exposure Level ({row.unit === 'mGy/h' ? `${maxValue} mGy/h (= ${(parseFloat(maxValue || '0') * 114).toFixed(2)} mR/hr)` : `${maxValue} mR/hr`})) / (60 × {maVal || '—'} mA used for measurement) ÷ 114
                   </div>
                   <span className={`px-4 py-2 border-2 rounded-md font-semibold ${result.calculatedMGy !== '—' ? 'border-green-500 bg-green-50 text-green-700' : 'border-gray-300 bg-gray-50'}`}>
                     {result.calculatedMGy !== '—' ? `${result.calculatedMGy} mGy` : '—'} in one hour
@@ -661,13 +671,15 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
           />
           <select
             value={toleranceOperator}
-            onChange={(e) => setToleranceOperator(e.target.value as any)}
+            onChange={(e) => setToleranceOperator(e.target.value as ToleranceOp)}
             disabled={isViewMode}
             className={`px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'}`}
           >
-            <option value="less than or equal to">less than or equal to</option>
-            <option value="greater than or equal to">greater than or equal to</option>
-            <option value="=">{'='}</option>
+            <option value="<">&lt;</option>
+            <option value="<=">≤</option>
+            <option value=">">&gt;</option>
+            <option value=">=">≥</option>
+            <option value="=">=</option>
           </select>
           <span className="text-sm text-gray-600">in</span>
           <input

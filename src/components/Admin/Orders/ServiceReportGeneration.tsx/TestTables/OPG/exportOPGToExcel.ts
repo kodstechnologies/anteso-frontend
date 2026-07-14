@@ -152,7 +152,6 @@ export const createOPGUploadableExcel = (data: any) => {
 
         if (rows.length > 0) {
             const settingsHeader = [
-                'Survey Date', data.radiationProtectionSurvey.surveyDate || '',
                 'Applied Current (mA)', data.radiationProtectionSurvey.appliedCurrent || '',
                 'Applied Voltage (kV)', data.radiationProtectionSurvey.appliedVoltage || '',
                 'Exposure Time (s)', data.radiationProtectionSurvey.exposureTime || '',

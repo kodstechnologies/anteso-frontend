@@ -24,6 +24,7 @@ import {
 } from "../../../../../../api";
 import { createRadiographyMobileHTUploadableExcel, RadiographyMobileHTExportData } from "./exportRadiographyMobileHTToExcel";
 import { isExcelFileUrl } from "../../../../../../utils/spreadsheetFile";
+import { normalizeCsvComparisonOperator } from "../shared/parseRadiographyStyleTableFormat";
 
 import Standards from "../../Standards";
 import Notes from "../../Notes";
@@ -639,7 +640,7 @@ const RadiographyMobileHT: React.FC<{ serviceId: string; qaTestDate?: string | n
             pushRow("Settings_Time", r[colIdx(header, "Time")] ?? "", 0, testName);
             pushRow("Workload", r[colIdx(header, "Workload")] ?? "", 0, testName);
             pushRow("ToleranceValue", r[colIdx(header, "Tol Value", "Tolerance Value")] ?? "", 0, testName);
-            pushRow("ToleranceOperator", r[colIdx(header, "Tol Operator", "Tolerance Operator")] ?? "", 0, testName);
+            pushRow("ToleranceOperator", normalizeCsvComparisonOperator(r[colIdx(header, "Tol Operator", "Tolerance Operator")] ?? ""), 0, testName);
           }
           const loc = r[colIdx(header, "Location")] ?? "";
           if (loc) {
@@ -958,7 +959,7 @@ const RadiographyMobileHT: React.FC<{ serviceId: string; qaTestDate?: string | n
           if (tolVal) pushRow(testName, "ToleranceValue", tolVal, 0);
           const tolOpLine = (lines[i + 3] || "").split(",");
           const tolOp = tolOpLine[1] || "";
-          if (tolOp) pushRow(testName, "ToleranceOperator", tolOp, 0);
+          if (tolOp) pushRow(testName, "ToleranceOperator", normalizeCsvComparisonOperator(tolOp), 0);
 
           // location header at i+4, rows at i+5+
           let rowIdx = 0;
@@ -1351,7 +1352,7 @@ const RadiographyMobileHT: React.FC<{ serviceId: string; qaTestDate?: string | n
       if (grouped["Radiation Leakage Level"]?.length) {
         const data = grouped["Radiation Leakage Level"];
         const settings = { fcd: "100", kv: "", ma: "", time: "" };
-        let workload = "", toleranceValue = "1", toleranceOperator = "less than or equal to";
+        let workload = "", toleranceValue = "1", toleranceOperator = "<=";
         const leakageMeasurements: any[] = [];
         data.forEach((r) => {
           const f = (r["Field Name"] ?? "").trim();
@@ -1363,7 +1364,7 @@ const RadiographyMobileHT: React.FC<{ serviceId: string; qaTestDate?: string | n
           if (f === "Settings_Time") settings.time = v;
           if (f === "Workload") workload = v;
           if (f === "ToleranceValue") toleranceValue = v;
-          if (f === "ToleranceOperator") toleranceOperator = v;
+          if (f === "ToleranceOperator") toleranceOperator = normalizeCsvComparisonOperator(v);
           if (f === "LeakageMeasurement_Location") {
             while (leakageMeasurements.length <= ri) leakageMeasurements.push({ location: "", left: "", right: "", front: "", back: "", top: "" });
             leakageMeasurements[ri].location = v;

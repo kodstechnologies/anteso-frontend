@@ -28,6 +28,8 @@ import {
 } from "../../../../../../api";
 import { createCArmUploadableExcel, CArmExportData } from "./exportCArmToExcel";
 import { mergeWithRadiographyVerticalParse } from "../shared/mergeRadiographyVerticalParse";
+import { enrichParsedRowsWithMatrixMeasHeaders } from "../shared/enrichMeasHeadersFromMatrix";
+import { coerceMasRangeLabel, normalizeCsvComparisonOperator } from "../shared/parseRadiographyStyleTableFormat";
 
 // Test-table imports (unchanged)
 import AccuracyOfIrradiationTime from "./AccuracyOfIrradiationTime";
@@ -337,15 +339,18 @@ const CArm: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
   };
 
   const getUnsavedTestNames = async (): Promise<string[]> => {
-    const checks: { name: string; check: () => Promise<boolean> }[] = [
-      { name: "Accuracy Of Irradiation Time", check: async () => { try { return isSaved(await getAccuracyOfIrradiationTimeByServiceIdForCArm(serviceId)); } catch { return false; } } },
+    const checks: { name: string; check: () => Promise<boolean> }[] = [];
+    if (hasTimer === true) {
+      checks.push({ name: "Accuracy Of Irradiation Time", check: async () => { try { return isSaved(await getAccuracyOfIrradiationTimeByServiceIdForCArm(serviceId)); } catch { return false; } } });
+    }
+    checks.push(
       { name: "Total Filtration", check: async () => { try { return isSaved(await getTotalFilterationByServiceIdForCArm(serviceId)); } catch { return false; } } },
       { name: "Consistency Of Radiation Output", check: async () => { try { return isSaved(await getOutputConsistencyByServiceIdForCArm(serviceId)); } catch { return false; } } },
       { name: "Low Contrast Resolution", check: async () => { try { return isSaved(await getLowContrastResolutionByServiceIdForCArm(serviceId)); } catch { return false; } } },
       { name: "High Contrast Resolution", check: async () => { try { return isSaved(await getHighContrastResolutionByServiceIdForCArm(serviceId)); } catch { return false; } } },
       { name: "Exposure Rate At Table Top", check: async () => { try { return isSaved(await getExposureRateByServiceIdForCArm(serviceId)); } catch { return false; } } },
       { name: "Tube Housing Leakage", check: async () => { try { return isSaved(await getTubeHousingLeakageByServiceIdCArm(serviceId)); } catch { return false; } } },
-    ];
+    );
     if (hasTimer === true) {
       checks.push({ name: "Linearity Of mA Loading", check: async () => { try { return isSaved(await getLinearityOfMaLoadingStationsByServiceIdForCArm(serviceId)); } catch { return false; } } });
     } else if (hasTimer === false) {
@@ -441,11 +446,13 @@ const CArm: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
       } catch (err) {
         console.log("C-Arm report header not found or error:", err);
       }
-      try {
-        const res = await getAccuracyOfIrradiationTimeByServiceIdForCArm(serviceId);
-        if (res) exportData.accuracyOfIrradiationTime = res;
-      } catch (err) {
-        console.log("Accuracy of Irradiation Time not found or error:", err);
+      if (hasTimer === true) {
+        try {
+          const res = await getAccuracyOfIrradiationTimeByServiceIdForCArm(serviceId);
+          if (res) exportData.accuracyOfIrradiationTime = res;
+        } catch (err) {
+          console.log("Accuracy of Irradiation Time not found or error:", err);
+        }
       }
       try {
         const res = await getTotalFilterationByServiceIdForCArm(serviceId);
@@ -548,7 +555,10 @@ const CArm: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
     const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' }) as any[][];
     if (jsonData.length === 0) return data;
 
-    const finishParse = (parsed: any[]) => mergeWithRadiographyVerticalParse(parsed, jsonData, "carm");
+    const finishParse = (parsed: any[]) => {
+      const merged = mergeWithRadiographyVerticalParse(parsed, jsonData, "carm");
+      return enrichParsedRowsWithMatrixMeasHeaders(merged, jsonData, "carm");
+    };
 
     const norm = (v: any) => String(v ?? '').trim();
     const normUpper = (v: any) => norm(v).toUpperCase();
@@ -621,15 +631,12 @@ const CArm: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
           'Applied kVp': 'Measurement_AppliedKvp',
           'Applied kV': 'Measurement_AppliedKvp',
           'Applied KV': 'Measurement_AppliedKvp',
-          'Meas 1': 'Measurement_Meas1',
-          'Meas 2': 'Measurement_Meas2',
-          'Meas 3': 'Measurement_Meas3',
-          'Meas 4': 'Measurement_Meas4',
-          'Meas 5': 'Measurement_Meas5',
-          'Avg kVp': 'Measurement_AverageKvp',
-          'Avg kV': 'Measurement_AverageKvp',
           'Tolerance Sign': 'Tolerance_Sign',
           'Tolerance Value': 'Tolerance_Value',
+          'Tolerance Value (kVp)': 'Tolerance_Value',
+          'Total Filtration Measured (mm Al)': 'TotalFiltration_Measured',
+          'Total Filtration Required (mm Al)': 'TotalFiltration_Required',
+          'Total Filtration At kVp': 'TotalFiltration_AtKvp',
           'TF Measured': 'TotalFiltration_Measured',
           'TF Required': 'TotalFiltration_Required',
         },
@@ -641,14 +648,12 @@ const CArm: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
           'Time (s)': 'Parameters_Time',
           'Time': 'Parameters_Time',
           'Tolerance': 'Output_Tolerance',
+          'Tolerance Operator': 'Output_ToleranceOperator',
+          'Tolerance Value (CoV)': 'Output_Tolerance',
           'kVp': 'Output_kV',
           'kV': 'Output_kV',
+          'mAs': 'Output_mA',
           'mA': 'Output_mA',
-          'Meas 1': 'Output_Meas1',
-          'Meas 2': 'Output_Meas2',
-          'Meas 3': 'Output_Meas3',
-          'Meas 4': 'Output_Meas4',
-          'Meas 5': 'Output_Meas5',
         },
         'Low Contrast Resolution': {
           'Smallest Hole Size (mm)': 'LowContrast_HoleSize',
@@ -714,15 +719,13 @@ const CArm: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
           'FDD (cm)': 'Linearity_FCD',
           'FCD': 'Linearity_FCD',
           'kV': 'Linearity_kV',
+          'Tolerance Operator': 'Linearity_ToleranceOperator',
+          'Tolerance Value (CoL)': 'Linearity_ToleranceValue',
           'Tol Value': 'Linearity_ToleranceValue',
           'Tol Operator': 'Linearity_ToleranceOperator',
-          'mAs Range': 'Linearity_mAs',
-          'mAs': 'Linearity_mAs',
-          'Meas 1': 'Linearity_Meas1',
-          'Meas 2': 'Linearity_Meas2',
-          'Meas 3': 'Linearity_Meas3',
-          'Meas 4': 'Linearity_Meas4',
-          'Meas 5': 'Linearity_Meas5',
+          'mAs Range': 'Linearity_mAsRange',
+          'mAs': 'Linearity_mAsRange',
+          'mAs Applied': 'Linearity_mAsRange',
         },
       };
 
@@ -731,16 +734,76 @@ const CArm: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
       let isReadingTest = false;
       const sectionRowCounter: Record<string, number> = {};
 
-      const resolveInternalField = (testName: string, header: string, map: Record<string, string>): string | null => {
+      const isMetadataRow = (testName: string, row: string[]): boolean => {
+        const label = (row[0] || '').trim();
+        if (!label) return false;
+        if (testName === 'Total Filtration') {
+          return /^(Tolerance Sign|Tolerance Value|Total Filtration|mA\s*Station)/i.test(label);
+        }
+        if (testName === 'Consistency of Radiation Output') {
+          return /^(FDD\s*\(|FFD\s*\(|Time\s*\(|Tolerance\s*Operator|Tolerance\s*Value)/i.test(label);
+        }
+        if (testName === 'Linearity of mAs Loading' || testName === 'Linearity of mA Loading') {
+          return /^(FDD\s*\(|FFD\s*\(|Tolerance\s*Operator|Tolerance\s*Value)/i.test(label);
+        }
+        return false;
+      };
+
+      const pushMetadataRow = (testName: string, row: string[], map: Record<string, string>) => {
+        const label = (row[0] || '').trim();
+        const value = (row[1] || '').trim();
+        if (!label) return;
+
+        if (/^mA\s*Station/i.test(label) && value) {
+          const stationVal = value.replace(/\s*mA\s*$/i, '').trim() || value;
+          const formatted = /\bmA\b/i.test(value) ? value : `${stationVal} mA`;
+          data.push({ 'Field Name': 'mAStations', 'Value': formatted, 'Row Index': '0', 'Test Name': testName });
+          return;
+        }
+
+        const internalField = map[label];
+        if (!internalField || !value) return;
+        const normalizedValue =
+          internalField === 'Leakage_ToleranceOperator' ||
+          internalField === 'Output_ToleranceOperator' ||
+          internalField === 'Linearity_ToleranceOperator'
+            ? normalizeCsvComparisonOperator(value)
+            : value;
+        data.push({ 'Field Name': internalField, 'Value': normalizedValue, 'Row Index': '0', 'Test Name': testName });
+
+        if (testName === 'Linearity of mAs Loading' || testName === 'Linearity of mA Loading') {
+          if (label === 'FDD (cm)' && row[2]?.trim() === 'kV' && row[3]) {
+            data.push({ 'Field Name': 'Linearity_FCD', 'Value': value, 'Row Index': '0', 'Test Name': testName });
+            data.push({ 'Field Name': 'Linearity_kV', 'Value': row[3].trim(), 'Row Index': '0', 'Test Name': testName });
+          }
+        }
+      };
+
+      const resolveInternalField = (
+        testName: string,
+        header: string,
+        map: Record<string, string>,
+        cellIdx = 0
+      ): string | null => {
         const headerMatch = header.match(/^Header\s*(\d+)$/i);
         if (headerMatch) return `Header_${headerMatch[1]}`;
-        const measMatch = header.match(/^Meas\s*(\d+)$/i);
+        const maStationMatch = header.match(/^mA\s*Station\s*(\d+)$/i);
+        if (maStationMatch && testName === 'Total Filtration') return 'mAStations';
+        const measMatch = header.match(/^(?:Meas|Measured(?:\s*Output)?|Output)\s*(\d+)$/i);
         if (measMatch) {
-          if (testName === 'Consistency of Radiation Output') return `Output_Meas${measMatch[1]}`;
-          if (testName === 'Total Filtration') return `Measurement_Meas${measMatch[1]}`;
+          const n = measMatch[1];
+          if (testName === 'Consistency of Radiation Output') return `Output_Meas${n}`;
+          if (testName === 'Total Filtration') return `Measurement_Meas${n}`;
           if (testName === 'Linearity of mA Loading' || testName === 'Linearity of mAs Loading') {
-            return `Linearity_Meas${measMatch[1]}`;
+            return `Linearity_Meas${n}`;
           }
+        }
+        if (
+          (testName === 'Linearity of mA Loading' || testName === 'Linearity of mAs Loading') &&
+          cellIdx > 0 &&
+          !map[header]
+        ) {
+          return `Linearity_Meas${cellIdx}`;
         }
         return map[header] || null;
       };
@@ -759,20 +822,43 @@ const CArm: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
         }
 
         if (isReadingTest && headers.length === 0 && row.some(c => c !== '')) {
+          if (isMetadataRow(currentTestName, row)) {
+            const map = headerMap[currentTestName];
+            if (map) pushMetadataRow(currentTestName, row, map);
+            continue;
+          }
+
           headers = row;
           if (currentTestName === 'Consistency of Radiation Output') {
-            row.forEach((headerCell) => {
+            row.forEach((headerCell, headerIdx) => {
               const h = (headerCell || '').trim();
-              const measMatch = h.match(/^Meas\s*(\d+)$/i);
-              if (measMatch) {
+              if (headerIdx < 2) return;
+              if (!h) return;
+              data.push({
+                'Field Name': `Header_${headerIdx - 1}`,
+                'Value': h,
+                'Row Index': '0',
+                'Test Name': currentTestName,
+              });
+            });
+          }
+          if (
+            currentTestName === 'Linearity of mAs Loading' ||
+            currentTestName === 'Linearity of mA Loading'
+          ) {
+            const label = (row[0] || '').trim();
+            if (/^mAs(\s*Range)?$/i.test(label) || /^mA\s*Applied$/i.test(label)) {
+              row.slice(1).forEach((headerCell, headerIdx) => {
+                const h = (headerCell || '').trim();
+                if (!h) return;
                 data.push({
-                  'Field Name': `Header_${measMatch[1]}`,
+                  'Field Name': `Header_${headerIdx + 1}`,
                   'Value': h,
                   'Row Index': '0',
                   'Test Name': currentTestName,
                 });
-              }
-            });
+              });
+            }
           }
           continue;
         }
@@ -783,6 +869,9 @@ const CArm: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
         }
 
         if (isReadingTest && currentTestName && headers.length > 0) {
+          const firstDataCell = (row[0] || '').trim();
+          if (/^Tolerance\s*(Operator|Value)/i.test(firstDataCell)) continue;
+
           const map = headerMap[currentTestName];
           if (!map) continue;
           const rowIdx = sectionRowCounter[currentTestName] ?? 0;
@@ -790,9 +879,22 @@ const CArm: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
           row.forEach((value, cellIdx) => {
             const header = (headers[cellIdx] || '').trim();
             if (!header) return;
-            const internalField = resolveInternalField(currentTestName, header, map);
-            if (internalField && value !== '') {
-              data.push({ 'Field Name': internalField, 'Value': value, 'Row Index': String(rowIdx), 'Test Name': currentTestName });
+            let cellValue = value;
+            if (
+              (currentTestName === 'Linearity of mAs Loading' || currentTestName === 'Linearity of mA Loading') &&
+              cellIdx === 0
+            ) {
+              const coerced = coerceMasRangeLabel(String(value ?? ''));
+              if (!coerced) return;
+              cellValue = coerced;
+            }
+            const internalField = resolveInternalField(currentTestName, header, map, cellIdx);
+            if (internalField && cellValue !== '') {
+              const normalizedValue =
+                internalField === 'Leakage_ToleranceOperator'
+                  ? normalizeCsvComparisonOperator(cellValue)
+                  : cellValue;
+              data.push({ 'Field Name': internalField, 'Value': normalizedValue, 'Row Index': String(rowIdx), 'Test Name': currentTestName });
             }
           });
         }
@@ -962,7 +1064,7 @@ const CArm: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
     const processed: any = {};
 
     const buildTotalFiltrationImport = (rows: any[]) => {
-      const ma: string[] = [];
+      const maStations: string[] = [];
       const meas: Record<number, { appliedKvp: string; measuredValues: string[] }> = {};
       const tol: { sign?: string; value?: string } = {};
       const total: { measured?: string; required?: string; atKvp?: string } = {};
@@ -974,15 +1076,11 @@ const CArm: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
         if (!field || !val) return;
 
         if (field === "mAStations") {
-          if (!ma.includes(val)) ma.push(val);
+          const formatted = /\bmA\b/i.test(val) ? val : `${val} mA`;
+          if (!maStations.includes(formatted)) maStations.push(formatted);
           return;
         }
-        if (field.startsWith("Header_")) {
-          const idx = parseInt(field.replace("Header_", ""), 10) - 1;
-          while (ma.length <= idx) ma.push(`Meas ${ma.length + 1}`);
-          ma[idx] = val;
-          return;
-        }
+        if (field.startsWith("Header_")) return;
         if (field === "Tolerance_Sign") tol.sign = val;
         else if (field === "Tolerance_Value") tol.value = val;
         else if (field === "TotalFiltration_Measured") total.measured = val;
@@ -1008,7 +1106,7 @@ const CArm: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
         .filter((m) => m.appliedKvp || m.measuredValues.some((v) => v !== ""));
 
       return {
-        mAStations: ma.length ? ma : undefined,
+        mAStations: maStations.length ? maStations : undefined,
         measurements,
         tolerance: { sign: tol.sign || "±", value: tol.value || "2.0" },
         totalFiltration: {
@@ -1028,15 +1126,15 @@ const CArm: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
       if (testName === 'Consistency of Radiation Output') {
         const measurementHeaders: string[] = [];
         let maxMeasCol = 0;
+        let maxHeaderIdx = 0;
         rows.forEach((row: any) => {
           const field = (row['Field Name'] || '').trim();
           const value = (row['Value'] || '').trim();
           const headerMatch = field.match(/^Header_(\d+)$/i);
           if (headerMatch && value) {
             const idx = parseInt(headerMatch[1], 10) - 1;
-            while (measurementHeaders.length <= idx) {
-              measurementHeaders.push(`Meas ${measurementHeaders.length + 1}`);
-            }
+            maxHeaderIdx = Math.max(maxHeaderIdx, idx + 1);
+            while (measurementHeaders.length <= idx) measurementHeaders.push('');
             measurementHeaders[idx] = value;
           }
           const measMatch = field.match(/^Output_Meas(\d+)$/i);
@@ -1044,14 +1142,44 @@ const CArm: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
             maxMeasCol = Math.max(maxMeasCol, parseInt(measMatch[1], 10));
           }
         });
-        const colCount = Math.max(measurementHeaders.length, maxMeasCol, 3);
-        while (measurementHeaders.length < colCount) {
-          measurementHeaders.push(`Meas ${measurementHeaders.length + 1}`);
-        }
+        const colCount = Math.max(measurementHeaders.length, maxHeaderIdx, maxMeasCol, 1);
+        const finalHeaders = Array.from({ length: colCount }, (_, i) =>
+          measurementHeaders[i]?.trim() || `Meas ${i + 1}`
+        );
         processed[testName] = {
           fieldRows: rows,
-          measurementHeaders: measurementHeaders.slice(0, colCount),
-          measHeaders: measurementHeaders.slice(0, colCount),
+          measurementHeaders: finalHeaders,
+          measHeaders: finalHeaders,
+        };
+        return;
+      }
+      if (testName === 'Linearity of mAs Loading') {
+        const measurementHeaders: string[] = [];
+        let maxMeasCol = 0;
+        let maxHeaderIdx = 0;
+        rows.forEach((row: any) => {
+          const field = (row['Field Name'] || '').trim();
+          const value = (row['Value'] || '').trim();
+          const headerMatch = field.match(/^Header_(\d+)$/i);
+          if (headerMatch && value) {
+            const idx = parseInt(headerMatch[1], 10) - 1;
+            maxHeaderIdx = Math.max(maxHeaderIdx, idx + 1);
+            while (measurementHeaders.length <= idx) measurementHeaders.push('');
+            measurementHeaders[idx] = value;
+          }
+          const measMatch = field.match(/^Linearity_Meas(\d+)$/i);
+          if (measMatch) {
+            maxMeasCol = Math.max(maxMeasCol, parseInt(measMatch[1], 10));
+          }
+        });
+        const colCount = Math.max(measurementHeaders.length, maxHeaderIdx, maxMeasCol, 1);
+        const finalHeaders = Array.from({ length: colCount }, (_, i) =>
+          measurementHeaders[i]?.trim() || `Meas ${i + 1}`
+        );
+        processed[testName] = {
+          fieldRows: rows,
+          measurementHeaders: finalHeaders,
+          measHeaders: finalHeaders,
         };
         return;
       }
@@ -1340,15 +1468,17 @@ const CArm: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
         <h2 className="text-2xl font-bold text-gray-800 mb-6">QA Tests</h2>
 
         {[
-          {
-            title: "Accuracy Of Irradiation Time",
-            component: <AccuracyOfIrradiationTime
-              key={`timer-${refreshKey}`}
-              serviceId={serviceId}
-              refreshKey={refreshKey}
-              initialData={csvDataForComponents['Accuracy of Irradiation Time']}
-            />
-          },
+          ...(hasTimer === true
+            ? [{
+              title: "Accuracy Of Irradiation Time",
+              component: <AccuracyOfIrradiationTime
+                key={`timer-${refreshKey}`}
+                serviceId={serviceId}
+                refreshKey={refreshKey}
+                initialData={csvDataForComponents['Accuracy of Irradiation Time']}
+              />
+            }]
+            : []),
           {
             title: "Total Filtration",
             component: <TotalFilteration
@@ -1362,8 +1492,9 @@ const CArm: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
           {
             title: "Consistency Of Radiation Output",
             component: <ConsisitencyOfRadiationOutput
-              key={`output-${refreshKey}`}
+              key={`output-${refreshKey}-${csvDataVersion}`}
               serviceId={serviceId}
+              refreshKey={refreshKey}
               csvDataVersion={csvDataVersion}
               initialData={csvDataForComponents['Consistency of Radiation Output']}
             />
@@ -1420,9 +1551,10 @@ const CArm: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
               ? [{
                 title: "Linearity of mAs Loading",
                 component: <LinearityOfMasLoading
-                  key={`linearity-mas-${refreshKey}`}
+                  key={`linearity-mas-${refreshKey}-${csvDataVersion}`}
                   serviceId={serviceId}
                   refreshKey={refreshKey}
+                  csvDataVersion={csvDataVersion}
                   initialData={csvDataForComponents['Linearity of mAs Loading']}
                 />
               }]

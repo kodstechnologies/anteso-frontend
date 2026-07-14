@@ -55,13 +55,10 @@ export const createInventionalRadiologySavedExcel = (
   const efs = unwrap(data.effectiveFocalSpot);
   if (efs?.focalSpots?.length > 0 || efs?.table2?.length > 0) {
     const spots = efs.focalSpots || efs.table2 || [];
-    const fcdVal = efs.fcd ?? "";
     allData.push(["TEST: EFFECTIVE FOCAL SPOT SIZE"]);
-    allData.push(["FFD (cm)", "Focus", "Stated Focal Spot (f)", "Measured Focal Spot (Nominal)"]);
-    spots.forEach((r: any, i: number) => {
+    allData.push(["Stated Focal Spot (mm)", "Measured Focal Spot (Nominal) (mm)"]);
+    spots.forEach((r: any) => {
       allData.push([
-        i === 0 ? fcdVal : "",
-        r.focusType ?? "",
         r.statedNominal ?? r.statedWidth ?? "",
         r.measuredNominal ?? r.measuredWidth ?? "",
       ]);
@@ -161,19 +158,33 @@ export const createInventionalRadiologySavedExcel = (
   }
 
   const lcr = unwrap(data.lowContrastResolution);
-  if (lcr?.testRows?.length > 0 || lcr?.readings?.length > 0) {
-    const rows = (lcr.testRows || lcr.readings || []).map((r: any) => [r.testName ?? r.detail ?? "", r.result ?? r.value ?? ""]);
-    addSection("LOW CONTRAST RESOLUTION", ["Test", "Result"], rows);
+  if (lcr?.smallestHoleSize || lcr?.recommendedStandard) {
+    const std = String(lcr.recommendedStandard ?? "1.0");
+    addSection("LOW CONTRAST RESOLUTION", ["Smallest Hole Size (mm)", "Recommended Standard"], [[
+      lcr.smallestHoleSize ?? "",
+      /mm/i.test(std) ? std : `>= ${std} mm`,
+    ]]);
+  } else if (lcr?.testRows?.length > 0 || lcr?.readings?.length > 0) {
+    const rows = (lcr.testRows || lcr.readings || []).map((r: any) => [
+      r.smallestHoleSize ?? r.testName ?? r.detail ?? "",
+      r.recommendedStandard ?? r.result ?? r.value ?? "",
+    ]);
+    addSection("LOW CONTRAST RESOLUTION", ["Smallest Hole Size (mm)", "Recommended Standard"], rows);
   }
 
   const hcr = unwrap(data.highContrastResolution);
-  if (hcr?.measurements?.length > 0 || hcr?.readings?.length > 0) {
+  if (hcr?.measuredLpPerMm || hcr?.recommendedStandard) {
+    const std = String(hcr.recommendedStandard ?? "2.0");
+    addSection("HIGH CONTRAST RESOLUTION", ["Measured Resolution (lp/mm)", "Recommended Standard (lp/mm)"], [[
+      hcr.measuredLpPerMm ?? "",
+      /lp\/mm/i.test(std) ? std : `>= ${std} lp/mm`,
+    ]]);
+  } else if (hcr?.measurements?.length > 0 || hcr?.readings?.length > 0) {
     const rows = (hcr.measurements || hcr.readings || []).map((r: any) => [
       r.measuredLpPerMm ?? r.detail ?? "",
       r.recommendedStandard ?? "",
-      r.smallestHoleSize ?? "",
     ]);
-    addSection("HIGH CONTRAST RESOLUTION", ["Measured lp/mm", "Recommended", "Smallest Hole"], rows);
+    addSection("HIGH CONTRAST RESOLUTION", ["Measured Resolution (lp/mm)", "Recommended Standard (lp/mm)"], rows);
   }
 
   const ert = unwrap(data.exposureRateTableTop);

@@ -85,12 +85,7 @@ const TotalFiltrationAndAluminium: React.FC<{
     return Number.isFinite(n) ? n : null;
   };
 
-  const kvpsMatch = (rowKvp: number, recommendedKvp: number): boolean => {
-    if (isNaN(rowKvp) || isNaN(recommendedKvp)) return false;
-    return Math.abs(rowKvp - recommendedKvp) < 0.01;
-  };
-
-  /** Min / max / kVp must be valid numbers, ≥ 0, and min ≤ max */
+  /** Min / max must be valid numbers, ≥ 0, and min ≤ max; kVp comes from the kVp column */
   const recommendedValuesValidation = useMemo(() => {
     const rowIssues: Record<string, string> = {};
     let firstError: string | null = null;
@@ -99,18 +94,23 @@ const TotalFiltrationAndAluminium: React.FC<{
       const rv = row.recommendedValue;
       if (!rv) {
         rowIssues[row.id] = "Recommended range required";
-        if (!firstError) firstError = `${label}: set recommended min, max, and kVp`;
+        if (!firstError) firstError = `${label}: set recommended min and max`;
         return;
       }
       const min = parseRecFinite(rv.minValue);
       const max = parseRecFinite(rv.maxValue);
-      const kvp = parseRecFinite(rv.kvp);
-      if (min === null || max === null || kvp === null) {
+      const rowKvp = parseRecFinite(row.kvp);
+      if (min === null || max === null) {
         rowIssues[row.id] = "Valid numbers required";
-        if (!firstError) firstError = `${label}: recommended min, max, and kVp must be valid numbers`;
+        if (!firstError) firstError = `${label}: recommended min and max must be valid numbers`;
         return;
       }
-      if (min < 0 || max < 0 || kvp < 0) {
+      if (rowKvp === null) {
+        rowIssues[row.id] = "kVp required";
+        if (!firstError) firstError = `${label}: enter kVp in the kVp column`;
+        return;
+      }
+      if (min < 0 || max < 0) {
         rowIssues[row.id] = "Must be ≥ 0";
         if (!firstError) firstError = `${label}: recommended values must be zero or positive`;
         return;
@@ -132,15 +132,9 @@ const TotalFiltrationAndAluminium: React.FC<{
 
       const minValue = parseFloat(row.recommendedValue.minValue);
       const maxValue = parseFloat(row.recommendedValue.maxValue);
-      const recommendedKvpNum = parseFloat(row.recommendedValue.kvp);
       const rowKvp = parseFloat(row.kvp);
 
-      // Limits apply at the stated recommended kVp — must match this row's kVp (tolerant float compare)
-      const recKvpStr = String(row.recommendedValue.kvp ?? '').trim();
-      if (recKvpStr !== '' && !kvpsMatch(rowKvp, recommendedKvpNum)) {
-        return { ...row, remarks: '' as const };
-      }
-      if (recKvpStr === '' && isNaN(rowKvp)) {
+      if (isNaN(rowKvp)) {
         return { ...row, remarks: '' as const };
       }
 
@@ -181,8 +175,8 @@ const TotalFiltrationAndAluminium: React.FC<{
             recommendedValue: t.recommendedValue ? {
               minValue: t.recommendedValue.minValue?.toString() || '0.30',
               maxValue: t.recommendedValue.maxValue?.toString() || '0.37',
-              kvp: t.recommendedValue.kvp?.toString() || t.kvp?.toString() || '28',
-            } : { minValue: '0.30', maxValue: '0.37', kvp: t.kvp?.toString() || '28' },
+              kvp: t.kvp?.toString() || '',
+            } : { minValue: '0.30', maxValue: '0.37', kvp: t.kvp?.toString() || '' },
           }))
         );
       }
@@ -244,8 +238,8 @@ const TotalFiltrationAndAluminium: React.FC<{
               recommendedValue: t.recommendedValue ? {
                 minValue: t.recommendedValue.minValue?.toString() || '0.30',
                 maxValue: t.recommendedValue.maxValue?.toString() || '0.37',
-                kvp: t.recommendedValue.kvp?.toString() || t.kvp?.toString() || '28',
-              } : { minValue: '0.30', maxValue: '0.37', kvp: t.kvp?.toString() || '28' },
+                kvp: t.kvp?.toString() || '',
+              } : { minValue: '0.30', maxValue: '0.37', kvp: t.kvp?.toString() || '' },
             }))
           );
           setResultHVT(data.resultHVT28kVp?.toString() || '');
@@ -298,7 +292,7 @@ const TotalFiltrationAndAluminium: React.FC<{
         recommendedValue: r.recommendedValue ? {
           minValue: parseFloat(r.recommendedValue.minValue) || null,
           maxValue: parseFloat(r.recommendedValue.maxValue) || null,
-          kvp: parseFloat(r.recommendedValue.kvp) || null,
+          kvp: parseFloat(r.kvp) || null,
         } : null,
       })),
       resultHVT28kVp: parseFloat(resultHVT) || null,
@@ -341,7 +335,7 @@ const TotalFiltrationAndAluminium: React.FC<{
       alEquivalence: '',
       hvt: '',
       remarks: '',
-      recommendedValue: { minValue: '0.30', maxValue: '0.37', kvp: '28' },
+      recommendedValue: { minValue: '0.30', maxValue: '0.37', kvp: '' },
     }]);
   };
 
@@ -355,7 +349,6 @@ const TotalFiltrationAndAluminium: React.FC<{
       prev.map(r => {
         if (r.id !== id) return r;
         const next: TableRow = { ...r, [field]: value };
-        // Keep "at … kVp" in sync with the measurement kVp so Pass/Fail updates without re-editing Recommended Value
         if (field === 'kvp' && next.recommendedValue) {
           next.recommendedValue = {
             ...next.recommendedValue,
@@ -367,14 +360,15 @@ const TotalFiltrationAndAluminium: React.FC<{
     );
   };
 
-  const updateRecommendedValue = (id: string, field: 'minValue' | 'maxValue' | 'kvp', value: string) => {
+  const updateRecommendedValue = (id: string, field: 'minValue' | 'maxValue', value: string) => {
     setRows(prev => prev.map(r => {
       if (r.id === id) {
         return {
           ...r,
           recommendedValue: {
-            ...(r.recommendedValue || { minValue: '0.30', maxValue: '0.37', kvp: r.kvp || '28' }),
+            ...(r.recommendedValue || { minValue: '0.30', maxValue: '0.37', kvp: r.kvp || '' }),
             [field]: value,
+            kvp: r.kvp || '',
           },
         };
       }
@@ -387,11 +381,13 @@ const TotalFiltrationAndAluminium: React.FC<{
   // Auto-update recommended values for rows when targetWindow changes
   useEffect(() => {
     const targetWindowLower = targetWindow.toLowerCase();
-    const defaultValues = { minValue: '0.30', maxValue: '0.37', kvp: '28' };
+    const defaultValues = { minValue: '0.30', maxValue: '0.37', kvp: '' };
 
     setRows(prev => prev.map(row => ({
       ...row,
-      recommendedValue: row.recommendedValue || defaultValues,
+      recommendedValue: row.recommendedValue
+        ? { ...row.recommendedValue, kvp: row.kvp || '' }
+        : { ...defaultValues, kvp: row.kvp || '' },
     })));
   }, [targetWindow]);
 
@@ -539,7 +535,7 @@ const TotalFiltrationAndAluminium: React.FC<{
                       <div className="text-xs text-center">
                         {row.recommendedValue ? (
                           <span className="font-semibold text-indigo-900">
-                            {row.recommendedValue.minValue} mm Al ≤ HVL ≤ {row.recommendedValue.maxValue} mm Al at {row.recommendedValue.kvp} kVp
+                            {row.recommendedValue.minValue} mm Al ≤ HVL ≤ {row.recommendedValue.maxValue} mm Al at {row.kvp || '—'} kVp
                           </span>
                         ) : (
                           <span className="text-gray-400">—</span>
@@ -564,13 +560,9 @@ const TotalFiltrationAndAluminium: React.FC<{
                             placeholder="0.37"
                           />
                           <span className="text-gray-600">at</span>
-                          <input
-                            type="text"
-                            value={row.recommendedValue?.kvp || ''}
-                            onChange={(e) => updateRecommendedValue(row.id, 'kvp', e.target.value)}
-                            className={`w-12 px-1 py-1 text-center border rounded text-xs focus:ring-1 focus:ring-indigo-500 ${recommendedValuesValidation.rowIssues[row.id] ? 'border-red-500 bg-red-50' : ''}`}
-                            placeholder="28"
-                          />
+                          <span className="w-12 px-1 py-1 text-center text-xs font-medium text-indigo-900">
+                            {row.kvp || '—'}
+                          </span>
                           <span className="text-gray-600">kVp</span>
                         </div>
                         {recommendedValuesValidation.rowIssues[row.id] && (

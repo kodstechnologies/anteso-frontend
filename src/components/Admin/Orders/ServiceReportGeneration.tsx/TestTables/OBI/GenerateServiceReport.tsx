@@ -26,6 +26,7 @@ import {
 import { getDetails, getTools } from "../../../../../../api";
 import { createOBISavedExcel, OBISavedExportData } from "./exportOBISavedToExcel";
 import { isExcelFileUrl } from "../../../../../../utils/spreadsheetFile";
+import { normalizeCsvComparisonOperator } from "../shared/parseRadiographyStyleTableFormat";
 
 import Standards from "../../Standards";
 import Notes from "../../Notes";
@@ -1224,7 +1225,7 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null; qaTestDate?
                     const settings = { fcd: '', kv: '', ma: '', time: '' };
                     let workload = '';
                     let toleranceValue = '1';
-                    let toleranceOperator = 'less than or equal to';
+                    let toleranceOperator = '<=';
                     const leakageMeasurements: any[] = [];
 
                     data.forEach((row) => {
@@ -1238,7 +1239,7 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null; qaTestDate?
                         if (field === 'Settings_Time') settings.time = value;
                         if (field === 'Workload') workload = value;
                         if (field === 'ToleranceValue') toleranceValue = value;
-                        if (field === 'ToleranceOperator') toleranceOperator = value;
+                        if (field === 'ToleranceOperator') toleranceOperator = normalizeCsvComparisonOperator(value);
 
                         if (field.startsWith('LeakageMeasurement_')) {
                             while (leakageMeasurements.length <= rowIndex) {

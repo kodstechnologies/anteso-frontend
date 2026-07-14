@@ -3,9 +3,12 @@ import React from "react";
 
 interface MainTestTableProps {
   testData: any;
+  hasTimer?: boolean;
+  rows?: any[];
+  isContinuation?: boolean;
 }
 
-const MainTestTableForMammography: React.FC<MainTestTableProps> = ({ testData }) => {
+export const generateMammographySummaryRows = (testData: any, hasTimer = false) => {
   const rows: any[] = [];
   let srNo = 1;
 
@@ -43,6 +46,45 @@ const MainTestTableForMammography: React.FC<MainTestTableProps> = ({ testData })
     });
   };
 
+  // 1. Accuracy of Irradiation Time (timer units only)
+  if (hasTimer && testData.irradiationTime?.irradiationTimes && Array.isArray(testData.irradiationTime.irradiationTimes)) {
+    const validRows = testData.irradiationTime.irradiationTimes.filter((row: any) => row.setTime || row.measuredTime);
+    if (validRows.length > 0) {
+      const toleranceOperator = testData.irradiationTime.tolerance?.operator || "<=";
+      const toleranceValue = testData.irradiationTime.tolerance?.value || "10";
+      const testRows = validRows.map((row: any) => {
+        const setTime = parseFloat(row.setTime);
+        const measuredTime = parseFloat(row.measuredTime);
+        let isPass = false;
+
+        if (!isNaN(setTime) && !isNaN(measuredTime) && setTime > 0) {
+          const errorVal = Math.abs((measuredTime - setTime) / setTime * 100);
+          const tol = parseFloat(toleranceValue);
+
+          if (toleranceOperator === "<=") {
+            isPass = errorVal <= tol;
+          } else if (toleranceOperator === "<") {
+            isPass = errorVal < tol;
+          } else if (toleranceOperator === ">=") {
+            isPass = errorVal >= tol;
+          } else if (toleranceOperator === ">") {
+            isPass = errorVal > tol;
+          } else if (toleranceOperator === "=") {
+            isPass = Math.abs(errorVal - tol) < 0.01;
+          }
+        }
+
+        return {
+          specified: row.setTime || "-",
+          measured: row.measuredTime || "-",
+          tolerance: `${toleranceOperator} ${toleranceValue}%`,
+          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
+        };
+      });
+      addRowsForTest("Accuracy of Irradiation Time", testRows);
+    }
+  }
+
   // 2. Accuracy of Operating Potential (kVp)
   if (testData.accuracyOfOperatingPotential?.measurements && Array.isArray(testData.accuracyOfOperatingPotential.measurements)) {
     const validRows = testData.accuracyOfOperatingPotential.measurements.filter((row: any) => row.appliedKvp || row.averageKvp);
@@ -76,51 +118,8 @@ const MainTestTableForMammography: React.FC<MainTestTableProps> = ({ testData })
     }
   }
 
-  // 1. Accuracy of Irradiation Time (Timer Test) - Following Dental Cone Beam CT pattern
-  if (testData.irradiationTime?.irradiationTimes && Array.isArray(testData.irradiationTime.irradiationTimes)) {
-    const validRows = testData.irradiationTime.irradiationTimes.filter((row: any) => row.setTime || row.measuredTime);
-    if (validRows.length > 0) {
-      const toleranceOperator = testData.irradiationTime.tolerance?.operator || "<=";
-      const toleranceValue = testData.irradiationTime.tolerance?.value || "10";
-      const testRows = validRows.map((row: any) => {
-        const setTime = parseFloat(row.setTime);
-        const measuredTime = parseFloat(row.measuredTime);
-        let error = "-";
-        let isPass = false;
-
-        if (!isNaN(setTime) && !isNaN(measuredTime) && setTime > 0) {
-          error = Math.abs((measuredTime - setTime) / setTime * 100).toFixed(2);
-          const errorVal = parseFloat(error);
-          const tol = parseFloat(toleranceValue);
-
-          if (toleranceOperator === "<=") {
-            isPass = errorVal <= tol;
-          } else if (toleranceOperator === "<") {
-            isPass = errorVal < tol;
-          } else if (toleranceOperator === ">=") {
-            isPass = errorVal >= tol;
-          } else if (toleranceOperator === ">") {
-            isPass = errorVal > tol;
-          } else if (toleranceOperator === "=") {
-            isPass = Math.abs(errorVal - tol) < 0.01;
-          }
-        }
-
-        return {
-          specified: row.setTime || "-",
-          measured: row.measuredTime || "-",
-          tolerance: `${toleranceOperator} ${toleranceValue}%`,
-          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
-        };
-      });
-      addRowsForTest("Accuracy of Irradiation Time", testRows);
-    }
-  }
-
-
-
-  // 2. Linearity of mAs Loading
-  if (testData.linearityOfMasLLoading?.measurements && Array.isArray(testData.linearityOfMasLLoading.measurements)) {
+  // 3. Linearity of mAs Loading (no-timer units only)
+  if (!hasTimer && testData.linearityOfMasLLoading?.measurements && Array.isArray(testData.linearityOfMasLLoading.measurements)) {
     const validRows = testData.linearityOfMasLLoading.measurements.filter((row: any) => row.mAsRange || row.col);
     if (validRows.length > 0) {
       const tolerance = testData.linearityOfMasLLoading.tolerance || "0.1";
@@ -138,8 +137,8 @@ const MainTestTableForMammography: React.FC<MainTestTableProps> = ({ testData })
     }
   }
 
-  // 3. Linearity of mA Loading Stations
-  if (testData.maLoadingStations?.table2 && Array.isArray(testData.maLoadingStations.table2)) {
+  // 3. Linearity of mA Loading Stations (timer units only)
+  if (hasTimer && testData.maLoadingStations?.table2 && Array.isArray(testData.maLoadingStations.table2)) {
     const validRows = testData.maLoadingStations.table2.filter((row: any) => row.mAsApplied || row.x);
     if (validRows.length > 0) {
       const tolerance = testData.maLoadingStations.tolerance || "0.1";
@@ -164,7 +163,6 @@ const MainTestTableForMammography: React.FC<MainTestTableProps> = ({ testData })
       const testRows = validRows.map((row: any) => {
         const hvt = row.hvt ? parseFloat(row.hvt).toFixed(2) : "-";
         const kvp = row.kvp || "-";
-        // Check against tolerance - typically >= 0.3 mm Al at 30 kVp
         const isPass = row.hvt ? parseFloat(row.hvt) >= 0.3 : false;
         return {
           specified: kvp !== "-" ? `${kvp} kVp` : "-",
@@ -194,16 +192,13 @@ const MainTestTableForMammography: React.FC<MainTestTableProps> = ({ testData })
       const toleranceValue =
         !isNaN(tDec) && tDec > 1 ? String(tDec) : !isNaN(tDec) && tDec <= 1 ? String(tDec * 100) : "5.0";
       const testRows = validRows.map((row: any) => {
-        // Extract CV from field or from remark as fallback
         let cvValue = "-";
         let isPass = false;
 
-        // Try 'cov' or 'cv' fields first (new schema)
         const rawCv = row.cov || row.cv || row.CV;
         if (rawCv !== undefined && rawCv !== null && rawCv !== "") {
           const cvNum = parseFloat(String(rawCv));
           if (!isNaN(cvNum)) {
-            // If it's a small decimal (e.g., 0.0123), convert to percentage
             if (cvNum > 0 && cvNum < 1) {
               cvValue = (cvNum * 100).toFixed(2);
             } else {
@@ -212,7 +207,6 @@ const MainTestTableForMammography: React.FC<MainTestTableProps> = ({ testData })
           }
         }
 
-        // Fallback to extraction from remark
         if (cvValue === "-" && row.remark) {
           const cvMatch = row.remark.match(/CV:\s*([\d.]+)%/i);
           if (cvMatch) {
@@ -220,7 +214,6 @@ const MainTestTableForMammography: React.FC<MainTestTableProps> = ({ testData })
           }
         }
 
-        // Determine Pass/Fail
         if (row.remark && (row.remark.includes("Pass") || row.remark.includes("PASS"))) {
           isPass = true;
         } else if (row.remark && (row.remark.includes("Fail") || row.remark.includes("FAIL"))) {
@@ -253,7 +246,7 @@ const MainTestTableForMammography: React.FC<MainTestTableProps> = ({ testData })
     }
   }
 
-  // 5. Radiation Leakage Level
+  // 6. Radiation Leakage Level
   if (testData.radiationLeakageLevel?.leakageMeasurements && Array.isArray(testData.radiationLeakageLevel.leakageMeasurements)) {
     const validRows = testData.radiationLeakageLevel.leakageMeasurements.filter((location: any) => location.location || location.max);
     if (validRows.length > 0) {
@@ -283,7 +276,6 @@ const MainTestTableForMammography: React.FC<MainTestTableProps> = ({ testData })
           .filter((v: number) => v > 0);
         const rowMax = values.length > 0 ? Math.max(...values) : 0;
 
-        // Keep same source as ViewServiceReport: result in mGy in 1 hr.
         let resultMGy = parseFloat(String(location.mgy ?? ""));
         if (isNaN(resultMGy)) {
           const resultMR = parseFloat(String(location.result ?? ""));
@@ -347,7 +339,7 @@ const MainTestTableForMammography: React.FC<MainTestTableProps> = ({ testData })
     }
   }
 
-  // 8. Radiation Protection Survey (CT Scan-style: Worker/Public max weekly summary rows)
+  // 8. Radiation Protection Survey
   if (testData.radiationProtectionSurvey) {
     const survey = testData.radiationProtectionSurvey;
     const locations: any[] = Array.isArray(survey.locations) ? survey.locations : [];
@@ -398,7 +390,6 @@ const MainTestTableForMammography: React.FC<MainTestTableProps> = ({ testData })
       const testRows = validRows.map((reading: any) => {
         const mRPerHr = reading.mRPerHr || "-";
         const result = reading.result || "-";
-        // Determine limit based on location
         const isWorkerArea = reading.location?.includes("Control Console") || reading.location?.includes("Behind Lead Glass");
         const limit = isWorkerArea ? 2 : 0.2;
         const isPass = result === "Pass" || (mRPerHr !== "-" && parseFloat(mRPerHr) <= limit);
@@ -413,20 +404,63 @@ const MainTestTableForMammography: React.FC<MainTestTableProps> = ({ testData })
     }
   }
 
+  return rows;
+};
+
+/** Summary table parameter labels — detailed section numbers must match these Sr. No. rows. */
+export const MAMMOGRAPHY_SUMMARY_PARAMETERS = {
+  irradiationTime: "Accuracy of Irradiation Time",
+  operatingPotential: "Accuracy of Operating Potential (kVp)",
+  linearityMas: "Linearity of mAs Loading (Coefficient of Linearity)",
+  linearityMa: "Linearity of mA Loading (Coefficient of Linearity)",
+  totalFiltration: "Total Filtration & Aluminium Equivalence (HVT)",
+  reproducibility: "Reproducibility of Radiation Output",
+  leakage: "Radiation Leakage Level (5 cm from Tube Housing)",
+  phantom: "Imaging Performance Evaluation (Phantom)",
+  protectionSurvey: "Radiation Protection Survey",
+  equipmentSetting: "Equipment Settings Verification",
+  maxRadiation: "Maximum Radiation Levels at Different Locations",
+} as const;
+
+/** Map each summary parameter label to its Sr. No. (same order as main test table). */
+export const getMammographySummarySectionNumbers = (
+  testData: any,
+  hasTimer = false
+): Record<string, number> => {
+  const out: Record<string, number> = {};
+  for (const row of generateMammographySummaryRows(testData, hasTimer)) {
+    if (row.isFirstRow && row.srNo != null && row.parameter) {
+      const label = String(row.parameter).replace(/\s*\(Cont\.\)\s*$/, "");
+      out[label] = row.srNo;
+    }
+  }
+  return out;
+};
+
+const MainTestTableForMammography: React.FC<MainTestTableProps> = ({
+  testData,
+  hasTimer = false,
+  rows: providedRows,
+  isContinuation = false,
+}) => {
+  const rows = providedRows || generateMammographySummaryRows(testData, hasTimer);
+
   if (rows.length === 0) {
     return <div className="text-center text-gray-500 py-10">No test results available.</div>;
   }
 
   return (
     <div className="mt-4 print:mt-2">
-      <h2 className="text-2xl font-bold text-center underline mb-4 print:mb-2 print:text-xl">
-        SUMMARY OF QA TEST RESULTS
-      </h2>
+      {!isContinuation && (
+        <h2 className="text-2xl font-bold text-center underline mb-4 print:mb-2 print:text-xl">
+          SUMMARY OF QA TEST RESULTS
+        </h2>
+      )}
 
       <div className="overflow-x-auto print:overflow-visible print:max-w-none flex justify-center">
         <table
           className="border border-black text-xs print:text-[9px] print:min-w-full"
-          style={{ width: '100', textAlign: 'center', borderCollapse: 'collapse', borderWidth: 1, borderStyle: 'solid', borderColor: '#000' }}
+          style={{ width: '100%', textAlign: 'center', borderCollapse: 'collapse', borderWidth: 1, borderStyle: 'solid', borderColor: '#000' }}
         >
           <thead className="bg-gray-200">
             <tr>
@@ -491,4 +525,3 @@ const MainTestTableForMammography: React.FC<MainTestTableProps> = ({ testData })
 };
 
 export default MainTestTableForMammography;
-

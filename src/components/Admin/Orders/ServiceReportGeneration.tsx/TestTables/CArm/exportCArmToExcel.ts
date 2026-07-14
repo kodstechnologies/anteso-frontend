@@ -8,6 +8,74 @@ import {
   outputConsistencySection,
   totalFiltrationSection,
 } from "../shared/radiographyStyleExcelSections";
+import { normalizeCsvComparisonOperator } from "../shared/parseRadiographyStyleTableFormat";
+
+const MEAS_HEADER_RE = /^(?:Meas|Measured(?:\s*Output)?|Output)\s*\d+$/i;
+
+/** Mark measurement header and mAs label cells as text so Excel does not corrupt them. */
+const applyTextFormatGuards = (ws: XLSX.WorkSheet, rows: any[][]) => {
+  let inLinearityMas = false;
+  let seenMasHeader = false;
+
+  rows.forEach((row, r) => {
+    const first = String(row[0] ?? "").trim();
+
+    if (/^TEST:\s*LINEARITY OF MAS LOADING/i.test(first)) {
+      inLinearityMas = true;
+      seenMasHeader = false;
+      return;
+    }
+    if (/^TEST:/i.test(first)) {
+      inLinearityMas = false;
+      seenMasHeader = false;
+    }
+
+    const markText = (rowIdx: number, colIdx: number) => {
+      const addr = XLSX.utils.encode_cell({ r: rowIdx, c: colIdx });
+      const existing = ws[addr];
+      const value = existing?.v ?? row[colIdx];
+      if (value === undefined || value === null || value === "") return;
+      ws[addr] = { t: "s", v: String(value) };
+    };
+
+    if (inLinearityMas) {
+      if (/^mAs(\s*Range)?$/i.test(first)) {
+        seenMasHeader = true;
+        row.forEach((cell, c) => {
+          if (c > 0 && String(cell ?? "").trim()) markText(r, c);
+        });
+        return;
+      }
+      if (seenMasHeader && /^\d+(\.\d+)?$/.test(first)) {
+        markText(r, 0);
+      }
+    }
+
+    if (/^kVp$/i.test(first) && /^mAs$/i.test(String(row[1] ?? "").trim())) {
+      row.forEach((cell, c) => {
+        if (c > 1 && String(cell ?? "").trim()) markText(r, c);
+      });
+    }
+
+    if (/^Applied kVp$/i.test(first)) {
+      row.forEach((cell, c) => {
+        if (c > 0 && MEAS_HEADER_RE.test(String(cell ?? "").trim())) markText(r, c);
+      });
+    }
+
+    if (/^mA Applied$/i.test(first)) {
+      row.forEach((cell, c) => {
+        if (c > 0 && MEAS_HEADER_RE.test(String(cell ?? "").trim())) markText(r, c);
+      });
+    }
+  });
+};
+
+const aoaToTextSafeSheet = (rows: any[][]) => {
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  applyTextFormatGuards(ws, rows);
+  return ws;
+};
 
 export interface CArmExportData {
   reportHeader?: any;
@@ -85,10 +153,11 @@ export const createCArmUploadableExcel = (data: CArmExportData): XLSX.WorkBook =
   if (oc?.outputRows?.length || oc?.parameters || oc?.ffd) {
     const p = oc.parameters || oc.ffd || {};
     const ffd = typeof p === "object" ? (p.ffd ?? p.value ?? "100") : String(p ?? "100");
+    const time = typeof p === "object" ? (p.time ?? "1.0") : "1.0";
     const measHeaders = oc.measurementHeaders || oc.measHeaders || oc.headers || ["Meas 1", "Meas 2", "Meas 3"];
     allData.push(["TEST: CONSISTENCY OF RADIATION OUTPUT"]);
     allData.push(["FDD (cm)", ffd]);
-    if (p?.time) allData.push(["Time (s)", p.time]);
+    allData.push(["Time (s)", time]);
     allData.push(["kVp", "mAs", ...measHeaders]);
     (oc.outputRows || []).forEach((r: any) => {
       const outs = (r.outputs || []).map((o: any) => (typeof o === "object" ? o.value : o) ?? "");
@@ -133,9 +202,49 @@ export const createCArmUploadableExcel = (data: CArmExportData): XLSX.WorkBook =
   }
 
   const leak = unwrap(data.tubeHousingLeakage);
-  if (leak?.readings?.length || leak?.measurements?.length) {
-    const rows = (leak.readings || leak.measurements || []).map((r: any) => [r.location ?? "", r.value ?? r.leakage ?? "", r.remarks ?? ""]);
-    addSection(allData, "TUBE HOUSING LEAKAGE", ["Location", "Value (mR/h)", "Remarks"], rows);
+  if (leak?.leakageMeasurements?.length || leak?.readings?.length || leak?.measurements?.length) {
+    const s = Array.isArray(leak.settings) ? leak.settings[0] : leak.settings || {};
+    const tolOp = normalizeCsvComparisonOperator(leak.toleranceOperator ?? "<=");
+    const measurements = leak.leakageMeasurements || leak.readings || leak.measurements || [];
+    const headerRow = [
+      "FDD (cm)",
+      "kV",
+      "mA",
+      "Time (sec)",
+      "Workload (mA·min/week)",
+      "Tol Value",
+      "Tol Operator",
+      "Location",
+      "Front",
+      "Back",
+      "Left",
+      "Right",
+      "Top",
+    ];
+    const dataRows = measurements.map((r: any, idx: number) => {
+      const base =
+        idx === 0
+          ? [
+              s.fcd ?? leak.fcd ?? "",
+              s.kv ?? s.kvp ?? leak.kv ?? "",
+              s.ma ?? leak.ma ?? "",
+              s.time ?? leak.time ?? "",
+              leak.workload ?? "",
+              leak.toleranceValue ?? "",
+              tolOp,
+            ]
+          : ["", "", "", "", "", "", ""];
+      return [
+        ...base,
+        r.location ?? "",
+        r.front ?? "",
+        r.back ?? "",
+        r.left ?? "",
+        r.right ?? "",
+        r.top ?? "",
+      ];
+    });
+    addSection(allData, "TUBE HOUSING LEAKAGE", headerRow, dataRows);
   }
 
   const lma = unwrap(data.linearityOfMaLoading);
@@ -161,7 +270,7 @@ export const createCArmUploadableExcel = (data: CArmExportData): XLSX.WorkBook =
     const measHeaders = lmas.measHeaders || ["Meas 1", "Meas 2", "Meas 3"];
     allData.push(["TEST: LINEARITY OF MAS LOADING"]);
     allData.push(["FDD (cm)", t1.fcd ?? "", "kV", t1.kv ?? ""]);
-    allData.push(["mAs Range", ...measHeaders]);
+    allData.push(["mAs", ...measHeaders]);
     t2.forEach((r: any) => {
       const outs = r.measuredOutputs || [];
       allData.push([r.mAsApplied ?? r.mAsRange ?? "", ...measHeaders.map((_: string, i: number) => outs[i] ?? "")]);
@@ -248,7 +357,7 @@ export const buildCArmTemplateRows = (hasTimer: boolean): any[][] => {
       "Top",
     ],
     [
-      ["100", "80", "100", "1", "1000", "1.0", "less than or equal to", "Tube", "0.05", "0.03", "0.06", "0.04", "0.02"],
+      ["100", "80", "100", "1", "1000", "1.0", "<=", "Tube", "0.05", "0.03", "0.06", "0.04", "0.02"],
       ["", "", "", "", "", "", "", "Collimator", "0.02", "0.02", "0.03", "0.01", ""],
     ]
   );
@@ -277,18 +386,18 @@ export const writeCArmTemplateFiles = (outputDir: string) => {
   const combinedXlsxPath = path.join(outputDir, "CArm_Template.xlsx");
 
   const wbCombined = XLSX.utils.book_new();
-  const wsWithTimer = XLSX.utils.aoa_to_sheet(withTimer);
-  const wsNoTimer = XLSX.utils.aoa_to_sheet(noTimer);
+  const wsWithTimer = aoaToTextSafeSheet(withTimer);
+  const wsNoTimer = aoaToTextSafeSheet(noTimer);
   wsWithTimer["!cols"] = Array.from({ length: 16 }, () => ({ wch: 18 }));
   wsNoTimer["!cols"] = Array.from({ length: 16 }, () => ({ wch: 18 }));
   XLSX.utils.book_append_sheet(wbCombined, wsWithTimer, "With Timer");
   XLSX.utils.book_append_sheet(wbCombined, wsNoTimer, "Without Timer");
 
   const wbWithTimer = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wbWithTimer, XLSX.utils.aoa_to_sheet(withTimer), "With Timer");
+  XLSX.utils.book_append_sheet(wbWithTimer, aoaToTextSafeSheet(withTimer), "With Timer");
 
   const wbNoTimer = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wbNoTimer, XLSX.utils.aoa_to_sheet(noTimer), "Without Timer");
+  XLSX.utils.book_append_sheet(wbNoTimer, aoaToTextSafeSheet(noTimer), "Without Timer");
 
   const writeAll = () => {
     fs.writeFileSync(withTimerCsvPath, rowsToCsv(withTimer), "utf8");

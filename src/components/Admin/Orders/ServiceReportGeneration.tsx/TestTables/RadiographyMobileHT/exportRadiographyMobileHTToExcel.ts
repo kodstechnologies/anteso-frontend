@@ -1,4 +1,5 @@
 import * as XLSX from "xlsx";
+import { normalizeCsvComparisonOperator } from "../shared/parseRadiographyStyleTableFormat";
 
 export interface RadiographyMobileHTExportData {
   reportHeader?: any;
@@ -241,35 +242,58 @@ export const createRadiographyMobileHTUploadableExcel = (
   const rll = unwrap(data.radiationLeakageLevel);
   if (rll) {
     const s = rll.settings || {};
-    allData.push(["TEST: RADIATION LEAKAGE LEVEL FROM X-RAY TUBE HOUSE"]);
+    const tolOp = normalizeCsvComparisonOperator(rll.toleranceOperator ?? "<=");
+    allData.push(["TEST: RADIATION LEAKAGE LEVEL"]);
     allData.push([
       "FDD (cm)",
-      s.fcd ?? "",
-      "kVp",
-      s.kv ?? "",
+      "kV",
       "mA",
-      s.ma ?? "",
-      "Time",
-      s.time ?? "",
-      "Tolerance",
-      rll.toleranceValue ?? "",
+      "Time (min)",
+      "Workload",
+      "Tol Value",
+      "Tol Operator",
+      "Location",
+      "Left",
+      "Right",
+      "Front",
+      "Back",
+      "Top",
     ]);
-    if (rll.workload) {
-      allData.push(["Workload", rll.workload]);
-    }
-    allData.push(["Location", "Left", "Right", "Top", "Up", "Down"]);
-    const leaks = Array.isArray(rll.leakageMeasurements)
-      ? rll.leakageMeasurements
-      : [];
-    leaks.forEach((l: any) => {
-      allData.push([
-        l.location ?? "",
-        l.left ?? "",
-        l.right ?? "",
-        l.top ?? "",
-        l.up ?? "",
-        l.down ?? "",
-      ]);
+    const leaks = Array.isArray(rll.leakageMeasurements) ? rll.leakageMeasurements : [];
+    leaks.forEach((l: any, idx: number) => {
+      if (idx === 0) {
+        allData.push([
+          s.fcd ?? "",
+          s.kv ?? "",
+          s.ma ?? "",
+          s.time ?? "",
+          rll.workload ?? "",
+          rll.toleranceValue ?? "",
+          tolOp,
+          l.location ?? "",
+          l.left ?? "",
+          l.right ?? "",
+          l.front ?? "",
+          l.back ?? "",
+          l.top ?? "",
+        ]);
+      } else {
+        allData.push([
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          l.location ?? "",
+          l.left ?? "",
+          l.right ?? "",
+          l.front ?? "",
+          l.back ?? "",
+          l.top ?? "",
+        ]);
+      }
     });
     addBlank();
   }

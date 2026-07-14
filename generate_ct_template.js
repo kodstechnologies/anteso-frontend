@@ -28,13 +28,13 @@ addSection('RADIATION PROFILE WIDTH FOR CT SCAN',
     ]
 );
 
-// 2. MEASUREMENT OF OPERATING POTENTIAL
+// 2. MEASUREMENT OF OPERATING POTENTIAL (dynamic Header 1-N + Meas 1-N)
 addSection('MEASUREMENT OF OPERATING POTENTIAL',
-    ['Set kV', '@ mA 10', '@ mA 100', '@ mA 200', 'Time (ms)', 'Slice Thickness (mm)', 'Tol Value', 'Tol Type', 'Tol Sign'],
+    ['Set kV', 'Header 1', 'Header 2', 'Header 3', 'Meas 1', 'Meas 2', 'Meas 3', 'Time (ms)', 'Slice Thickness (mm)', 'Tol Value', 'Tol Type', 'Tol Sign'],
     [
-        ['80', '80.1', '80.2', '80.3', '100', '5', '5', '%', '±'],
-        ['100', '100.2', '100.1', '100.3', '', '', '', '', ''],
-        ['120', '120.5', '120.4', '120.6', '', '', '', '', '']
+        ['80', '10', '100', '200', '80.1', '80.2', '80.3', '100', '5', '5', '%', '±'],
+        ['100', '', '', '', '100.2', '100.1', '100.3', '', '', '', '', ''],
+        ['120', '', '', '', '120.5', '120.4', '120.6', '', '', '', '', '']
     ]
 );
 

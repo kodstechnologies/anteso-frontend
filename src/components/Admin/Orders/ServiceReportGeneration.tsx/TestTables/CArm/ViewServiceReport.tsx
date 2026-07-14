@@ -725,8 +725,8 @@ const ViewServiceReportCArm: React.FC = () => {
               DETAILED TEST RESULTS
             </h2>
 
-            {/* 1. Accuracy of Irradiation Time */}
-            {testData.irradiationTime && (
+            {/* 1. Accuracy of Irradiation Time — only when unit has a timer */}
+            {timerChoice === true && testData.irradiationTime && (
               <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
                 <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>1. Accuracy of Irradiation Time</h3>
                 {testData.irradiationTime.testConditions && (
