@@ -332,39 +332,9 @@ const AccuracyOfOperatingPotentialAndTime: React.FC<Props> = ({
 
   return (
     <div className="p-6 max-w-full space-y-8">
-      {/* Header & Save Button */}
-      <div className="flex justify-between items-center border-b pb-4">
-        <h2 className="text-xl font-semibold text-gray-800">
-          Accuracy of Operating Potential (kVp) and Irradiation Time
-        </h2>
-        <button
-          onClick={isViewMode ? toggleEdit : saveTest}
-          disabled={isSaving}
-          className={`flex items-center gap-2 px-4 py-2 rounded text-sm font-medium transition ${isViewMode
-              ? "bg-orange-600 text-white hover:bg-orange-700"
-              : isSaved
-              ? "bg-gray-400 text-white"
-              : "bg-blue-600 text-white hover:bg-blue-700"
-            } disabled:opacity-50`}
-        >
-          {isSaving ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Saving...
-            </>
-          ) : isViewMode ? (
-            <>
-              <Edit3 className="w-4 h-4" />
-              Edit
-            </>
-          ) : (
-            <>
-              <Save className="w-4 h-4" />
-              {testId ? "Update" : "Save"} Test
-            </>
-          )}
-        </button>
-      </div>
+      <h2 className="text-xl font-semibold text-gray-800 border-b pb-4">
+        Accuracy of Operating Potential (kVp) and Irradiation Time
+      </h2>
 
       {/* Main Table */}
       <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
@@ -654,6 +624,36 @@ const AccuracyOfOperatingPotentialAndTime: React.FC<Props> = ({
             disabled={isViewMode}
             className={`w-20 px-2 py-1 border rounded text-center ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`} />
         </div>
+      </div>
+
+      <div className="flex justify-end mt-6">
+        <button
+          onClick={isViewMode ? toggleEdit : saveTest}
+          disabled={isSaving}
+          className={`flex items-center gap-2 px-4 py-2 rounded text-sm font-medium transition ${isViewMode
+              ? "bg-orange-600 text-white hover:bg-orange-700"
+              : isSaved
+              ? "bg-gray-400 text-white"
+              : "bg-blue-600 text-white hover:bg-blue-700"
+            } disabled:opacity-50`}
+        >
+          {isSaving ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Saving...
+            </>
+          ) : isViewMode ? (
+            <>
+              <Edit3 className="w-4 h-4" />
+              Edit
+            </>
+          ) : (
+            <>
+              <Save className="w-4 h-4" />
+              {testId ? "Update" : "Save"} Test
+            </>
+          )}
+        </button>
       </div>
     </div>
   );

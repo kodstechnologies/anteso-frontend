@@ -299,43 +299,9 @@ const ReproducibilityOfRadiationOutput: React.FC<Props> = ({
 
   return (
     <div className="p-6 max-w-full overflow-x-auto space-y-8">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-800">
-          Consistency of Radiation Output (Reproducibility)
-        </h2>
-
-        <div className="flex items-center gap-4">
-          <button
-            onClick={isViewMode ? toggleEdit : handleSave}
-            disabled={isSaving}
-            className={`flex items-center gap-2 px-6 py-2.5 rounded-lg transition ${
-              isViewMode
-                ? "bg-orange-600 text-white hover:bg-orange-700"
-                : isSaved
-                ? "bg-gray-400 text-white"
-                : "bg-blue-600 text-white hover:bg-blue-700"
-            } disabled:opacity-50`}
-          >
-            {isSaving ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Saving...
-              </>
-            ) : isViewMode ? (
-              <>
-                <Edit3 className="w-4 h-4" />
-                Edit
-              </>
-            ) : (
-              <>
-                <Save className="w-4 h-4" />
-                {testId ? "Update" : "Save"} Test
-              </>
-            )}
-          </button>
-        </div>
-      </div>
+      <h2 className="text-2xl font-bold text-gray-800">
+        Consistency of Radiation Output (Reproducibility)
+      </h2>
 
       {/* FFD Input */}
       <div className="bg-white shadow-md rounded-lg p-6 border border-gray-200">
@@ -495,6 +461,37 @@ const ReproducibilityOfRadiationOutput: React.FC<Props> = ({
         <p className="text-sm text-gray-600 mt-3">
           IEC 61223-3-1 & AERB: Coefficient of Variation should be {tolerance.operator} {tolerance.value}%
         </p>
+      </div>
+
+      <div className="flex justify-end mt-6">
+        <button
+          onClick={isViewMode ? toggleEdit : handleSave}
+          disabled={isSaving}
+          className={`flex items-center gap-2 px-6 py-2.5 rounded-lg transition ${
+            isViewMode
+              ? "bg-orange-600 text-white hover:bg-orange-700"
+              : isSaved
+              ? "bg-gray-400 text-white"
+              : "bg-blue-600 text-white hover:bg-blue-700"
+          } disabled:opacity-50`}
+        >
+          {isSaving ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Saving...
+            </>
+          ) : isViewMode ? (
+            <>
+              <Edit3 className="w-4 h-4" />
+              Edit
+            </>
+          ) : (
+            <>
+              <Save className="w-4 h-4" />
+              {testId ? "Update" : "Save"} Test
+            </>
+          )}
+        </button>
       </div>
     </div>
   );

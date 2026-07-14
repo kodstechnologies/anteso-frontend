@@ -63,6 +63,8 @@ export interface ReportData {
   notes?: Note[];
   qrCode?: string;
   category: string;
+  authorizedSignatoryName?: string;
+  authorizedSignatorySignature?: string;
   AccuracyOfIrradiationTimeRadiographyFixed?: any;
   accuracyOfOperatingPotentialRadigraphyFixed?: any;
   CentralBeamAlignmentRadiographyFixed?: any;
@@ -244,6 +246,14 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
             // notes: data.notes || defaultNotes,
             qrCode: data.qrCode || "",
             category: data.category || "N/A",
+            authorizedSignatoryName:
+              (typeof data.authorizedSignatory === "object" && data.authorizedSignatory?.name) ||
+              data.authorizedSignatoryName ||
+              "",
+            authorizedSignatorySignature:
+              (typeof data.authorizedSignatory === "object" && data.authorizedSignatory?.signature) ||
+              data.authorizedSignatorySignature ||
+              "",
           });
 
           setTestData({
@@ -2031,6 +2041,8 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
               customerCity={placeValue}
               qrCode={report.qrCode}
               engineerName={report.engineerNameRPId}
+              authorizedSignatoryName={report.authorizedSignatoryName}
+              authorizedSignatorySignature={report.authorizedSignatorySignature}
             />
           </div>
         </ReportPage>

@@ -406,25 +406,7 @@ const OutputConsistencyForCArm: React.FC<Props> = ({
 
   return (
     <div className="p-6 max-w-full mx-auto space-y-10">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-800">Output Consistency</h2>
-        <button
-          onClick={isViewMode ? startEditing : handleSave}
-          disabled={isSaving}
-          className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${isSaving ? 'bg-gray-400 cursor-not-allowed' :
-            isViewMode ? 'bg-orange-600 hover:bg-orange-700' :
-              'bg-teal-600 hover:bg-teal-700'
-            }`}
-        >
-          {isSaving ? (
-            <>Saving...</>
-          ) : (
-            <>{isViewMode ? <Edit3 className="w-4 h-4" /> : <Save className="w-4 h-4" />}
-              {isViewMode ? 'Edit' : testId ? 'Update' : 'Save'} Test
-            </>
-          )}
-        </button>
-      </div>
+      <h2 className="text-2xl font-bold text-gray-800">Output Consistency</h2>
 
       {/* Table 1: FFD & Time */}
       <div className="bg-white shadow-md rounded-lg overflow-hidden">
@@ -615,6 +597,25 @@ const OutputConsistencyForCArm: React.FC<Props> = ({
             {finalRemark || '—'}
           </span>
         </div>
+      </div>
+
+      <div className="flex justify-end mt-6">
+        <button
+          onClick={isViewMode ? startEditing : handleSave}
+          disabled={isSaving}
+          className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${isSaving ? 'bg-gray-400 cursor-not-allowed' :
+            isViewMode ? 'bg-orange-600 hover:bg-orange-700' :
+              'bg-teal-600 hover:bg-teal-700'
+            }`}
+        >
+          {isSaving ? (
+            <>Saving...</>
+          ) : (
+            <>{isViewMode ? <Edit3 className="w-4 h-4" /> : <Save className="w-4 h-4" />}
+              {isViewMode ? 'Edit' : testId ? 'Update' : 'Save'} Test
+            </>
+          )}
+        </button>
       </div>
     </div>
   );

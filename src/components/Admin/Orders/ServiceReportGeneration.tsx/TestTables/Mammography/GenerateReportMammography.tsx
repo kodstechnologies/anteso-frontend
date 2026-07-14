@@ -2,8 +2,9 @@
 import React, { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Disclosure } from "@headlessui/react";
-import { ChevronDownIcon, CloudArrowUpIcon } from "@heroicons/react/24/outline";
+import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import toast from "react-hot-toast";
+import AuthorizedSignatorySelect from "../../AuthorizedSignatorySelect";
 
 import Standards from "../../Standards";
 import Notes from "../../Notes";
@@ -188,6 +189,7 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
         humidity: "",
         engineerNameRPId: "",
     rpId: "",
+        authorizedSignatory: "",
         category: "",
         reportULRNumber: "",
     });
@@ -1668,6 +1670,7 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
                                 (reportData as any).RPId,
                                 prev.rpId
                             ),
+                            authorizedSignatory: (typeof reportData.authorizedSignatory === "object" ? reportData.authorizedSignatory?._id : reportData.authorizedSignatory) || prev.authorizedSignatory || "",
                         }));
 
                         // Load existing notes, or use default if none exist
@@ -1908,25 +1911,38 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
 
     return (
         <div className="max-w-7xl mx-auto bg-white shadow-lg rounded-xl p-8 mt-8">
-            <div className="flex justify-between items-center mb-8">
-                <h1 className="text-3xl font-bold text-gray-800">
-                    Generate Mammography QA Test Report
-                </h1>
-                <div className="flex items-center gap-4">
-                    
-                    <label className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition cursor-pointer">
-                        <CloudArrowUpIcon className="w-5 h-5" />
-                        {csvUploading ? 'Uploading...' : 'Upload CSV / Excel'}
-                        <input
-                            ref={fileInputRef}
-                            type="file"
-                            accept=".csv,.xlsx,.xls"
-                            onChange={handleCSVUpload}
-                            className="hidden"
-                            disabled={csvUploading}
-                        />
-                    </label>
+            <h1 className="text-3xl font-bold text-center text-gray-800 mb-8">
+                Generate Mammography QA Test Report
+            </h1>
+
+            {/* Excel Actions */}
+            <div className="flex flex-wrap gap-4 justify-center mb-8">
+                <div className="relative">
+                    <input
+                        ref={fileInputRef}
+                        type="file"
+                        id="excel-upload-mammography"
+                        accept=".xlsx,.xls,.csv"
+                        onChange={handleCSVUpload}
+                        className="hidden"
+                        disabled={csvUploading}
+                    />
+                    <button
+                        type="button"
+                        onClick={() => document.getElementById("excel-upload-mammography")?.click()}
+                        className="px-6 py-2 bg-teal-600 text-white font-semibold rounded-lg hover:bg-teal-700 transition shadow"
+                    >
+                        {csvUploading ? "Uploading..." : "Import Excel Data"}
+                    </button>
                 </div>
+                <button
+                    type="button"
+                    onClick={handleExportSavedData}
+                    disabled={isExporting}
+                    className={`px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition shadow ${isExporting ? "opacity-50 cursor-not-allowed" : ""}`}
+                >
+                    {isExporting ? "Exporting..." : "Export Excel"}
+                </button>
             </div>
 
             {/* Customer Info */}
@@ -2009,7 +2025,22 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
                 </div>
             </section>
 
-            {/* <Standards standards={tools} /> */}
+            <section className="mb-8">
+                <h2 className="text-lg font-semibold text-blue-700 mb-3">Authorized Signatory</h2>
+                <div className="max-w-xl">
+                    <AuthorizedSignatorySelect
+                        value={formData.authorizedSignatory}
+                        onChange={(selected) =>
+                            setFormData((prev) => ({
+                                ...prev,
+                                authorizedSignatory: selected?._id || "",
+                            }))
+                        }
+                    />
+                </div>
+            </section>
+
+            <Standards standards={tools} />
             <Notes initialNotes={notes} onChange={setNotes} />
 
             {/* Save & View Buttons */}
@@ -2032,15 +2063,6 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
                         }`}
                 >
                     {saving ? "Saving Header..." : "Save Report Header"}
-                </button>
-
-                <button
-                    type="button"
-                    onClick={handleExportSavedData}
-                    disabled={isExporting}
-                    className={`px-8 py-3 rounded-lg font-bold text-white transition ${isExporting ? "bg-gray-500 cursor-not-allowed" : "bg-teal-600 hover:bg-teal-700"}`}
-                >
-                    {isExporting ? "Exporting..." : "Export Excel"}
                 </button>
 
                 <button

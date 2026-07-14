@@ -2,8 +2,9 @@
 import React, { useEffect, useState, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Disclosure } from "@headlessui/react";
-import { ChevronDownIcon, CloudArrowUpIcon } from "@heroicons/react/24/outline";
+import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import toast from "react-hot-toast";
+import AuthorizedSignatorySelect from "../../AuthorizedSignatorySelect";
 import * as XLSX from "xlsx";
 
 import Standards from "../../Standards";
@@ -136,6 +137,7 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl, qaTes
     humidity: "",
     engineerNameRPId: "",
     rpId: "",
+        authorizedSignatory: "",
     category: "",
   });
 
@@ -1421,6 +1423,7 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl, qaTes
             humidity: res.data.humidity || prev.humidity,
             engineerNameRPId: res.data.engineerNameRPId || prev.engineerNameRPId,
             rpId: res.data.rpId || prev.rpId,
+                        authorizedSignatory: (typeof res.data.authorizedSignatory === "object" ? res.data.authorizedSignatory?._id : res.data.authorizedSignatory) || prev.authorizedSignatory || "",
           }));
           if (res.data.testDate) setMinIssueDate(res.data.testDate);
 
@@ -1725,9 +1728,51 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl, qaTes
 
   return (
     <div className="max-w-6xl mx-auto bg-white shadow-md rounded-xl p-8 mt-6">
-      <h1 className="text-2xl font-bold text-gray-800 mb-6 text-center">
+      <h1 className="text-3xl font-bold text-center text-gray-800 mb-8">
         Generate QA Test Report - BMD/DEXA
       </h1>
+
+      {/* Excel Actions — same layout as Dental Cone Beam CT */}
+      <div className="flex flex-wrap gap-4 justify-center mb-8 print:hidden">
+        <div className="relative">
+          <input
+            ref={fileInputRef}
+            type="file"
+            id="excel-upload-bmd"
+            accept=".xlsx, .xls ,.csv"
+            onChange={handleCSVUpload}
+            className="hidden"
+            disabled={csvUploading}
+          />
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={csvUploading}
+            className="px-6 py-2 bg-teal-600 text-white font-semibold rounded-lg hover:bg-teal-700 transition shadow disabled:opacity-50"
+          >
+            {csvUploading ? "Uploading..." : "Import Excel Data"}
+          </button>
+        </div>
+        <button
+          type="button"
+          onClick={handleExportSavedData}
+          disabled={isExporting || csvUploading}
+          className={`px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition shadow ${(isExporting || csvUploading) ? "opacity-50 cursor-not-allowed" : ""}`}
+        >
+          {isExporting ? "Exporting..." : "Export Excel"}
+        </button>
+      </div>
+      {csvFileUrl && (
+        <p className="text-sm text-gray-600 text-center mb-6">
+          {csvUploading ? (
+            <span className="text-blue-600">Auto-loading Excel from Service Details...</span>
+          ) : (
+            <>
+              File loaded from: <span className="font-mono text-xs">{csvFileUrl}</span>
+            </>
+          )}
+        </p>
+      )}
 
       {/* 1. Customer Name & Address */}
       <section className="mb-8">
@@ -1866,7 +1911,23 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl, qaTes
         </div>
       </section>
 
-      <Standards standards={tools} />
+      
+            <section className="mb-8">
+                <h2 className="text-lg font-semibold text-blue-700 mb-3">Authorized Signatory</h2>
+                <div className="max-w-xl">
+                    <AuthorizedSignatorySelect
+                        value={formData.authorizedSignatory}
+                        onChange={(selected) =>
+                            setFormData((prev) => ({
+                                ...prev,
+                                authorizedSignatory: selected?._id || "",
+                            }))
+                        }
+                    />
+                </div>
+            </section>
+
+            <Standards standards={tools} />
       <Notes initialNotes={notes} onChange={setNotes} />
 
       {/* Save & View Report Buttons */}
@@ -1891,14 +1952,6 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl, qaTes
         </button>
         <button
           type="button"
-          onClick={handleExportSavedData}
-          disabled={isExporting}
-          className={`px-4 py-2 rounded-md text-white ${isExporting ? "bg-gray-400 cursor-not-allowed" : "bg-teal-600 hover:bg-teal-700"}`}
-        >
-          {isExporting ? "Exporting..." : "Export Excel"}
-        </button>
-        <button
-          type="button"
           className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
           onClick={async () => {
             const unsaved = await getUnsavedTestNames();
@@ -1915,57 +1968,6 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl, qaTes
         >
           View Generated Report
         </button>
-      </div>
-
-      {/* CSV Upload Section */}
-      <div className="mt-8 mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-lg font-semibold text-blue-900 mb-2">Upload Test Data from Excel/CSV</h3>
-            <p className="text-sm text-blue-700">
-              {csvFileUrl ? (
-                <>
-                  <span className="font-semibold text-green-700">✓ File detected from Service Details. Auto-loading...</span>
-                  {csvUploading && <span className="ml-2 text-blue-600">(Loading data...)</span>}
-                </>
-              ) : (
-                'Upload a CSV or Excel file to automatically fill in test data. Download the template below for reference.'
-              )}
-            </p>
-          </div>
-          <div className="flex gap-3">
-            <div className="flex gap-2">
-              {/* <a
-                href="/templates/BMD_Test_Data_Template.csv"
-                download="BMD_Test_Data_Template.csv"
-                className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors flex items-center gap-2"
-              >
-                <CloudArrowUpIcon className="w-5 h-5" />
-                Download Template (With Timer)
-              </a> */}
-              {/* <a
-                href="/templates/BMD_Test_Data_Template_NoTimer.csv"
-                download="BMD_Test_Data_Template_NoTimer.csv"
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors flex items-center gap-2"
-              >
-                <CloudArrowUpIcon className="w-5 h-5" />
-                Download Template (No Timer)
-              </a> */}
-            </div>
-            <label className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors cursor-pointer flex items-center gap-2">
-              <CloudArrowUpIcon className="w-5 h-5" />
-              {csvUploading ? 'Uploading...' : 'Upload Excel'}
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".csv,.xlsx,.xls"
-                onChange={handleCSVUpload}
-                className="hidden"
-                disabled={csvUploading}
-              />
-            </label>
-          </div>
-        </div>
       </div>
 
       <div className="mt-12">

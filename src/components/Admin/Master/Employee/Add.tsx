@@ -366,64 +366,7 @@ const AddEngineer = () => {
                             </div>
                         )}
 
-                        {/* ---------- Documents (Engineer only) ---------- */}
-                        {values.technicianType === 'Engineer' && (
-                            <div className="panel">
-                                <h5 className="font-semibold text-lg mb-4">Upload Documents</h5>
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                                    {/* doc1 */}
-                                    <div>
-                                        <label htmlFor="doc1" className="block mb-1">
-                                            Document 1
-                                        </label>
-                                        <input
-                                            id="doc1"
-                                            type="file"
-                                            accept="image/*,application/pdf"
-                                            className="form-input"
-                                            onChange={(e) => {
-                                                const file = e.currentTarget.files?.[0] ?? null;
-                                                setFieldValue('doc1', file);
-                                            }}
-                                        />
-                                    </div>
-
-                                    {/* doc2 */}
-                                    <div>
-                                        <label htmlFor="doc2" className="block mb-1">
-                                            Document 2
-                                        </label>
-                                        <input
-                                            id="doc2"
-                                            type="file"
-                                            accept="image/*,application/pdf"
-                                            className="form-input"
-                                            onChange={(e) => {
-                                                const file = e.currentTarget.files?.[0] ?? null;
-                                                setFieldValue('doc2', file);
-                                            }}
-                                        />
-                                    </div>
-
-                                    {/* doc3 */}
-                                    <div>
-                                        <label htmlFor="doc3" className="block mb-1">
-                                            Document 3
-                                        </label>
-                                        <input
-                                            id="doc3"
-                                            type="file"
-                                            accept="image/*,application/pdf"
-                                            className="form-input"
-                                            onChange={(e) => {
-                                                const file = e.currentTarget.files?.[0] ?? null;
-                                                setFieldValue('doc3', file);
-                                            }}
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                        )}
+                       
 
                         {/* ---------- Password (Office Staff only) ---------- */}
                         {values.technicianType === 'office-staff' && (
@@ -452,5 +395,5 @@ const AddEngineer = () => {
         </>
     );
 };
-
+    
 export default AddEngineer;

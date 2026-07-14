@@ -78,6 +78,8 @@ interface ReportData {
   notes: Note[];
   qrCode?: string;
   category: string;
+  authorizedSignatoryName?: string;
+  authorizedSignatorySignature?: string;
   // Mammography test IDs
   accuracyOfOperatingPotentialId?: string | null;
   accuracyOfIrradiationTimeId?: string | null;
@@ -421,6 +423,14 @@ const ViewServiceReportMammography: React.FC = () => {
             qrCode: data.qrCode || "",
 
             category: data.category || "N/A",
+            authorizedSignatoryName:
+              (typeof data.authorizedSignatory === "object" && data.authorizedSignatory?.name) ||
+              data.authorizedSignatoryName ||
+              "",
+            authorizedSignatorySignature:
+              (typeof data.authorizedSignatory === "object" && data.authorizedSignatory?.signature) ||
+              data.authorizedSignatorySignature ||
+              "",
             // Extract test IDs from populated objects
             accuracyOfOperatingPotentialId: data.AccuracyOfOperatingPotentialMammography?._id || null,
             accuracyOfIrradiationTimeId: data.AccuracyOfIrradiationTimeMammography?._id || null,
@@ -2304,6 +2314,8 @@ const ViewServiceReportMammography: React.FC = () => {
               customerCity={placeValue}
               qrCode={report.qrCode}
               engineerName={report.engineerNameRPId}
+              authorizedSignatoryName={report.authorizedSignatoryName}
+              authorizedSignatorySignature={report.authorizedSignatorySignature}
             />
           </div>
         </ReportPage>

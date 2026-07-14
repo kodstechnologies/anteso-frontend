@@ -77,6 +77,8 @@ interface ReportData {
   notes?: Note[];
   category: string;
   reportULRNumber?: string;
+  authorizedSignatoryName?: string;
+  authorizedSignatorySignature?: string;
   // Test documents
   accuracyOfOperatingPotentialFixedRadioFluoro?: any;
   OutputConsistencyForFixedRadioFlouro?: any;
@@ -267,6 +269,14 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
             toolsUsed: mergedTools,
             qrCode: data.qrCode || "",
             notes: data.notes || defaultNotes,
+            authorizedSignatoryName:
+              (typeof data.authorizedSignatory === "object" && data.authorizedSignatory?.name) ||
+              data.authorizedSignatoryName ||
+              "",
+            authorizedSignatorySignature:
+              (typeof data.authorizedSignatory === "object" && data.authorizedSignatory?.signature) ||
+              data.authorizedSignatorySignature ||
+              "",
           });
           if (resolvedUlr) setUlrNumber(resolvedUlr);
 
@@ -1974,6 +1984,8 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
               customerCity={placeValue}
               qrCode={report.qrCode}
               engineerName={report.engineerNameRPId}
+              authorizedSignatoryName={report.authorizedSignatoryName}
+              authorizedSignatorySignature={report.authorizedSignatorySignature}
             />
           </div>
         </ReportPage>

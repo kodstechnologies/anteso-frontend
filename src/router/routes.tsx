@@ -12,6 +12,7 @@ import Tools from '../pages/Admin/Master/Tools';
 // import DealersAndManufacturers from '../pages/Admin/Master/DealersAndManufacturers';
 import Services from '../pages/Admin/Master/Services';
 import CourierCompanies from '../pages/Admin/Master/CourierCompanies';
+import AuthorizedSignatory from '../pages/Admin/Master/AuthorizedSignatory';
 import AddState from '../components/Admin/Master/State/Add';
 import EditState from '../components/Admin/Master/State/Edit';
 import AddCity from '../components/Admin/Master/City/Add';
@@ -32,6 +33,9 @@ import AddServices from '../components/Admin/Master/Services/Add';
 import EditServices from '../components/Admin/Master/Services/Edit';
 import AddCourierCompanie from '../components/Admin/Master/CourierCompanies/Add';
 import EditCourierCompanie from '../components/Admin/Master/CourierCompanies/Edit';
+import AddAuthorizedSignatory from '../components/Admin/Master/AuthorizedSignatory/Add';
+import EditAuthorizedSignatory from '../components/Admin/Master/AuthorizedSignatory/Edit';
+import ViewAuthorizedSignatory from '../components/Admin/Master/AuthorizedSignatory/View';
 import Enquiry from '../pages/Admin/Enquiry';
 import AddEnquiry from '../components/Admin/Enquiry/Add';
 import EditEnquiry from '../components/Admin/Enquiry/Edit';
@@ -635,6 +639,38 @@ const routes = [
         element: (
             <AdminProtected>
                 <EditCourierCompanie />
+            </AdminProtected>
+        ),
+    },
+    {
+        path: '/admin/authorized-signatory',
+        element: (
+            <AdminProtected>
+                <AuthorizedSignatory />
+            </AdminProtected>
+        ),
+    },
+    {
+        path: '/admin/authorized-signatory/view/:id',
+        element: (
+            <AdminProtected>
+                <ViewAuthorizedSignatory />
+            </AdminProtected>
+        ),
+    },
+    {
+        path: '/admin/authorized-signatory/add',
+        element: (
+            <AdminProtected>
+                <AddAuthorizedSignatory />
+            </AdminProtected>
+        ),
+    },
+    {
+        path: '/admin/authorized-signatory/edit/:id',
+        element: (
+            <AdminProtected>
+                <EditAuthorizedSignatory />
             </AdminProtected>
         ),
     },

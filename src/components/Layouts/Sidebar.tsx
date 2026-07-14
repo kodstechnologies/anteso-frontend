@@ -137,6 +137,9 @@ const Sidebar = () => {
                                                 )}
 
                                                 <li><NavLink to="/admin/courier-companies">{t('Courier Companies')}</NavLink></li>
+                                                {userType === 'admin' && (
+                                                    <li><NavLink to="/admin/authorized-signatory">{t('Authorized Signatory')}</NavLink></li>
+                                                )}
                                             </ul>
                                         </AnimateHeight>
                                     </li>

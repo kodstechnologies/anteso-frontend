@@ -342,35 +342,6 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
 
     return (
         <div className="p-6 max-w-full overflow-x-auto space-y-10">
-            {/* Save / Edit Button */}
-            <div className="flex justify-end">
-                <button
-                    onClick={isSaved ? enableEditing : saveTest}
-                    disabled={isSaving}
-                    className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition ${isSaved
-                        ? "bg-gray-600 text-white hover:bg-gray-700"
-                        : "bg-green-600 text-white hover:bg-green-700"
-                        } disabled:opacity-50 disabled:cursor-not-allowed`}
-                >
-                    {isSaving ? (
-                        <>
-                            <Loader2 className="w-5 h-5 animate-spin" />
-                            Saving...
-                        </>
-                    ) : isSaved ? (
-                        <>
-                            <Edit3 className="w-5 h-5 " />
-                            Edit
-                        </>
-                    ) : (
-                        <>
-                            <Save className="w-5 h-5" />
-                            Save Test
-                        </>
-                    )}
-                </button>
-            </div>
-
             {/* Disable all inputs when in saved (read-only) mode */}
             <div className={isSaved ? "pointer-events-none opacity-75" : ""}>
                 {/* Your beautiful table & UI (unchanged) */}
@@ -577,6 +548,34 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
                         </div>
                     </div>
                 </div>
+            </div>
+
+            <div className="flex justify-end mt-6">
+                <button
+                    onClick={isSaved ? enableEditing : saveTest}
+                    disabled={isSaving}
+                    className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition ${isSaved
+                        ? "bg-gray-600 text-white hover:bg-gray-700"
+                        : "bg-green-600 text-white hover:bg-green-700"
+                        } disabled:opacity-50 disabled:cursor-not-allowed`}
+                >
+                    {isSaving ? (
+                        <>
+                            <Loader2 className="w-5 h-5 animate-spin" />
+                            Saving...
+                        </>
+                    ) : isSaved ? (
+                        <>
+                            <Edit3 className="w-5 h-5 " />
+                            Edit
+                        </>
+                    ) : (
+                        <>
+                            <Save className="w-5 h-5" />
+                            Save Test
+                        </>
+                    )}
+                </button>
             </div>
         </div>
     );

@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { Disclosure } from "@headlessui/react";
 import { ChevronDownIcon, CloudArrowUpIcon } from "@heroicons/react/24/outline";
 import toast from "react-hot-toast";
+import AuthorizedSignatorySelect from "../../AuthorizedSignatorySelect";
 import * as XLSX from "xlsx";
 import {
   getDetails,
@@ -118,6 +119,7 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
     humidity: "",
     engineerNameRPId: "",
     rpId: "",
+        authorizedSignatory: "",
     category: "",
   });
 
@@ -295,6 +297,7 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
             humidity: res.data.humidity || prev.humidity,
             engineerNameRPId: res.data.engineerNameRPId || prev.engineerNameRPId,
             rpId: pickRpId(res.data) || prev.rpId,
+            authorizedSignatory: (typeof res.data.authorizedSignatory === "object" ? res.data.authorizedSignatory?._id : res.data.authorizedSignatory) || prev.authorizedSignatory || "",
           }));
           if (res.data.testDate) setMinIssueDate(res.data.testDate);
           if (res.data.notes && Array.isArray(res.data.notes) && res.data.notes.length > 0) {
@@ -1917,7 +1920,23 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
         </div>
       </section>
 
-      <Standards standards={tools} />
+      
+            <section className="mb-8">
+                <h2 className="text-lg font-semibold text-blue-700 mb-3">Authorized Signatory</h2>
+                <div className="max-w-xl">
+                    <AuthorizedSignatorySelect
+                        value={formData.authorizedSignatory}
+                        onChange={(selected) =>
+                            setFormData((prev) => ({
+                                ...prev,
+                                authorizedSignatory: selected?._id || "",
+                            }))
+                        }
+                    />
+                </div>
+            </section>
+
+            <Standards standards={tools} />
       <Notes initialNotes={notes} onChange={setNotes} />
 
       {/* ── Save / View buttons ── */}

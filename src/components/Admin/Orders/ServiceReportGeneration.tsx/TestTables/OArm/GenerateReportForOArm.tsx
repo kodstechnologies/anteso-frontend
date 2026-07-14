@@ -2,8 +2,9 @@
 import React, { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Disclosure } from "@headlessui/react";
-import { ChevronDownIcon, CloudArrowUpIcon } from "@heroicons/react/24/outline";
+import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import toast from "react-hot-toast";
+import AuthorizedSignatorySelect from "../../AuthorizedSignatorySelect";
 import * as XLSX from "xlsx";
 
 import Standards from "../../Standards";
@@ -139,6 +140,7 @@ const OArm: React.FC<OArmProps> = ({ serviceId, csvFileUrl }) => {
     humidity: "",
     engineerNameRPId: "",
     rpId: "",
+        authorizedSignatory: "",
   });
   const [minIssueDate, setMinIssueDate] = useState(""); // QA test submitted date; issue date must be >= this
   useEffect(() => {
@@ -267,6 +269,7 @@ const OArm: React.FC<OArmProps> = ({ serviceId, csvFileUrl }) => {
             humidity: res.data.humidity || prev.humidity,
             engineerNameRPId: res.data.engineerNameRPId || prev.engineerNameRPId,
             rpId: res.data.rpId || prev.rpId,
+                        authorizedSignatory: (typeof res.data.authorizedSignatory === "object" ? res.data.authorizedSignatory?._id : res.data.authorizedSignatory) || prev.authorizedSignatory || "",
           }));
           if (res.data.testDate) setMinIssueDate(res.data.testDate);
         }
@@ -886,6 +889,35 @@ const OArm: React.FC<OArmProps> = ({ serviceId, csvFileUrl }) => {
         Generate QA Test Report - O-Arm
       </h1>
 
+      {/* Excel Actions */}
+      <div className="flex flex-wrap gap-4 justify-center mb-8">
+        <div className="relative">
+          <input
+            ref={fileInputRef}
+            type="file"
+            id="excel-upload-oarm"
+            accept=".xlsx,.xls,.csv"
+            onChange={handleCSVUpload}
+            className="hidden"
+          />
+          <button
+            type="button"
+            onClick={() => document.getElementById("excel-upload-oarm")?.click()}
+            className="px-6 py-2 bg-teal-600 text-white font-semibold rounded-lg hover:bg-teal-700 transition shadow"
+          >
+            {csvUploading ? "Uploading..." : "Import Excel Data"}
+          </button>
+        </div>
+        <button
+          type="button"
+          onClick={handleExportToExcel}
+          disabled={csvUploading}
+          className={`px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition shadow ${csvUploading ? "opacity-50 cursor-not-allowed" : ""}`}
+        >
+          {csvUploading ? "Exporting..." : "Export Excel"}
+        </button>
+      </div>
+
       {/* 1. Customer Name & Address */}
       <section className="mb-8">
         <h2 className="text-lg font-semibold text-blue-700 mb-3">
@@ -1008,57 +1040,27 @@ const OArm: React.FC<OArmProps> = ({ serviceId, csvFileUrl }) => {
         </div>
       </section>
 
-      {/* CSV/Excel Upload Section */}
-      <section className="mb-10 bg-blue-50 p-6 rounded-lg border-2 border-blue-200">
-        <h2 className="text-xl font-semibold text-blue-700 mb-4">Upload Test Data (CSV/Excel)</h2>
-        <div className="flex flex-col gap-4">
-          <div className="flex items-center gap-4">
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".csv,.xlsx,.xls"
-              onChange={handleCSVUpload}
-              className="hidden"
-              id="csv-upload-input-oarm"
-            />
-            <label
-              htmlFor="csv-upload-input-oarm"
-              className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition cursor-pointer"
-            >
-              <CloudArrowUpIcon className="w-5 h-5" />
-              {csvUploading ? 'Uploading...' : 'Upload CSV/Excel File'}
-            </label>
-            <a
-              href={hasTimer === false
-                ? "/templates/OArm_Test_Data_Template_NoTimer.xlsx"
-                : "/templates/OArm_Test_Data_Template_WithTimer.xlsx"}
-              download
-              className="px-6 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition"
-            >
-              Download Template
-            </a>
-          </div>
-          {csvFileUrl && (
-            <p className="text-sm text-gray-600">
-              File loaded from: <span className="font-mono text-xs">{csvFileUrl}</span>
-            </p>
-          )}
-        </div>
-      </section>
+      
+            <section className="mb-8">
+                <h2 className="text-lg font-semibold text-blue-700 mb-3">Authorized Signatory</h2>
+                <div className="max-w-xl">
+                    <AuthorizedSignatorySelect
+                        value={formData.authorizedSignatory}
+                        onChange={(selected) =>
+                            setFormData((prev) => ({
+                                ...prev,
+                                authorizedSignatory: selected?._id || "",
+                            }))
+                        }
+                    />
+                </div>
+            </section>
 
-      <Standards standards={tools} />
+            <Standards standards={tools} />
       <Notes />
 
-      {/* Save Header, Export Excel, and View Report Buttons */}
+      {/* Save Header and View Report Buttons */}
       <div className="mt-8 flex flex-wrap justify-end gap-4 items-center">
-        <button
-          type="button"
-          onClick={handleExportToExcel}
-          disabled={csvUploading}
-          className="flex items-center gap-2 px-4 py-3 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 border border-blue-200 text-sm font-medium disabled:opacity-50"
-        >
-          {csvUploading ? "Exporting..." : "Export Excel"}
-        </button>
         <button
           type="button"
           onClick={handleSaveHeader}

@@ -4,8 +4,8 @@ import { useNavigate } from "react-router-dom";
 import { Disclosure } from "@headlessui/react";
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import toast from "react-hot-toast";
+import AuthorizedSignatorySelect from "../../AuthorizedSignatorySelect";
 import * as XLSX from "xlsx";
-import { CloudArrowUpIcon } from "@heroicons/react/24/outline";
 
 import Standards from "../../Standards";
 import Notes from "../../Notes";
@@ -134,10 +134,12 @@ const CArm: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
     humidity: "",
     engineerNameRPId: "",
     rpId: "",
+        authorizedSignatory: "",
   });
 
   const [minIssueDate, setMinIssueDate] = useState(""); // QA test submitted date; issue date must be >= this
   const [csvUploading, setCsvUploading] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [csvDataForComponents, setCsvDataForComponents] = useState<any>({});
   const [refreshKey, setRefreshKey] = useState(0);
   const [csvDataVersion, setCsvDataVersion] = useState(0);
@@ -262,6 +264,7 @@ const CArm: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
             humidity: res.data.humidity || prev.humidity,
             engineerNameRPId: res.data.engineerNameRPId || prev.engineerNameRPId,
             rpId: res.data.rpId || prev.rpId,
+                        authorizedSignatory: (typeof res.data.authorizedSignatory === "object" ? res.data.authorizedSignatory?._id : res.data.authorizedSignatory) || prev.authorizedSignatory || "",
           }));
           if (res.data.testDate) setMinIssueDate(res.data.testDate);
 
@@ -438,7 +441,7 @@ const CArm: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
     }
     try {
       toast.loading("Exporting data to Excel...", { id: "export-excel-carm" });
-      setCsvUploading(true);
+      setIsExporting(true);
       const exportData: Record<string, unknown> = {};
       try {
         const headerRes = await getReportHeaderForCArm(serviceId);
@@ -517,7 +520,7 @@ const CArm: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
       console.error("Error exporting to Excel:", error);
       toast.error("Failed to export data: " + (error?.message || "Unknown error"), { id: "export-excel-carm" });
     } finally {
-      setCsvUploading(false);
+      setIsExporting(false);
     }
   };
 
@@ -1256,9 +1259,40 @@ const CArm: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
 
   return (
     <div className="max-w-6xl mx-auto bg-white shadow-md rounded-xl p-8 mt-6">
-      <h1 className="text-2xl font-bold text-gray-800 mb-6 text-center">
+      <h1 className="text-3xl font-bold text-center text-gray-800 mb-8">
         Generate QA Test Report - C-Arm
       </h1>
+
+      {/* Excel Actions — same layout as Dental Cone Beam CT */}
+      <div className="flex flex-wrap gap-4 justify-center mb-8 print:hidden">
+        <div className="relative">
+          <input
+            ref={fileInputRef}
+            type="file"
+            id="excel-upload-carm"
+            accept=".xlsx, .xls ,.csv"
+            onChange={handleCSVUpload}
+            className="hidden"
+            disabled={csvUploading}
+          />
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={csvUploading}
+            className="px-6 py-2 bg-teal-600 text-white font-semibold rounded-lg hover:bg-teal-700 transition shadow disabled:opacity-50"
+          >
+            {csvUploading ? "Uploading..." : "Import Excel Data"}
+          </button>
+        </div>
+        <button
+          type="button"
+          onClick={handleExportToExcel}
+          disabled={isExporting || csvUploading}
+          className={`px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition shadow ${(isExporting || csvUploading) ? "opacity-50 cursor-not-allowed" : ""}`}
+        >
+          {isExporting ? "Exporting..." : "Export Excel"}
+        </button>
+      </div>
 
       {/* 1. Customer Name & Address */}
       <section className="mb-8">
@@ -1382,19 +1416,27 @@ const CArm: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
         </div>
       </section>
 
-      <Standards standards={tools} />
+      
+            <section className="mb-8">
+                <h2 className="text-lg font-semibold text-blue-700 mb-3">Authorized Signatory</h2>
+                <div className="max-w-xl">
+                    <AuthorizedSignatorySelect
+                        value={formData.authorizedSignatory}
+                        onChange={(selected) =>
+                            setFormData((prev) => ({
+                                ...prev,
+                                authorizedSignatory: selected?._id || "",
+                            }))
+                        }
+                    />
+                </div>
+            </section>
+
+            <Standards standards={tools} />
       <Notes />
 
-      {/* Save Header, Export Excel, and View Report Buttons */}
+      {/* Save Header and View Report Buttons */}
       <div className="mt-8 flex flex-wrap justify-end gap-4 items-center">
-        <button
-          type="button"
-          onClick={handleExportToExcel}
-          disabled={csvUploading}
-          className="flex items-center gap-2 px-4 py-3 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 border border-blue-200 text-sm font-medium disabled:opacity-50"
-        >
-          {csvUploading ? "Exporting..." : "Export Excel"}
-        </button>
         <button
           type="button"
           onClick={handleSaveHeader}
@@ -1434,33 +1476,6 @@ const CArm: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
         >
           View Generated Report
         </button>
-      </div>
-
-      {/* CSV/Excel Upload Section */}
-      <div className="mt-12 mb-8 p-6 bg-blue-50 rounded-lg border-2 border-blue-200">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h3 className="text-lg font-semibold text-blue-900 mb-2">Upload Test Data</h3>
-            <p className="text-sm text-blue-700">
-              Upload a CSV or Excel file to auto-fill test data. Download templates below.
-            </p>
-          </div>
-          <div className="flex gap-3">
-        
-            <label className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors cursor-pointer flex items-center gap-2 text-sm">
-              <CloudArrowUpIcon className="w-5 h-5" />
-              {csvUploading ? 'Uploading...' : 'Upload Excel'}
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".csv,.xlsx,.xls"
-                onChange={handleCSVUpload}
-                className="hidden"
-                disabled={csvUploading}
-              />
-            </label>
-          </div>
-        </div>
       </div>
 
       {/* QA Tests - Conditional Linearity */}

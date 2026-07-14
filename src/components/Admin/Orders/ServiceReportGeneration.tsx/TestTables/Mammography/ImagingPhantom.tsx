@@ -270,46 +270,9 @@ const ImagingPhantom: React.FC<Props> = ({ serviceId, onRefresh, refreshKey, ini
 
   return (
     <div className="p-6 max-w-full mx-auto space-y-10">
-      {/* Header + Save Button */}
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-800">
-          Mammography Phantom Image Quality Test
-        </h2>
-
-        <div className="flex items-center gap-4">
-          {isSaving && <span className="text-sm text-gray-500">Saving...</span>}
-
-          {isViewMode && (
-            <button
-              onClick={toggleEdit}
-              className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700"
-            >
-              <Edit3 className="w-4 h-4" />
-              Edit
-            </button>
-          )}
-
-          {!isViewMode && (
-            <button
-              onClick={handleSave}
-              disabled={isSaving}
-              className="flex items-center gap-2 px-6 py-2.5 bg-teal-600 text-white rounded-lg hover:bg-teal-700 disabled:opacity-50"
-            >
-              {isSaving ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <Save className="w-4 h-4" />
-                  {buttonText} Test
-                </>
-              )}
-            </button>
-          )}
-        </div>
-      </div>
+      <h2 className="text-2xl font-bold text-gray-800">
+        Mammography Phantom Image Quality Test
+      </h2>
 
       {/* Phantom Table */}
       <div className="bg-white shadow-md rounded-lg overflow-hidden">
@@ -468,6 +431,42 @@ const ImagingPhantom: React.FC<Props> = ({ serviceId, onRefresh, refreshKey, ini
               {isViewMode ? (remark || '—') : (calculatedRemark || '—')}
             </span>
           </div>
+        </div>
+      </div>
+
+      <div className="flex justify-end mt-6">
+        <div className="flex items-center gap-4">
+          {isSaving && <span className="text-sm text-gray-500">Saving...</span>}
+
+          {isViewMode && (
+            <button
+              onClick={toggleEdit}
+              className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700"
+            >
+              <Edit3 className="w-4 h-4" />
+              Edit
+            </button>
+          )}
+
+          {!isViewMode && (
+            <button
+              onClick={handleSave}
+              disabled={isSaving}
+              className="flex items-center gap-2 px-6 py-2.5 bg-teal-600 text-white rounded-lg hover:bg-teal-700 disabled:opacity-50"
+            >
+              {isSaving ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4" />
+                  {buttonText} Test
+                </>
+              )}
+            </button>
+          )}
         </div>
       </div>
     </div>

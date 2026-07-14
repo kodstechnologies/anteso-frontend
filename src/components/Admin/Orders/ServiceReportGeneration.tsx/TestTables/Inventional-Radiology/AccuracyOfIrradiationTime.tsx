@@ -356,8 +356,14 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
         </div>
       </div>
 
+      {/* Formula Info */}
+      <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-900">
+        <p className="font-medium mb-1">Formula:</p>
+        <p className="font-mono text-xs">% Error = |(Measured − Set) / Set| × 100</p>
+      </div>
+
       {/* Save/Edit Button */}
-      <div className="flex justify-end gap-3">
+      <div className="flex justify-end mt-6">
         {isViewMode ? (
           <button
             onClick={() => setIsEditing(true)}
@@ -376,12 +382,6 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
             {saving ? "Saving..." : testId ? "Update Test Data" : "Save Test Data"}
           </button>
         )}
-      </div>
-
-      {/* Formula Info */}
-      <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-900">
-        <p className="font-medium mb-1">Formula:</p>
-        <p className="font-mono text-xs">% Error = |(Measured − Set) / Set| × 100</p>
       </div>
     </div>
   );

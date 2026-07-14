@@ -1128,6 +1128,87 @@ export const getAllCourier = async () => {
         );
     }
 }
+
+// Authorized Signatory
+export const createAuthorizedSignatory = async (payload: FormData | { name: string; signature?: string }) => {
+    try {
+        const token = Cookies.get('accessToken');
+        const res = await api.post('/authorized-signatory/create', payload, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+                ...(payload instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
+            },
+        });
+        return res.data;
+    } catch (error: any) {
+        throw new Error(
+            error?.response?.data?.message || 'Failed to create authorized signatory'
+        );
+    }
+};
+
+export const getAllAuthorizedSignatories = async () => {
+    try {
+        const token = Cookies.get('accessToken');
+        const res = await api.get('/authorized-signatory/get-all', {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        return res.data;
+    } catch (error: any) {
+        throw new Error(
+            error?.response?.data?.message || 'Failed to fetch authorized signatories'
+        );
+    }
+};
+
+export const getAuthorizedSignatoryById = async (id: string) => {
+    try {
+        const token = Cookies.get('accessToken');
+        const res = await api.get(`/authorized-signatory/get-by-id/${id}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        return res.data;
+    } catch (error: any) {
+        throw new Error(
+            error?.response?.data?.message || 'Failed to fetch authorized signatory'
+        );
+    }
+};
+
+export const updateAuthorizedSignatory = async (
+    id: string,
+    payload: FormData | { name?: string; signature?: string }
+) => {
+    try {
+        const token = Cookies.get('accessToken');
+        const res = await api.put(`/authorized-signatory/update/${id}`, payload, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+                ...(payload instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
+            },
+        });
+        return res.data;
+    } catch (error: any) {
+        throw new Error(
+            error?.response?.data?.message || 'Failed to update authorized signatory'
+        );
+    }
+};
+
+export const deleteAuthorizedSignatory = async (id: string) => {
+    try {
+        const token = Cookies.get('accessToken');
+        const res = await api.delete(`/authorized-signatory/delete/${id}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        return res.data;
+    } catch (error: any) {
+        throw new Error(
+            error?.response?.data?.message || 'Failed to delete authorized signatory'
+        );
+    }
+};
+
 export const addLeave = async (payload: any) => {
     console.log("🚀 ~ addLeave ~ payload:", payload)
     try {

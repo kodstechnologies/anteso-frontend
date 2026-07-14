@@ -200,31 +200,7 @@ const MeasureMaxRadiationLevel: React.FC<Props> = ({ serviceId, testId: propTest
 
     return (
         <div className="w-full space-y-6">
-            <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-bold text-gray-800">Measure Maximum Radiation Level</h2>
-                <button
-                    onClick={isViewOnly ? startEditing : handleSave}
-                    disabled={isSaving}
-                    className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${isSaving
-                        ? 'bg-gray-400 cursor-not-allowed'
-                        : isViewOnly
-                            ? 'bg-orange-600 hover:bg-orange-700'
-                            : 'bg-teal-600 hover:bg-teal-700 focus:ring-4 focus:ring-teal-300'
-                        }`}
-                >
-                    {isSaving ? (
-                        <>
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                            Saving...
-                        </>
-                    ) : (
-                        <>
-                            <ButtonIcon className="w-4 h-4" />
-                            {buttonText}
-                        </>
-                    )}
-                </button>
-            </div>
+            <h2 className="text-2xl font-bold text-gray-800">Measure Maximum Radiation Level</h2>
 
             <div className="bg-white rounded-lg border border-gray-300 overflow-hidden">
                 <table className="min-w-full divide-y divide-gray-200">
@@ -325,6 +301,31 @@ const MeasureMaxRadiationLevel: React.FC<Props> = ({ serviceId, testId: propTest
                         <strong>1 mSv in a year (2 mR/week)</strong>
                     </li>
                 </ul>
+            </div>
+
+            <div className="flex justify-end mt-6">
+                <button
+                    onClick={isViewOnly ? startEditing : handleSave}
+                    disabled={isSaving}
+                    className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${isSaving
+                        ? 'bg-gray-400 cursor-not-allowed'
+                        : isViewOnly
+                            ? 'bg-orange-600 hover:bg-orange-700'
+                            : 'bg-teal-600 hover:bg-teal-700 focus:ring-4 focus:ring-teal-300'
+                        }`}
+                >
+                    {isSaving ? (
+                        <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            Saving...
+                        </>
+                    ) : (
+                        <>
+                            <ButtonIcon className="w-4 h-4" />
+                            {buttonText}
+                        </>
+                    )}
+                </button>
             </div>
         </div>
     );

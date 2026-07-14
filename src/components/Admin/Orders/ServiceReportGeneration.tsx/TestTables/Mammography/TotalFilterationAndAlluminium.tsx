@@ -402,37 +402,9 @@ const TotalFiltrationAndAluminium: React.FC<{
 
   return (
     <div className="p-6 max-w-full mx-auto space-y-10">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-800">
-          Total Filtration & Aluminium Equivalence (HVT) - Mammography
-        </h2>
-
-        <div className="flex items-center gap-4">
-          {isSaving && <span className="text-sm text-gray-500">Saving...</span>}
-
-          {hasSaved && !isEditing && (
-            <button
-              onClick={toggleEdit}
-              className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700"
-            >
-              <Edit3 className="w-4 h-4" />
-              Edit
-            </button>
-          )}
-
-          {(isEditing || !hasSaved) && (
-            <button
-              onClick={saveData}
-              disabled={isSaving || !recommendedValuesValidation.ok}
-              className="flex items-center gap-2 px-6 py-2.5 bg-teal-600 text-white rounded-lg hover:bg-teal-700 disabled:opacity-50"
-            >
-              <Save className="w-4 h-4" />
-              {isSaving ? 'Saving...' : testId ? 'Update' : 'Save'} Test
-            </button>
-          )}
-        </div>
-      </div>
+      <h2 className="text-2xl font-bold text-gray-800">
+        Total Filtration & Aluminium Equivalence (HVT) - Mammography
+      </h2>
 
       {/* Anode/Filter & Added Filter */}
       <div className="bg-white shadow-md rounded-lg overflow-hidden border border-gray-200">
@@ -638,6 +610,33 @@ const TotalFiltrationAndAluminium: React.FC<{
             </span>{' '}
             kVp
           </p>
+        </div>
+      </div>
+
+      <div className="flex justify-end mt-6">
+        <div className="flex items-center gap-4">
+          {isSaving && <span className="text-sm text-gray-500">Saving...</span>}
+
+          {hasSaved && !isEditing && (
+            <button
+              onClick={toggleEdit}
+              className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700"
+            >
+              <Edit3 className="w-4 h-4" />
+              Edit
+            </button>
+          )}
+
+          {(isEditing || !hasSaved) && (
+            <button
+              onClick={saveData}
+              disabled={isSaving || !recommendedValuesValidation.ok}
+              className="flex items-center gap-2 px-6 py-2.5 bg-teal-600 text-white rounded-lg hover:bg-teal-700 disabled:opacity-50"
+            >
+              <Save className="w-4 h-4" />
+              {isSaving ? 'Saving...' : testId ? 'Update' : 'Save'} Test
+            </button>
+          )}
         </div>
       </div>
 

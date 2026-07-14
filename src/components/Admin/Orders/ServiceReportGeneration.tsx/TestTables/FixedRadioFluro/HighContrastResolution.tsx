@@ -139,33 +139,7 @@ const HighContrastResolution: React.FC<Props> = ({ serviceId, csvDataVersion, in
 
   return (
     <div className="p-6 max-w-full mx-auto space-y-8">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-800">High Contrast Resolution</h2>
-
-        <button
-          onClick={isViewOnly ? startEditing : handleSave}
-          disabled={isSaving}
-          className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${isSaving
-            ? 'bg-gray-400 cursor-not-allowed'
-            : isViewOnly
-              ? 'bg-orange-600 hover:bg-orange-700'
-              : 'bg-teal-600 hover:bg-teal-700 focus:ring-4 focus:ring-teal-300'
-            }`}
-        >
-          {isSaving ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Saving...
-            </>
-          ) : (
-            <>
-              <ButtonIcon className="w-4 h-4" />
-              {buttonText}
-            </>
-          )}
-        </button>
-      </div>
+      <h2 className="text-2xl font-bold text-gray-800">High Contrast Resolution</h2>
 
       {/* Main Table */}
       <div className="bg-white shadow-md rounded-lg overflow-hidden">
@@ -264,6 +238,31 @@ const HighContrastResolution: React.FC<Props> = ({ serviceId, csvDataVersion, in
             </div>
           </div>
         </div>
+      </div>
+
+      <div className="flex justify-end mt-6">
+        <button
+          onClick={isViewOnly ? startEditing : handleSave}
+          disabled={isSaving}
+          className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${isSaving
+            ? 'bg-gray-400 cursor-not-allowed'
+            : isViewOnly
+              ? 'bg-orange-600 hover:bg-orange-700'
+              : 'bg-teal-600 hover:bg-teal-700 focus:ring-4 focus:ring-teal-300'
+            }`}
+        >
+          {isSaving ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Saving...
+            </>
+          ) : (
+            <>
+              <ButtonIcon className="w-4 h-4" />
+              {buttonText}
+            </>
+          )}
+        </button>
       </div>
     </div>
   );

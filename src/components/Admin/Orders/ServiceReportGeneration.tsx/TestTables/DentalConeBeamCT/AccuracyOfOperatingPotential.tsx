@@ -416,32 +416,7 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
 
     return (
         <div className="p-6 max-w-full overflow-x-auto space-y-10">
-            {/* Save/Edit Button */}
-            <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-gray-800">Accuracy of Operating Potential</h2>
-                <button
-                    onClick={isViewMode ? startEditing : saveTest}
-                    disabled={isSaving}
-                    className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition ${isSaving
-                        ? "bg-gray-400 cursor-not-allowed"
-                        : isViewMode
-                            ? "bg-orange-600 text-white hover:bg-orange-700"
-                            : "bg-green-600 text-white hover:bg-green-700 focus:ring-4 focus:ring-green-300"
-                        }`}
-                >
-                    {isSaving ? (
-                        <>
-                            <Loader2 className="w-5 h-5 animate-spin" />
-                            Saving...
-                        </>
-                    ) : (
-                        <>
-                            {isViewMode ? <Edit3 className="w-5 h-5" /> : <Save className="w-5 h-5" />}
-                            {isViewMode ? "Edit" : testId ? "Update" : "Save"} Test
-                        </>
-                    )}
-                </button>
-            </div>
+            <h2 className="text-2xl font-bold text-gray-800 mb-6">Accuracy of Operating Potential</h2>
 
             {/* FFD (cm) - top right, similar to report layout */}
             {/* <div className="flex justify-end mb-4">
@@ -718,6 +693,31 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
                         />
                     </li>
                 </ul>
+            </div>
+
+            <div className="flex justify-end mt-6">
+                <button
+                    onClick={isViewMode ? startEditing : saveTest}
+                    disabled={isSaving}
+                    className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition ${isSaving
+                        ? "bg-gray-400 cursor-not-allowed"
+                        : isViewMode
+                            ? "bg-orange-600 text-white hover:bg-orange-700"
+                            : "bg-green-600 text-white hover:bg-green-700 focus:ring-4 focus:ring-green-300"
+                        }`}
+                >
+                    {isSaving ? (
+                        <>
+                            <Loader2 className="w-5 h-5 animate-spin" />
+                            Saving...
+                        </>
+                    ) : (
+                        <>
+                            {isViewMode ? <Edit3 className="w-5 h-5" /> : <Save className="w-5 h-5" />}
+                            {isViewMode ? "Edit" : testId ? "Update" : "Save"} Test
+                        </>
+                    )}
+                </button>
             </div>
         </div>
     );

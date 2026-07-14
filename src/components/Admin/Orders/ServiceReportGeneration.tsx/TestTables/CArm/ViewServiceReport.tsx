@@ -59,6 +59,8 @@ interface ReportData {
   toolsUsed?: Tool[];
   qrCode?: string;
   notes?: Note[];
+  authorizedSignatoryName?: string;
+  authorizedSignatorySignature?: string;
 
   // Test documents
   ExposureRateTableTopCArm?: any;
@@ -278,6 +280,14 @@ const ViewServiceReportCArm: React.FC = () => {
             qrCode: data.qrCode || "",
 
             notes: data.notes || defaultNotes,
+            authorizedSignatoryName:
+              (typeof data.authorizedSignatory === "object" && data.authorizedSignatory?.name) ||
+              data.authorizedSignatoryName ||
+              "",
+            authorizedSignatorySignature:
+              (typeof data.authorizedSignatory === "object" && data.authorizedSignatory?.signature) ||
+              data.authorizedSignatorySignature ||
+              "",
           });
 
           // Transform RadiationLeakageTest (CArm) data to match component expectations
@@ -1774,6 +1784,8 @@ const ViewServiceReportCArm: React.FC = () => {
               customerCity={placeValue}
               qrCode={report.qrCode}
               engineerName={report.engineerNameRPId}
+              authorizedSignatoryName={report.authorizedSignatoryName}
+              authorizedSignatorySignature={report.authorizedSignatorySignature}
             />
           </div>
         </ReportPage>

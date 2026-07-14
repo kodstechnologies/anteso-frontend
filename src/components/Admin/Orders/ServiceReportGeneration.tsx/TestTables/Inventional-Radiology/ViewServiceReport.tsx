@@ -60,6 +60,8 @@ interface ReportData {
   toolsUsed?: Tool[];
   qrCode?: string;
   notes?: Note[];
+  authorizedSignatoryName?: string;
+  authorizedSignatorySignature?: string;
 
   // Test documents
   CentralBeamAlignmentInventionalRadiology?: any;
@@ -226,6 +228,14 @@ const ViewServiceReport: React.FC = () => {
             category: data.category || "",
             toolsUsed: mergedTools,
             notes: data.notes || defaultNotes,
+            authorizedSignatoryName:
+              (typeof data.authorizedSignatory === "object" && data.authorizedSignatory?.name) ||
+              data.authorizedSignatoryName ||
+              "",
+            authorizedSignatorySignature:
+              (typeof data.authorizedSignatory === "object" && data.authorizedSignatory?.signature) ||
+              data.authorizedSignatorySignature ||
+              "",
           });
 
           if (isDoubleTube) {
@@ -2672,6 +2682,8 @@ const ViewServiceReport: React.FC = () => {
               customerCity={placeValue}
               qrCode={report.qrCode}
               engineerName={report.engineerNameRPId}
+              authorizedSignatoryName={report.authorizedSignatoryName}
+              authorizedSignatorySignature={report.authorizedSignatorySignature}
             />
           </div>
         </ReportPage>

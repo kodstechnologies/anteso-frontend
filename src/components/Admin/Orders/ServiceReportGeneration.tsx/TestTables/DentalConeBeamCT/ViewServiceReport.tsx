@@ -60,6 +60,8 @@ interface ReportData {
   notes?: Note[];
   category?: string;
   qaTestSubmittedAt?: string;
+  authorizedSignatoryName?: string;
+  authorizedSignatorySignature?: string;
 
   // All CBCT Tests
   AccuracyOfIrradiationTimeCBCT?: any;
@@ -254,6 +256,14 @@ const ViewServiceReportCBCT: React.FC = () => {
 
             notes: data.notes || defaultNotes,
             qaTestSubmittedAt: data.qaTestSubmittedAt || "",
+            authorizedSignatoryName:
+              (typeof data.authorizedSignatory === "object" && data.authorizedSignatory?.name) ||
+              data.authorizedSignatoryName ||
+              "",
+            authorizedSignatorySignature:
+              (typeof data.authorizedSignatory === "object" && data.authorizedSignatory?.signature) ||
+              data.authorizedSignatorySignature ||
+              "",
           });
 
           // Transform API data to match component expectations
@@ -1623,6 +1633,8 @@ const ViewServiceReportCBCT: React.FC = () => {
               customerCity={placeValue}
               qrCode={report.qrCode}
               engineerName={report.engineerNameRPId}
+              authorizedSignatoryName={report.authorizedSignatoryName}
+              authorizedSignatorySignature={report.authorizedSignatorySignature}
             />
           </div>
         </ReportPage>

@@ -17,8 +17,9 @@ import {
     getRadiationProtectionSurveyByServiceIdForDentalHandHeld
 } from "../../../../../../api";
 import { Disclosure } from "@headlessui/react";
-import { ChevronDownIcon, CloudArrowUpIcon } from "@heroicons/react/24/outline";
+import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import toast from "react-hot-toast";
+import AuthorizedSignatorySelect from "../../AuthorizedSignatorySelect";
 import * as XLSX from "xlsx";
 import { isExcelFileUrl } from "../../../../../../utils/spreadsheetFile";
 
@@ -117,6 +118,7 @@ const GenerateReportForDentalHandHeld: React.FC<DentalProps> = ({ serviceId, qaT
         humidity: "",
         engineerNameRPId: "",
         rpId: "",
+        authorizedSignatory: "",
         csvFileUrl: "",
     });
 
@@ -244,6 +246,7 @@ const GenerateReportForDentalHandHeld: React.FC<DentalProps> = ({ serviceId, qaT
                         humidity: res.data.humidity || prev.humidity,
                         engineerNameRPId: res.data.engineerNameRPId || prev.engineerNameRPId,
                         rpId: res.data.rpId || prev.rpId,
+                        authorizedSignatory: (typeof res.data.authorizedSignatory === "object" ? res.data.authorizedSignatory?._id : res.data.authorizedSignatory) || prev.authorizedSignatory || "",
                         csvFileUrl: res.data.csvFileUrl || prev.csvFileUrl,
                     }));
                     if (res.data.testDate) setMinIssueDate(res.data.testDate);
@@ -969,6 +972,35 @@ const GenerateReportForDentalHandHeld: React.FC<DentalProps> = ({ serviceId, qaT
                 Generate QA Test Report - Dental Hand-held
             </h1>
 
+            {/* Excel Actions */}
+            <div className="flex flex-wrap gap-4 justify-center mb-8">
+                <div className="relative">
+                    <input
+                        ref={fileInputRef}
+                        type="file"
+                        id="excel-upload-dental-handheld"
+                        accept=".xlsx,.xls,.csv"
+                        onChange={handleCSVUpload}
+                        className="hidden"
+                    />
+                    <button
+                        type="button"
+                        onClick={() => document.getElementById("excel-upload-dental-handheld")?.click()}
+                        className="px-6 py-2 bg-teal-600 text-white font-semibold rounded-lg hover:bg-teal-700 transition shadow"
+                    >
+                        {csvUploading ? "Uploading..." : "Import Excel Data"}
+                    </button>
+                </div>
+                <button
+                    type="button"
+                    onClick={handleExportToExcel}
+                    disabled={csvUploading}
+                    className={`px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition shadow ${csvUploading ? "opacity-50 cursor-not-allowed" : ""}`}
+                >
+                    {csvUploading ? "Exporting..." : "Export Excel"}
+                </button>
+            </div>
+
             {/* 1. Customer Name & Address */}
             <section className="mb-8">
                 <h2 className="text-lg font-semibold text-blue-700 mb-3">
@@ -1105,51 +1137,18 @@ const GenerateReportForDentalHandHeld: React.FC<DentalProps> = ({ serviceId, qaT
                 </div>
             </section>
 
-            {/* CSV/Excel Upload Section */}
-            <section className="mb-10 bg-blue-50 p-6 rounded-lg border-2 border-blue-200">
-                <h2 className="text-xl font-semibold text-blue-700 mb-4">Upload Excel</h2>
-                <div className="flex flex-col gap-4">
-                    <div className="flex flex-wrap items-center gap-4">
-                        <a
-                            href="/templates/DentalHandHeld_Test_Data_Template_WithTimer.xlsx"
-                            download
-                            className="px-4 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition text-sm"
-                        >
-                            Download Template (With Timer)
-                        </a>
-                        <a
-                            href="/templates/DentalHandHeld_Test_Data_Template_NoTimer.xlsx"
-                            download
-                            className="px-4 py-2 bg-green-700 text-white font-semibold rounded-lg hover:bg-green-800 transition text-sm"
-                        >
-                            Download Template (No Timer)
-                        </a>
-                        <input
-                            ref={fileInputRef}
-                            type="file"
-                            accept=".csv,.xlsx,.xls"
-                            onChange={handleCSVUpload}
-                            className="hidden"
-                            id="csv-upload-input"
-                        />
-                        <label
-                            htmlFor="csv-upload-input"
-                            className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition cursor-pointer"
-                        >
-                            <CloudArrowUpIcon className="w-5 h-5" />
-                            {csvUploading ? 'Uploading...' : 'Upload Excel'}
-                        </label>
-
-                        <button
-                            type="button"
-                            onClick={handleExportToExcel}
-                            disabled={csvUploading}
-                            className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 border border-blue-200 text-sm font-medium disabled:opacity-50"
-                        >
-                            <CloudArrowUpIcon className="w-5 h-5" />
-                            {csvUploading ? 'Exporting...' : 'Export Excel'}
-                        </button>
-                    </div>
+            <section className="mb-8">
+                <h2 className="text-lg font-semibold text-blue-700 mb-3">Authorized Signatory</h2>
+                <div className="max-w-xl">
+                    <AuthorizedSignatorySelect
+                        value={formData.authorizedSignatory}
+                        onChange={(selected) =>
+                            setFormData((prev) => ({
+                                ...prev,
+                                authorizedSignatory: selected?._id || "",
+                            }))
+                        }
+                    />
                 </div>
             </section>
 

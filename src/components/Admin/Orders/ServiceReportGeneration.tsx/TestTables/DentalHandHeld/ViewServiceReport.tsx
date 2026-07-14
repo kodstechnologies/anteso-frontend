@@ -70,6 +70,8 @@ interface ReportData {
   toolsUsed?: Tool[];
   qrCode?: string;
   notes?: Note[];
+  authorizedSignatoryName?: string;
+  authorizedSignatorySignature?: string;
 }
 
 const defaultNotes: Note[] = [
@@ -346,6 +348,14 @@ const ViewServiceReportDentalHandHeld: React.FC = () => {
             qrCode: data.qrCode || "",
 
             notes: data.notes || defaultNotes,
+            authorizedSignatoryName:
+              (typeof data.authorizedSignatory === "object" && data.authorizedSignatory?.name) ||
+              data.authorizedSignatoryName ||
+              "",
+            authorizedSignatorySignature:
+              (typeof data.authorizedSignatory === "object" && data.authorizedSignatory?.signature) ||
+              data.authorizedSignatorySignature ||
+              "",
           });
 
           // Fetch all test data separately
@@ -1709,6 +1719,8 @@ const ViewServiceReportDentalHandHeld: React.FC = () => {
               customerCity={placeValue}
               qrCode={report.qrCode}
               engineerName={report.engineerNameRPId}
+              authorizedSignatoryName={report.authorizedSignatoryName}
+              authorizedSignatorySignature={report.authorizedSignatorySignature}
             />
         </ReportPage>
       </div>

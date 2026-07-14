@@ -23,8 +23,8 @@ import {
   getRadiationProtectionSurveyByServiceIdForRadiographyFixed,
 } from "../../../../../../api";
 import * as XLSX from "xlsx";
-import { CloudArrowUpIcon } from "@heroicons/react/24/outline";
 import { createRadiographyFixedUploadableExcel, RadiographyFixedExportData } from "./exportRadiographyFixedToExcel";
+import AuthorizedSignatorySelect from "../../AuthorizedSignatorySelect";
 
 import Standards from "../../Standards";
 import Notes from "../../Notes";
@@ -100,6 +100,7 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
   const [csvDataForComponents, setCsvDataForComponents] = useState<any>({});
   const [csvDataVersion, setCsvDataVersion] = useState(0);
   const [csvUploading, setCsvUploading] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState({
@@ -126,6 +127,7 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
     humidity: "",
     engineerNameRPId: "",
     rpId: "",
+        authorizedSignatory: "",
     category: "",
   });
   const [minIssueDate, setMinIssueDate] = useState(""); // QA test submitted date; issue date must be >= this
@@ -311,6 +313,7 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
               humidity: reportData.humidity || prev.humidity,
               engineerNameRPId: reportData.engineerNameRPId || prev.engineerNameRPId,
               rpId: pickRpId(reportData) || prev.rpId,
+              authorizedSignatory: (typeof reportData.authorizedSignatory === "object" ? reportData.authorizedSignatory?._id : reportData.authorizedSignatory) || prev.authorizedSignatory || "",
             }));
             if (reportData.testDate) setMinIssueDate(reportData.testDate);
 
@@ -1538,7 +1541,7 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
 
     try {
       toast.loading('Exporting data to Excel...', { id: 'export-excel' });
-      setCsvUploading(true);
+      setIsExporting(true);
 
       const exportData: Record<string, unknown> = {};
 
@@ -1649,7 +1652,7 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
       console.error('Error exporting to Excel:', error);
       toast.error('Failed to export data: ' + (error.message || 'Unknown error'), { id: 'export-excel' });
     } finally {
-      setCsvUploading(false);
+      setIsExporting(false);
     }
   };
 
@@ -1865,35 +1868,36 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
 
   return (
     <div className="max-w-7xl mx-auto bg-white shadow-lg rounded-xl p-8 mt-8">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
-        <h1 className="text-3xl font-bold text-gray-800">
-          Generate Radiography (Fixed) QA Test Report
-        </h1>
-        <div className="flex flex-wrap gap-2 print:hidden">
-        
+      <h1 className="text-3xl font-bold text-center text-gray-800 mb-8">
+        Generate Radiography (Fixed) QA Test Report
+      </h1>
+
+      {/* Excel Actions — same layout as Dental Cone Beam CT */}
+      <div className="flex flex-wrap gap-4 justify-center mb-8 print:hidden">
+        <div className="relative">
+          <input
+            type="file"
+            id="excel-upload-radiography-fixed"
+            ref={fileInputRef}
+            accept=".xlsx, .xls ,.csv"
+            onChange={handleCSVUpload}
+            className="hidden"
+          />
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={csvUploading}
-            className="flex items-center gap-2 px-3 py-2 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition text-sm font-medium border border-green-200 disabled:opacity-50"
+            className="px-6 py-2 bg-teal-600 text-white font-semibold rounded-lg hover:bg-teal-700 transition shadow disabled:opacity-50"
           >
-            <CloudArrowUpIcon className="h-4 w-4" />
-            {csvUploading ? 'Uploading...' : 'Import Excel'}
+            {csvUploading ? 'Uploading...' : 'Import Excel Data'}
           </button>
-          <button
-            onClick={handleExportToExcel}
-            disabled={csvUploading}
-            className="flex items-center gap-2 px-3 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition text-sm font-medium border border-blue-200 disabled:opacity-50"
-          >
-            {csvUploading ? 'Exporting...' : 'Export Excel'}
-          </button>
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleCSVUpload}
-            accept=".csv,.xlsx,.xls"
-            className="hidden"
-          />
         </div>
+        <button
+          onClick={handleExportToExcel}
+          disabled={isExporting || csvUploading}
+          className={`px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition shadow ${(isExporting || csvUploading) ? 'opacity-50 cursor-not-allowed' : ''}`}
+        >
+          {isExporting ? 'Exporting...' : 'Export Excel'}
+        </button>
       </div>
 
       {/* Customer Info */}
@@ -2004,7 +2008,23 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
         </div>
       </section>
 
-      <Standards standards={tools} />
+      
+            <section className="mb-8">
+                <h2 className="text-lg font-semibold text-blue-700 mb-3">Authorized Signatory</h2>
+                <div className="max-w-xl">
+                    <AuthorizedSignatorySelect
+                        value={formData.authorizedSignatory}
+                        onChange={(selected) =>
+                            setFormData((prev) => ({
+                                ...prev,
+                                authorizedSignatory: selected?._id || "",
+                            }))
+                        }
+                    />
+                </div>
+            </section>
+
+            <Standards standards={tools} />
       <Notes initialNotes={notes} onChange={setNotes} />
 
       {/* Save & View */}

@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { Disclosure } from "@headlessui/react";
 import { ChevronDownIcon, CloudArrowUpIcon } from "@heroicons/react/24/outline";
 import toast from "react-hot-toast";
+import AuthorizedSignatorySelect from "../../AuthorizedSignatorySelect";
 import * as XLSX from "xlsx";
 import { saveReportHeaderForLeadApron, getReportHeaderForLeadApron, proxyFile } from "../../../../../../api";
 import { getDetails, getTools } from "../../../../../../api";
@@ -82,6 +83,7 @@ const LeadApron: React.FC<{ serviceId: string; qaTestDate?: string | null; creat
         humidity: "",
         engineerNameRPId: "",
         rpId: "",
+        authorizedSignatory: "",
         ulrNumber: "",
     });
 
@@ -532,7 +534,8 @@ const LeadApron: React.FC<{ serviceId: string; qaTestDate?: string | null; creat
                         temperature: res.data.temperature || prev.temperature,
                         humidity: res.data.humidity || prev.humidity,
                         engineerNameRPId: res.data.engineerNameRPId || prev.engineerNameRPId,
-                        rpId: res.data.rpId || prev.rpId || "",
+                        rpId: res.data.rpId || prev.rpId,
+                        authorizedSignatory: (typeof res.data.authorizedSignatory === "object" ? res.data.authorizedSignatory?._id : res.data.authorizedSignatory) || prev.authorizedSignatory || "",
                         ulrNumber: res.data.reportULRNumber || res.data.ulrNumber || prev.ulrNumber || "N/A",
                     }));
                     if (res.data.testDate) setMinIssueDate(res.data.testDate);
@@ -641,6 +644,22 @@ const LeadApron: React.FC<{ serviceId: string; qaTestDate?: string | null; creat
                             />
                         </div>
                     ))}
+                </div>
+            </section>
+
+            
+            <section className="mb-8">
+                <h2 className="text-lg font-semibold text-blue-700 mb-3">Authorized Signatory</h2>
+                <div className="max-w-xl">
+                    <AuthorizedSignatorySelect
+                        value={formData.authorizedSignatory}
+                        onChange={(selected) =>
+                            setFormData((prev) => ({
+                                ...prev,
+                                authorizedSignatory: selected?._id || "",
+                            }))
+                        }
+                    />
                 </div>
             </section>
 

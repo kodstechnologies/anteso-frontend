@@ -325,31 +325,7 @@ const TablePosition: React.FC<Props> = ({ serviceId, testId: propTestId = null, 
 
   return (
     <div className="p-6 max-w-full mx-auto space-y-8">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-800">Table Position</h2>
-        <button
-          onClick={isViewMode ? toggleEdit : handleSave}
-          disabled={isSaving}
-          className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${isSaving
-            ? 'bg-gray-400 cursor-not-allowed'
-            : isViewMode
-              ? 'bg-orange-600 hover:bg-orange-700'
-              : 'bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300'
-            }`}
-        >
-          {isSaving ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Saving...
-            </>
-          ) : (
-            <>
-              <ButtonIcon className="w-4 h-4" />
-              {buttonText} Table Position
-            </>
-          )}
-        </button>
-      </div>
+      <h2 className="text-2xl font-bold text-gray-800">Table Position</h2>
 
       {/* First Table - Initial Settings */}
       <div className="bg-white shadow-md rounded-lg overflow-hidden border border-gray-200">
@@ -583,6 +559,31 @@ const TablePosition: React.FC<Props> = ({ serviceId, testId: propTestId = null, 
           />
           <span className="text-sm text-gray-600">mm</span>
         </div>
+      </div>
+
+      <div className="flex justify-end mt-6">
+        <button
+          onClick={isViewMode ? toggleEdit : handleSave}
+          disabled={isSaving}
+          className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${isSaving
+            ? 'bg-gray-400 cursor-not-allowed'
+            : isViewMode
+              ? 'bg-orange-600 hover:bg-orange-700'
+              : 'bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300'
+            }`}
+        >
+          {isSaving ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Saving...
+            </>
+          ) : (
+            <>
+              <ButtonIcon className="w-4 h-4" />
+              {buttonText} Table Position
+            </>
+          )}
+        </button>
       </div>
     </div>
   );

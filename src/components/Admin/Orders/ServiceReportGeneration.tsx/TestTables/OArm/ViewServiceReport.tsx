@@ -61,6 +61,8 @@ interface ReportData {
   qrCode?: string;
   notes?: Note[];
   pages?: string;
+  authorizedSignatoryName?: string;
+  authorizedSignatorySignature?: string;
 
   // Test documents
   ExposureRateTableTopOArm?: any;
@@ -208,6 +210,14 @@ const ViewServiceReportOArm: React.FC = () => {
             qrCode: data.qrCode || "",
 
             notes: data.notes || defaultNotes,
+            authorizedSignatoryName:
+              (typeof data.authorizedSignatory === "object" && data.authorizedSignatory?.name) ||
+              data.authorizedSignatoryName ||
+              "",
+            authorizedSignatorySignature:
+              (typeof data.authorizedSignatory === "object" && data.authorizedSignatory?.signature) ||
+              data.authorizedSignatorySignature ||
+              "",
           });
 
           // Transform Tube Housing Leakage â€” support top-level + settings[] + alternate array/field names from API
@@ -1408,6 +1418,8 @@ const ViewServiceReportOArm: React.FC = () => {
               customerCity={placeValue}
               qrCode={report.qrCode}
               engineerName={report.engineerNameRPId}
+              authorizedSignatoryName={report.authorizedSignatoryName}
+              authorizedSignatorySignature={report.authorizedSignatorySignature}
             />
           </div>
         </ReportPage>

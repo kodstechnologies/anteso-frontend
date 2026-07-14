@@ -347,23 +347,6 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, initialData, cs
         <h1 className="text-4xl font-bold text-center text-gray-800">
           Radiation Protection Survey Report
         </h1>
-        <button
-          onClick={isViewMode ? () => setIsEditing(true) : handleSave}
-          disabled={isButtonDisabled}
-          className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium text-white transition shadow-md ${isButtonDisabled ? "bg-gray-400 cursor-not-allowed" : isViewMode ? "bg-orange-600 hover:bg-orange-700" : "bg-teal-600 hover:bg-teal-700"}`}
-        >
-          {isSaving ? (
-            <>
-              <Loader2 className="w-5 h-5 animate-spin" />
-              Saving...
-            </>
-          ) : (
-            <>
-              {isViewMode ? <Edit3 className="w-5 h-5" /> : <Save className="w-5 h-5" />}
-              {isViewMode ? "Edit" : testId ? "Update" : "Save"} Survey
-            </>
-          )}
-        </button>
       </div>
 
       {/* 1. Survey Details */}
@@ -611,6 +594,26 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, initialData, cs
           </div>
         </div>
       </section>
+
+      <div className="flex justify-end mt-6">
+        <button
+          onClick={isViewMode ? () => setIsEditing(true) : handleSave}
+          disabled={isButtonDisabled}
+          className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium text-white transition shadow-md ${isButtonDisabled ? "bg-gray-400 cursor-not-allowed" : isViewMode ? "bg-orange-600 hover:bg-orange-700" : "bg-teal-600 hover:bg-teal-700"}`}
+        >
+          {isSaving ? (
+            <>
+              <Loader2 className="w-5 h-5 animate-spin" />
+              Saving...
+            </>
+          ) : (
+            <>
+              {isViewMode ? <Edit3 className="w-5 h-5" /> : <Save className="w-5 h-5" />}
+              {isViewMode ? "Edit" : testId ? "Update" : "Save"} Survey
+            </>
+          )}
+        </button>
+      </div>
     </div>
   );
 };

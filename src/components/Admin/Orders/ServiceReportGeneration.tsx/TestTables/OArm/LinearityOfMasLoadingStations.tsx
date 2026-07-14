@@ -461,13 +461,7 @@ const LinearityOfMasLoadingStationsForOArm: React.FC<Props> = ({ serviceId, test
 
   return (
     <div className="p-6 max-w-full mx-auto space-y-10">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-800">{tableTitle}</h2>
-        <button onClick={isViewMode ? toggleEdit : handleSave} disabled={isSaving || (!isViewMode && !isFormValid)}
-          className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${isSaving || (!isViewMode && !isFormValid) ? 'bg-gray-400 cursor-not-allowed' : isViewMode ? 'bg-orange-600 hover:bg-orange-700' : 'bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300'}`}>
-          {isSaving ? <><Loader2 className="w-4 h-4 animate-spin" />Saving...</> : <><ButtonIcon className="w-4 h-4" />{buttonText} {isMaMode ? (isTimerSelected ? 'mAs' : 'mA') : 'mAs'} Linearity</>}
-        </button>
-      </div>
+      <h2 className="text-2xl font-bold text-gray-800">{tableTitle}</h2>
 
       {isMaMode && !isViewMode && table1Row.time.trim() && !hasValidTime && (
         <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
@@ -631,6 +625,13 @@ const LinearityOfMasLoadingStationsForOArm: React.FC<Props> = ({ serviceId, test
               className={`w-32 px-4 py-2.5 text-center font-bold border-2 border-blue-400 rounded-lg focus:ring-4 focus:ring-blue-200 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`} />
           </div>
         </div>
+      </div>
+
+      <div className="flex justify-end mt-6">
+        <button onClick={isViewMode ? toggleEdit : handleSave} disabled={isSaving || (!isViewMode && !isFormValid)}
+          className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${isSaving || (!isViewMode && !isFormValid) ? 'bg-gray-400 cursor-not-allowed' : isViewMode ? 'bg-orange-600 hover:bg-orange-700' : 'bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300'}`}>
+          {isSaving ? <><Loader2 className="w-4 h-4 animate-spin" />Saving...</> : <><ButtonIcon className="w-4 h-4" />{buttonText} {isMaMode ? (isTimerSelected ? 'mAs' : 'mA') : 'mAs'} Linearity</>}
+        </button>
       </div>
     </div>
   );

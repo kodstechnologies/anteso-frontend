@@ -2,8 +2,9 @@
 import React, { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Disclosure } from "@headlessui/react";
-import { ChevronDownIcon, CloudArrowUpIcon } from "@heroicons/react/24/outline";
+import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import toast from "react-hot-toast";
+import AuthorizedSignatorySelect from "../../AuthorizedSignatorySelect";
 import * as XLSX from "xlsx";
 import {
     getRadiationProfileWidthByServiceIdForCTScan,
@@ -81,6 +82,7 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
     const [saveSuccess, setSaveSuccess] = useState(false);
     const [saveError, setSaveError] = useState<string | null>(null);
     const [csvUploading, setCsvUploading] = useState(false);
+    const [isExporting, setIsExporting] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const [details, setDetails] = useState<DetailsResponse | null>(null);
@@ -130,8 +132,9 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
         location: "",
         temperature: "",
         humidity: "",
-        engineerNameRPId: "",
+                engineerNameRPId: "",
         rpId: "",
+        authorizedSignatory: "",
     });
 
     const defaultNotesList = [
@@ -194,6 +197,7 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
                     humidity: "",
                     engineerNameRPId: data.engineerAssigned?.name || "",
                     rpId: data.rpId || "",
+                    authorizedSignatory: "",
                 });
 
                 // Map tools
@@ -888,7 +892,7 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
 
         try {
             toast.loading('Exporting data to Excel...', { id: 'export-excel' });
-            setCsvUploading(true);
+            setIsExporting(true);
 
             const tubeId = tubeType === 'single' ? null : 'A'; // For single tube, use null
 
@@ -1059,7 +1063,7 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
             console.error('Error exporting to Excel:', error);
             toast.error('Failed to export data: ' + (error.message || 'Unknown error'), { id: 'export-excel' });
         } finally {
-            setCsvUploading(false);
+            setIsExporting(false);
         }
     };
 
@@ -1092,6 +1096,7 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
                         humidity: res.data.humidity || prev.humidity,
                         engineerNameRPId: res.data.engineerNameRPId || prev.engineerNameRPId,
                         rpId: res.data.rpId || prev.rpId,
+                        authorizedSignatory: (typeof res.data.authorizedSignatory === "object" ? res.data.authorizedSignatory?._id : res.data.authorizedSignatory) || prev.authorizedSignatory || "",
                     }));
                     if (res.data.testDate) setMinIssueDate(res.data.testDate);
                 }
@@ -1250,6 +1255,39 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
                 Generate CT-Scan QA Test Report
             </h1>
 
+            {/* Excel Actions — same layout as Dental Cone Beam CT */}
+            <div className="flex flex-wrap gap-4 justify-center mb-8 print:hidden">
+                <div className="relative">
+                    <input
+                        ref={fileInputRef}
+                        type="file"
+                        id="excel-upload-ctscan"
+                        accept=".xlsx, .xls ,.csv"
+                        onChange={handleCSVUpload}
+                        className="hidden"
+                    />
+                    <button
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={csvUploading}
+                        className="px-6 py-2 bg-teal-600 text-white font-semibold rounded-lg hover:bg-teal-700 transition shadow disabled:opacity-50"
+                    >
+                        {csvUploading ? 'Uploading...' : 'Import Excel Data'}
+                    </button>
+                </div>
+                <button
+                    onClick={handleExportToExcel}
+                    disabled={isExporting || csvUploading}
+                    className={`px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition shadow ${(isExporting || csvUploading) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                    {isExporting ? 'Exporting...' : 'Export Excel'}
+                </button>
+            </div>
+            {csvFileUrl && (
+                <p className="text-sm text-gray-600 text-center mb-6">
+                    File loaded from: <span className="font-mono text-xs">{csvFileUrl}</span>
+                </p>
+            )}
+
             {/* Customer Info */}
             <section className="mb-10 bg-gray-50 p-6 rounded-lg">
                 <h2 className="text-xl font-semibold text-blue-700 mb-4">1. Name and Address of Customer</h2>
@@ -1337,47 +1375,19 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
                 </div>
             </section>
 
-            {/* CSV/Excel Upload Section */}
-            <section className="mb-10 bg-blue-50 p-6 rounded-lg border-2 border-blue-200">
-                <h2 className="text-xl font-semibold text-blue-700 mb-4">Upload Test Data (CSV/Excel)</h2>
-                <div className="flex flex-col gap-4">
-                    <div className="flex items-center gap-4">
-                        <input
-                            ref={fileInputRef}
-                            type="file"
-                            accept=".csv,.xlsx,.xls"
-                            onChange={handleCSVUpload}
-                            className="hidden"
-                            id="csv-upload-input"
-                        />
-                        <label
-                            htmlFor="csv-upload-input"
-                            className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition cursor-pointer"
-                        >
-                            <CloudArrowUpIcon className="w-5 h-5" />
-                            {csvUploading ? 'Uploading...' : 'Upload Excel'}
-                        </label>
-                        {/* <a
-                            href="/templates/CTScan_Test_Data_Template_DoubleTube_updated.csv"
-                            download
-                            className="px-6 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition"
-                        >
-                            Download Template (Double Tube)
-                        </a> */}
-                        {/* <button
-                            onClick={handleExportToExcel}
-                            disabled={csvUploading}
-                            className="flex items-center gap-2 px-6 py-3 bg-purple-600 text-white font-semibold rounded-lg hover:bg-purple-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                            <CloudArrowUpIcon className="w-5 h-5 rotate-180" />
-                            {csvUploading ? 'Exporting...' : 'Export Saved Data to Excel'}
-                        </button> */}
-                    </div>
-                    {csvFileUrl && (
-                        <p className="text-sm text-gray-600">
-                            File loaded from: <span className="font-mono text-xs">{csvFileUrl}</span>
-                        </p>
-                    )}
+            
+            <section className="mb-8">
+                <h2 className="text-lg font-semibold text-blue-700 mb-3">Authorized Signatory</h2>
+                <div className="max-w-xl">
+                    <AuthorizedSignatorySelect
+                        value={formData.authorizedSignatory}
+                        onChange={(selected) =>
+                            setFormData((prev) => ({
+                                ...prev,
+                                authorizedSignatory: selected?._id || "",
+                            }))
+                        }
+                    />
                 </div>
             </section>
 

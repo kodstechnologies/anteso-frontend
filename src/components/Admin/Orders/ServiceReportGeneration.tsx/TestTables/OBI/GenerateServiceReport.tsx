@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { Disclosure } from "@headlessui/react";
 import { ChevronDownIcon, CloudArrowUpIcon } from "@heroicons/react/24/outline";
 import toast from "react-hot-toast";
+import AuthorizedSignatorySelect from "../../AuthorizedSignatorySelect";
 import * as XLSX from "xlsx";
 import {
     saveReportHeaderForOBI,
@@ -118,8 +119,9 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null; qaTestDate?
         location: "",
         temperature: "",
         humidity: "",
-        engineerNameRPId: "",
+                engineerNameRPId: "",
         rpId: "",
+        authorizedSignatory: "",
         reportULRNumber: "",
     });
     const [minIssueDate, setMinIssueDate] = useState(""); // QA test submitted date; issue date must be >= this
@@ -290,6 +292,7 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null; qaTestDate?
                             temperature: reportData.temperature || prev.temperature,
                             humidity: reportData.humidity || prev.humidity,
                             engineerNameRPId: reportData.engineerNameRPId || prev.engineerNameRPId,
+                            authorizedSignatory: (typeof reportData.authorizedSignatory === "object" ? reportData.authorizedSignatory?._id : reportData.authorizedSignatory) || prev.authorizedSignatory || "",
                         }));
                         if (reportData.testDate) setMinIssueDate(reportData.testDate);
 
@@ -2112,6 +2115,22 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null; qaTestDate?
                             />
                         </div>
                     ))}
+                </div>
+            </section>
+
+            
+            <section className="mb-8">
+                <h2 className="text-lg font-semibold text-blue-700 mb-3">Authorized Signatory</h2>
+                <div className="max-w-xl">
+                    <AuthorizedSignatorySelect
+                        value={formData.authorizedSignatory}
+                        onChange={(selected) =>
+                            setFormData((prev) => ({
+                                ...prev,
+                                authorizedSignatory: selected?._id || "",
+                            }))
+                        }
+                    />
                 </div>
             </section>
 

@@ -248,32 +248,7 @@ const ExposureRateTableTop: React.FC<ExposureRateTableTopProps> = ({
 
   return (
     <div className="p-6 max-w-full mx-auto space-y-8">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-800">Exposure Rate at Table Top</h2>
-        <button
-          onClick={isViewOnly ? startEditing : handleSave}
-          disabled={isSaving}
-          className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium text-white transition-all shadow-md ${isSaving
-              ? "bg-gray-400 cursor-not-allowed"
-              : isViewOnly
-                ? "bg-orange-600 hover:bg-orange-700"
-                : "bg-teal-600 hover:bg-teal-700"
-            }`}
-        >
-          {isSaving ? (
-            <>
-              <Loader2 className="w-5 h-5 animate-spin" />
-              Saving...
-            </>
-          ) : (
-            <>
-              <ButtonIcon className="w-5 h-5" />
-              {buttonText}
-            </>
-          )}
-        </button>
-      </div>
+      <h2 className="text-2xl font-bold text-gray-800">Exposure Rate at Table Top</h2>
 
       {/* Dynamic Table */}
       <div className="bg-white shadow-lg rounded-lg overflow-hidden border border-gray-200">
@@ -462,6 +437,31 @@ const ExposureRateTableTop: React.FC<ExposureRateTableTopProps> = ({
             )}
           </div>
         </div>
+      </div>
+
+      <div className="flex justify-end mt-6">
+        <button
+          onClick={isViewOnly ? startEditing : handleSave}
+          disabled={isSaving}
+          className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium text-white transition-all shadow-md ${isSaving
+              ? "bg-gray-400 cursor-not-allowed"
+              : isViewOnly
+                ? "bg-orange-600 hover:bg-orange-700"
+                : "bg-teal-600 hover:bg-teal-700"
+            }`}
+        >
+          {isSaving ? (
+            <>
+              <Loader2 className="w-5 h-5 animate-spin" />
+              Saving...
+            </>
+          ) : (
+            <>
+              <ButtonIcon className="w-5 h-5" />
+              {buttonText}
+            </>
+          )}
+        </button>
       </div>
     </div>
   );

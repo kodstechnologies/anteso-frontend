@@ -334,28 +334,6 @@ const RadiationProtectionSurvey: React.FC<Props> = ({
         <h1 className="text-4xl font-bold text-center text-gray-800 print:text-3xl">
           Radiation Protection Survey Report
         </h1>
-        <button
-          onClick={isViewMode ? toggleEdit : handleSave}
-          disabled={isSaving}
-          className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium text-white transition shadow-md ${isSaving ? "bg-gray-400 cursor-not-allowed" : isViewMode ? "bg-orange-600 hover:bg-orange-700" : "bg-teal-600 hover:bg-teal-700"}`}
-        >
-          {isSaving ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Saving...
-            </>
-          ) : isViewMode ? (
-            <>
-              <Edit3 className="w-4 h-4" />
-              Edit
-            </>
-          ) : (
-            <>
-              <Save className="w-4 h-4" />
-              {testId ? 'Update' : 'Save'} Test
-            </>
-          )}
-        </button>
       </div>
 
       {/* 1. Survey Details */}
@@ -605,27 +583,30 @@ const RadiationProtectionSurvey: React.FC<Props> = ({
         </div>
       </section>
 
-      {/* Final Remark & Recommendation */}
-      {/* <section className={`rounded-2xl border-4 p-10 text-center shadow-xl print:shadow-none ${hasAnyFail ? 'bg-red-50 border-red-400' : 'bg-green-50 border-green-400'}`}>
-        <h2 className={`text-3xl font-bold mb-6 ${hasAnyFail ? 'text-red-800' : 'text-green-800'}`}>
-          Final Recommendation
-        </h2>
-        <div className="bg-white rounded-xl p-8 border-2 border-gray-300 shadow-inner">
-          <p className={`text-lg leading-relaxed ${hasAnyFail ? 'text-red-700' : 'text-green-700'} font-medium`}>
-            {generateRemark()}
-          </p>
-        </div>
-        <div className="mt-8 flex justify-center gap-12 text-sm font-semibold">
-          <div>
-            <span className="text-gray-600">Survey Conducted By:</span><br />
-            <span className="text-blue-700 text-lg">_________________________</span>
-          </div>
-          <div>
-            <span className="text-gray-600">Approved By (RSO):</span><br />
-            <span className="text-blue-700 text-lg">_________________________</span>
-          </div>
-        </div>
-      </section> */}
+      <div className="flex justify-end mt-6">
+        <button
+          onClick={isViewMode ? toggleEdit : handleSave}
+          disabled={isSaving}
+          className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium text-white transition shadow-md ${isSaving ? "bg-gray-400 cursor-not-allowed" : isViewMode ? "bg-orange-600 hover:bg-orange-700" : "bg-teal-600 hover:bg-teal-700"}`}
+        >
+          {isSaving ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Saving...
+            </>
+          ) : isViewMode ? (
+            <>
+              <Edit3 className="w-4 h-4" />
+              Edit
+            </>
+          ) : (
+            <>
+              <Save className="w-4 h-4" />
+              {testId ? 'Update' : 'Save'} Test
+            </>
+          )}
+        </button>
+      </div>
     </div>
   );
 };

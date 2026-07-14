@@ -59,6 +59,8 @@ interface ReportData {
   qrCode?: string;
   notes?: Note[];
   category: string;
+  authorizedSignatoryName?: string;
+  authorizedSignatorySignature?: string;
 
   AccuracyOfOperatingPotentialAndTimeDentalIntra?: any;
   AccuracyOfIrradiationTimeDentalIntra?: any;
@@ -288,6 +290,14 @@ const ViewServiceReportDentalIntra: React.FC = () => {
             qrCode: data.qrCode || "",
 
             category: data.category || "",
+            authorizedSignatoryName:
+              (typeof data.authorizedSignatory === "object" && data.authorizedSignatory?.name) ||
+              data.authorizedSignatoryName ||
+              "",
+            authorizedSignatorySignature:
+              (typeof data.authorizedSignatory === "object" && data.authorizedSignatory?.signature) ||
+              data.authorizedSignatorySignature ||
+              "",
           });
 
           const accuracyData = data.AccuracyOfOperatingPotentialAndTimeDentalIntra || null;
@@ -1709,6 +1719,8 @@ const ViewServiceReportDentalIntra: React.FC = () => {
               customerCity={placeValue}
               qrCode={report.qrCode}
               engineerName={report.engineerNameRPId}
+              authorizedSignatoryName={report.authorizedSignatoryName}
+              authorizedSignatorySignature={report.authorizedSignatorySignature}
             />
           </div>
         </ReportPage>

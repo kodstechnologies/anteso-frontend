@@ -294,31 +294,7 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
 
   return (
     <div className="w-full space-y-6">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-gray-800">Accuracy of Irradiation Time</h2>
-        <button
-          onClick={isViewMode ? startEditing : handleSave}
-          disabled={saving}
-          className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${saving
-            ? 'bg-gray-400 cursor-not-allowed'
-            : isViewMode
-              ? 'bg-orange-600 hover:bg-orange-700'
-              : 'bg-green-600 hover:bg-green-700 focus:ring-4 focus:ring-green-300'
-            }`}
-        >
-          {saving ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Saving...
-            </>
-          ) : (
-            <>
-              {isViewMode ? <Edit3 className="w-4 h-4" /> : <Save className="w-4 h-4" />}
-              {isViewMode ? 'Edit' : testId ? 'Update' : 'Save'} Test
-            </>
-          )}
-        </button>
-      </div>
+      <h2 className="text-2xl font-bold text-gray-800 mb-6">Accuracy of Irradiation Time</h2>
 
       <div className="bg-white rounded-lg border border-gray-300 overflow-hidden">
         <div className="px-4 py-3 bg-blue-50 border-b border-gray-300">
@@ -472,6 +448,31 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
       <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-900">
         <p className="font-medium mb-1">Formula:</p>
         <p className="font-mono text-xs">% Error = |(Measured − Set) / Set| × 100</p>
+      </div>
+
+      <div className="flex justify-end mt-6">
+        <button
+          onClick={isViewMode ? startEditing : handleSave}
+          disabled={saving}
+          className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${saving
+            ? 'bg-gray-400 cursor-not-allowed'
+            : isViewMode
+              ? 'bg-orange-600 hover:bg-orange-700'
+              : 'bg-green-600 hover:bg-green-700 focus:ring-4 focus:ring-green-300'
+            }`}
+        >
+          {saving ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Saving...
+            </>
+          ) : (
+            <>
+              {isViewMode ? <Edit3 className="w-4 h-4" /> : <Save className="w-4 h-4" />}
+              {isViewMode ? 'Edit' : testId ? 'Update' : 'Save'} Test
+            </>
+          )}
+        </button>
       </div>
     </div>
   );

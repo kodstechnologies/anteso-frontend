@@ -62,6 +62,8 @@ interface ReportData {
   qrCode?: string;
   notes?: Note[];
   pages?: string;
+  authorizedSignatoryName?: string;
+  authorizedSignatorySignature?: string;
 }
 
 const defaultNotes: Note[] = [
@@ -206,6 +208,14 @@ const ViewServiceReportBMD: React.FC = () => {
             toolsUsed: mergedTools,
             notes: data.notes || defaultNotes,
             pages: data.pages ?? "",
+            authorizedSignatoryName:
+              (typeof data.authorizedSignatory === "object" && data.authorizedSignatory?.name) ||
+              data.authorizedSignatoryName ||
+              "",
+            authorizedSignatorySignature:
+              (typeof data.authorizedSignatory === "object" && data.authorizedSignatory?.signature) ||
+              data.authorizedSignatorySignature ||
+              "",
           });
 
           // Set test data directly from the aggregated response
@@ -1774,6 +1784,8 @@ const ViewServiceReportBMD: React.FC = () => {
               customerCity={placeValue}
               qrCode={report.qrCode}
               engineerName={report.engineerNameRPId}
+              authorizedSignatoryName={report.authorizedSignatoryName}
+              authorizedSignatorySignature={report.authorizedSignatorySignature}
             />
         </ReportPage>
       </div>

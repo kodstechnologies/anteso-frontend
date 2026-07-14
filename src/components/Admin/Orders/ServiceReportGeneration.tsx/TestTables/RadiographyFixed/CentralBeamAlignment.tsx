@@ -219,28 +219,6 @@ const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, 
         <div>
           <h2 className="text-3xl font-bold text-gray-800">Central Beam Alignment Test</h2>
         </div>
-        <button
-          onClick={isViewOnly ? startEditing : handleSave}
-          disabled={isSaving}
-          className={`flex items-center gap-3 px-8 py-4 rounded-xl font-semibold text-white transition-all shadow-lg ${isSaving
-            ? "bg-gray-400 cursor-not-allowed"
-            : isViewOnly
-              ? "bg-orange-600 hover:bg-orange-700"
-              : "bg-teal-600 hover:bg-teal-700"
-            }`}
-        >
-          {isSaving ? (
-            <>
-              <Loader2 className="w-6 h-6 animate-spin" />
-              Saving...
-            </>
-          ) : (
-            <>
-              <ButtonIcon className="w-6 h-6" />
-              {buttonText}
-            </>
-          )}
-        </button>
       </div>
 
       {/* Technique Factors */}
@@ -369,6 +347,31 @@ const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, 
             </span>
           </p>
         </div>
+      </div>
+
+      <div className="flex justify-end mt-6">
+        <button
+          onClick={isViewOnly ? startEditing : handleSave}
+          disabled={isSaving}
+          className={`flex items-center gap-3 px-8 py-4 rounded-xl font-semibold text-white transition-all shadow-lg ${isSaving
+            ? "bg-gray-400 cursor-not-allowed"
+            : isViewOnly
+              ? "bg-orange-600 hover:bg-orange-700"
+              : "bg-teal-600 hover:bg-teal-700"
+            }`}
+        >
+          {isSaving ? (
+            <>
+              <Loader2 className="w-6 h-6 animate-spin" />
+              Saving...
+            </>
+          ) : (
+            <>
+              <ButtonIcon className="w-6 h-6" />
+              {buttonText}
+            </>
+          )}
+        </button>
       </div>
     </div>
   );

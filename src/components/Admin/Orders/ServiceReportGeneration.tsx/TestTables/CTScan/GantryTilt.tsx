@@ -316,31 +316,7 @@ const GantryTilt: React.FC<Props> = ({ serviceId, testId: propTestId = null, onT
 
     return (
         <div className="p-6 max-w-full mx-auto space-y-8">
-            <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-bold text-gray-800">Gantry Tilt Measurement</h2>
-                <button
-                    onClick={isViewMode ? toggleEdit : handleSave}
-                    disabled={isSaving}
-                    className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${isSaving
-                        ? 'bg-gray-400 cursor-not-allowed'
-                        : isViewMode
-                            ? 'bg-orange-600 hover:bg-orange-700'
-                            : 'bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300'
-                        }`}
-                >
-                    {isSaving ? (
-                        <>
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                            Saving...
-                        </>
-                    ) : (
-                        <>
-                            <ButtonIcon className="w-4 h-4" />
-                            {buttonText} Gantry Tilt
-                        </>
-                    )}
-                </button>
-            </div>
+            <h2 className="text-2xl font-bold text-gray-800">Gantry Tilt Measurement</h2>
 
             {/* Parameters Table */}
             <div className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
@@ -523,6 +499,31 @@ const GantryTilt: React.FC<Props> = ({ serviceId, testId: propTestId = null, onT
                     />
                     <span className="text-sm text-gray-600">°</span>
                 </div>
+            </div>
+
+            <div className="flex justify-end mt-6">
+                <button
+                    onClick={isViewMode ? toggleEdit : handleSave}
+                    disabled={isSaving}
+                    className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${isSaving
+                        ? 'bg-gray-400 cursor-not-allowed'
+                        : isViewMode
+                            ? 'bg-orange-600 hover:bg-orange-700'
+                            : 'bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300'
+                        }`}
+                >
+                    {isSaving ? (
+                        <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            Saving...
+                        </>
+                    ) : (
+                        <>
+                            <ButtonIcon className="w-4 h-4" />
+                            {buttonText} Gantry Tilt
+                        </>
+                    )}
+                </button>
             </div>
         </div>
     );

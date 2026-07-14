@@ -2,8 +2,9 @@
 import React, { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Disclosure } from "@headlessui/react";
-import { ChevronDownIcon, CloudArrowUpIcon } from "@heroicons/react/24/outline";
+import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import toast from "react-hot-toast";
+import AuthorizedSignatorySelect from "../../AuthorizedSignatorySelect";
 import * as XLSX from "xlsx";
 import {
     getRadiationProfileWidthByServiceId,
@@ -128,6 +129,7 @@ const RadioFluro: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, qaTestDa
         humidity: "",
         engineerNameRPId: "",
     rpId: "",
+        authorizedSignatory: "",
         category: "",
     });
     const [minIssueDate, setMinIssueDate] = useState(""); // QA test submitted date; issue date must be >= this
@@ -202,7 +204,8 @@ const RadioFluro: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, qaTestDa
                     temperature: "",
                     humidity: "",
                     engineerNameRPId: data.engineerAssigned?.name || "",
-          rpId: data.rpId || "",
+                    rpId: data.rpId || "",
+                    authorizedSignatory: "",
                     category: data.category || "",
                 });
 
@@ -221,6 +224,39 @@ const RadioFluro: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, qaTestDa
                 }));
 
                 setTools(mappedTools);
+
+                try {
+                    const headerRes = await getReportHeader(serviceId);
+                    if (headerRes?.exists && headerRes?.data) {
+                        const reportData = headerRes.data;
+                        setFormData((prev) => ({
+                            ...prev,
+                            customerName: reportData.customerName || prev.customerName,
+                            address: reportData.address || prev.address,
+                            srfNumber: reportData.srfNumber || prev.srfNumber,
+                            srfDate: reportData.srfDate || prev.srfDate,
+                            reportULRNumber: reportData.reportULRNumber || prev.reportULRNumber,
+                            testReportNumber: reportData.testReportNumber || prev.testReportNumber,
+                            issueDate: reportData.issueDate || prev.issueDate,
+                            nomenclature: reportData.nomenclature || prev.nomenclature,
+                            make: reportData.make || prev.make,
+                            model: reportData.model || prev.model,
+                            slNumber: reportData.slNumber || prev.slNumber,
+                            condition: reportData.condition || prev.condition,
+                            testingProcedureNumber: reportData.testingProcedureNumber || prev.testingProcedureNumber,
+                            pages: reportData.pages || prev.pages,
+                            location: reportData.location || prev.location,
+                            temperature: reportData.temperature || prev.temperature,
+                            humidity: reportData.humidity || prev.humidity,
+                            engineerNameRPId: reportData.engineerNameRPId || prev.engineerNameRPId,
+                            rpId: reportData.rpId || prev.rpId,
+                            category: reportData.category || prev.category,
+                            authorizedSignatory: (typeof reportData.authorizedSignatory === "object" ? reportData.authorizedSignatory?._id : reportData.authorizedSignatory) || prev.authorizedSignatory || "",
+                        }));
+                    }
+                } catch (headerErr) {
+                    console.log("No report header found:", headerErr);
+                }
             } catch (err: any) {
                 console.error("Failed to load initial data:", err);
             } finally {
@@ -1721,6 +1757,36 @@ const RadioFluro: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, qaTestDa
                 Generate Radiography and Fluoroscopy QA Test Report
             </h1>
 
+            {/* Excel Actions */}
+            <div className="flex flex-wrap gap-4 justify-center mb-8">
+                <div className="relative">
+                    <input
+                        ref={fileInputRef}
+                        type="file"
+                        id="excel-upload-fixed-radio-fluro"
+                        accept=".xlsx,.xls,.csv"
+                        onChange={handleCSVUpload}
+                        className="hidden"
+                        disabled={csvUploading}
+                    />
+                    <button
+                        type="button"
+                        onClick={() => document.getElementById("excel-upload-fixed-radio-fluro")?.click()}
+                        className="px-6 py-2 bg-teal-600 text-white font-semibold rounded-lg hover:bg-teal-700 transition shadow"
+                    >
+                        {csvUploading ? "Uploading..." : "Import Excel Data"}
+                    </button>
+                </div>
+                <button
+                    type="button"
+                    onClick={handleExportToExcel}
+                    disabled={isExporting}
+                    className={`px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition shadow ${isExporting ? "opacity-50 cursor-not-allowed" : ""}`}
+                >
+                    {isExporting ? "Exporting..." : "Export Excel"}
+                </button>
+            </div>
+
             {/* Customer Info */}
             <section className="mb-10 bg-gray-50 p-6 rounded-lg">
                 <h2 className="text-xl font-semibold text-blue-700 mb-4">1. Name and Address of Customer</h2>
@@ -1828,6 +1894,22 @@ const RadioFluro: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, qaTestDa
                 </div>
             </section>
 
+            
+            <section className="mb-8">
+                <h2 className="text-lg font-semibold text-blue-700 mb-3">Authorized Signatory</h2>
+                <div className="max-w-xl">
+                    <AuthorizedSignatorySelect
+                        value={formData.authorizedSignatory}
+                        onChange={(selected) =>
+                            setFormData((prev) => ({
+                                ...prev,
+                                authorizedSignatory: selected?._id || "",
+                            }))
+                        }
+                    />
+                </div>
+            </section>
+
             <Standards standards={tools} />
             <Notes initialNotes={notes} onChange={setNotes} />
 
@@ -1869,59 +1951,6 @@ const RadioFluro: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, qaTestDa
                 >
                     View Generated Report
                 </button>
-            </div>
-
-            {/* CSV/Excel Upload Section */}
-            <div className="mt-12 mb-8 p-6 bg-blue-50 rounded-lg border-2 border-blue-200">
-                <div className="flex items-center justify-between mb-4">
-                    <div>
-                        <h3 className="text-lg font-semibold text-blue-900 mb-2">Upload Test Data</h3>
-                        <p className="text-sm text-blue-700">
-                            Upload a CSV or Excel file to auto-fill test data. Download templates below.
-                        </p>
-                    </div>
-                    <div className="flex gap-3">
-                        <button
-                            type="button"
-                            onClick={handleExportToExcel}
-                            disabled={isExporting}
-                            className={`px-4 py-2 rounded-md transition-colors flex items-center gap-2 ${isExporting ? "bg-gray-400 cursor-not-allowed" : "bg-green-600 hover:bg-green-700"} text-white`}
-                        >
-                            <CloudArrowUpIcon className="w-5 h-5" />
-                            {isExporting ? "Exporting..." : "Export Excel"}
-                        </button>
-                        {/* <div className="flex gap-2">
-                            <a
-                                href="/templates/FixedRadioFluro_Test_Data_Template_WithTimer.csv"
-                                download="FixedRadioFluro_Test_Data_Template_WithTimer.csv"
-                                className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors flex items-center gap-2"
-                            >
-                                <CloudArrowUpIcon className="w-5 h-5" />
-                                Download Template (With Timer)
-                            </a>
-                            <a
-                                href="/templates/FixedRadioFluro_Test_Data_Template_NoTimer.csv"
-                                download="FixedRadioFluro_Test_Data_Template_NoTimer.csv"
-                                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors flex items-center gap-2"
-                            >
-                                <CloudArrowUpIcon className="w-5 h-5" />
-                                Download Template (No Timer)
-                            </a>
-                        </div> */}
-                        <label className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors cursor-pointer flex items-center gap-2">
-                            <CloudArrowUpIcon className="w-5 h-5" />
-                            {csvUploading ? 'Uploading...' : 'Upload CSV/Excel'}
-                            <input
-                                ref={fileInputRef}
-                                type="file"
-                                accept=".csv,.xlsx,.xls"
-                                onChange={handleCSVUpload}
-                                className="hidden"
-                                disabled={csvUploading}
-                            />
-                        </label>
-                    </div>
-                </div>
             </div>
 
             {/* QA TESTS - Now Conditional */}
