@@ -202,25 +202,7 @@ const AlignmentTest: React.FC<Props> = ({ serviceId, testId: propTestId, onRefre
 
   return (
     <div className="p-6 max-w-full overflow-x-auto">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold">Alignment Test</h2>
-        <button
-          onClick={isViewMode ? toggleEdit : handleSave}
-          disabled={isSaving}
-          className={`flex items-center gap-2 px-4 py-2 rounded text-sm font-medium ${
-            isViewMode
-              ? 'bg-blue-600 text-white hover:bg-blue-700'
-              : 'bg-green-600 text-white hover:bg-green-700'
-          } ${isSaving ? 'opacity-50 cursor-not-allowed' : ''}`}
-        >
-          {isSaving ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
-          ) : (
-            <ButtonIcon className="w-4 h-4" />
-          )}
-          {isSaving ? 'Saving...' : buttonText}
-        </button>
-      </div>
+      <h2 className="text-2xl font-bold mb-6">Alignment Test</h2>
 
       {/* Test Table */}
       <div className="bg-white shadow-md rounded-lg overflow-hidden">
@@ -317,6 +299,25 @@ const AlignmentTest: React.FC<Props> = ({ serviceId, testId: propTestId, onRefre
             </button>
           </div>
         )}
+      </div>
+
+      <div className="flex justify-end mt-6">
+        <button
+          onClick={isViewMode ? toggleEdit : handleSave}
+          disabled={isSaving}
+          className={`flex items-center gap-2 px-4 py-2 rounded text-sm font-medium ${
+            isViewMode
+              ? 'bg-blue-600 text-white hover:bg-blue-700'
+              : 'bg-green-600 text-white hover:bg-green-700'
+          } ${isSaving ? 'opacity-50 cursor-not-allowed' : ''}`}
+        >
+          {isSaving ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <ButtonIcon className="w-4 h-4" />
+          )}
+          {isSaving ? 'Saving...' : buttonText}
+        </button>
       </div>
     </div>
   );

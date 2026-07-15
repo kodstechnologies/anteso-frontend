@@ -383,28 +383,9 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, testId: propTes
 
   return (
     <div className="w-full max-w-7xl mx-auto p-6 space-y-12">
-      <div className="flex justify-between items-center">
-        <h1 className="text-4xl font-bold text-center text-gray-800">
-          Radiation Protection Survey Report
-        </h1>
-        <button
-          onClick={isViewMode ? () => setIsEditing(true) : handleSave}
-          disabled={isSaving}
-          className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium text-white transition shadow-md ${isViewMode ? "bg-orange-600 hover:bg-orange-700" : "bg-teal-600 hover:bg-teal-700"}`}
-        >
-          {isSaving ? (
-            <>
-              <Loader2 className="w-5 h-5 animate-spin" />
-              Saving...
-            </>
-          ) : (
-            <>
-              {isViewMode ? <Edit3 className="w-5 h-5" /> : <Save className="w-5 h-5" />}
-              {isViewMode ? "Edit" : testId ? "Update" : "Save"} Survey
-            </>
-          )}
-        </button>
-      </div>
+      <h1 className="text-4xl font-bold text-center text-gray-800">
+        Radiation Protection Survey Report
+      </h1>
 
       {/* 1. Survey Details */}
       <section className="bg-white rounded-2xl shadow-lg border border-gray-200">
@@ -658,6 +639,26 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, testId: propTes
           </div>
         </div>
       </section>
+
+      <div className="flex justify-end mt-6">
+        <button
+          onClick={isViewMode ? () => setIsEditing(true) : handleSave}
+          disabled={isSaving}
+          className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium text-white transition shadow-md ${isViewMode ? "bg-orange-600 hover:bg-orange-700" : "bg-teal-600 hover:bg-teal-700"}`}
+        >
+          {isSaving ? (
+            <>
+              <Loader2 className="w-5 h-5 animate-spin" />
+              Saving...
+            </>
+          ) : (
+            <>
+              {isViewMode ? <Edit3 className="w-5 h-5" /> : <Save className="w-5 h-5" />}
+              {isViewMode ? "Edit" : testId ? "Update" : "Save"} Survey
+            </>
+          )}
+        </button>
+      </div>
     </div>
   );
 };

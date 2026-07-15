@@ -2,7 +2,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Disclosure } from "@headlessui/react";
-import { ChevronDownIcon, CloudArrowUpIcon } from "@heroicons/react/24/outline";
+import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import toast from "react-hot-toast";
 import AuthorizedSignatorySelect from "../../AuthorizedSignatorySelect";
 import * as XLSX from "xlsx";
@@ -241,6 +241,7 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
           engineerNameRPId: data.engineerAssigned?.name || "",
           rpId: pickRpId(data),
           category: data.category || "",
+          authorizedSignatory: "",
         });
 
         const mappedTools: Standard[] = toolsRes.data.toolsAssigned.map((t: any, i: number) => ({
@@ -1791,62 +1792,38 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
 
   return (
     <div className="max-w-7xl mx-auto bg-white shadow-lg rounded-xl p-8 mt-8">
+      <h1 className="text-3xl font-bold text-center text-gray-800 mb-8">
+        Generate Radiography (Mobile) QA Test Report
+      </h1>
 
-      {/* ── Header row with title + Excel buttons ── */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
-        <h1 className="text-3xl font-bold text-gray-800">
-          Generate Radiography (Mobile) QA Test Report
-        </h1>
-        <div className="flex flex-wrap gap-2">
-          <a
-            href="/templates/Radiography_Mobile_Template_WithTimer.xlsx"
-            download
-            className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition text-xs font-medium"
-          >
-            With Timer Template (XLSX)
-          </a>
-          <a
-            href="/templates/Radiography_Mobile_Template_NoTimer.xlsx"
-            download
-            className="px-3 py-2 bg-green-700 text-white rounded-lg hover:bg-green-800 transition text-xs font-medium"
-          >
-            No Timer Template (XLSX)
-          </a>
-          <a
-            href="/templates/RadiographyMobile_Timer_Template.csv"
-            download
-            className="px-3 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition text-xs font-medium"
-          >
-            With Timer Template (CSV)
-          </a>
-          <a
-            href="/templates/RadiographyMobile_NoTimer_Template.csv"
-            download
-            className="px-3 py-2 bg-emerald-700 text-white rounded-lg hover:bg-emerald-800 transition text-xs font-medium"
-          >
-            No Timer Template (CSV)
-          </a>
-          <label className={`flex items-center gap-2 px-4 py-2 rounded-lg text-white transition cursor-pointer text-sm font-medium ${excelUploading ? "bg-gray-400 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700"}`}>
-            <CloudArrowUpIcon className="w-5 h-5" />
-            {excelUploading ? "Uploading..." : "Import Excel"}
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".csv,.xlsx,.xls"
-              onChange={handleExcelUpload}
-              className="hidden"
-              disabled={excelUploading}
-            />
-          </label>
+      {/* Excel Actions */}
+      <div className="flex flex-wrap gap-4 justify-center mb-8">
+        <div className="relative">
+          <input
+            ref={fileInputRef}
+            type="file"
+            id="excel-upload-radiography-mobile"
+            accept=".xlsx,.xls,.csv"
+            onChange={handleExcelUpload}
+            className="hidden"
+            disabled={excelUploading}
+          />
           <button
             type="button"
-            onClick={handleExportToExcel}
-            disabled={excelUploading}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-white transition text-sm font-medium ${excelUploading ? "bg-gray-400 cursor-not-allowed" : "bg-green-600 hover:bg-green-700"}`}
+            onClick={() => document.getElementById("excel-upload-radiography-mobile")?.click()}
+            className="px-6 py-2 bg-teal-600 text-white font-semibold rounded-lg hover:bg-teal-700 transition shadow"
           >
-            {excelUploading ? "Exporting..." : "Export Excel"}
+            {excelUploading ? "Uploading..." : "Import Excel Data"}
           </button>
         </div>
+        <button
+          type="button"
+          onClick={handleExportToExcel}
+          disabled={excelUploading}
+          className={`px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition shadow ${excelUploading ? "opacity-50 cursor-not-allowed" : ""}`}
+        >
+          {excelUploading ? "Exporting..." : "Export Excel"}
+        </button>
       </div>
 
       {/* ── Form sections ── */}

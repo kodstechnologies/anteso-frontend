@@ -2,7 +2,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Disclosure } from "@headlessui/react";
-import { ChevronDownIcon, CloudArrowUpIcon } from "@heroicons/react/24/outline";
+import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import toast from "react-hot-toast";
 import AuthorizedSignatorySelect from "../../AuthorizedSignatorySelect";
 import * as XLSX from "xlsx";
@@ -216,6 +216,7 @@ const RadiographyMobileHT: React.FC<{ serviceId: string; qaTestDate?: string | n
           engineerNameRPId: data.engineerAssigned?.name || "",
           rpId: data.rpId || "",
           category: data.category || "",
+          authorizedSignatory: "",
         });
 
         // Map tools
@@ -1788,31 +1789,38 @@ const RadiographyMobileHT: React.FC<{ serviceId: string; qaTestDate?: string | n
 
   return (
     <div className="max-w-7xl mx-auto bg-white shadow-lg rounded-xl p-8 mt-8">
-      <div className="flex flex-wrap justify-between items-center gap-4 mb-8">
-        <h1 className="text-3xl font-bold text-gray-800">
-          Generate Radiography (Mobile) with HT QA Test Report
-        </h1>
-        <div className="flex flex-wrap items-center gap-3">
-          <label className="flex items-center gap-2 px-4 py-2 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition cursor-pointer text-sm font-medium border border-green-200 disabled:opacity-50">
-            <CloudArrowUpIcon className="w-5 h-5" />
-            {csvUploading ? "Uploading…" : "Import Excel"}
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".csv,.xlsx,.xls"
-              onChange={handleCSVUpload}
-              className="hidden"
-              disabled={csvUploading}
-            />
-          </label>
-          <button
-            onClick={handleExportToExcel}
+      <h1 className="text-3xl font-bold text-center text-gray-800 mb-8">
+        Generate Radiography (Mobile) with HT QA Test Report
+      </h1>
+
+      {/* Excel Actions */}
+      <div className="flex flex-wrap gap-4 justify-center mb-8">
+        <div className="relative">
+          <input
+            ref={fileInputRef}
+            type="file"
+            id="excel-upload-radiography-mobile-ht"
+            accept=".xlsx,.xls,.csv"
+            onChange={handleCSVUpload}
+            className="hidden"
             disabled={csvUploading}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition text-sm font-medium border border-blue-200 disabled:opacity-50"
+          />
+          <button
+            type="button"
+            onClick={() => document.getElementById("excel-upload-radiography-mobile-ht")?.click()}
+            className="px-6 py-2 bg-teal-600 text-white font-semibold rounded-lg hover:bg-teal-700 transition shadow"
           >
-            {csvUploading ? "Exporting…" : "Export Excel"}
+            {csvUploading ? "Uploading..." : "Import Excel Data"}
           </button>
         </div>
+        <button
+          type="button"
+          onClick={handleExportToExcel}
+          disabled={csvUploading}
+          className={`px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition shadow ${csvUploading ? "opacity-50 cursor-not-allowed" : ""}`}
+        >
+          {csvUploading ? "Exporting..." : "Export Excel"}
+        </button>
       </div>
 
       {/* Customer Info */}

@@ -682,7 +682,7 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
             </div>
 
             {/* Save Button */}
-            <div className="flex justify-end mt-8">
+            <div className="flex justify-end mt-6">
                 <button
                     onClick={(e) => {
                         e.preventDefault();

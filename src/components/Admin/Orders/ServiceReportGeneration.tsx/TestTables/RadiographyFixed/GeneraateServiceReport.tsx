@@ -230,6 +230,7 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
           engineerNameRPId: data.engineerAssigned?.name || "",
           rpId: pickRpId(data),
           category: data.category || "",
+          authorizedSignatory: "",
         });
 
         // Map tools (supports both API shapes: data.toolsAssigned and data.data.toolsAssigned)

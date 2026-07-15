@@ -60,6 +60,8 @@ interface ReportData {
   notes?: Note[];
   pages: string;
   category: string;
+  authorizedSignatoryName?: string;
+  authorizedSignatorySignature?: string;
   // Test documents
   AccuracyOfIrradiationTimeRadiographyPortable?: any;
   accuracyOfOperatingPotentialRadigraphyPortable?: any;
@@ -235,6 +237,14 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
             qrCode: data.qrCode || "",
 
             category: data.category || "",
+            authorizedSignatoryName:
+              (typeof data.authorizedSignatory === "object" && data.authorizedSignatory?.name) ||
+              data.authorizedSignatoryName ||
+              "",
+            authorizedSignatorySignature:
+              (typeof data.authorizedSignatory === "object" && data.authorizedSignatory?.signature) ||
+              data.authorizedSignatorySignature ||
+              "",
           });
 
           // Extract test data from populated response
@@ -1461,6 +1471,8 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
               customerCity={placeValue}
               qrCode={report.qrCode}
               engineerName={report.engineerNameRPId}
+              authorizedSignatoryName={report.authorizedSignatoryName}
+              authorizedSignatorySignature={report.authorizedSignatorySignature}
             />
           </div>
         </ReportPage>

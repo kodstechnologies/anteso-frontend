@@ -312,31 +312,7 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
 
   return (
     <div className="p-6 max-w-full mx-auto space-y-10">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-800">Linearity of mAs Loading (Across mAs Ranges)</h2>
-        <button
-          onClick={isViewMode ? toggleEdit : handleSave}
-          disabled={isSaving}
-          className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${isSaving
-            ? 'bg-gray-400 cursor-not-allowed'
-            : isViewMode
-              ? 'bg-orange-600 hover:bg-orange-700'
-              : 'bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300'
-            }`}
-        >
-          {isSaving ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Saving...
-            </>
-          ) : (
-            <>
-              <ButtonIcon className="w-4 h-4" />
-              {buttonText} mAs Linearity
-            </>
-          )}
-        </button>
-      </div>
+      <h2 className="text-2xl font-bold text-gray-800">Linearity of mAs Loading (Across mAs Ranges)</h2>
 
       {/* Exposure Conditions */}
       <div className="bg-white shadow-md rounded-lg overflow-hidden border border-gray-200">
@@ -529,6 +505,31 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
             />
           </div>
         </div>
+      </div>
+
+      <div className="flex justify-end mt-6">
+        <button
+          onClick={isViewMode ? toggleEdit : handleSave}
+          disabled={isSaving}
+          className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${isSaving
+            ? 'bg-gray-400 cursor-not-allowed'
+            : isViewMode
+              ? 'bg-orange-600 hover:bg-orange-700'
+              : 'bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300'
+            }`}
+        >
+          {isSaving ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Saving...
+            </>
+          ) : (
+            <>
+              <ButtonIcon className="w-4 h-4" />
+              {buttonText} mAs Linearity
+            </>
+          )}
+        </button>
       </div>
     </div>
   );

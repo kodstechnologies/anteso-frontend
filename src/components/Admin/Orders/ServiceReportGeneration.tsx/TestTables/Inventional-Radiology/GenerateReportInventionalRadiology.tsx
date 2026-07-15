@@ -935,6 +935,7 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
           engineerNameRPId: data.engineerAssigned?.name || "",
           rpId: data.rpId || "",
           category: "",
+          authorizedSignatory: "",
         });
 
         const mapped: Standard[] = toolRes.data.toolsAssigned.map(

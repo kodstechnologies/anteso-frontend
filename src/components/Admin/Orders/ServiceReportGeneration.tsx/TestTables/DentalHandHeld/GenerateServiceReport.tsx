@@ -176,6 +176,7 @@ const GenerateReportForDentalHandHeld: React.FC<DentalProps> = ({ serviceId, qaT
                     engineerNameRPId: data.engineerAssigned?.name || "",
                     csvFileUrl: "", // Initialize csvFileUrl
                     rpId: data.rpId || "",
+                    authorizedSignatory: "",
                 });
 
                 const mapped: Standard[] = toolRes.data.toolsAssigned.map(

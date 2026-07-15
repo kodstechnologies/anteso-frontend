@@ -131,7 +131,7 @@ interface Standard {
     certificate: string | null;
     calibrationCertificateNo: string;
     calibrationValidTill: string;
-    uncertainity?: string;
+    uncertainity: string;
 }
 
 interface DetailsResponse {
@@ -1612,6 +1612,7 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
                     engineerNameRPId: data.engineerAssigned?.name || "",
                     rpId: firstNonEmptyString(data.rpId),
                     category: data.category || "",
+                    authorizedSignatory: "",
                 });
 
                 const mappedTools: Standard[] = toolsRes.data.toolsAssigned.map((t: any, i: number) => ({
@@ -1624,6 +1625,7 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
                     certificate: t.certificate || null,
                     calibrationCertificateNo: t.calibrationCertificateNo || "",
                     calibrationValidTill: t.calibrationValidTill.split("T")[0],
+                    uncertainity: t.uncertainity || "",
                 }));
                 console.log("🚀 ~ fetchInitialData ~ mappedTools:", mappedTools)
 

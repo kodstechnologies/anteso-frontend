@@ -495,43 +495,17 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-gray-800">Output Consistency</h2>
 
-        <div className="flex items-center gap-4">
-          {/* FFD (cm) - top right, similar to AccuracyOfOperatingPotential */}
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-semibold text-gray-700">FDD (cm)</span>
-            <input
-              type="number"
-              value={ffd}
-              onChange={(e) => setFfd(e.target.value)}
-              disabled={isViewMode}
-              className={`w-24 px-3 py-1.5 text-center border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'
-                }`}
-              placeholder="40"
-            />
-          </div>
-
-          <button
-            onClick={isViewMode ? startEditing : handleSave}
-            disabled={isSaving}
-            className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${isSaving
-              ? 'bg-gray-400 cursor-not-allowed'
-              : isViewMode
-                ? 'bg-orange-600 hover:bg-orange-700'
-                : 'bg-teal-600 hover:bg-teal-700 focus:ring-4 focus:ring-teal-300'
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-semibold text-gray-700">FDD (cm)</span>
+          <input
+            type="number"
+            value={ffd}
+            onChange={(e) => setFfd(e.target.value)}
+            disabled={isViewMode}
+            className={`w-24 px-3 py-1.5 text-center border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'
               }`}
-          >
-            {isSaving ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Saving...
-              </>
-            ) : (
-              <>
-                {isViewMode ? <Edit3 className="w-4 h-4" /> : <Save className="w-4 h-4" />}
-                {isViewMode ? 'Edit' : testId ? 'Update' : 'Save'} Test
-              </>
-            )}
-          </button>
+            placeholder="40"
+          />
         </div>
       </div>
 
@@ -711,6 +685,31 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
             {remark || '—'}
           </span>
         </div>
+      </div>
+
+      <div className="flex justify-end mt-6">
+        <button
+          onClick={isViewMode ? startEditing : handleSave}
+          disabled={isSaving}
+          className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${isSaving
+            ? 'bg-gray-400 cursor-not-allowed'
+            : isViewMode
+              ? 'bg-orange-600 hover:bg-orange-700'
+              : 'bg-teal-600 hover:bg-teal-700 focus:ring-4 focus:ring-teal-300'
+            }`}
+        >
+          {isSaving ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Saving...
+            </>
+          ) : (
+            <>
+              {isViewMode ? <Edit3 className="w-4 h-4" /> : <Save className="w-4 h-4" />}
+              {isViewMode ? 'Edit' : testId ? 'Update' : 'Save'} Test
+            </>
+          )}
+        </button>
       </div>
     </div>
   );

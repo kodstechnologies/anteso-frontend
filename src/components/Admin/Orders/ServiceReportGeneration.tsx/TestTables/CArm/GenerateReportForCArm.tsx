@@ -192,6 +192,7 @@ const CArm: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
           humidity: "",
           engineerNameRPId: detRes.data.engineerAssigned?.name || "",
           rpId: detRes.data.engineerAssigned?.rpId || "",
+          authorizedSignatory: "",
         });
 
         const mapped: Standard[] = toolRes.data.toolsAssigned.map(

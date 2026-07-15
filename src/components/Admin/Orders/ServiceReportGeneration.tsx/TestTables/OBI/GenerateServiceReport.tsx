@@ -2,7 +2,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Disclosure } from "@headlessui/react";
-import { ChevronDownIcon, CloudArrowUpIcon } from "@heroicons/react/24/outline";
+import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import toast from "react-hot-toast";
 import AuthorizedSignatorySelect from "../../AuthorizedSignatorySelect";
 import * as XLSX from "xlsx";
@@ -243,7 +243,8 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null; qaTestDate?
                     temperature: "",
                     humidity: "",
                     engineerNameRPId: data.engineerAssigned?.name || "",
-                    rpId: data.rpId
+                    rpId: data.rpId,
+                    authorizedSignatory: "",
                 });
 
                 // Map tools
@@ -2011,38 +2012,38 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null; qaTestDate?
 
     return (
         <div className="max-w-7xl mx-auto bg-white shadow-lg rounded-xl p-8 mt-8">
-            <div className="flex justify-between items-center mb-8">
-                <h1 className="text-3xl font-bold text-gray-800">
-                    Generate On-Board Imaging (OBI) QA Test Report
-                </h1>
-                <div className="flex items-center gap-4">
-                    {/* <a
-                        href="/templates/OBI_Test_Data_Template_WithTimer.csv"
-                        download
-                        className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
+            <h1 className="text-3xl font-bold text-center text-gray-800 mb-8">
+                Generate On-Board Imaging (OBI) QA Test Report
+            </h1>
+
+            {/* Excel Actions */}
+            <div className="flex flex-wrap gap-4 justify-center mb-8">
+                <div className="relative">
+                    <input
+                        ref={fileInputRef}
+                        type="file"
+                        id="excel-upload-obi"
+                        accept=".xlsx,.xls,.csv"
+                        onChange={handleCSVUpload}
+                        className="hidden"
+                        disabled={csvUploading}
+                    />
+                    <button
+                        type="button"
+                        onClick={() => document.getElementById("excel-upload-obi")?.click()}
+                        className="px-6 py-2 bg-teal-600 text-white font-semibold rounded-lg hover:bg-teal-700 transition shadow"
                     >
-                        Download Template (With Timer)
-                    </a>
-                    <a
-                        href="/templates/OBI_Test_Data_Template_NoTimer.csv"
-                        download
-                        className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
-                    >
-                        Download Template (No Timer)
-                    </a> */}
-                    <label className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition cursor-pointer">
-                        <CloudArrowUpIcon className="w-5 h-5" />
-                        {csvUploading ? 'Uploading...' : 'Upload Excel'}
-                        <input
-                            ref={fileInputRef}
-                            type="file"
-                            accept=".csv,.xlsx,.xls"
-                            onChange={handleCSVUpload}
-                            className="hidden"
-                            disabled={csvUploading}
-                        />
-                    </label>
+                        {csvUploading ? "Uploading..." : "Import Excel Data"}
+                    </button>
                 </div>
+                <button
+                    type="button"
+                    onClick={handleExportSavedData}
+                    disabled={isExporting}
+                    className={`px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition shadow ${isExporting ? "opacity-50 cursor-not-allowed" : ""}`}
+                >
+                    {isExporting ? "Exporting..." : "Export Excel"}
+                </button>
             </div>
 
             {/* Customer Info */}
@@ -2157,14 +2158,6 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null; qaTestDate?
                         }`}
                 >
                     {saving ? "Saving..." : "Save Report Header"}
-                </button>
-                <button
-                    type="button"
-                    onClick={handleExportSavedData}
-                    disabled={isExporting}
-                    className={`px-8 py-3 rounded-lg font-bold text-white transition ${isExporting ? "bg-gray-500 cursor-not-allowed" : "bg-teal-600 hover:bg-teal-700"}`}
-                >
-                    {isExporting ? "Exporting..." : "Export Excel"}
                 </button>
                 <button
                     onClick={async () => {

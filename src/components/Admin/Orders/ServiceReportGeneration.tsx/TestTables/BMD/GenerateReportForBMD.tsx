@@ -1353,6 +1353,7 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl, qaTes
           engineerNameRPId: data.engineerAssigned?.name || "",
           rpId: data.rpId || "",
           category: data.category || "",
+          authorizedSignatory: "",
         });
 
         const mapped: Standard[] = toolRes.data.toolsAssigned.map(

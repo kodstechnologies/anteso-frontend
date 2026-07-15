@@ -500,35 +500,6 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
 
     return (
         <div className="p-6 max-w-full overflow-x-auto space-y-10">
-            {/* Save/Edit Button */}
-            <div className="flex justify-end">
-                <button
-                    onClick={isSaved ? () => setIsSaved(false) : saveTest}
-                    disabled={isSaving}
-                    className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition ${isSaved
-                            ? "bg-orange-600 text-white hover:bg-orange-700"
-                            : "bg-teal-600 text-white hover:bg-teal-700"
-                        } disabled:opacity-50 disabled:cursor-not-allowed`}
-                >
-                    {isSaving ? (
-                        <>
-                            <Loader2 className="w-5 h-5 animate-spin" />
-                            Saving...
-                        </>
-                    ) : isSaved ? (
-                        <>
-                            <Edit3 className="w-5 h-5" />
-                            Edit
-                        </>
-                    ) : (
-                        <>
-                            <Save className="w-5 h-5" />
-                            {testId ? "Update Test" : "Save Test"}
-                        </>
-                    )}
-                </button>
-            </div>
-
             {/* Your Beautiful Table & UI */}
             <div className="bg-white shadow-lg rounded-lg overflow-hidden border border-gray-200">
                 <div className="px-6 py-4 bg-blue-50 border-b border-gray-300">
@@ -851,6 +822,34 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
                         />
                     </li>
                 </ul>
+            </div>
+
+            <div className="flex justify-end mt-6">
+                <button
+                    onClick={isSaved ? () => setIsSaved(false) : saveTest}
+                    disabled={isSaving}
+                    className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition ${isSaved
+                            ? "bg-orange-600 text-white hover:bg-orange-700"
+                            : "bg-teal-600 text-white hover:bg-teal-700"
+                        } disabled:opacity-50 disabled:cursor-not-allowed`}
+                >
+                    {isSaving ? (
+                        <>
+                            <Loader2 className="w-5 h-5 animate-spin" />
+                            Saving...
+                        </>
+                    ) : isSaved ? (
+                        <>
+                            <Edit3 className="w-5 h-5" />
+                            Edit
+                        </>
+                    ) : (
+                        <>
+                            <Save className="w-5 h-5" />
+                            {testId ? "Update Test" : "Save Test"}
+                        </>
+                    )}
+                </button>
             </div>
         </div>
     );

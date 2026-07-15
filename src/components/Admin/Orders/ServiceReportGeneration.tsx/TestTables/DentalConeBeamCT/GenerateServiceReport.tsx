@@ -546,6 +546,7 @@ const DentalConeBeamCT: React.FC<{ serviceId: string; qaTestDate?: string | null
                     engineerNameRPId: data.engineerAssigned?.name || "",
           rpId: data.rpId || "",
                     category: data.category || "",
+                    authorizedSignatory: "",
                 });
 
                 // Map tools

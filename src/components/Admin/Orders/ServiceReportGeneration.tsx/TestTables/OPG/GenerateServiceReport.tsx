@@ -297,6 +297,7 @@ const OPG: React.FC<{ serviceId: string; qaTestDate?: string | null; csvFileUrl?
                     engineerNameRPId: data.engineerAssigned?.name || "",
           rpId: data.rpId || "",
                     category: data.category || "",
+                    authorizedSignatory: "",
                 });
 
                 // Map tools

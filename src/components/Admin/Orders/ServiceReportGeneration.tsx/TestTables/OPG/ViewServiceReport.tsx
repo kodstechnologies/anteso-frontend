@@ -61,6 +61,8 @@ interface ReportData {
   qrCode?: string;
   notes?: Note[];
   category?: string;
+  authorizedSignatoryName?: string;
+  authorizedSignatorySignature?: string;
   // All OPG Tests
   AccuracyOfIrradiationTimeOPG?: any;
   AccuracyOfOperatingPotentialOPG?: any;
@@ -246,6 +248,14 @@ const ViewServiceReportOPG: React.FC = () => {
             qrCode: data.qrCode || "",
 
             notes: data.notes || defaultNotes,
+            authorizedSignatoryName:
+              (typeof data.authorizedSignatory === "object" && data.authorizedSignatory?.name) ||
+              data.authorizedSignatoryName ||
+              "",
+            authorizedSignatorySignature:
+              (typeof data.authorizedSignatory === "object" && data.authorizedSignatory?.signature) ||
+              data.authorizedSignatorySignature ||
+              "",
           });
 
           // Transform backend data structure to match ViewServiceReport expectations
@@ -1709,6 +1719,8 @@ const ViewServiceReportOPG: React.FC = () => {
               customerCity={placeValue}
               qrCode={report.qrCode}
               engineerName={report.engineerNameRPId}
+              authorizedSignatoryName={report.authorizedSignatoryName}
+              authorizedSignatorySignature={report.authorizedSignatorySignature}
             />
           </div>
         </ReportPage>

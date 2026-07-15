@@ -60,6 +60,8 @@ interface ReportData {
   qrCode?: string;
   notes?: Note[];
   category:any;
+  authorizedSignatoryName?: string;
+  authorizedSignatorySignature?: string;
   // All OBI Tests
   AlignmentTestOBI?: any;
   accuracyOfOperatingPotentialOBI?: any;
@@ -309,6 +311,14 @@ const ViewServiceReportOBI: React.FC = () => {
 
             notes: data.notes || defaultNotes,
             category: data.category ,
+            authorizedSignatoryName:
+              (typeof data.authorizedSignatory === "object" && data.authorizedSignatory?.name) ||
+              data.authorizedSignatoryName ||
+              "",
+            authorizedSignatorySignature:
+              (typeof data.authorizedSignatory === "object" && data.authorizedSignatory?.signature) ||
+              data.authorizedSignatorySignature ||
+              "",
           });
 
           // Transform backend data structures to match frontend expectations
@@ -2424,6 +2434,8 @@ const ViewServiceReportOBI: React.FC = () => {
               customerCity={placeValue}
               qrCode={report.qrCode}
               engineerName={report.engineerNameRPId}
+              authorizedSignatoryName={report.authorizedSignatoryName}
+              authorizedSignatorySignature={report.authorizedSignatorySignature}
             />
           </div>
         </ReportPage>

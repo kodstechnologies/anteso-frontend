@@ -281,28 +281,7 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, on
 
     return (
         <div className="p-6 max-w-full mx-auto space-y-10">
-            {/* Header */}
-            <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-bold text-gray-800">Effective Focal Spot Size</h2>
-                <button
-                    onClick={isViewOnly ? startEditing : handleSave}
-                    disabled={isSaving}
-                    className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium text-white transition-all shadow-md ${isSaving ? "bg-gray-400 cursor-not-allowed" : isViewOnly ? "bg-orange-600 hover:bg-orange-700" : "bg-teal-600 hover:bg-teal-700"
-                        }`}
-                >
-                    {isSaving ? (
-                        <>
-                            <Loader2 className="w-5 h-5 animate-spin" />
-                            Saving...
-                        </>
-                    ) : (
-                        <>
-                            <ButtonIcon className="w-5 h-5" />
-                            {!isSaved ? "Save Test" : isEditing ? "Update Test" : "Edit Test"}
-                        </>
-                    )}
-                </button>
-            </div>
+            <h2 className="text-2xl font-bold text-gray-800">Effective Focal Spot Size</h2>
 
             {/* FCD */}
             <div className="bg-white shadow-md rounded-xl border border-gray-200 p-6">
@@ -428,8 +407,26 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, on
                 </div>
             </div>
 
-            {/* Final Result */}
-
+            <div className="flex justify-end mt-6">
+                <button
+                    onClick={isViewOnly ? startEditing : handleSave}
+                    disabled={isSaving}
+                    className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium text-white transition-all shadow-md ${isSaving ? "bg-gray-400 cursor-not-allowed" : isViewOnly ? "bg-orange-600 hover:bg-orange-700" : "bg-teal-600 hover:bg-teal-700"
+                        }`}
+                >
+                    {isSaving ? (
+                        <>
+                            <Loader2 className="w-5 h-5 animate-spin" />
+                            Saving...
+                        </>
+                    ) : (
+                        <>
+                            <ButtonIcon className="w-5 h-5" />
+                            {!isSaved ? "Save Test" : isEditing ? "Update Test" : "Edit Test"}
+                        </>
+                    )}
+                </button>
+            </div>
         </div>
     );
 };

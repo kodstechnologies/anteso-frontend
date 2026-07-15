@@ -61,6 +61,8 @@ interface ReportData {
   notes?: Note[];
   category: string;
   qaTestSubmittedAt?: string;
+  authorizedSignatoryName?: string;
+  authorizedSignatorySignature?: string;
   // Test documents
   AccuracyOfIrradiationTimeRadiographyMobileHT?: any;
   accuracyOfOperatingPotentialRadiographyMobileHT?: any;
@@ -215,6 +217,14 @@ const ViewServiceReportRadiographyMobileHT: React.FC = () => {
 
             category: data.category || "",
             qaTestSubmittedAt: data.qaTestSubmittedAt || "",
+            authorizedSignatoryName:
+              (typeof data.authorizedSignatory === "object" && data.authorizedSignatory?.name) ||
+              data.authorizedSignatoryName ||
+              "",
+            authorizedSignatorySignature:
+              (typeof data.authorizedSignatory === "object" && data.authorizedSignatory?.signature) ||
+              data.authorizedSignatorySignature ||
+              "",
           });
 
           // Extract test data from populated response
@@ -1542,6 +1552,8 @@ const ViewServiceReportRadiographyMobileHT: React.FC = () => {
               customerCity={placeValue}
               qrCode={report.qrCode}
               engineerName={report.engineerNameRPId}
+              authorizedSignatoryName={report.authorizedSignatoryName}
+              authorizedSignatorySignature={report.authorizedSignatorySignature}
             />
         </ReportPage>
       </div>

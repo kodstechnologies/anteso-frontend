@@ -431,32 +431,6 @@ const AccuracyOfOperatingPotential: React.FC<Props> = ({
 
   return (
     <div className="p-6 max-w-full overflow-x-auto space-y-10">
-      <div className="flex justify-end">
-        <button
-          onClick={isViewMode ? () => setIsEditing(true) : saveTest}
-          disabled={isSaving}
-          className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition ${isViewMode ? "bg-orange-600 text-white hover:bg-orange-700" : "bg-teal-600 text-white hover:bg-teal-700"
-            } disabled:opacity-50 disabled:cursor-not-allowed`}
-        >
-          {isSaving ? (
-            <>
-              <Loader2 className="w-5 h-5 animate-spin" />
-              Saving...
-            </>
-          ) : isViewMode ? (
-            <>
-              <Edit3 className="w-5 h-5" />
-              Edit
-            </>
-          ) : (
-            <>
-              <Save className="w-5 h-5" />
-              {testId ? "Update Test" : "Save Test"}
-            </>
-          )}
-        </button>
-      </div>
-
       <div className="bg-white shadow-lg rounded-lg overflow-hidden border border-gray-200">
         <div className="px-6 py-4 bg-blue-50 border-b border-gray-300">
           <h3 className="text-xl font-bold text-blue-900">Accuracy of kVp at Different mA Stations</h3>
@@ -740,6 +714,32 @@ const AccuracyOfOperatingPotential: React.FC<Props> = ({
             />
           </li>
         </ul>
+      </div>
+
+      <div className="flex justify-end mt-6">
+        <button
+          onClick={isViewMode ? () => setIsEditing(true) : saveTest}
+          disabled={isSaving}
+          className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition ${isViewMode ? "bg-orange-600 text-white hover:bg-orange-700" : "bg-teal-600 text-white hover:bg-teal-700"
+            } disabled:opacity-50 disabled:cursor-not-allowed`}
+        >
+          {isSaving ? (
+            <>
+              <Loader2 className="w-5 h-5 animate-spin" />
+              Saving...
+            </>
+          ) : isViewMode ? (
+            <>
+              <Edit3 className="w-5 h-5" />
+              Edit
+            </>
+          ) : (
+            <>
+              <Save className="w-5 h-5" />
+              {testId ? "Update Test" : "Save Test"}
+            </>
+          )}
+        </button>
       </div>
     </div>
   );

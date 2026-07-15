@@ -614,7 +614,7 @@ export default function RadiationLeakageLevel({ serviceId, testId: propTestId, o
       </div>
 
       {/* Save Button */}
-      <div className="flex justify-end mt-8">
+      <div className="flex justify-end mt-6">
         <button
           onClick={(e) => {
             e.preventDefault();

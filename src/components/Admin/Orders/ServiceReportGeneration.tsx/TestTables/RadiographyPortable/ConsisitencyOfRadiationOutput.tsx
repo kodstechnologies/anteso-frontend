@@ -404,38 +404,9 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
 
   return (
     <div className="p-6 space-y-10">
-      <div className="flex justify-between items-center border-b pb-4">
-        <h2 className="text-2xl font-bold text-gray-800">
-          Reproducibility of Radiation Output (Consistency Test)
-        </h2>
-        <button
-          onClick={isViewMode ? toggleEdit : handleSave}
-          disabled={isSaving}
-          className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${isSaving
-            ? 'bg-gray-400 cursor-not-allowed'
-            : isViewMode
-              ? 'bg-orange-600 hover:bg-orange-700'
-              : 'bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300'
-            }`}
-        >
-          {isSaving ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Saving...
-            </>
-          ) : isViewMode ? (
-            <>
-              <Edit3 className="w-4 h-4" />
-              Edit
-            </>
-          ) : (
-            <>
-              <Save className="w-4 h-4" />
-              {testId ? 'Update' : 'Save'} Test
-            </>
-          )}
-        </button>
-      </div>
+      <h2 className="text-2xl font-bold text-gray-800 border-b pb-4">
+        Reproducibility of Radiation Output (Consistency Test)
+      </h2>
 
       {/* FCD */}
       <div className="bg-white rounded-lg border shadow-sm">
@@ -628,6 +599,36 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
         <p className="text-sm text-gray-500 mt-3">
           Reference: IEC 61223-3-1 & AERB Safety Code
         </p>
+      </div>
+
+      <div className="flex justify-end mt-6">
+        <button
+          onClick={isViewMode ? toggleEdit : handleSave}
+          disabled={isSaving}
+          className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${isSaving
+            ? 'bg-gray-400 cursor-not-allowed'
+            : isViewMode
+              ? 'bg-orange-600 hover:bg-orange-700'
+              : 'bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300'
+            }`}
+        >
+          {isSaving ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Saving...
+            </>
+          ) : isViewMode ? (
+            <>
+              <Edit3 className="w-4 h-4" />
+              Edit
+            </>
+          ) : (
+            <>
+              <Save className="w-4 h-4" />
+              {testId ? 'Update' : 'Save'} Test
+            </>
+          )}
+        </button>
       </div>
     </div>
   );

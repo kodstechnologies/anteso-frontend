@@ -188,7 +188,8 @@ const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId, qaTestDate,
                     temperature: "",
                     humidity: "",
                     engineerNameRPId: data.engineerAssigned?.name || "",
-                    rpId: data.rpId
+                    rpId: data.rpId,
+                    authorizedSignatory: "",
                 });
 
                 const mapped: Standard[] = toolRes.data.toolsAssigned.map(
