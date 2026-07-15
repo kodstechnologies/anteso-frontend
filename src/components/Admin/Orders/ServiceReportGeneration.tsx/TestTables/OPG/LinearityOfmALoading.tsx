@@ -1,7 +1,7 @@
 // components/TestTables/LinearityOfMaLoading.tsx
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Plus, Trash2, Loader2, Edit3, Save } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
@@ -57,13 +57,24 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [hasSaved, setHasSaved] = useState(false);
+  const csvAppliedRef = useRef(false);
+  const csvDataKeyRef = useRef<string>('');
+
+  const padOutputs = (outputs: string[], count: number) => {
+    const next = (outputs || []).map((v) => (v != null ? String(v) : ''));
+    while (next.length < count) next.push('');
+    return next.slice(0, count);
+  };
 
   // === Column Handling ===
   const addMeasColumn = () => {
-    const newHeader = `Meas ${measHeaders.length + 1}`;
-    setMeasHeaders(prev => [...prev, newHeader]);
-    setTable2Rows(prev =>
-      prev.map(row => ({ ...row, measuredOutputs: [...row.measuredOutputs, ''] }))
+    const nextCount = measHeaders.length + 1;
+    setMeasHeaders(prev => [...prev, `Measured mR ${prev.length + 1}`]);
+    setTable2Rows(rows =>
+      rows.map(row => ({
+        ...row,
+        measuredOutputs: padOutputs(row.measuredOutputs || [], nextCount),
+      }))
     );
   };
 
@@ -73,7 +84,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
     setTable2Rows(prev =>
       prev.map(row => ({
         ...row,
-        measuredOutputs: row.measuredOutputs.filter((_, i) => i !== idx),
+        measuredOutputs: (row.measuredOutputs || []).filter((_, i) => i !== idx),
       }))
     );
   };
@@ -81,10 +92,26 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
   const updateMeasHeader = (idx: number, value: string) => {
     setMeasHeaders(prev => {
       const copy = [...prev];
-      copy[idx] = value || `Meas ${idx + 1}`;
+      copy[idx] = value || `Measured mR ${idx + 1}`;
       return copy;
     });
   };
+
+  // Keep row cell counts aligned with measurement headers
+  useEffect(() => {
+    const len = measHeaders.length;
+    if (len < 1) return;
+    setTable2Rows(prev => {
+      let needsUpdate = false;
+      const next = prev.map(r => {
+        const mo = r.measuredOutputs || [];
+        if (mo.length === len) return r;
+        needsUpdate = true;
+        return { ...r, measuredOutputs: padOutputs(mo, len) };
+      });
+      return needsUpdate ? next : prev;
+    });
+  }, [measHeaders]);
 
   // === Row Handling ===
   const addTable2Row = () => {
@@ -117,7 +144,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
         if (row.id !== rowId) return row;
         if (field === 'ma') return { ...row, ma: value };
         if (typeof field === 'number') {
-          const newOutputs = [...row.measuredOutputs];
+          const newOutputs = padOutputs(row.measuredOutputs || [], Math.max(measHeaders.length, field + 1));
           newOutputs[field] = value;
           return { ...row, measuredOutputs: newOutputs };
         }
@@ -219,7 +246,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
       try {
         const res = await getLinearityOfMaLoadingByServiceIdForOPG(serviceId);
         const data = res?.data;
-        const hasCsvImport = csvData && csvData.length > 0;
+        const hasCsvImport = !!(csvData && csvData.length > 0);
         if (data) {
           setTestId(data._id || null);
           if (!hasCsvImport) {
@@ -229,28 +256,35 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
               time: data.table1?.time || '',
             });
             if (Array.isArray(data.table2) && data.table2.length > 0) {
+              const maxOutputs = Math.max(
+                0,
+                ...data.table2.map((r: any) => (r.measuredOutputs || []).length),
+                Array.isArray(data.measHeaders) ? data.measHeaders.length : 0,
+              );
+              const headerCount = Math.max(maxOutputs, 3);
+              const headers =
+                Array.isArray(data.measHeaders) && data.measHeaders.length > 0
+                  ? padOutputs(data.measHeaders.map(String), headerCount).map((h, i) => h || `Measured mR ${i + 1}`)
+                  : Array.from({ length: headerCount }, (_, i) => `Measured mR ${i + 1}`);
+              setMeasHeaders(headers);
               setTable2Rows(
                 data.table2.map((r: any, i: number) => ({
                   id: String(i + 1),
                   ma: r.ma || '',
-                  measuredOutputs: (r.measuredOutputs || []).map((v: any) => (v != null ? String(v) : '')),
-                  average: r.average || '',
-                  x: r.x || '',
-                  xMax: r.xMax || '',
-                  xMin: r.xMin || '',
-                  col: r.col || '',
-                  remarks: r.remarks || '',
+                  measuredOutputs: padOutputs(
+                    (r.measuredOutputs || []).map((v: any) => (v != null ? String(v) : '')),
+                    headerCount,
+                  ),
+                  average: '',
+                  x: '',
+                  xMax: '',
+                  xMin: '',
+                  col: '',
+                  remarks: '',
                 }))
               );
-              if (data.table2[0]?.measuredOutputs?.length) {
-                const count = data.table2[0].measuredOutputs.length;
-                const savedHeaders = Array.isArray(data.measHeaders) && data.measHeaders.length > 0
-                  ? data.measHeaders
-                  : Array.from({ length: count }, (_, i) => `Measured mR ${i + 1}`);
-                setMeasHeaders(savedHeaders);
-              } else if (Array.isArray(data.measHeaders) && data.measHeaders.length > 0) {
-                setMeasHeaders(data.measHeaders);
-              }
+            } else if (Array.isArray(data.measHeaders) && data.measHeaders.length > 0) {
+              setMeasHeaders(data.measHeaders);
             }
             setTolerance(data.tolerance || '0.1');
             setToleranceOperator(data.toleranceOperator || '<');
@@ -273,7 +307,9 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
       }
     };
     load();
-  }, [serviceId, csvData]);
+    // Only re-fetch when service changes. CSV import is handled by a separate effect.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [serviceId]);
 
   const isFcdLabel = (c: unknown) => {
     const s = c?.toString()?.trim().toLowerCase() || '';
@@ -309,9 +345,15 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
       .filter((s: string) => s && !/^mr\/mas$/i.test(s));
   };
 
-  // CSV Data Injection — apply after load finishes so server data does not overwrite import
+  // CSV Data Injection — apply once per import after load finishes
   useEffect(() => {
     if (isLoading || !csvData || csvData.length === 0) return;
+
+    // Stable key so re-renders / isLoading flips do not wipe columns added in the UI
+    const csvKey = JSON.stringify(csvData);
+    if (csvAppliedRef.current && csvDataKeyRef.current === csvKey) return;
+    csvAppliedRef.current = true;
+    csvDataKeyRef.current = csvKey;
 
     let newTable2Rows: Table2Row[] = [];
     let foundSettings = false;
@@ -455,10 +497,8 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
         },
         table2: processedTable2.rows.map(r => ({
           ma: r.ma,
-          measuredOutputs: r.measuredOutputs.map(v => {
-            const val = v.trim();
-            return val === '' ? '' : val;
-          }),
+          // Keep empty slots so added column count survives reload
+          measuredOutputs: padOutputs(r.measuredOutputs || [], measHeaders.length).map(v => String(v).trim()),
           average: r.average || '',
           x: r.x || '',
           xMax: processedTable2.summary.xMax,
@@ -466,6 +506,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
           col: processedTable2.summary.col,
           remarks: processedTable2.summary.remarks,
         })),
+        measHeaders,
         tolerance,
         toleranceOperator,
       };
@@ -600,18 +641,18 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
         </table>
       </div>
 
-      {/* Table 2: mA + Output */}
-      <div className="bg-white shadow-md rounded-lg overflow-hidden">
+      {/* Table 2: mA + Output — scroll wide tables; sticky mA column stays visible */}
+      <div className="bg-white shadow-md rounded-lg border border-gray-200">
         <div className="px-4 py-3 bg-blue-50 border-b">
           <h3 className="text-lg font-semibold text-blue-900">{sectionTitle}</h3>
         </div>
-        <table className="min-w-full divide-y divide-gray-200">
+        <div className="overflow-x-auto">
+        <table className="min-w-max w-full divide-y divide-gray-200">
           <thead className="bg-blue-50">
             <tr>
-              {/* Header – make mA column wider */}
               <th
                 rowSpan={2}
-                className="px-6 py-3 w-28 text-left text-xs font-medium text-gray-700  tracking-wider border-r whitespace-nowrap"
+                className="sticky left-0 z-20 min-w-[7rem] w-28 px-6 py-3 text-left text-xs font-medium text-gray-700 tracking-wider border-r border-gray-200 whitespace-nowrap bg-blue-50 shadow-[4px_0_8px_-4px_rgba(0,0,0,0.15)]"
               >
                 mA
               </th>
@@ -622,7 +663,12 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
                 <div className="flex items-center justify-between">
                   <span>Output (mR)</span>
                   {!isViewMode && (
-                    <button onClick={addMeasColumn} className="p-1 text-green-600 hover:bg-green-100 rounded">
+                    <button
+                      type="button"
+                      onClick={addMeasColumn}
+                      className="p-1 text-green-600 hover:bg-green-100 rounded"
+                      title="Add measurement column"
+                    >
                       <Plus className="w-4 h-4" />
                     </button>
                   )}
@@ -648,7 +694,12 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
                       className={`w-20 px-1 py-0.5 text-xs border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'}`}
                     />
                     {measHeaders.length > 1 && !isViewMode && (
-                      <button onClick={() => removeMeasColumn(idx)} className="p-0.5 text-red-600 hover:bg-red-100 rounded">
+                      <button
+                        type="button"
+                        onClick={() => removeMeasColumn(idx)}
+                        className="p-0.5 text-red-600 hover:bg-red-100 rounded"
+                        title="Remove column"
+                      >
                         <Trash2 className="w-3 h-3" />
                       </button>
                     )}
@@ -660,23 +711,23 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
           <tbody className="bg-white divide-y divide-gray-200">
             {processedTable2.rows.map((p, rowIdx) => (
               <tr key={p.id} className="hover:bg-gray-50">
-                <td className="px-4 py-2 border-r">
+                <td className="sticky left-0 z-10 min-w-[7rem] w-28 px-4 py-2 border-r border-gray-200 bg-white shadow-[4px_0_8px_-4px_rgba(0,0,0,0.08)]">
                   <input
                     type="text"
                     value={p.ma}
                     onChange={e => updateTable2Cell(p.id, 'ma', e.target.value)}
                     disabled={isViewMode}
-                    className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'}`}
+                    className={`w-full min-w-0 px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'}`}
                     placeholder="100"
                   />
                 </td>
 
-                {p.measuredOutputs.map((val, colIdx) => (
+                {measHeaders.map((_, colIdx) => (
                   <td key={colIdx} className="px-2 py-2 border-r">
                     <input
                       type="number"
                       step="any"
-                      value={val}
+                      value={p.measuredOutputs[colIdx] ?? ''}
                       onChange={e => updateTable2Cell(p.id, colIdx, e.target.value)}
                       disabled={isViewMode}
                       className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'}`}
@@ -743,6 +794,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
             ))}
           </tbody>
         </table>
+        </div>
 
         <div className="px-4 py-3 bg-gray-50 border-t flex justify-between items-center">
           {!isViewMode && (

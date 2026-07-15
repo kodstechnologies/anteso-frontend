@@ -63,6 +63,24 @@ const DetailsOfRadiationProtection: React.FC<Props> = ({ serviceId, testId: prop
     return asString.includes('T') ? asString.split('T')[0] : asString;
   };
 
+  const todayInputDate = () => new Date().toISOString().split('T')[0];
+
+  /** Survey date source: qaTestDate API (or prop), else today — never Excel / SRF. */
+  const resolveSurveyDateFromApi = (details?: any): string => {
+    const firstTest = details?.qaTests?.[0];
+    const fromDetails = toInputDate(
+      firstTest?.qatestSubmittedAt ||
+        firstTest?.createdAt ||
+        details?.qaTestDate ||
+        details?.qatestSubmittedAt ||
+        ''
+    );
+    if (fromDetails) return fromDetails;
+    const fromProp = toInputDate(initialSurveyDate);
+    if (fromProp) return fromProp;
+    return todayInputDate();
+  };
+
   const calculateMRPerWeek = (mRPerHr: string) => {
     const hr = parseFloat(mRPerHr) || 0;
     const mA = parseFloat(appliedCurrent) || 1;
@@ -132,24 +150,21 @@ const DetailsOfRadiationProtection: React.FC<Props> = ({ serviceId, testId: prop
   const maxPublicWeekly = Math.max(...publicLocations.map(r => parseFloat(r.mRPerWeek) || 0), 0).toFixed(3);
 
   useEffect(() => {
-    const formatted = initialSurveyDate ? (typeof initialSurveyDate === 'string' ? initialSurveyDate.split('T')[0] : '') : '';
-    if (formatted) setSurveyDate(prev => prev || formatted);
-  }, [initialSurveyDate]);
-
-  useEffect(() => {
-    const prefillSurveyDateFromSrf = async () => {
-      if (!serviceId) return;
+    const prefillSurveyDate = async () => {
+      if (!serviceId) {
+        setSurveyDate((prev) => prev || toInputDate(initialSurveyDate) || todayInputDate());
+        return;
+      }
       try {
         const detailsRes = await getDetails(serviceId);
-        const details = detailsRes?.data;
-        const srfDate = toInputDate(details?.srfDate || details?.orderCreatedAt);
-        if (srfDate) setSurveyDate(prev => prev || srfDate);
+        const next = resolveSurveyDateFromApi(detailsRes?.data);
+        setSurveyDate((prev) => prev || next);
       } catch {
-        // Ignore SRF prefill failures; survey flow should continue.
+        setSurveyDate((prev) => prev || toInputDate(initialSurveyDate) || todayInputDate());
       }
     };
-    prefillSurveyDateFromSrf();
-  }, [serviceId]);
+    prefillSurveyDate();
+  }, [serviceId, initialSurveyDate]);
 
   useEffect(() => {
     const load = async () => {
@@ -157,33 +172,45 @@ const DetailsOfRadiationProtection: React.FC<Props> = ({ serviceId, testId: prop
         setIsLoading(false);
         return;
       }
+      const hasCsvImport = csvData && csvData.length > 0;
       try {
         const res = await getRadiationProtectionSurveyByServiceIdForDentalHandHeld(serviceId);
         const data = res?.data;
         if (data) {
           setTestId(data._id || null);
-          const savedDate = data.surveyDate ? new Date(data.surveyDate).toISOString().split('T')[0] : '';
-          setSurveyDate(savedDate || (initialSurveyDate ? (typeof initialSurveyDate === 'string' ? initialSurveyDate.split('T')[0] : '') : ''));
-          setHasValidCalibration(data.hasValidCalibration || "");
-          setAppliedCurrent(data.appliedCurrent || "100");
-          setAppliedVoltage(data.appliedVoltage || "80");
-          setExposureTime(data.exposureTime || "0.5");
-          setWorkload(data.workload || "5000");
-          if (Array.isArray(data.locations) && data.locations.length > 0) {
-            setLocations(
-              data.locations.map((l: any, i: number) => ({
-                id: Date.now().toString() + i,
-                location: l.location || "",
-                mRPerHr: l.mRPerHr || "",
-                mRPerWeek: l.mRPerWeek || "",
-                result: l.result || "",
-                calculatedResult: l.calculatedResult || "",
-                category: l.category || "worker",
-              }))
-            );
+          if (!hasCsvImport) {
+            const savedDate = data.surveyDate ? toInputDate(data.surveyDate) : '';
+            setSurveyDate(savedDate || resolveSurveyDateFromApi());
+            setHasValidCalibration(data.hasValidCalibration || "");
+            setAppliedCurrent(data.appliedCurrent || "100");
+            setAppliedVoltage(data.appliedVoltage || "80");
+            setExposureTime(data.exposureTime || "0.5");
+            setWorkload(data.workload || "5000");
+            if (Array.isArray(data.locations) && data.locations.length > 0) {
+              setLocations(
+                data.locations.map((l: any, i: number) => ({
+                  id: Date.now().toString() + i,
+                  location: l.location || "",
+                  mRPerHr: l.mRPerHr || "",
+                  mRPerWeek: l.mRPerWeek || "",
+                  result: l.result || "",
+                  calculatedResult: l.calculatedResult || "",
+                  category: l.category || "worker",
+                }))
+              );
+            }
+            setIsSaved(true);
+            setIsEditing(false);
+          } else {
+            try {
+              const detailsRes = await getDetails(serviceId);
+              setSurveyDate(resolveSurveyDateFromApi(detailsRes?.data));
+            } catch {
+              setSurveyDate(toInputDate(initialSurveyDate) || todayInputDate());
+            }
+            setIsSaved(false);
+            setIsEditing(true);
           }
-          setIsSaved(true);
-          setIsEditing(false);
         } else {
           setIsEditing(true);
         }
@@ -197,7 +224,7 @@ const DetailsOfRadiationProtection: React.FC<Props> = ({ serviceId, testId: prop
       }
     };
     load();
-  }, [serviceId]);
+  }, [serviceId, csvData]);
 
   useEffect(() => {
     const checkCalibration = async () => {
@@ -250,7 +277,8 @@ const DetailsOfRadiationProtection: React.FC<Props> = ({ serviceId, testId: prop
   }, [serviceId]);
 
   useEffect(() => {
-    if (csvData && csvData.length > 0) {
+    if (isLoading || !csvData || csvData.length === 0) return;
+
       const mA = csvData.find(r => r['Field Name'] === 'mA')?.['Value'];
       const kV = csvData.find(r => r['Field Name'] === 'kV')?.['Value'];
       const time = csvData.find(r => r['Field Name'] === 'Time')?.['Value'];
@@ -260,6 +288,21 @@ const DetailsOfRadiationProtection: React.FC<Props> = ({ serviceId, testId: prop
       if (kV) setAppliedVoltage(kV);
       if (time) setExposureTime(time);
       if (wl) setWorkload(wl);
+
+      // Survey date must come from qaTestDate API (or today), never Excel
+      const prefillSurveyDateFromApi = async () => {
+        if (!serviceId) {
+          setSurveyDate(toInputDate(initialSurveyDate) || todayInputDate());
+          return;
+        }
+        try {
+          const detailsRes = await getDetails(serviceId);
+          setSurveyDate(resolveSurveyDateFromApi(detailsRes?.data));
+        } catch {
+          setSurveyDate(toInputDate(initialSurveyDate) || todayInputDate());
+        }
+      };
+      prefillSurveyDateFromApi();
 
       const rowIndices = [...new Set(csvData
         .filter(r => r['Field Name'] && (r['Field Name'] === 'Location' || r['Field Name'] === 'mR_hr'))
@@ -289,8 +332,7 @@ const DetailsOfRadiationProtection: React.FC<Props> = ({ serviceId, testId: prop
       }
 
       if (!testId && (rowIndices.length > 0 || mA || kV || time || wl)) setIsEditing(true);
-    }
-  }, [csvData]);
+  }, [csvData, isLoading, serviceId, initialSurveyDate]);
 
   const handleSave = async () => {
     if (!serviceId) {

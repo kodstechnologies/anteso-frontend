@@ -780,8 +780,10 @@ export const createCTScanUploadableExcel = (data: CTScanExportData, hasTimer: bo
         const headerLabels = getOutputConsistencyMeasHeaders(data.outputConsistency);
         const headerCols = headerLabels.map((_, i) => `Header ${i + 1}`);
         const measCols = headerLabels.map((_, i) => `Meas ${i + 1}`);
-        const sectionHeaders = ['mAs', 'Slice Thickness (mm)', 'Time (s)', 'Tolerance', ...headerCols, 'kVp', ...measCols];
-        const rows = (data.outputConsistency.outputRows || []).map((row: any, idx: number) => {
+        const sectionHeaders = ['mAs', 'Slice Thickness (mm)', 'Time (s)', ...headerCols, 'kVp', ...measCols];
+        const tolOp = data.outputConsistency.tolerance?.operator || '<=';
+        const tolVal = data.outputConsistency.tolerance?.value || data.outputConsistency.tolerance || '0.05';
+        const dataRows = (data.outputConsistency.outputRows || []).map((row: any, idx: number) => {
             const outputs = (row.outputs || []).map((o: any) =>
                 (o && typeof o === 'object') ? (o.value ?? '') : (o ?? '')
             );
@@ -790,20 +792,26 @@ export const createCTScanUploadableExcel = (data: CTScanExportData, hasTimer: bo
                     params.mas || '',
                     params.sliceThickness || '',
                     params.time || '',
-                    data.outputConsistency.tolerance?.value || data.outputConsistency.tolerance || '',
                     ...headerLabels,
                     row.kvp || '',
                     ...outputs,
                 ];
             }
             return [
-                '', '', '', '',
+                '', '', '',
                 ...Array(headerLabels.length).fill(''),
                 row.kvp || '',
                 ...outputs,
             ];
         });
-        addSection('Reproducibility of Radiation Output (Consistency Test)', sectionHeaders, rows);
+        // Write key-value tolerance rows before the table (matches blank template / upload parser)
+        allData.push(['TEST: Reproducibility of Radiation Output (Consistency Test)']);
+        allData.push(['Tolerance Operator', tolOp]);
+        allData.push(['Tolerance Sign', tolOp]);
+        allData.push(['Tolerance Value (CoV)', tolVal]);
+        allData.push(sectionHeaders);
+        dataRows.forEach((r: any[]) => allData.push(r));
+        allData.push([]);
     }
 
     // 10. LOW CONTRAST RESOLUTION

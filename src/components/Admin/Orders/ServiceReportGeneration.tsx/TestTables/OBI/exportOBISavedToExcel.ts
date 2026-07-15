@@ -86,13 +86,33 @@ export const createOBISavedExcel = (data: OBISavedExportData): XLSX.WorkBook => 
   const oc = unwrap(data.outputConsistency);
   if (oc?.outputRows?.length > 0) {
     const ffdVal = oc.ffd?.value ?? oc.ffd ?? "";
+    const tolOp = oc.tolerance?.operator || "<=";
+    const tolVal = oc.tolerance?.value ?? "0.05";
+    const savedHeaders: string[] = Array.isArray(oc.headers) && oc.headers.length > 0
+      ? oc.headers.map((h: unknown) => String(h ?? ""))
+      : Array.isArray(oc.measurementHeaders) && oc.measurementHeaders.length > 0
+        ? oc.measurementHeaders.map((h: unknown) => String(h ?? ""))
+        : (() => {
+            const rows = Array.isArray(oc.outputRows) ? oc.outputRows : [];
+            const colCount = Math.max(0, ...rows.map((r: any) => (r.outputs ?? []).length));
+            return Array.from({ length: colCount || 3 }, (_, i: number) => `Meas ${i + 1}`);
+          })();
+    const headerCols = savedHeaders.map((_, i) => `Header ${i + 1}`);
+    const measCols = savedHeaders.map((_, i) => `Meas ${i + 1}`);
     allData.push(["TEST: OUTPUT CONSISTENCY"]);
-    allData.push(["FFD", ffdVal]);
-    const maxOut = Math.max(...oc.outputRows.map((r: any) => (r.outputs || []).length));
-    allData.push(["kVp", "mAs", ...Array.from({ length: maxOut }, (_, i) => `Reading ${i + 1}`), "Mean", "CoV"]);
-    oc.outputRows.forEach((r: any) => {
+    allData.push(["FFD (cm)", "Tolerance Operator", "Tolerance Sign", "Tol Value", ...headerCols, "kV", "mAs", ...measCols]);
+    oc.outputRows.forEach((r: any, idx: number) => {
       const outs = (r.outputs || []).map((o: any) => (o?.value !== undefined ? o.value : o));
-      allData.push([r.kv ?? r.kvp ?? "", r.mas ?? "", ...outs, r.mean ?? "", r.cov ?? ""]);
+      allData.push([
+        idx === 0 ? ffdVal : "",
+        idx === 0 ? tolOp : "",
+        idx === 0 ? tolOp : "",
+        idx === 0 ? tolVal : "",
+        ...(idx === 0 ? savedHeaders : Array(savedHeaders.length).fill("")),
+        r.kv ?? r.kvp ?? "",
+        r.mas ?? "",
+        ...savedHeaders.map((_, i) => outs[i] ?? ""),
+      ]);
     });
     addBlank();
   }

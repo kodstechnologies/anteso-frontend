@@ -39,8 +39,11 @@ Applied KV,Applied MA,Time,Slice Thickness,Measured TF
 120,100,1.0,5,7.5
 
 TEST: Reproducibility of Radiation Output (Consistency Test)
-mAs,Slice Thickness (mm),Time (s),Tolerance,Header 1,Header 2,Header 3,Header 4,Header 5,kVp,Meas 1,Meas 2,Meas 3,Meas 4,Meas 5
-100,5,1.0,0.05,Meas 1,Meas 2,Meas 3,Meas 4,Meas 5,120,100.5,100.3,100.6,100.4,100.5
+Tolerance Operator,<=
+Tolerance Sign,<=
+Tolerance Value (CoV),0.05
+mAs,Slice Thickness (mm),Time (s),Header 1,Header 2,Header 3,Header 4,Header 5,kVp,Meas 1,Meas 2,Meas 3,Meas 4,Meas 5
+100,5,1.0,Meas 1,Meas 2,Meas 3,Meas 4,Meas 5,120,100.5,100.3,100.6,100.4,100.5
 
 TEST: Radiation Leakage Level from X-Ray Tube House
 kV,mA,Time (sec),Workload,Workload Unit,Tol Value,Tol Operator,Tol Time,Location,Front,Back,Left,Right

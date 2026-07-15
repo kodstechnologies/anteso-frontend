@@ -257,6 +257,36 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
 
       const customHeadersFromCsv = readMeasHeadersFromCsv(csvData);
 
+      const normalizeTolOp = (raw: any): string => {
+        const s = String(raw ?? '').trim();
+        if (['<=', '<', '>=', '>', '='].includes(s)) return s;
+        if (s === '≤' || /less\s*than\s*or\s*equal/i.test(s)) return '<=';
+        if (s === '≥' || /greater\s*than\s*or\s*equal/i.test(s)) return '>=';
+        if (/^less\s*than$/i.test(s)) return '<';
+        if (/^greater\s*than$/i.test(s)) return '>';
+        return '<=';
+      };
+      const tolOpRow = csvData.find((r) => {
+        const k = String(r?.[0] ?? '').trim().toLowerCase();
+        return k === 'tolerance operator' || k === 'tol operator' || k === 'tolerance_operator';
+      });
+      const tolValRow = csvData.find((r) => {
+        const k = String(r?.[0] ?? '').trim().toLowerCase();
+        return (
+          k === 'tolerance value (cov)' ||
+          k === 'tolerance value' ||
+          k === 'tol value' ||
+          k === 'tolerance_value' ||
+          k === 'tolerance'
+        );
+      });
+      if (tolOpRow?.[1] != null && String(tolOpRow[1]).trim() !== '') {
+        setToleranceOperator(normalizeTolOp(tolOpRow[1]));
+      }
+      if (tolValRow?.[1] != null && String(tolValRow[1]).trim() !== '') {
+        setTolerance(String(tolValRow[1]).trim());
+      }
+
       // Filter valid rows (must have kVp and be numeric)
       // Check for FFD row
       const ffdRow = csvData.find(r => r.some((c: any) => ['ffd', 'fcd', 'fdd'].includes(c?.toString().toLowerCase())));
@@ -268,6 +298,18 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
       const validRows = csvData.filter(r => {
         const first = String(r?.[0] ?? '').trim();
         if (!first || first === '__MEAS_HEADERS__') return false;
+        const firstLower = first.toLowerCase();
+        if (
+          firstLower === 'tolerance operator' ||
+          firstLower === 'tol operator' ||
+          firstLower === 'tolerance value (cov)' ||
+          firstLower === 'tolerance value' ||
+          firstLower === 'tol value' ||
+          firstLower === 'tolerance' ||
+          firstLower === 'ffd' ||
+          firstLower === 'fcd' ||
+          firstLower === 'fdd'
+        ) return false;
         return !isNaN(parseFloat(first));
       });
 

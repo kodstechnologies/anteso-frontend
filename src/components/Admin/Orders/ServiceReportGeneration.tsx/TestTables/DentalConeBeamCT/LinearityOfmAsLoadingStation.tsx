@@ -58,21 +58,52 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
   const [toleranceOperator, setToleranceOperator] = useState<string>('<=');
 
   // Handlers
+  const syncOutputsLength = (outputs: string[], length: number): string[] => {
+    const next = outputs.map((v) => (v != null ? String(v) : ''));
+    while (next.length < length) next.push('');
+    return next.slice(0, length);
+  };
+
   const addMeasColumn = () => {
-    setMeasHeaders(p => [...p, `Measured mR ${p.length + 1}`]);
-    setTable2Rows(p => p.map(r => ({ ...r, measuredOutputs: [...r.measuredOutputs, ''] })));
+    const nextLen = measHeaders.length + 1;
+    setMeasHeaders((p) => [...p, `Measured mR ${p.length + 1}`]);
+    setTable2Rows((p) =>
+      p.map((r) => ({
+        ...r,
+        measuredOutputs: syncOutputsLength(r.measuredOutputs, nextLen),
+      }))
+    );
   };
 
   const removeMeasColumn = (idx: number) => {
     if (measHeaders.length <= 1) return;
-    setMeasHeaders(p => p.filter((_, i) => i !== idx));
-    setTable2Rows(p => p.map(r => ({ ...r, measuredOutputs: r.measuredOutputs.filter((_, i) => i !== idx) })));
+    const nextLen = measHeaders.length - 1;
+    setMeasHeaders((p) => p.filter((_, i) => i !== idx));
+    setTable2Rows((p) =>
+      p.map((r) => ({
+        ...r,
+        measuredOutputs: syncOutputsLength(
+          r.measuredOutputs.filter((_, i) => i !== idx),
+          nextLen
+        ),
+      }))
+    );
   };
 
   const addTable2Row = () => {
-    setTable2Rows(p => [
+    setTable2Rows((p) => [
       ...p,
-      { id: Date.now().toString(), mAsRange: '', measuredOutputs: Array(measHeaders.length).fill(''), average: '', x: '', xMax: '', xMin: '', col: '', remarks: '' },
+      {
+        id: Date.now().toString(),
+        mAsRange: '',
+        measuredOutputs: Array(measHeaders.length).fill(''),
+        average: '',
+        x: '',
+        xMax: '',
+        xMin: '',
+        col: '',
+        remarks: '',
+      },
     ]);
   };
 
@@ -88,7 +119,7 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
         if (r.id !== rowId) return r;
         if (field === 'mAsRange') return { ...r, mAsRange: value };
         if (typeof field === 'number') {
-          const outputs = [...r.measuredOutputs];
+          const outputs = syncOutputsLength(r.measuredOutputs, Math.max(measHeaders.length, field + 1));
           outputs[field] = value;
           return { ...r, measuredOutputs: outputs };
         }
@@ -115,18 +146,33 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
               kv: data.table1.kv || '80',
             });
           }
-          // Note: Backend uses 'ma' field, but we need to convert it to mAsRange format for display
-          // We'll use the ma value as-is and display it as mAsRange
           if (Array.isArray(data.table2) && data.table2.length > 0) {
+            const maxMeas = Math.max(
+              0,
+              ...data.table2.map((r: any) => (Array.isArray(r.measuredOutputs) ? r.measuredOutputs.length : 0))
+            );
+            const savedHeaders = Array.isArray(data.measHeaders)
+              ? data.measHeaders.map((h: any) => String(h ?? '').trim()).filter(Boolean)
+              : [];
+            const headers =
+              maxMeas > 0 || savedHeaders.length > 0
+                ? Array.from({ length: Math.max(maxMeas, savedHeaders.length) }, (_, i) =>
+                    savedHeaders[i] || `Measured mR ${i + 1}`
+                  )
+                : ['Measured mR 1', 'Measured mR 2', 'Measured mR 3'];
+            setMeasHeaders(headers);
+
             setTable2Rows(
               data.table2.map((r: any, i: number) => {
-                // Convert ma back to mAsRange format (use ma value as mAsRange)
                 const maValue = r.ma || '';
-                const mAsRange = maValue ? `${maValue} mAs` : '';
+                const mAsRange = maValue ? String(maValue).replace(/\s*mAs$/i, '').trim() : '';
                 return {
                   id: String(i + 1),
-                  mAsRange: mAsRange,
-                  measuredOutputs: (r.measuredOutputs || []).map((v: any) => (v != null ? String(v) : '')),
+                  mAsRange,
+                  measuredOutputs: syncOutputsLength(
+                    (r.measuredOutputs || []).map((v: any) => (v != null ? String(v) : '')),
+                    headers.length
+                  ),
                   average: r.average || '',
                   x: r.x || '',
                   xMax: r.xMax || '',
@@ -138,7 +184,7 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
             );
           }
           setTolerance(data.tolerance || '0.1');
-          setToleranceOperator(data.toleranceOperator || '<');
+          setToleranceOperator(data.toleranceOperator || '<=');
           setHasSaved(true);
           setIsEditing(false);
           if (data._id && !propTestId) {
@@ -156,7 +202,6 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
         setIsLoading(false);
       }
     };
-    load();
     load();
   }, [serviceId]);
 
@@ -212,12 +257,22 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
 
         setTable2Rows(newRows);
 
-        // Update headers
-        const maxMeas = Math.max(...newRows.map(r => r.measuredOutputs.length));
-        if (labelsFromMeta.length === 0 && maxMeas > measHeaders.length) {
-          const newCols = Array.from({ length: maxMeas - measHeaders.length }, (_, i) => `Measured mR ${measHeaders.length + i + 1}`);
-          setMeasHeaders(prev => [...prev, ...newCols]);
-        }
+        // Update headers to match row measurement count
+        const maxMeas = Math.max(0, ...newRows.map((r) => r.measuredOutputs.length));
+        const base =
+          labelsFromMeta.length > 0
+            ? labelsFromMeta
+            : Array.from({ length: Math.max(maxMeas, 1) }, (_, i) => `Measured mR ${i + 1}`);
+        const headers = Array.from({ length: Math.max(maxMeas, base.length) }, (_, i) =>
+          base[i] || `Measured mR ${i + 1}`
+        );
+        setMeasHeaders(headers);
+        setTable2Rows(
+          newRows.map((r) => ({
+            ...r,
+            measuredOutputs: syncOutputsLength(r.measuredOutputs, headers.length),
+          }))
+        );
       }
 
       if (!testId && (rowIndices.length > 0 || fcd || kv)) setIsEditing(true);
@@ -256,7 +311,7 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
 
           return {
             ma: maValue || r.mAsRange,
-            measuredOutputs: r.measuredOutputs.map(v => {
+            measuredOutputs: syncOutputsLength(r.measuredOutputs, measHeaders.length).map(v => {
               const val = v.trim();
               return val === '' ? '' : val;
             }),
@@ -268,6 +323,7 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
             remarks: r.remarks || '',
           };
         }),
+        measHeaders,
         tolerance,
         toleranceOperator,
       };
@@ -326,7 +382,8 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
     const xValues: number[] = [];
 
     const rowsWithX = table2Rows.map(row => {
-      const outputs = row.measuredOutputs.map(v => parseFloat(v)).filter(v => !isNaN(v) && v > 0);
+      const paddedOutputs = syncOutputsLength(row.measuredOutputs, measHeaders.length);
+      const outputs = paddedOutputs.map(v => parseFloat(v)).filter(v => !isNaN(v) && v > 0);
       const avg = outputs.length > 0 ? (outputs.reduce((a, b) => a + b, 0) / outputs.length).toFixed(3) : '—';
 
       const match = row.mAsRange.match(/(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)/);
@@ -337,7 +394,7 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
       const x = avg !== '—' && midMas > 0 ? (parseFloat(avg) / midMas).toFixed(4) : '—';
       if (x !== '—') xValues.push(parseFloat(x));
 
-      return { ...row, average: avg, x };
+      return { ...row, measuredOutputs: paddedOutputs, average: avg, x };
     });
 
     const hasData = xValues.length > 0;
@@ -375,7 +432,7 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
       col,
       remarks: hasData ? (pass ? 'Pass' : 'Fail') : '—',
     }));
-  }, [table2Rows, tolerance, toleranceOperator]);
+  }, [table2Rows, measHeaders.length, tolerance, toleranceOperator]);
 
   if (isLoading) {
     return (
@@ -435,30 +492,38 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
           <h3 className="text-lg font-semibold text-blue-900">Linearity of Radiation Output Across mAs Ranges</h3>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
+        <div className="overflow-x-auto w-full">
+          <table
+            key={`mas-lin-cols-${measHeaders.length}`}
+            className="w-max min-w-full divide-y divide-gray-200"
+          >
             <thead className="bg-blue-50">
               <tr>
-                <th rowSpan={2} className="px-6 py-3 text-left text-xs font-medium text-gray-700  border-r">mAs Range</th>
-                <th colSpan={measHeaders.length} className="px-6 py-3 text-center text-xs font-medium text-gray-700  border-r">
-                  <div className="flex items-center justify-between px-4">
+                <th
+                  rowSpan={2}
+                  className="px-6 py-3 w-28 min-w-[7rem] text-left text-xs font-medium text-gray-700 border-r whitespace-nowrap sticky left-0 bg-blue-50 z-10"
+                >
+                  mAs Range
+                </th>
+                <th colSpan={Math.max(measHeaders.length, 1)} className="px-6 py-3 text-center text-xs font-medium text-gray-700 border-r">
+                  <div className="flex items-center justify-between gap-2 min-w-max px-4">
                     <span>Radiation Output (mGy)</span>
                     {!isViewMode && (
-                      <button onClick={addMeasColumn} className="p-2 text-green-600 hover:bg-green-100 rounded-lg">
+                      <button type="button" onClick={addMeasColumn} className="p-2 text-green-600 hover:bg-green-100 rounded-lg shrink-0">
                         <Plus className="w-5 h-5" />
                       </button>
                     )}
                   </div>
                 </th>
-                <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700  border-r">Avg Output</th>
-                <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700  border-r">X (mGy/mAs)</th>
-                <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700  border-r">CoL</th>
-                <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700 ">Remarks</th>
+                <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700 border-r whitespace-nowrap min-w-[6rem]">Avg Output</th>
+                <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700 border-r whitespace-nowrap min-w-[7rem]">X (mGy/mAs)</th>
+                <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700 border-r whitespace-nowrap min-w-[4rem]">CoL</th>
+                <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700 whitespace-nowrap min-w-[5rem]">Remarks</th>
                 <th rowSpan={2} className="w-12"></th>
               </tr>
               <tr>
                 {measHeaders.map((h, i) => (
-                  <th key={i} className="px-3 py-3 text-center text-xs font-medium text-gray-600 border-r">
+                  <th key={i} className="px-3 py-3 text-center text-xs font-medium text-gray-600 border-r min-w-[7rem]">
                     <div className="flex items-center justify-center gap-2">
                       <input
                         type="text"
@@ -466,16 +531,25 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
                         onChange={e => {
                           setMeasHeaders(p => {
                             const c = [...p];
-                            c[i] = e.target.value || `Meas ${i + 1}`;
+                            c[i] = e.target.value;
                             return c;
                           });
                         }}
+                        onBlur={e => {
+                          if (!e.target.value.trim()) {
+                            setMeasHeaders(p => {
+                              const c = [...p];
+                              c[i] = `Measured mR ${i + 1}`;
+                              return c;
+                            });
+                          }
+                        }}
                         disabled={isViewMode}
-                        className={`w-24 px-2 py-1 text-xs border rounded focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''
+                        className={`w-24 min-w-[5rem] px-2 py-1 text-xs border rounded focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''
                           }`}
                       />
                       {measHeaders.length > 1 && !isViewMode && (
-                        <button onClick={() => removeMeasColumn(i)} className="text-red-600 hover:bg-red-100 p-1 rounded">
+                        <button type="button" onClick={() => removeMeasColumn(i)} className="text-red-600 hover:bg-red-100 p-1 rounded shrink-0">
                           <Trash2 className="w-4 h-4" />
                         </button>
                       )}
@@ -487,26 +561,26 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
             <tbody className="bg-white divide-y divide-gray-200">
               {processedTable2.map(p => (
                 <tr key={p.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 border-r">
+                  <td className="px-6 py-4 border-r min-w-[7rem] sticky left-0 bg-white z-10">
                     <input
                       type="text"
                       value={p.mAsRange}
                       onChange={e => updateCell(p.id, 'mAsRange', e.target.value)}
                       disabled={isViewMode}
-                      className={`w-full px-3 py-2 text-center text-sm border rounded font-medium focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''
+                      className={`w-full min-w-[5rem] px-3 py-2 text-center text-sm border rounded font-medium focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''
                         }`}
                       placeholder="10"
                     />
                   </td>
-                  {p.measuredOutputs.map((val, idx) => (
-                    <td key={idx} className="px-3 py-4 text-center border-r">
+                  {measHeaders.map((_, idx) => (
+                    <td key={`${p.id}-meas-${idx}`} className="px-3 py-4 text-center border-r min-w-[7rem]">
                       <input
                         type="number"
                         step="any"
-                        value={val}
+                        value={p.measuredOutputs[idx] ?? ''}
                         onChange={e => updateCell(p.id, idx, e.target.value)}
                         disabled={isViewMode}
-                        className={`w-24 px-3 py-2 text-center text-sm border rounded focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''
+                        className={`w-24 min-w-[5rem] px-3 py-2 text-center text-sm border rounded focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''
                           }`}
                       />
                     </td>
@@ -524,7 +598,7 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
                   </td>
                   <td className="px-3 py-4 text-center">
                     {table2Rows.length > 1 && !isViewMode && (
-                      <button onClick={() => removeTable2Row(p.id)} className="text-red-600 hover:bg-red-50 p-2 rounded">
+                      <button type="button" onClick={() => removeTable2Row(p.id)} className="text-red-600 hover:bg-red-50 p-2 rounded">
                         <Trash2 className="w-5 h-5" />
                       </button>
                     )}

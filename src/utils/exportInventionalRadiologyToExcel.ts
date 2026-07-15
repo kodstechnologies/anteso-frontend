@@ -84,7 +84,8 @@ export const handleExportToExcel = (details: any, tools: any[]) => {
     ["ConsistencyOfRadiationOutput", "Table1_kv", "0", "", "Measured kVp"],
     ["ConsistencyOfRadiationOutput", "Table1_mAs", "0", "", "Fixed mAs"],
     ["ConsistencyOfRadiationOutput", "Table1_Output", "0", "", "Output (mGy)"],
-    ["ConsistencyOfRadiationOutput", "Tolerance", "0", "0.05", "Tolerance (CoV)"],
+    ["ConsistencyOfRadiationOutput", "ToleranceOperator", "0", "<=", "Tolerance Operator / Sign"],
+    ["ConsistencyOfRadiationOutput", "Tolerance", "0", "0.05", "Tolerance Value (CoV)"],
 
     ["LinearityOfmAsLoading", "Table1_fcd", "0", "", "FCD (cm)"],
     ["LinearityOfmAsLoading", "Table1_kv", "0", "", "kV"],

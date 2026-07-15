@@ -20,6 +20,30 @@ const unwrap = (raw: any) => (raw && raw.data ? raw.data : raw);
 
 const pad = (n: number) => Array(n).fill("");
 
+const isMetaColumnHeader = (h: string) =>
+  /^(avg|average|average\s*\(.*\)|mean|x̄|cov|cv|coL|col|remark|remarks|result|x\s*max|x\s*min)$/i.test(
+    String(h ?? "").trim()
+  );
+
+const cellStr = (v: any): string => {
+  if (v == null) return "";
+  if (typeof v === "object" && "value" in v) return String((v as any).value ?? "");
+  return String(v);
+};
+
+/** Resolve dynamic measurement column labels from saved headers + data length. */
+const resolveMeasHeaders = (
+  saved: any,
+  maxFromRows: number,
+  fallbackPrefix = "Measured Output"
+): string[] => {
+  const raw = Array.isArray(saved)
+    ? saved.map((h: any) => String(h ?? "").trim()).filter((h: string) => h && !isMetaColumnHeader(h))
+    : [];
+  const count = Math.max(maxFromRows, raw.length, 1);
+  return Array.from({ length: count }, (_, i) => raw[i] || `${fallbackPrefix} ${i + 1}`);
+};
+
 /**
  * Separate templates by timer mode:
  * - With Timer: Accuracy of Irradiation Time + Linearity of mA Loading
@@ -158,10 +182,12 @@ export const createRadiographyFixedUploadableExcel = (
       row.ma10 ?? row.ma1 ?? "",
       row.ma100 ?? row.ma2 ?? "",
       row.ma200 ?? row.ma3 ?? "",
+      row.avgKvp ?? "",
+      row.remarks ?? "",
     ]);
     addSection(
       "ACCURACY OF OPERATING POTENTIAL",
-      ["Applied kVp", "mA Station 1 kVp", "mA Station 2 kVp", "mA Station 3 kVp"],
+      ["Applied kVp", "mA Station 1 kVp", "mA Station 2 kVp", "mA Station 3 kVp", "Average", "Remark"],
       rows
     );
   }
@@ -172,8 +198,8 @@ export const createRadiographyFixedUploadableExcel = (
     const tc = aoi.testConditions || {};
     allData.push(["TEST: ACCURACY OF IRRADIATION TIME"]);
     allData.push([
-      "FCD",
-      tc.fcd ?? "",
+      "FDD (cm)",
+      tc.fcd ?? tc.ffd ?? "",
       "kV",
       tc.kv ?? "",
       "mA",
@@ -182,89 +208,127 @@ export const createRadiographyFixedUploadableExcel = (
     const times = Array.isArray(aoi.irradiationTimes)
       ? aoi.irradiationTimes
       : [];
-    allData.push(["Set Time (mSec)", "Measured Time (mSec)"]);
-    times.forEach((t: any) => {
+    allData.push(["Set Time (ms)", "Measured Time 1 (ms)", "Tolerance Operator", "Tolerance Value (%)"]);
+    times.forEach((t: any, i: number) => {
       allData.push([
         t.setTime ?? "",
         t.measuredTime ?? t.measuredTime1 ?? "",
+        i === 0 ? (aoi.toleranceOperator ?? aoi.tolerance?.operator ?? "") : "",
+        i === 0 ? (aoi.toleranceValue ?? aoi.tolerance?.value ?? aoi.tolerance ?? "") : "",
       ]);
     });
     addBlank();
   }
 
-  // 3. Total Filtration
+  // 3. Total Filtration (dynamic mA stations + remarks)
   const tf = unwrap(data.totalFiltration);
-  if (tf?.totalFiltration) {
-    const t = tf.totalFiltration;
-    const rows = [
-      ["TotalFiltration", t.measured ?? "", t.required ?? "", t.atKvp ?? ""],
-    ];
-    addSection(
-      "TOTAL FILTRATION",
-      ["Parameter", "Measured mm Al", "Required mm Al", "At kVp"],
-      rows
+  if (tf && (Array.isArray(tf.measurements) || tf.totalFiltration || Array.isArray(tf.mAStations))) {
+    const measurements = Array.isArray(tf.measurements) ? tf.measurements : [];
+    const maxMeas = Math.max(
+      0,
+      ...measurements.map((m: any) => (Array.isArray(m.measuredValues) ? m.measuredValues.length : 0))
     );
-  }
+    const stations =
+      Array.isArray(tf.mAStations) && tf.mAStations.length > 0
+        ? tf.mAStations.map((s: any) => String(s ?? "").trim()).filter(Boolean)
+        : Array.from({ length: Math.max(maxMeas, 1) }, (_, i) => `Measured ${i + 1}`);
 
-  // 4. Linearity of Time (from Linearity of mA Loading table1/table2)
-  const lma = unwrap(data.linearityOfMaLoading);
-  if (lma) {
-    const t1 = lma.table1 || {};
-    const t2 = Array.isArray(lma.table2) ? lma.table2 : [];
-    allData.push(["TEST: LINEARITY OF TIME"]);
+    allData.push(["TEST: TOTAL FILTRATION"]);
+    allData.push(["Tolerance Sign", tf.tolerance?.sign ?? "±"]);
+    allData.push(["Tolerance Value (kVp)", tf.tolerance?.value ?? ""]);
+    if (tf.totalFiltration?.measured != null && String(tf.totalFiltration.measured).trim() !== "") {
+      allData.push(["Total Filtration Measured (mm Al)", tf.totalFiltration.measured]);
+    }
+    allData.push(["Total Filtration Required (mm Al)", tf.totalFiltration?.required ?? ""]);
+    allData.push(["Total Filtration At kVp", tf.totalFiltration?.atKvp ?? ""]);
+    stations.forEach((station: string, i: number) => {
+      const numeric = String(station).replace(/\s*mA$/i, "").trim();
+      allData.push([`mA Station ${i + 1}`, numeric || station]);
+    });
     allData.push([
-      "FCD",
-      t1.fcd ?? "",
-      "kV",
-      t1.kv ?? "",
-      "Time Station (sec)",
-      t1.time ?? "",
+      "Applied kVp",
+      ...stations,
+      "Average",
+      "Remark",
     ]);
-    allData.push([
-      "mA Station",
-      "Measured mR 1",
-      "Measured mR 2",
-      "Measured mR 3",
-    ]);
-    t2.forEach((r: any) => {
-      const outs = r.measuredOutputs || [];
+    measurements.forEach((m: any) => {
+      const vals = Array.from({ length: stations.length }, (_, i) =>
+        cellStr(m.measuredValues?.[i])
+      );
       allData.push([
-        r.mAApplied ?? r.mAsApplied ?? r.ma ?? "",
-        outs[0] ?? "",
-        outs[1] ?? "",
-        outs[2] ?? "",
+        m.appliedKvp ?? "",
+        ...vals,
+        m.averageKvp ?? "",
+        m.remarks ?? m.remark ?? "",
       ]);
     });
-    if (lma.col !== undefined && lma.col !== null && lma.col !== "") {
-      allData.push(["CoL", lma.col]);
-    }
     addBlank();
   }
 
-  // 5. Linearity of mAs Loading (if available)
-  const lmas = unwrap(data.linearityOfMasLoading);
-  if (lmas) {
-    const t1 = lmas.table1?.[0] || {};
-    const t2 = Array.isArray(lmas.table2) ? lmas.table2 : [];
-    allData.push(["TEST: LINEARITY OF mAs LOADING"]);
-    allData.push(["FCD", t1.fcd ?? "", "kV", t1.kv ?? ""]);
-    allData.push([
-      "mAs Range",
-      "Measured mR 1",
-      "Measured mR 2",
-      "Measured mR 3",
-    ]);
-    t2.forEach((r: any) => {
-      const outs = r.measuredOutputs || [];
+  // 4–5. Linearity of mA / mAs Loading (same API; detect by Time)
+  const linearity =
+    unwrap(data.linearityOfMasLoading) ||
+    unwrap(data.linearityOfMaLoading);
+  if (linearity) {
+    const t1 = Array.isArray(linearity.table1)
+      ? linearity.table1[0] || {}
+      : linearity.table1 || {};
+    const t2 = Array.isArray(linearity.table2) ? linearity.table2 : [];
+    const timeStr = t1.time != null ? String(t1.time).trim() : "";
+    const hasTime = timeStr !== "";
+    const title = hasTime ? "LINEARITY OF mA LOADING" : "LINEARITY OF mAs LOADING";
+    const maxMeas = Math.max(
+      0,
+      ...t2.map((r: any) => (Array.isArray(r.measuredOutputs) ? r.measuredOutputs.length : 0))
+    );
+    const measHeaders = resolveMeasHeaders(
+      linearity.measHeaders || linearity.measurementHeaders,
+      maxMeas,
+      "Measured Output"
+    );
+
+    allData.push([`TEST: ${title}`]);
+    if (hasTime) {
       allData.push([
-        r.mAsRange ?? "",
-        outs[0] ?? "",
-        outs[1] ?? "",
-        outs[2] ?? "",
+        "FDD (cm)",
+        t1.fcd ?? "",
+        "kV",
+        t1.kv ?? "",
+        "Time (s)",
+        timeStr,
       ]);
-    });
-    if (lmas.col !== undefined && lmas.col !== null && lmas.col !== "") {
-      allData.push(["CoL", lmas.col]);
+      allData.push(["mA Applied", ...measHeaders]);
+      t2.forEach((r: any) => {
+        const outs = Array.isArray(r.measuredOutputs) ? r.measuredOutputs : [];
+        allData.push([
+          r.mAApplied ?? r.mAsApplied ?? r.ma ?? "",
+          ...measHeaders.map((_, i) => cellStr(outs[i])),
+        ]);
+      });
+    } else {
+      allData.push(["FDD (cm)", t1.fcd ?? "", "kV", t1.kv ?? ""]);
+      allData.push(["mAs Range", ...measHeaders]);
+      t2.forEach((r: any) => {
+        const outs = Array.isArray(r.measuredOutputs) ? r.measuredOutputs : [];
+        allData.push([
+          r.mAsRange ?? r.mAsApplied ?? r.ma ?? "",
+          ...measHeaders.map((_, i) => cellStr(outs[i])),
+        ]);
+      });
+    }
+    allData.push([
+      "Tolerance Operator",
+      linearity.toleranceOperator ?? "<=",
+    ]);
+    allData.push([
+      "Tolerance Value (CoL)",
+      linearity.tolerance ?? "0.1",
+    ]);
+    if (linearity.col != null && String(linearity.col).trim() !== "") {
+      allData.push(["CoL", linearity.col]);
+    }
+    if (linearity.remarks != null && String(linearity.remarks).trim() !== "") {
+      allData.push(["Remark", linearity.remarks]);
     }
     addBlank();
   }
@@ -272,33 +336,35 @@ export const createRadiographyFixedUploadableExcel = (
   // 6. Consistency of Radiation Output
   const oc = unwrap(data.outputConsistency);
   if (oc) {
-    const ffdVal = oc.ffd?.value ?? "";
+    const ffdVal = oc.ffd?.value ?? oc.ffd ?? "";
     const rows = Array.isArray(oc.outputRows) ? oc.outputRows : [];
-    const measCount = Math.max(
-      ...rows.map((r: any) => (r.outputs ?? []).length),
-      Array.isArray(oc.measurementHeaders) ? oc.measurementHeaders.length : 0,
-      1
+    const maxMeas = Math.max(
+      0,
+      ...rows.map((r: any) => (Array.isArray(r.outputs) ? r.outputs.length : 0))
     );
-    const headerLabels = Array.isArray(oc.measurementHeaders) && oc.measurementHeaders.length > 0
-      ? [...oc.measurementHeaders]
-      : Array.from({ length: measCount }, (_, i) => `Meas ${i + 1}`);
-    while (headerLabels.length < measCount) headerLabels.push(`Meas ${headerLabels.length + 1}`);
+    const headerLabels = resolveMeasHeaders(
+      oc.measurementHeaders || oc.measHeaders || oc.outputHeaders,
+      maxMeas,
+      "Output"
+    );
     allData.push(["TEST: CONSISTENCY OF RADIATION OUTPUT"]);
-    allData.push(["FFD", ffdVal]);
-    allData.push(["kVp", "mAs", ...headerLabels.slice(0, measCount)]);
+    allData.push(["FDD (cm)", ffdVal]);
+    allData.push(["kVp", "mAs", ...headerLabels, "Average", "CoV", "Remark"]);
     rows.forEach((r: any) => {
-      const outs = r.outputs || [];
-      const rowData = [
-        r.kv ?? "",
-        r.mas ?? "",
-        ...Array.from({ length: measCount }, (_, i) => outs[i]?.value ?? outs[i] ?? ""),
-      ];
-      allData.push(rowData);
+      const outs = Array.isArray(r.outputs) ? r.outputs : [];
+      allData.push([
+        r.kv ?? r.kvp ?? "",
+        r.mas ?? r.mAs ?? "",
+        ...headerLabels.map((_, i) => cellStr(outs[i])),
+        r.avg ?? r.average ?? r.mean ?? "",
+        r.cv ?? r.cov ?? "",
+        r.remark ?? r.remarks ?? "",
+      ]);
     });
     const tolOp = oc.tolerance?.operator ?? oc.toleranceOperator ?? "<=";
-    const tolVal = oc.tolerance?.value ?? oc.toleranceValue ?? "";
+    const tolVal = oc.tolerance?.value ?? oc.toleranceValue ?? oc.tolerance ?? "";
     allData.push(["Tolerance Operator", tolOp]);
-    allData.push(["Tolerance Value (CoV)", tolVal]);
+    allData.push(["Tolerance Value (CoV)", typeof tolVal === "object" ? "" : tolVal]);
     addBlank();
   }
 

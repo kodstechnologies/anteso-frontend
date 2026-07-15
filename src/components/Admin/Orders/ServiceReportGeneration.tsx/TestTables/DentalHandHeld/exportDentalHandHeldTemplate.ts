@@ -9,6 +9,8 @@ const appendSection = (rows: any[][], title: string, lines: any[][]) => {
 };
 
 const accuracyOfOperatingPotentialSection = (): any[][] => [
+  ["Tolerance Sign", "±"],
+  ["Tolerance Value (kVp)", "5"],
   ["Applied kVp", "mA 1", "mA 2"],
   ["60", "60.1", "60.2"],
   ["80", "80.1", "80.2"],
@@ -52,6 +54,8 @@ const linearityMasLoadingSection = (): any[][] => [
 ];
 
 const consistencySection = (): any[][] => [
+  ["Tolerance Operator", "<="],
+  ["Tolerance Value (CoV)", "0.05"],
   ["FFD", "Test kV", "Test mAs", "Meas 1", "Meas 2", "Meas 3"],
   ["40", "120", "100", "50.1", "50.2", "50.1"],
 ];

@@ -223,6 +223,21 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
             }
         }
 
+            const normalizeTolSign = (raw: any): "+" | "-" | "±" => {
+                const s = String(raw ?? "").trim();
+                if (s === "+" || /^plus$/i.test(s)) return "+";
+                if (s === "-" || /^minus$/i.test(s)) return "-";
+                return "±";
+            };
+            const tolSign = csvData.find(r => r['Field Name'] === 'Tolerance_Sign')?.['Value'];
+            const tolVal = csvData.find(r => r['Field Name'] === 'Tolerance_Value')?.['Value'];
+            if (tolSign != null && String(tolSign).trim() !== "") {
+                setToleranceSign(normalizeTolSign(tolSign));
+            }
+            if (tolVal != null && String(tolVal).trim() !== "") {
+                setToleranceValue(String(tolVal).trim());
+            }
+
             // Total Filtration — Radiography Fixed style vertical rows ('Measured', 'Required', 'atKvp'),
             // with fallback to legacy horizontal row (Applied_kVp on the same row as 'Measured')
             const tfMeasuredEntry = csvData.find(r => r['Field Name'] === 'Measured');

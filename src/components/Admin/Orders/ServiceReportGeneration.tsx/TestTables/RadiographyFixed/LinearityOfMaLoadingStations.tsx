@@ -59,39 +59,62 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
   const [isEditing, setIsEditing] = useState(false);
   const [hasSaved, setHasSaved] = useState(false);
 
-  // Apply CSV/Excel initial data
+  const padOutputs = (outputs: string[], count: number) => {
+    const next = outputs.map((v) => (v != null ? String(v) : ''));
+    while (next.length < count) next.push('');
+    return next.slice(0, count);
+  };
+
+  const emptyTable2Fields = {
+    average: '',
+    x: '',
+    xMax: '',
+    xMin: '',
+    col: '',
+    remarks: '',
+  };
+
+  // Apply CSV/Excel initial data only when a new import lands (not on every parent re-render)
   useEffect(() => {
-    if (!initialData) return;
+    if (!initialData || !csvDataVersion) return;
     const t1 = initialData.table1;
     if (t1) setTable1Row(prev => ({ ...prev, fcd: String(t1.fcd ?? prev.fcd), kv: String(t1.kv ?? prev.kv), time: String(t1.time ?? prev.time) }));
     if (initialData.table2?.length > 0) {
-      // Find max number of measurement outputs across all rows
-      const maxOutputs = Math.max(...initialData.table2.map((r: any) => (r.measuredOutputs ?? []).length));
+      const maxOutputs = Math.max(
+        0,
+        ...initialData.table2.map((r: any) => (r.measuredOutputs ?? []).length),
+        Array.isArray(initialData.measHeaders) ? initialData.measHeaders.length : 0,
+      );
       const headerCount = Math.max(maxOutputs, 1);
-      setMeasHeaders(Array.from({ length: headerCount }, (_, i) => `Meas ${i + 1}`));
-      setTable2Rows(initialData.table2.map((r: any, i: number) => {
-        const outputs = (r.measuredOutputs ?? []).map(String);
-        // Pad to match header count
-        while (outputs.length < headerCount) outputs.push('');
-        return {
-          id: (i + 1).toString(),
-          ma: String(r.mAApplied ?? r.ma ?? ''),
-          measuredOutputs: outputs,
-          average: '', x: '', xMax: '', xMin: '', col: '', remarks: '',
-        };
-      }));
+      const headers =
+        Array.isArray(initialData.measHeaders) && initialData.measHeaders.length > 0
+          ? padOutputs(initialData.measHeaders.map(String), headerCount).map((h, i) => h || `Meas ${i + 1}`)
+          : Array.from({ length: headerCount }, (_, i) => `Meas ${i + 1}`);
+      setMeasHeaders(headers);
+      setTable2Rows(initialData.table2.map((r: any, i: number) => ({
+        id: (i + 1).toString(),
+        ma: String(r.mAApplied ?? r.ma ?? ''),
+        measuredOutputs: padOutputs((r.measuredOutputs ?? []).map((v: any) => (v != null ? String(v) : '')), headerCount),
+        ...emptyTable2Fields,
+      })));
     }
     if (initialData.tolerance !== undefined) setTolerance(String(initialData.tolerance));
     if (initialData.toleranceOperator) setToleranceOperator(String(initialData.toleranceOperator));
-  }, [csvDataVersion, initialData]);
+    setHasSaved(false);
+    setIsEditing(true);
+  }, [csvDataVersion]);
 
 
   // === Column Handling ===
   const addMeasColumn = () => {
-    const newHeader = `Meas ${measHeaders.length + 1}`;
-    setMeasHeaders(prev => [...prev, newHeader]);
-    setTable2Rows(prev =>
-      prev.map(row => ({ ...row, measuredOutputs: [...row.measuredOutputs, ''] }))
+    const nextCount = measHeaders.length + 1;
+    setMeasHeaders(prev => [...prev, `Meas ${prev.length + 1}`]);
+    setTable2Rows(rows =>
+      rows.map(row => ({
+        ...row,
+        ...emptyTable2Fields,
+        measuredOutputs: padOutputs(row.measuredOutputs || [], nextCount),
+      }))
     );
   };
 
@@ -101,7 +124,8 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
     setTable2Rows(prev =>
       prev.map(row => ({
         ...row,
-        measuredOutputs: row.measuredOutputs.filter((_, i) => i !== idx),
+        ...emptyTable2Fields,
+        measuredOutputs: (row.measuredOutputs || []).filter((_, i) => i !== idx),
       }))
     );
   };
@@ -145,7 +169,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
         if (row.id !== rowId) return row;
         if (field === 'ma') return { ...row, ma: value };
         if (typeof field === 'number') {
-          const newOutputs = [...row.measuredOutputs];
+          const newOutputs = padOutputs(row.measuredOutputs || [], Math.max(measHeaders.length, field + 1));
           newOutputs[field] = value;
           return { ...row, measuredOutputs: newOutputs };
         }
@@ -265,15 +289,34 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
             kv: data.table1?.[0]?.kv || '',
             time: data.table1?.[0]?.time || '',
           });
-          setMeasHeaders(data.measHeaders && data.measHeaders.length > 0 ? data.measHeaders : ['Meas 1', 'Meas 2', 'Meas 3']);
           if (Array.isArray(data.table2) && data.table2.length > 0) {
+            const maxOutputs = Math.max(
+              0,
+              ...data.table2.map((r: any) => (r.measuredOutputs || []).length),
+              Array.isArray(data.measHeaders) ? data.measHeaders.length : 0,
+            );
+            const headerCount = Math.max(maxOutputs, 3);
+            const headers =
+              Array.isArray(data.measHeaders) && data.measHeaders.length > 0
+                ? padOutputs(data.measHeaders.map(String), headerCount).map((h, i) => h || `Meas ${i + 1}`)
+                : Array.from({ length: headerCount }, (_, i) => `Meas ${i + 1}`);
+            setMeasHeaders(headers);
             setTable2Rows(
               data.table2.map((r: any) => ({
                 id: Date.now().toString() + Math.random(),
                 ma: r.mAsApplied || r.ma || '',
-                measuredOutputs: (r.measuredOutputs || []).map((v: any) => (v != null ? String(v) : '')),
-                // Don't load average and x - they will be recalculated by processedTable2
+                measuredOutputs: padOutputs(
+                  (r.measuredOutputs || []).map((v: any) => (v != null ? String(v) : '')),
+                  headerCount,
+                ),
+                ...emptyTable2Fields,
               }))
+            );
+          } else {
+            setMeasHeaders(
+              data.measHeaders && data.measHeaders.length > 0
+                ? data.measHeaders
+                : ['Meas 1', 'Meas 2', 'Meas 3'],
             );
           }
           setTolerance(data.tolerance || '0.1');
@@ -323,9 +366,10 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
         table1: [table1Row],
         table2: processedTable2.rows.map(r => ({
           mAsApplied: r.ma,
-          measuredOutputs: r.measuredOutputs.map(v => {
-            const val = v.trim();
-            return val === '' ? null : (isNaN(parseFloat(val)) ? val : parseFloat(val));
+          // Keep empty slots as "" so column count is preserved on reload
+          measuredOutputs: padOutputs(r.measuredOutputs || [], measHeaders.length).map(v => {
+            const val = String(v).trim();
+            return val;
           }),
           average: r.average || '',
           x: r.x || '',
@@ -496,7 +540,12 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
                 <div className="flex items-center justify-between">
                   <span>Output (mGy)</span>
                   {!isViewMode && (
-                    <button onClick={addMeasColumn} className="p-1 text-green-600 hover:bg-green-100 rounded">
+                    <button
+                      type="button"
+                      onClick={addMeasColumn}
+                      className="p-1 text-green-600 hover:bg-green-100 rounded"
+                      title="Add measurement column"
+                    >
                       <Plus className="w-4 h-4" />
                     </button>
                   )}
@@ -522,7 +571,12 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
                       className={`w-20 px-1 py-0.5 text-xs border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'}`}
                     />
                     {measHeaders.length > 1 && !isViewMode && (
-                      <button onClick={() => removeMeasColumn(idx)} className="p-0.5 text-red-600 hover:bg-red-100 rounded">
+                      <button
+                        type="button"
+                        onClick={() => removeMeasColumn(idx)}
+                        className="p-0.5 text-red-600 hover:bg-red-100 rounded"
+                        title="Remove column"
+                      >
                         <Trash2 className="w-3 h-3" />
                       </button>
                     )}
@@ -545,12 +599,12 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
                   />
                 </td>
 
-                {p.measuredOutputs.map((val, colIdx) => (
+                {measHeaders.map((_, colIdx) => (
                   <td key={colIdx} className="px-2 py-2 border-r">
                     <input
                       type="number"
                       step="any"
-                      value={val}
+                      value={p.measuredOutputs[colIdx] ?? ''}
                       onChange={e => updateTable2Cell(p.id, colIdx, e.target.value)}
                       disabled={isViewMode}
                       className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'}`}

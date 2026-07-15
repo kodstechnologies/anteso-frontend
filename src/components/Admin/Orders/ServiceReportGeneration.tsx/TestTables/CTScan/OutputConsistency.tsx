@@ -180,10 +180,30 @@ const OutputConsistency: React.FC<Props> = ({ serviceId, testId: propTestId, tub
         setOutputRows(newRows);
       }
 
-      // Tolerance
-      const tolVal = csvData.find(r => r['Field Name'] === 'Tolerance')?.['Value'];
-      if (tolVal) {
-        setTolerance(prev => ({ ...prev, value: tolVal }));
+      // Tolerance operator + value (Excel key-value or columns)
+      const tolOp = csvData.find(r =>
+        r['Field Name'] === 'ToleranceOperator' ||
+        r['Field Name'] === 'Tolerance_Operator' ||
+        r['Field Name'] === 'Tolerance Sign' ||
+        r['Field Name'] === 'Tolerance_Sign'
+      )?.['Value'];
+      const tolVal = csvData.find(r =>
+        r['Field Name'] === 'Tolerance' ||
+        r['Field Name'] === 'Tolerance_Value' ||
+        r['Field Name'] === 'Tolerance Value'
+      )?.['Value'];
+      if (tolOp || tolVal) {
+        setTolerance(prev => ({
+          ...prev,
+          ...(tolOp
+            ? {
+                operator: (['<=', '<', '>=', '>'].includes(String(tolOp).trim())
+                  ? String(tolOp).trim()
+                  : prev.operator) as '<=' | '<' | '>=' | '>',
+              }
+            : {}),
+          ...(tolVal ? { value: String(tolVal).trim() } : {}),
+        }));
       }
 
       if (!testId) {

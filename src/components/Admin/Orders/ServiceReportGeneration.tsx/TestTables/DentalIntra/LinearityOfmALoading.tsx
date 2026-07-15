@@ -10,6 +10,7 @@ import {
   getLinearityOfMaLoadingByTestIdForDentalIntra,
   updateLinearityOfMaLoadingForDentalIntra,
 } from '../../../../../../api';
+import { normalizeCsvComparisonOperator } from '../shared/parseRadiographyStyleTableFormat';
 
 interface Table1Row {
   fcd: string;
@@ -50,6 +51,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
   ]);
 
   const [tolerance, setTolerance] = useState<string>('0.1');
+  const [toleranceOperator, setToleranceOperator] = useState<string>('<');
 
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -157,7 +159,30 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
     const colVal = xMax !== '—' && xMin !== '—' && (parseFloat(xMax) + parseFloat(xMin)) > 0
       ? ((parseFloat(xMax) - parseFloat(xMin)) / (parseFloat(xMax) + parseFloat(xMin))).toFixed(4)
       : '—';
-    const pass = colVal !== '—' && parseFloat(colVal) <= tol;
+
+    let pass = false;
+    if (colVal !== '—') {
+      const colNum = parseFloat(colVal);
+      switch (toleranceOperator) {
+        case '<':
+          pass = colNum < tol;
+          break;
+        case '>':
+          pass = colNum > tol;
+          break;
+        case '<=':
+          pass = colNum <= tol;
+          break;
+        case '>=':
+          pass = colNum >= tol;
+          break;
+        case '=':
+          pass = Math.abs(colNum - tol) < 0.0001;
+          break;
+        default:
+          pass = colNum <= tol;
+      }
+    }
 
     return rowsWithX.map(row => ({
       ...row,
@@ -166,7 +191,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
       col: colVal,
       remarks: pass ? 'Pass' : colVal === '—' ? '' : 'Fail',
     }));
-  }, [table2Rows, tolerance, table1Row.time]);
+  }, [table2Rows, tolerance, toleranceOperator, table1Row.time]);
 
   
   const isFormValid = useMemo(() => {
@@ -215,6 +240,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
             }
           }
           setTolerance(data.tolerance || '0.1');
+          setToleranceOperator(data.toleranceOperator || '<=');
           setHasSaved(true);
           setIsEditing(false);
         } else {
@@ -238,6 +264,16 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
       const fcd = csvData.find(r => r['Field Name'] === 'FCD')?.['Value'];
       const kv = csvData.find(r => r['Field Name'] === 'kV')?.['Value'];
       const time = csvData.find(r => r['Field Name'] === 'time')?.['Value'];
+      const tolOp = csvData.find(r =>
+        r['Field Name'] === 'Tolerance_Operator' ||
+        r['Field Name'] === 'ToleranceOperator' ||
+        r['Field Name'] === 'Tolerance_Sign'
+      )?.['Value'];
+      const tolVal = csvData.find(r =>
+        r['Field Name'] === 'Tolerance' ||
+        r['Field Name'] === 'Tolerance_Value' ||
+        r['Field Name'] === 'Tolerance Value'
+      )?.['Value'];
 
       if (fcd || kv || time) {
         setTable1Row(prev => ({
@@ -246,6 +282,12 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
           time: time || prev.time
         }));
       }
+
+      if (tolOp) {
+        const op = normalizeCsvComparisonOperator(tolOp);
+        if (['<', '>', '<=', '>=', '='].includes(op)) setToleranceOperator(op);
+      }
+      if (tolVal) setTolerance(String(tolVal).trim());
 
       const rowIndices = [...new Set(csvData
         .filter(r => r['Field Name'] && (r['Field Name'] === 'mA_Station' || r['Field Name'].startsWith('Measured_')))
@@ -325,6 +367,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
           remarks: r.remarks || '',
         })),
         tolerance,
+        toleranceOperator,
         xMax: processedTable2[0]?.xMax || '',
         xMin: processedTable2[0]?.xMin || '',
         col: processedTable2[0]?.col || '',
@@ -582,7 +625,19 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
             </button>
           )}
           <div className="flex items-center gap-2 ml-auto">
-            <span className="text-sm font-medium text-gray-700 whitespace-nowrap">Tolerance (CoL) less than</span>
+            <span className="text-sm font-medium text-gray-700">Tolerance (CoL)</span>
+            <select
+              value={toleranceOperator}
+              onChange={e => setToleranceOperator(e.target.value)}
+              disabled={isViewMode}
+              className={`px-3 py-2 text-center font-bold border-2 border-blue-400 rounded-lg focus:ring-4 focus:ring-blue-200 text-sm ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`}
+            >
+              <option value="<">&lt;</option>
+              <option value=">">&gt;</option>
+              <option value="<=">&lt;=</option>
+              <option value=">=">&gt;=</option>
+              <option value="=">=</option>
+            </select>
             <input
               type="number"
               step="0.001"

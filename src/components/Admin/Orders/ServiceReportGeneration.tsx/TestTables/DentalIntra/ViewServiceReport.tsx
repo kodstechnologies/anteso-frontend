@@ -1096,7 +1096,16 @@ const ViewServiceReportDentalIntra: React.FC = () => {
 
                   <div className="mt-4 bg-gray-50 p-4 print:p-1 rounded border" style={{ padding: '2px 4px' }}>
                     <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
-                      <strong>Tolerance (CoL):</strong> ≤ {testData.linearityOfTime?.tolerance || "0.1"}
+                      <strong>Tolerance (CoL):</strong>{" "}
+                      {normalizeComparisonOperator(
+                        testData.linearityOfTime?.toleranceOperator ||
+                        testData.linearityOfTime?.tolerance?.operator ||
+                        "<="
+                      )}{" "}
+                      {testData.linearityOfTime?.toleranceValue ||
+                        testData.linearityOfTime?.tolerance?.value ||
+                        testData.linearityOfTime?.tolerance ||
+                        "0.1"}
                     </p>
                   </div>
                 </div>
@@ -1353,7 +1362,7 @@ const ViewServiceReportDentalIntra: React.FC = () => {
               );
             })()}
 
-            {/* 6. Radiation Leakage Level — layout aligned with RadiographyFixed "Tube Housing Leakage" */}
+            {/* 6. Radiation Leakage Level — Result columns match generate formula */}
             {testData.radiationLeakageLevel && (testData.radiationLeakageLevel.leakageMeasurements?.length > 0 || testData.radiationLeakageLevel.fcd) && (() => {
               const rll = testData.radiationLeakageLevel;
               const sArr = Array.isArray(rll.settings) ? rll.settings : [];
@@ -1371,17 +1380,15 @@ const ViewServiceReportDentalIntra: React.FC = () => {
                       ? String(s0.time)
                       : "-";
 
-              const leakageRowFront = (row: any) => row?.front ?? row?.up;
-              const leakageRowBack = (row: any) => row?.back ?? row?.down;
-              const exposureMaxMRhr = (row: any) => {
-                const u = String(row?.unit || "").toLowerCase();
-                const nums = [row?.left, row?.right, leakageRowFront(row), leakageRowBack(row), row?.top]
+              const leakageFront = (row: any) => row?.front ?? row?.up;
+              const leakageBack = (row: any) => row?.back ?? row?.down;
+              const rowMaxMGy = (row: any) => {
+                const nums = [row?.left, row?.right, row?.top, leakageFront(row), leakageBack(row)]
                   .map((v: any) => parseFloat(String(v)) || 0)
                   .filter((n: number) => n > 0);
-                const rawMax = nums.length ? Math.max(...nums) : 0;
-                if (rawMax <= 0) return 0;
-                if (u.includes("mgy") || u.includes("gy")) return rawMax * 114;
-                return rawMax;
+                const parsedMax = parseFloat(String(row?.max ?? ""));
+                if (!isNaN(parsedMax) && parsedMax > 0) return parsedMax;
+                return nums.length ? Math.max(...nums) : 0;
               };
 
               return (
@@ -1405,40 +1412,48 @@ const ViewServiceReportDentalIntra: React.FC = () => {
                   <table style={{ ...tableStyle, fontSize: '10px' }}>
                     <thead>
                       <tr>
-                        <th rowSpan={2} style={cellStyle({ fontWeight: 700, border: '0.1px solid #666', fontSize: '10px', width: '15%', verticalAlign: 'middle' })}>Location</th>
-                        <th colSpan={5} style={cellStyle({ fontWeight: 700, border: '0.1px solid #666', fontSize: '10px' })}>Exposure Level (mR/hr)</th>
-                        <th rowSpan={2} style={cellStyle({ fontWeight: 700, border: '0.1px solid #666', fontSize: '10px', verticalAlign: 'middle' })}>Result (mR in 1 hr)</th>
-                        <th rowSpan={2} style={cellStyle({ fontWeight: 700, border: '0.1px solid #666', fontSize: '10px', verticalAlign: 'middle' })}>Result (mGy in 1 hr)</th>
+                        <th rowSpan={2} style={cellStyle({ fontWeight: 700, border: '0.1px solid #666', fontSize: '10px', width: '12%', verticalAlign: 'middle' })}>Location</th>
+                        <th colSpan={5} style={cellStyle({ fontWeight: 700, border: '0.1px solid #666', fontSize: '10px' })}>Exposure Level (mGy)</th>
+                        <th rowSpan={2} style={cellStyle({ fontWeight: 700, border: '0.1px solid #666', fontSize: '10px', verticalAlign: 'middle' })}>Max</th>
+                        <th rowSpan={2} style={cellStyle({ fontWeight: 700, border: '0.1px solid #666', fontSize: '10px', verticalAlign: 'middle' })}>Result (mR in one hour)</th>
+                        <th rowSpan={2} style={cellStyle({ fontWeight: 700, border: '0.1px solid #666', fontSize: '10px', verticalAlign: 'middle' })}>Result (mGy in one hour)</th>
                         <th rowSpan={2} style={cellStyle({ fontWeight: 700, border: '0.1px solid #666', fontSize: '10px', verticalAlign: 'middle' })}>Remarks</th>
                       </tr>
                       <tr>
-                        {["Left", "Right", "Front", "Back", "Top"].map(h => <th key={h} style={cellStyle({ fontWeight: 700, border: '0.1px solid #666', fontSize: '10px' })}>{h}</th>)}
+                        {["Left", "Right", "Top", "Front", "Back"].map(h => <th key={h} style={cellStyle({ fontWeight: 700, border: '0.1px solid #666', fontSize: '10px' })}>{h}</th>)}
                       </tr>
                     </thead>
                     <tbody>
                       {rll.leakageMeasurements.map((row: any, i: number) => {
                         const maValue = parseFloat(String(rll.ma || setFlat.ma || s0.ma || "0"));
                         const workloadValue = parseFloat(String(rll.workload || "0"));
-                        const rowMax = exposureMaxMRhr(row);
-                        let calcMR = "-", calcMGy = "-", remark = row.remark || row.remarks || "-";
+                        const unit = row.unit || "mGy/h";
+                        const rowMax = rowMaxMGy(row);
+                        let calcMR = "—", calcMGy = "—", remark = row.remark || row.remarks || "—";
                         if (rowMax > 0 && maValue > 0 && workloadValue > 0) {
-                          const resMR = (workloadValue * rowMax) / (60 * maValue);
-                          calcMR = resMR.toFixed(3); calcMGy = (resMR / 114).toFixed(4);
-                          if (remark === "-" || !remark) { remark = (resMR / 114) <= (parseFloat(String(rll.toleranceValue)) || 1.0) ? "Pass" : "Fail"; }
-                        } else {
-                          calcMR = row.resultMR != null && row.resultMR !== "" ? String(row.resultMR) : "-";
-                          calcMGy = row.resultMGy != null && row.resultMGy !== "" ? String(row.resultMGy) : "-";
+                          const exposureLevelMR = unit === "mGy/h" || !unit ? rowMax * 114 : rowMax;
+                          const resMR = (workloadValue * exposureLevelMR) / (60 * maValue);
+                          calcMR = resMR.toFixed(3);
+                          calcMGy = (resMR / 114).toFixed(4);
+                          const tol = parseFloat(String(rll.toleranceValue || rll.tolerance || "1")) || 1;
+                          const op = String(rll.toleranceOperator || "less than").trim().toLowerCase();
+                          const mgy = resMR / 114;
+                          const scale = 10_000;
+                          const mi = Math.round(mgy * scale);
+                          const ti = Math.round(tol * scale);
+                          if (op === ">" || op === "greater than" || op === "gt") remark = mi > ti ? "Pass" : "Fail";
+                          else if (op === "=" || op === "==" || op === "equals" || op === "equal to") remark = mi === ti ? "Pass" : "Fail";
+                          else remark = mi < ti ? "Pass" : "Fail";
                         }
-                        const dispFront = leakageRowFront(row);
-                        const dispBack = leakageRowBack(row);
                         return (
                           <tr key={i}>
                             <th scope="row" style={cellStyle({ border: '0.1px solid #666', fontSize: '10px', fontWeight: 700 })}>{row.location || "-"}</th>
                             <td style={cellStyle({ border: '0.1px solid #666', fontSize: '10px' })}>{row.left ?? "-"}</td>
                             <td style={cellStyle({ border: '0.1px solid #666', fontSize: '10px' })}>{row.right ?? "-"}</td>
-                            <td style={cellStyle({ border: '0.1px solid #666', fontSize: '10px' })}>{dispFront ?? "-"}</td>
-                            <td style={cellStyle({ border: '0.1px solid #666', fontSize: '10px' })}>{dispBack ?? "-"}</td>
                             <td style={cellStyle({ border: '0.1px solid #666', fontSize: '10px' })}>{row.top ?? "-"}</td>
+                            <td style={cellStyle({ border: '0.1px solid #666', fontSize: '10px' })}>{leakageFront(row) ?? "-"}</td>
+                            <td style={cellStyle({ border: '0.1px solid #666', fontSize: '10px' })}>{leakageBack(row) ?? "-"}</td>
+                            <td style={cellStyle({ border: '0.1px solid #666', fontSize: '10px' })}>{rowMax > 0 ? rowMax.toFixed(3) : row.max || "-"}</td>
                             <td style={cellStyle({ border: '0.1px solid #666', fontSize: '10px' })}>{calcMR}</td>
                             <td style={cellStyle({ border: '0.1px solid #666', fontSize: '10px' })}>{calcMGy}</td>
                             <td style={cellStyle({ border: '0.1px solid #666', fontSize: '10px' })}>{remark}</td>
@@ -1451,22 +1466,28 @@ const ViewServiceReportDentalIntra: React.FC = () => {
                 {(() => {
                   const maValue = parseFloat(String(rll.ma || setFlat.ma || s0.ma || "0"));
                   const workloadValue = parseFloat(String(rll.workload || "0"));
-                  const getSummary = (locName: string) => {
-                    const row = rll.leakageMeasurements?.find((m: any) => m.location === locName);
+                  const getSummary = (match: (loc: string) => boolean) => {
+                    const row = rll.leakageMeasurements?.find((m: any) => match(String(m.location || "").toLowerCase()));
                     if (!row) return null;
-                    const rowMax = exposureMaxMRhr(row);
+                    const unit = row.unit || "mGy/h";
+                    const rowMax = rowMaxMGy(row);
                     if (rowMax <= 0 || maValue <= 0 || workloadValue <= 0) return null;
-                    const resMR = (workloadValue * rowMax) / (60 * maValue);
-                    return { rowMax, resMR, resMGy: resMR / 114 };
+                    const exposureLevelMR = unit === "mGy/h" || !unit ? rowMax * 114 : rowMax;
+                    const resMR = (workloadValue * exposureLevelMR) / (60 * maValue);
+                    return { rowMax, unit, exposureLevelMR, resMR, resMGy: resMR / 114 };
                   };
-                  const tubeSummary = getSummary("Tube Housing");
-                  const collimatorSummary = getSummary("Collimator");
+                  const tubeSummary = getSummary((loc) => loc.includes("tube") && !loc.includes("collimator"));
+                  const collimatorSummary = getSummary((loc) => loc.includes("collimator"));
+                  const maxLabel = (s: NonNullable<ReturnType<typeof getSummary>>) =>
+                    s.unit === "mGy/h" || !s.unit
+                      ? `${s.rowMax.toFixed(2)} mGy/h (= ${s.exposureLevelMR.toFixed(2)} mR/hr)`
+                      : `${s.rowMax.toFixed(2)} mR/hr`;
                   return (
                     <div style={{ marginTop: '6px' }}>
                       <div style={{ border: '1px solid #888', padding: '4px 8px', marginBottom: '4px', background: '#fafafa' }}>
                         <p style={{ fontSize: '10px', fontWeight: 'bold', marginBottom: '2px' }}>Calculation Formula:</p>
                         <p style={{ fontSize: '10px', textAlign: 'center', fontFamily: 'monospace', border: '1px dashed #999', padding: '2px' }}>
-                          Maximum Leakage (mR in 1 hr) = (Workload × Max Exposure) / (60 × mA)
+                          Maximum Leakage (mR in one hour) = (Workload × Max Exposure mR/hr) / (60 × mA)
                         </p>
                         <p style={{ fontSize: '9px', marginTop: '2px', color: '#555', fontStyle: 'italic' }}>
                           Where: Workload = {workloadValue} mA·min/week | mA = {maValue} | 1 mGy = 114 mR
@@ -1476,22 +1497,38 @@ const ViewServiceReportDentalIntra: React.FC = () => {
                         {tubeSummary && (
                           <div style={{ flex: 1, border: '0.1px solid #666', padding: '4px', fontSize: '10px' }}>
                             <p style={{ fontWeight: 'bold', marginBottom: '2px' }}>Tube Housing Summary:</p>
-                            <p>Max Measured: <strong>{tubeSummary.rowMax} mR/hr</strong></p>
-                            <p>Result: ({workloadValue} × {tubeSummary.rowMax}) / (60 × {maValue}) = <strong>{tubeSummary.resMR.toFixed(3)} mR</strong></p>
-                            <p>In mGy: {tubeSummary.resMR.toFixed(3)} / 114 = <strong>{tubeSummary.resMGy.toFixed(4)} mGy</strong></p>
+                            <p>Max Measured: <strong>{maxLabel(tubeSummary)}</strong></p>
+                            <p>Result: <strong>{tubeSummary.resMR.toFixed(3)} mR in one hour</strong></p>
+                            <p>In mGy: <strong>{tubeSummary.resMGy.toFixed(4)} mGy in one hour</strong></p>
                           </div>
                         )}
                         {collimatorSummary && (
                           <div style={{ flex: 1, border: '0.1px solid #666', padding: '4px', fontSize: '10px' }}>
                             <p style={{ fontWeight: 'bold', marginBottom: '2px' }}>Collimator Summary:</p>
-                            <p>Max Measured: <strong>{collimatorSummary.rowMax} mR/hr</strong></p>
-                            <p>Result: ({workloadValue} × {collimatorSummary.rowMax}) / (60 × {maValue}) = <strong>{collimatorSummary.resMR.toFixed(3)} mR</strong></p>
-                            <p>In mGy: {collimatorSummary.resMR.toFixed(3)} / 114 = <strong>{collimatorSummary.resMGy.toFixed(4)} mGy</strong></p>
+                            <p>Max Measured: <strong>{maxLabel(collimatorSummary)}</strong></p>
+                            <p>Result: <strong>{collimatorSummary.resMR.toFixed(3)} mR in one hour</strong></p>
+                            <p>In mGy: <strong>{collimatorSummary.resMGy.toFixed(4)} mGy in one hour</strong></p>
                           </div>
                         )}
                       </div>
                       <p style={{ fontSize: '10px', marginTop: '4px', border: '0.1px solid #666', padding: '2px 6px' }}>
-                        <strong>Tolerance:</strong> Maximum Leakage Radiation Level at 1 meter from the Focus should be &lt; <strong>{rll.toleranceValue || '1'} mGy ({parseFloat(String(rll.toleranceValue || '1')) * 114} mR) in one hour.</strong>
+                        <strong>Tolerance:</strong> Calculated leakage (in one hour) must satisfy{" "}
+                        {(() => {
+                          const op = String(rll.toleranceOperator || "less than").trim().toLowerCase();
+                          const symbol =
+                            op === ">" || op === "greater than" || op === "gt"
+                              ? ">"
+                              : op === "=" || op === "==" || op === "equals" || op === "equal to"
+                                ? "="
+                                : "<";
+                          const tolVal = rll.toleranceValue || "1";
+                          const mr = (parseFloat(String(tolVal)) || 0) * 114;
+                          return (
+                            <strong>
+                              {symbol} {tolVal} ({mr.toFixed(3)} mR) in one hour.
+                            </strong>
+                          );
+                        })()}
                       </p>
                     </div>
                   );

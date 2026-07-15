@@ -139,7 +139,11 @@ const DentalConeBeamCT: React.FC<{ serviceId: string; qaTestDate?: string | null
                 'kV': 'kV', 'kv': 'kV', 'KV': 'kV',
                 'kVp': 'kV', 'kvp': 'kV', 'KVp': 'kV', 'KVP': 'kV',
                 'mA': 'mA', 'ma': 'mA', 'MA': 'mA',
-                'FCD': 'FCD', 'fcd': 'FCD', 'FDD': 'FCD', 'fdd': 'FCD', 'FFD': 'FFD', 'ffd': 'FFD'
+                'FCD': 'FCD', 'fcd': 'FCD', 'FDD': 'FCD', 'fdd': 'FCD', 'FFD': 'FFD', 'ffd': 'FFD',
+                'Tolerance Sign': 'Tolerance_Sign', 'tolerance sign': 'Tolerance_Sign',
+                'Tolerance Value (kVp)': 'Tolerance_Value', 'Tolerance Value': 'Tolerance_Value',
+                'tolerance value (kvp)': 'Tolerance_Value', 'tolerance value': 'Tolerance_Value',
+                'Tolerance': 'Tolerance_Value', 'tolerance': 'Tolerance_Value',
             },
             'accuracyOfIrradiationTime': {
                 'Set Time (mSec)': 'Set_Time', 'set time (msec)': 'Set_Time',
@@ -184,7 +188,13 @@ const DentalConeBeamCT: React.FC<{ serviceId: string; qaTestDate?: string | null
                 'Meas 1': 'Measured_0', 'Meas 2': 'Measured_1', 'Meas 3': 'Measured_2', 'Meas 4': 'Measured_3', 'Meas 5': 'Measured_4',
                 'meas 1': 'Measured_0', 'meas 2': 'Measured_1', 'meas 3': 'Measured_2', 'meas 4': 'Measured_3', 'meas 5': 'Measured_4',
                 'FFD': 'FFD', 'ffd': 'FFD',
-                'FCD': 'FFD', 'fcd': 'FFD', 'FDD': 'FFD', 'fdd': 'FFD'
+                'FCD': 'FFD', 'fcd': 'FFD', 'FDD': 'FFD', 'fdd': 'FFD',
+                'Tolerance Operator': 'Tolerance_Operator', 'tolerance operator': 'Tolerance_Operator',
+                'Tol Operator': 'Tolerance_Operator', 'tol operator': 'Tolerance_Operator',
+                'Tolerance Value (CoV)': 'Tolerance_Value', 'Tolerance Value': 'Tolerance_Value',
+                'tolerance value (cov)': 'Tolerance_Value', 'tolerance value': 'Tolerance_Value',
+                'Tol Value': 'Tolerance_Value', 'tol value': 'Tolerance_Value',
+                'Tolerance': 'Tolerance_Value', 'tolerance': 'Tolerance_Value',
             },
             'radiationLeakageLevel': {
                 'Location': 'Table2_Area', 'location': 'Table2_Area',
@@ -255,6 +265,9 @@ const DentalConeBeamCT: React.FC<{ serviceId: string; qaTestDate?: string | null
                 'kV', 'kv', 'KV', 'kVp', 'kvp', 'KVp', 'KVP',
                 'mA', 'ma', 'MA',
                 'FCD', 'fcd', 'FDD', 'fdd', 'FFD', 'ffd',
+                'Tolerance Sign', 'tolerance sign',
+                'Tolerance Value (kVp)', 'Tolerance Value', 'tolerance value (kvp)', 'tolerance value',
+                'Tolerance', 'tolerance',
             ]),
             linearityOfMaLoading: new Set([
                 'mA Station', 'ma station', 'MA Station',
@@ -287,6 +300,9 @@ const DentalConeBeamCT: React.FC<{ serviceId: string; qaTestDate?: string | null
                 'meas 1', 'meas 2', 'meas 3', 'meas 4', 'meas 5',
                 'FFD', 'ffd',
                 'FCD', 'fcd', 'FDD', 'fdd',
+                'Tolerance Operator', 'tolerance operator', 'Tol Operator', 'tol operator',
+                'Tolerance Value (CoV)', 'Tolerance Value', 'tolerance value (cov)', 'tolerance value',
+                'Tol Value', 'tol value', 'Tolerance', 'tolerance',
             ]),
         };
         const isDynamicMeasHeader = (testName: string, header: string, map: Record<string, string>) => {
@@ -947,14 +963,14 @@ const DentalConeBeamCT: React.FC<{ serviceId: string; qaTestDate?: string | null
                 getRadiationProtectionSurveyByServiceIdForCBCT(serviceId)
             ]);
 
-            // Construct data object
+            // Construct data object (API returns { success, data } — keep raw so exporter can unwrap)
             const exportData = {
-                accuracyOfOperatingPotential: kvpRes?.data,
-                accuracyOfIrradiationTime: timeRes?.data,
-                linearityOfMaLoading: linMaRes?.data, // Determine if it's mA or mAs based on data
-                outputConsistency: consRes?.data,
-                radiationLeakage: leakRes?.data,
-                radiationProtectionSurvey: protRes?.data
+                accuracyOfOperatingPotential: kvpRes,
+                accuracyOfIrradiationTime: timeRes,
+                linearityOfMaLoading: linMaRes,
+                outputConsistency: consRes,
+                radiationLeakage: leakRes,
+                radiationProtectionSurvey: protRes
             };
 
             // Check for mAs linearity if mA is empty or user selected no timer?
@@ -964,7 +980,10 @@ const DentalConeBeamCT: React.FC<{ serviceId: string; qaTestDate?: string | null
             // But for now let's stick to what's imported.
 
             const wb = createCBCTUploadableExcel(exportData);
-            XLSX.writeFile(wb, `CBCT_Report_${serviceId}.xlsx`);
+            const reportNumber = String(formData.testReportNumber || "")
+                .trim()
+                .replace(/[<>:"/\\|?*\x00-\x1F]+/g, "_");
+            XLSX.writeFile(wb, `CBCT_${reportNumber || "Report"}.xlsx`);
             toast.success("Report data exported!");
 
         } catch (err) {

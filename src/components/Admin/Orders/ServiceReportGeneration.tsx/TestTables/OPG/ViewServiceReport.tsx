@@ -28,6 +28,20 @@ interface Note {
   text: string;
 }
 
+/** Saved meas column labels, or defaults when missing / empty (empty [] is truthy and must not win). */
+const resolveMeasHeaders = (
+  saved: unknown,
+  columnCount: number,
+  defaultLabel = "Meas"
+): string[] => {
+  const fromSaved = Array.isArray(saved)
+    ? saved.map((h) => String(h ?? "").trim()).filter(Boolean)
+    : [];
+  if (fromSaved.length > 0) return fromSaved;
+  const count = Math.max(columnCount, 3);
+  return Array.from({ length: count }, (_, i) => `${defaultLabel} ${i + 1}`);
+};
+
 interface ReportData {
   customerName?: string;
   address?: string;
@@ -313,6 +327,12 @@ const ViewServiceReportOPG: React.FC = () => {
             if (outputRows.length === 0) return null;
             const toleranceOperator = ocData.toleranceOperator || "<=";
             const toleranceValue = parseFloat(ocData.tolerance || "0.05");
+            const maxMeas = outputRows.reduce(
+              (max: number, row: any) =>
+                Math.max(max, Array.isArray(row.outputs) ? row.outputs.length : 0),
+              0
+            );
+            const measurementHeaders = resolveMeasHeaders(ocData.measurementHeaders, maxMeas, "Meas");
             return {
               ...ocData,
               outputRows: outputRows.map((r: any) => ({
@@ -321,7 +341,7 @@ const ViewServiceReportOPG: React.FC = () => {
                 mas: r.mas ?? r.mAs ?? "-",
                 remark: r.remark ?? r.remarks ?? "",
               })),
-              measurementHeaders: Array.isArray(ocData.measurementHeaders) ? ocData.measurementHeaders : [],
+              measurementHeaders,
               ffd: ocData.ffd || "",
               toleranceOperator,
               toleranceValue,
@@ -334,10 +354,22 @@ const ViewServiceReportOPG: React.FC = () => {
             // Backend returns table2, but we normalize to table2Rows
             const table2Rows = Array.isArray(linData.table2Rows) ? linData.table2Rows : (Array.isArray(linData.table2) ? linData.table2 : []);
             if (table2Rows.length === 0) return null;
+            const maxMeas = table2Rows.reduce(
+              (max: number, row: any) =>
+                Math.max(max, Array.isArray(row.measuredOutputs) ? row.measuredOutputs.length : 0),
+              0
+            );
+            const measurementHeaders = resolveMeasHeaders(
+              linData.measHeaders ?? linData.measurementHeaders,
+              maxMeas,
+              "Meas"
+            );
             return {
               ...linData,
               table2Rows,
               table1: linData.table1 || linData.exposureCondition || {},
+              measurementHeaders,
+              measHeaders: measurementHeaders,
             };
           };
 
@@ -469,6 +501,8 @@ const ViewServiceReportOPG: React.FC = () => {
               front: r.front,
               back: r.back,
               top: r.top != null && r.top !== "" && r.top !== "-" ? r.top : "-",
+              max: r.max,
+              unit: r.unit || "mGy/h",
               remark: r.remark,
             }));
 
@@ -1102,7 +1136,16 @@ const ViewServiceReportOPG: React.FC = () => {
             {/* 4. Linearity of mA / mAs Loading */}
             {testData.linearityOfMaLoading?.table2Rows?.length > 0 && (() => {
               const rows = testData.linearityOfMaLoading.table2Rows || [];
-              const measHeaders = testData.linearityOfMaLoading.measurementHeaders || ["Meas 1", "Meas 2", "Meas 3"];
+              const maxMeas = rows.reduce(
+                (max: number, row: any) =>
+                  Math.max(max, Array.isArray(row.measuredOutputs) ? row.measuredOutputs.length : 0),
+                0
+              );
+              const measHeaders = resolveMeasHeaders(
+                testData.linearityOfMaLoading.measHeaders ?? testData.linearityOfMaLoading.measurementHeaders,
+                maxMeas,
+                "Meas"
+              );
               const measCount = measHeaders.length;
               const tolerance = testData.linearityOfMaLoading.tolerance || "0.1";
               const toleranceOperator = testData.linearityOfMaLoading.toleranceOperator || "<";
@@ -1114,7 +1157,9 @@ const ViewServiceReportOPG: React.FC = () => {
               const timeVal = parseFloat(timeStr);
               const hasValidTime = timeStr !== '' && !isNaN(timeVal) && timeVal > 0;
               const xUnitLabel = hasTime ? 'mGy/(mA*s)' : 'mGy/mA';
-              const linearityHeading = "Linearity of mA Loading (Coefficient of Linearity)";
+              const linearityHeading = hasValidTime
+                ? "Linearity of mA Loading (Coefficient of Linearity)"
+                : "Linearity of mAs Loading (Coefficient of Linearity)";
 
               const xResults = rows.map((row: any) => {
                 const outputsArr = Array.isArray(row.measuredOutputs) ? row.measuredOutputs : [];
@@ -1176,14 +1221,17 @@ const ViewServiceReportOPG: React.FC = () => {
                   <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
                     <thead className="bg-gray-100">
                       <tr>
-                        <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>mA</th>
+                        <th rowSpan={2} className="border border-black p-2 print:p-1 text-center align-middle" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center', verticalAlign: 'middle' }}>mA</th>
+                        <th colSpan={measCount} className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Output (mGy)</th>
+                        <th rowSpan={2} className="border border-black p-2 print:p-1 text-center align-middle" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center', verticalAlign: 'middle' }}>Average</th>
+                        <th rowSpan={2} className="border border-black p-2 print:p-1 text-center align-middle font-bold bg-blue-50" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center', verticalAlign: 'middle' }}>X ({xUnitLabel})</th>
+                        <th rowSpan={2} className="border border-black p-2 print:p-1 text-center align-middle font-bold bg-yellow-50" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center', verticalAlign: 'middle' }}>CoL</th>
+                        <th rowSpan={2} className="border border-black p-2 print:p-1 text-center align-middle font-bold bg-green-50" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center', verticalAlign: 'middle' }}>Remarks</th>
+                      </tr>
+                      <tr>
                         {measHeaders.map((h: string, idx: number) => (
-                          <th key={idx} className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{h}</th>
+                          <th key={idx} className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{h || `Meas ${idx + 1}`}</th>
                         ))}
-                        <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Average</th>
-                        <th className="border border-black p-2 print:p-1 text-center font-bold bg-blue-50" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>X ({xUnitLabel})</th>
-                        <th className="border border-black p-2 print:p-1 text-center font-bold bg-yellow-50" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>CoL</th>
-                        <th className="border border-black p-2 print:p-1 text-center font-bold bg-green-50" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Remarks</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1223,7 +1271,19 @@ const ViewServiceReportOPG: React.FC = () => {
             )})()}
 
  {/* 3. Output Consistency */}
-            {testData.outputConsistency?.outputRows?.length > 0 && (
+            {testData.outputConsistency?.outputRows?.length > 0 && (() => {
+              const ocRows = testData.outputConsistency.outputRows || [];
+              const maxMeas = ocRows.reduce(
+                (max: number, row: any) =>
+                  Math.max(max, Array.isArray(row.outputs) ? row.outputs.length : 0),
+                0
+              );
+              const ocMeasHeaders = resolveMeasHeaders(
+                testData.outputConsistency.measurementHeaders,
+                maxMeas,
+                "Meas"
+              );
+              return (
               <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
                 <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>{nextDetailedSectionNumber()}. Output Consistency</h3>
                 {testData.outputConsistency.ffd != null && testData.outputConsistency.ffd !== "" && (
@@ -1245,31 +1305,31 @@ const ViewServiceReportOPG: React.FC = () => {
                       <tr>
                         <th rowSpan={2} className="border border-black p-2 print:p-1 text-center align-middle" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center', verticalAlign: 'middle' }}>Applied kV</th>
                         <th rowSpan={2} className="border border-black p-2 print:p-1 text-center align-middle" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center', verticalAlign: 'middle' }}>mAs</th>
-                        <th colSpan={testData.outputConsistency.measurementHeaders?.length || testData.outputConsistency.outputRows[0]?.outputs?.length || 3} className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Radiation Output mGy</th>
+                        <th colSpan={ocMeasHeaders.length} className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Radiation Output mGy</th>
                         <th rowSpan={2} className="border border-black p-2 print:p-1 text-center align-middle" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center', verticalAlign: 'middle' }}>Avg. (X)</th>
                         <th rowSpan={2} className="border border-black p-2 print:p-1 text-center align-middle" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center', verticalAlign: 'middle' }}>Coefficient of Variation CoV</th>
                         <th rowSpan={2} className="border border-black p-2 print:p-1 text-center align-middle" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center', verticalAlign: 'middle' }}>Remarks</th>
                       </tr>
                       <tr>
-                        {(testData.outputConsistency.measurementHeaders ||
-                          Array.from({ length: testData.outputConsistency.outputRows[0]?.outputs?.length || 3 }, (_, i) => i + 1)
-                        ).map((h: string | number, idx: number) => (
-                          <th key={idx} className="border border-black p-1 print:p-0.5 text-center" style={{ padding: '0px 1px', fontSize: '11px' }}>{typeof h === 'number' ? h : idx + 1}</th>
+                        {ocMeasHeaders.map((h: string, idx: number) => (
+                          <th key={idx} className="border border-black p-1 print:p-0.5 text-center" style={{ padding: '0px 1px', fontSize: '11px' }}>{h || `Meas ${idx + 1}`}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody>
-                      {testData.outputConsistency.outputRows.map((row: any, i: number) => {
+                      {ocRows.map((row: any, i: number) => {
                         const rawOutputs = Array.isArray(row.outputs) ? row.outputs : [];
                         const outputVals = rawOutputs.map((o: any) => (o && typeof o === 'object' && 'value' in o ? o.value : o));
-                        const numCols = Math.max(outputVals.length, testData.outputConsistency.measurementHeaders?.length || 3);
                         return (
                           <tr key={i} className="text-center" style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
                             <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.kv}</td>
                             <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.mas}</td>
-                            {outputVals.map((val: any, idx: number) => (
+                            {Array.from({ length: ocMeasHeaders.length }).map((_, idx) => {
+                              const val = outputVals[idx];
+                              return (
                               <td key={idx} className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{val != null && val !== "" ? String(val) : "-"}</td>
-                            ))}
+                              );
+                            })}
                             <td className="border border-black p-2 print:p-1 font-semibold text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.mean ?? row.avg ?? "-"}</td>
                             <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>
                               {(() => {
@@ -1341,7 +1401,8 @@ const ViewServiceReportOPG: React.FC = () => {
                   </p>
                 </div>
               </div>
-            )}
+            );
+            })()}
 
 
             {/* 6. Tube Housing Leakage — layout aligned with RadiographyFixed ViewServiceReport */}
@@ -1387,21 +1448,24 @@ const ViewServiceReportOPG: React.FC = () => {
                         <th rowSpan={2} style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px", width: "15%", verticalAlign: "middle" })}>
                           Location
                         </th>
-                        <th colSpan={5} style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px" })}>
-                          Exposure Level (mR/hr)
+                        <th colSpan={4} style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px" })}>
+                          Exposure Level (mGy)
                         </th>
                         <th rowSpan={2} style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px", verticalAlign: "middle" })}>
-                          Result (mR in 1 hr)
+                          Max
                         </th>
                         <th rowSpan={2} style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px", verticalAlign: "middle" })}>
-                          Result (mGy in 1 hr)
+                          Result (mR in one hour)
+                        </th>
+                        <th rowSpan={2} style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px", verticalAlign: "middle" })}>
+                          Result (mGy in one hour)
                         </th>
                         <th rowSpan={2} style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px", verticalAlign: "middle" })}>
                           Remarks
                         </th>
                       </tr>
                       <tr>
-                        {["Left", "Right", "Front", "Back", "Top"].map((h) => (
+                        {["Front", "Back", "Left", "Right"].map((h) => (
                           <th key={h} style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px" })}>
                             {h}
                           </th>
@@ -1412,17 +1476,35 @@ const ViewServiceReportOPG: React.FC = () => {
                       {testData.radiationLeakage.leakageMeasurements.map((row: any, i: number) => {
                         const maValue = parseFloat(testData.radiationLeakage.ma || testData.radiationLeakage.settings?.[0]?.ma || "0");
                         const workloadValue = parseFloat(testData.radiationLeakage.workload || "0");
-                        const values = [row.left, row.right, row.front, row.back, row.top].map((v: any) => parseFloat(v) || 0).filter((v: number) => v > 0);
-                        const rowMax = values.length > 0 ? Math.max(...values) : 0;
-                        let calcMR = "-",
-                          calcMGy = "-",
-                          remark = row.remark || "-";
+                        const unit = row.unit || "mGy/h";
+                        const values = [row.front, row.back, row.left, row.right]
+                          .map((v: any) => parseFloat(v) || 0)
+                          .filter((v: number) => v > 0);
+                        const parsedMax = parseFloat(String(row.max ?? ""));
+                        const rowMax = !isNaN(parsedMax) && parsedMax > 0
+                          ? parsedMax
+                          : values.length > 0
+                            ? Math.max(...values)
+                            : 0;
+                        let calcMR = "—";
+                        let calcMGy = "—";
+                        let remark = row.remark || "—";
                         if (rowMax > 0 && maValue > 0 && workloadValue > 0) {
-                          const resMR = (workloadValue * rowMax) / (60 * maValue);
+                          // Same as generate: treat exposure as mGy/h by default → convert to mR/hr first
+                          const exposureLevelMR = unit === "mGy/h" || !unit ? rowMax * 114 : rowMax;
+                          const resMR = (workloadValue * exposureLevelMR) / (60 * maValue);
                           calcMR = resMR.toFixed(3);
                           calcMGy = (resMR / 114).toFixed(4);
-                          if (remark === "-" || !remark) {
-                            remark = resMR / 114 <= (parseFloat(testData.radiationLeakage.toleranceValue) || 1.0) ? "Pass" : "Fail";
+                          if (!remark || remark === "—" || remark === "-") {
+                            const tol = parseFloat(testData.radiationLeakage.toleranceValue || testData.radiationLeakage.tolerance || "1") || 1;
+                            const op = String(testData.radiationLeakage.toleranceOperator || "less than").trim().toLowerCase();
+                            const mgy = resMR / 114;
+                            const scale = 10_000;
+                            const mi = Math.round(mgy * scale);
+                            const ti = Math.round(tol * scale);
+                            if (op === ">" || op === "greater than" || op === "gt") remark = mi > ti ? "Pass" : "Fail";
+                            else if (op === "=" || op === "==" || op === "equals" || op === "equal to") remark = mi === ti ? "Pass" : "Fail";
+                            else remark = mi < ti ? "Pass" : "Fail";
                           }
                         }
                         return (
@@ -1430,11 +1512,14 @@ const ViewServiceReportOPG: React.FC = () => {
                             <th scope="row" style={cellStyle({ border: "0.1px solid #666", fontSize: "10px", fontWeight: 700 })}>
                               {row.location || "-"}
                             </th>
-                            {(["left", "right", "front", "back", "top"] as const).map((k) => (
+                            {(["front", "back", "left", "right"] as const).map((k) => (
                               <td key={k} style={cellStyle({ border: "0.1px solid #666", fontSize: "10px" })}>
                                 {(row as any)[k] || "-"}
                               </td>
                             ))}
+                            <td style={cellStyle({ border: "0.1px solid #666", fontSize: "10px" })}>
+                              {rowMax > 0 ? rowMax.toFixed(3) : row.max || "-"}
+                            </td>
                             <td style={cellStyle({ border: "0.1px solid #666", fontSize: "10px" })}>{calcMR}</td>
                             <td style={cellStyle({ border: "0.1px solid #666", fontSize: "10px" })}>{calcMGy}</td>
                             <td style={cellStyle({ border: "0.1px solid #666", fontSize: "10px" })}>{remark}</td>
@@ -1448,22 +1533,36 @@ const ViewServiceReportOPG: React.FC = () => {
                   const rll = testData.radiationLeakage;
                   const maValue = parseFloat(rll.ma || rll.settings?.[0]?.ma || "0");
                   const workloadValue = parseFloat(rll.workload || "0");
-                  const getSummary = (locName: string) => {
-                    const row = rll.leakageMeasurements?.find((m: any) => m.location === locName);
+                  const getSummary = (match: (loc: string) => boolean) => {
+                    const row = rll.leakageMeasurements?.find((m: any) => match(String(m.location || "").toLowerCase()));
                     if (!row) return null;
-                    const values = [row.left, row.right, row.front, row.back, row.top].map((v: any) => parseFloat(v) || 0).filter((v: number) => v > 0);
-                    const rowMax = values.length > 0 ? Math.max(...values) : 0;
-                    const resMR = (workloadValue * rowMax) / (60 * maValue);
-                    return { rowMax, resMR, resMGy: resMR / 114 };
+                    const unit = row.unit || "mGy/h";
+                    const values = [row.front, row.back, row.left, row.right]
+                      .map((v: any) => parseFloat(v) || 0)
+                      .filter((v: number) => v > 0);
+                    const parsedMax = parseFloat(String(row.max ?? ""));
+                    const rowMax = !isNaN(parsedMax) && parsedMax > 0
+                      ? parsedMax
+                      : values.length > 0
+                        ? Math.max(...values)
+                        : 0;
+                    if (rowMax <= 0 || maValue <= 0 || workloadValue <= 0) return null;
+                    const exposureLevelMR = unit === "mGy/h" || !unit ? rowMax * 114 : rowMax;
+                    const resMR = (workloadValue * exposureLevelMR) / (60 * maValue);
+                    return { rowMax, unit, exposureLevelMR, resMR, resMGy: resMR / 114 };
                   };
-                  const tubeSummary = getSummary("Tube Housing");
-                  const collimatorSummary = getSummary("Collimator");
+                  const tubeSummary = getSummary((loc) => loc.includes("tube") && !loc.includes("collimator"));
+                  const collimatorSummary = getSummary((loc) => loc.includes("collimator"));
+                  const maxLabel = (s: NonNullable<ReturnType<typeof getSummary>>) =>
+                    s.unit === "mGy/h" || !s.unit
+                      ? `${s.rowMax.toFixed(2)} mGy/h (= ${s.exposureLevelMR.toFixed(2)} mR/hr)`
+                      : `${s.rowMax.toFixed(2)} mR/hr`;
                   return (
                     <div style={{ marginTop: "6px" }}>
                       <div style={{ border: "1px solid #888", padding: "4px 8px", marginBottom: "4px", background: "#fafafa" }}>
                         <p style={{ fontSize: "10px", fontWeight: "bold", marginBottom: "2px" }}>Calculation Formula:</p>
                         <p style={{ fontSize: "10px", textAlign: "center", fontFamily: "monospace", border: "1px dashed #999", padding: "2px" }}>
-                          Maximum Leakage (mR in 1 hr) = (Workload × Max Exposure) / (60 × mA)
+                          Maximum Leakage (mR in one hour) = (Workload × Max Exposure mR/hr) / (60 × mA)
                         </p>
                         <p style={{ fontSize: "9px", marginTop: "2px", color: "#555", fontStyle: "italic" }}>
                           Where: Workload = {workloadValue} mA·min/week | mA = {maValue} | 1 mGy = 114 mR
@@ -1474,13 +1573,13 @@ const ViewServiceReportOPG: React.FC = () => {
                           <div style={{ flex: 1, border: "0.1px solid #666", padding: "4px", fontSize: "10px" }}>
                             <p style={{ fontWeight: "bold", marginBottom: "2px" }}>Tube Housing Summary:</p>
                             <p>
-                              Max Measured: <strong>{tubeSummary.rowMax} mR/hr</strong>
+                              Max Measured: <strong>{maxLabel(tubeSummary)}</strong>
                             </p>
                             <p>
-                              Result: ({workloadValue} × {tubeSummary.rowMax}) / (60 × {maValue}) = <strong>{tubeSummary.resMR.toFixed(3)} mR</strong>
+                              Result: <strong>{tubeSummary.resMR.toFixed(3)} mR in one hour</strong>
                             </p>
                             <p>
-                              In mGy: {tubeSummary.resMR.toFixed(3)} / 114 = <strong>{tubeSummary.resMGy.toFixed(4)} mGy</strong>
+                              In mGy: <strong>{tubeSummary.resMGy.toFixed(4)} mGy in one hour</strong>
                             </p>
                           </div>
                         )}
@@ -1488,22 +1587,35 @@ const ViewServiceReportOPG: React.FC = () => {
                           <div style={{ flex: 1, border: "0.1px solid #666", padding: "4px", fontSize: "10px" }}>
                             <p style={{ fontWeight: "bold", marginBottom: "2px" }}>Collimator Summary:</p>
                             <p>
-                              Max Measured: <strong>{collimatorSummary.rowMax} mR/hr</strong>
+                              Max Measured: <strong>{maxLabel(collimatorSummary)}</strong>
                             </p>
                             <p>
-                              Result: ({workloadValue} × {collimatorSummary.rowMax}) / (60 × {maValue}) = <strong>{collimatorSummary.resMR.toFixed(3)} mR</strong>
+                              Result: <strong>{collimatorSummary.resMR.toFixed(3)} mR in one hour</strong>
                             </p>
                             <p>
-                              In mGy: {collimatorSummary.resMR.toFixed(3)} / 114 = <strong>{collimatorSummary.resMGy.toFixed(4)} mGy</strong>
+                              In mGy: <strong>{collimatorSummary.resMGy.toFixed(4)} mGy in one hour</strong>
                             </p>
                           </div>
                         )}
                       </div>
                       <p style={{ fontSize: "10px", marginTop: "4px", border: "0.1px solid #666", padding: "2px 6px" }}>
-                        <strong>Tolerance:</strong> Maximum Leakage Radiation Level at 1 meter from the Focus should be &lt;{" "}
-                        <strong>
-                          {rll.toleranceValue || "1"} mGy ({parseFloat(rll.toleranceValue || "1") * 114} mR) in one hour.
-                        </strong>
+                        <strong>Tolerance:</strong> Calculated leakage (in one hour) must satisfy{" "}
+                        {(() => {
+                          const op = String(rll.toleranceOperator || "less than").trim().toLowerCase();
+                          const symbol =
+                            op === ">" || op === "greater than" || op === "gt"
+                              ? ">"
+                              : op === "=" || op === "==" || op === "equals" || op === "equal to"
+                                ? "="
+                                : "<";
+                          const tolVal = rll.toleranceValue || "1";
+                          const mr = (parseFloat(String(tolVal)) || 0) * 114;
+                          return (
+                            <strong>
+                              {symbol} {tolVal} ({mr.toFixed(3)} mR) in one hour.
+                            </strong>
+                          );
+                        })()}
                       </p>
                     </div>
                   );

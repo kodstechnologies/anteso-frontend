@@ -161,6 +161,21 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
                 setMAStations(labelsFromMeta);
             }
 
+            const normalizeTolSign = (raw: any): "+" | "-" | "±" => {
+                const s = String(raw ?? "").trim();
+                if (s === "+" || /^plus$/i.test(s)) return "+";
+                if (s === "-" || /^minus$/i.test(s)) return "-";
+                return "±";
+            };
+            const tolSign = csvData.find(r => r['Field Name'] === 'Tolerance_Sign')?.['Value'];
+            const tolVal = csvData.find(r => r['Field Name'] === 'Tolerance_Value')?.['Value'];
+            if (tolSign != null && String(tolSign).trim() !== "") {
+                setToleranceSign(normalizeTolSign(tolSign));
+            }
+            if (tolVal != null && String(tolVal).trim() !== "") {
+                setToleranceValue(String(tolVal).trim());
+            }
+
             // Total Filtration
             const tfMeasured = csvData.find(r => r['Field Name'] === 'Measured')?.['Value'];
             const tfRequired = csvData.find(r => r['Field Name'] === 'Required')?.['Value'];
@@ -214,6 +229,8 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
                     setMAStations(prev => [...prev, ...newCols]);
                 }
 
+                if (!testId) setIsEditing(true);
+            } else if (tolSign != null || tolVal != null) {
                 if (!testId) setIsEditing(true);
             }
         }

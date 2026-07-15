@@ -1,188 +1,262 @@
 import * as XLSX from 'xlsx';
 
+const unwrap = (raw: any) => {
+  if (!raw) return null;
+  if (raw.data && typeof raw.data === 'object' && !Array.isArray(raw.data) && (raw.data.measurements || raw.data.table2 || raw.data.outputRows || raw.data._id)) {
+    return raw.data;
+  }
+  return raw;
+};
+
+const cellStr = (v: any): string => {
+  if (v == null) return '';
+  if (typeof v === 'object' && 'value' in v) return String((v as any).value ?? '');
+  return String(v);
+};
+
+/** Prefer saved custom headers; pad to match measurement column count. */
+const resolveMeasHeaders = (
+  saved: any,
+  maxFromRows: number,
+  fallbackPrefix: string
+): string[] => {
+  const cleaned = Array.isArray(saved)
+    ? saved.map((h: any) => String(h ?? '').trim()).filter(Boolean)
+    : [];
+  const count = Math.max(maxFromRows, cleaned.length);
+  if (count <= 0) return [];
+  return Array.from({ length: count }, (_, i) => cleaned[i] || `${fallbackPrefix} ${i + 1}`);
+};
+
 export const createCBCTUploadableExcel = (data: any) => {
-    const wb = XLSX.utils.book_new();
-    const allData: any[][] = [];
+  const wb = XLSX.utils.book_new();
+  const allData: any[][] = [];
 
-    // Helper to add a section with a header row
-    const addSection = (title: string, headers: string[], rows: any[][]) => {
-        allData.push([`TEST: ${title}`]); // Section Title with TEST: prefix
-        allData.push(headers); // Column Headers
-        rows.forEach(row => allData.push(row));
-        allData.push([]); // Empty row for spacing
-    };
+  const addSection = (title: string, headers: string[], rows: any[][]) => {
+    allData.push([`TEST: ${title}`]);
+    allData.push(headers);
+    rows.forEach((row) => allData.push(row));
+    allData.push([]);
+  };
 
-    // 1. ACCURACY OF OPERATING POTENTIAL
-    if (data.accuracyOfOperatingPotential) {
-        // Data has 'measurements' array with 'measuredValues' array inside
-        // Key: measurements -> [ { appliedKvp, measuredValues: [], averageKvp, remarks } ]
-        const rows = (data.accuracyOfOperatingPotential.measurements || []).map((row: any) => [
-            row.appliedKvp || '',
-            ...(row.measuredValues || []),
-            row.averageKvp || '',
-            row.remarks || ''
+  // 1. ACCURACY OF OPERATING POTENTIAL
+  const aop = unwrap(data.accuracyOfOperatingPotential);
+  if (aop) {
+    const measurements = Array.isArray(aop.measurements) ? aop.measurements : [];
+    const tolSign = aop.tolerance?.sign || aop.tolerance?.type || '±';
+    const tolVal = aop.tolerance?.value ?? '5';
+
+    allData.push(['TEST: ACCURACY OF OPERATING POTENTIAL']);
+    allData.push(['Tolerance Sign', tolSign]);
+    allData.push(['Tolerance Value (kVp)', tolVal]);
+
+    if (measurements.length > 0) {
+      const maxMeas = Math.max(
+        0,
+        ...measurements.map((r: any) => (Array.isArray(r.measuredValues) ? r.measuredValues.length : 0))
+      );
+      const stationHeaders = resolveMeasHeaders(aop.mAStations, maxMeas, 'mA');
+      const headers = ['Applied kVp', ...stationHeaders, 'Average kVp', 'Remarks'];
+      allData.push(headers);
+      measurements.forEach((row: any) => {
+        const vals = Array.isArray(row.measuredValues) ? row.measuredValues : [];
+        allData.push([
+          row.appliedKvp || '',
+          ...stationHeaders.map((_: string, i: number) => cellStr(vals[i])),
+          row.averageKvp || '',
+          row.remarks || '',
         ]);
+      });
+    }
+    allData.push([]);
 
-        if (rows.length > 0) {
-            // Calculate dynamic headers based on max measured values
-            const maxMeas = Math.max(...(data.accuracyOfOperatingPotential.measurements || []).map((r: any) => (r.measuredValues || []).length));
-            const subHeaders = Array.from({ length: maxMeas }, (_, i) => `mA ${i + 1}`);
-            const headers = ['Applied kVp', ...subHeaders, 'Average kVp', 'Remarks'];
-            addSection('ACCURACY OF OPERATING POTENTIAL', headers, rows);
-        }
+    if (aop.totalFiltration) {
+      const tf = aop.totalFiltration;
+      addSection(
+        'TOTAL FILTRATION',
+        ['Parameter', 'Measured (mm Al)', 'Required (mm Al)', 'At kVp'],
+        [['TotalFiltration', tf.measured || '', tf.required || '', tf.atKvp || '']]
+      );
+    }
+  }
 
-        // Add Total Filtration Section if present
-        if (data.accuracyOfOperatingPotential.totalFiltration) {
-            const tf = data.accuracyOfOperatingPotential.totalFiltration;
-            const tfRows = [[
-                'TotalFiltration',
-                tf.measured || '',
-                tf.required || '',
-                tf.atKvp || ''
-            ]];
-            // Header: Parameter, Measured, Required, atKvp
-            const tfHeaders = ['Parameter', 'Measured (mm Al)', 'Required (mm Al)', 'At kVp'];
-            addSection('TOTAL FILTRATION', tfHeaders, tfRows);
-        }
+  // 2. ACCURACY OF IRRADIATION TIME
+  const it = unwrap(data.accuracyOfIrradiationTime);
+  if (it) {
+    if (it.testConditions) {
+      const tc = it.testConditions;
+      addSection('ACCURACY OF IRRADIATION TIME - CONDITIONS', ['kV', 'mA', 'FCD'], [
+        [tc.kv || '', tc.ma || '', tc.fcd || ''],
+      ]);
     }
 
-    // 2. ACCURACY OF IRRADIATION TIME
-    if (data.accuracyOfIrradiationTime) {
-        const it = data.accuracyOfIrradiationTime;
-        // Test Conditions
-        if (it.testConditions) {
-            const tc = it.testConditions;
-            addSection('ACCURACY OF IRRADIATION TIME - CONDITIONS', ['kV', 'mA', 'FCD'], [[tc.kv || '', tc.ma || '', tc.fcd || '']]);
+    const times = Array.isArray(it.irradiationTimes) ? it.irradiationTimes : [];
+    if (times.length > 0) {
+      const rows = times.map((row: any) => {
+        const set = parseFloat(row.setTime);
+        const meas = parseFloat(row.measuredTime);
+        let error = '';
+        if (!isNaN(set) && !isNaN(meas) && set !== 0) {
+          error = Math.abs(((meas - set) / set) * 100).toFixed(2);
         }
+        return [row.setTime || '', row.measuredTime || '', error, row.remarks || row.remark || ''];
+      });
+      addSection(
+        'ACCURACY OF IRRADIATION TIME',
+        ['Set Time (mSec)', 'Measured Time (mSec)', '% Error', 'Remarks'],
+        rows
+      );
+    }
+  }
 
-        const rows = (it.irradiationTimes || []).map((row: any) => {
-            const set = parseFloat(row.setTime);
-            const meas = parseFloat(row.measuredTime);
-            let error = '';
-            if (!isNaN(set) && !isNaN(meas) && set !== 0) {
-                error = Math.abs((meas - set) / set * 100).toFixed(2);
-            }
-
-            return [
-                row.setTime || '',
-                row.measuredTime || '',
-                error,
-                '' // Remarks
-            ];
-        });
-
-        if (rows.length > 0) {
-            const headers = ['Set Time (mSec)', 'Measured Time (mSec)', '% Error'];
-            addSection('ACCURACY OF IRRADIATION TIME', headers, rows);
-        }
+  // 3. LINEARITY OF mA / mAs LOADING
+  const lma = unwrap(data.linearityOfMaLoading);
+  if (lma) {
+    const t1 = Array.isArray(lma.table1) ? lma.table1[0] || {} : lma.table1 || {};
+    if (t1 && (t1.kv || t1.time || t1.fcd)) {
+      addSection('LINEARITY OF mA/mAs LOADING - CONDITIONS', ['kV', 'time', 'FCD'], [
+        [t1.kv || '', t1.time || '', t1.fcd || ''],
+      ]);
     }
 
-    // 3. LINEARITY OF mA / mAs LOADING
-    if (data.linearityOfMaLoading) {
-        const lma = data.linearityOfMaLoading;
-        // Test Conditions
-        if (lma.table1) {
-            const t1 = lma.table1;
-            addSection('LINEARITY OF mA/mAs LOADING - CONDITIONS', ['kV', 'time', 'FCD'], [[t1.kv || '', t1.time || '', t1.fcd || '']]);
-        }
+    const table2 = Array.isArray(lma.table2) ? lma.table2 : [];
+    if (table2.length > 0) {
+      const isMaLoading = t1?.time != null && String(t1.time).trim() !== '';
+      const maxMeas = Math.max(
+        0,
+        ...table2.map((r: any) => (Array.isArray(r.measuredOutputs) ? r.measuredOutputs.length : 0))
+      );
+      const measHeaders = resolveMeasHeaders(
+        lma.measHeaders || lma.measurementHeaders,
+        maxMeas,
+        'Measured mR'
+      );
 
-        const isMaLoading = lma.table1 && lma.table1.time && lma.table1.time.trim() !== '';
+      const rows = table2.map((row: any) => {
+        const outs = Array.isArray(row.measuredOutputs) ? row.measuredOutputs : [];
+        return [
+          row.ma || row.mAApplied || row.mAsApplied || row.mAsRange || '',
+          ...measHeaders.map((_: string, i: number) => cellStr(outs[i])),
+          row.average || '',
+          row.x || '',
+        ];
+      });
 
-        const rows = (lma.table2 || []).map((row: any) => [
-            row.ma || '',
-            ...(row.measuredOutputs || []),
-            row.average || '',
-            row.x || ''
+      if (isMaLoading) {
+        addSection('LINEARITY OF mA LOADING', ['mA Station', ...measHeaders, 'Average', 'mR/mAs'], rows);
+      } else {
+        addSection('LINEARITY OF mAs LOADING', ['mAs Range', ...measHeaders, 'Average', 'mR/mAs'], rows);
+      }
+
+      if (lma.col != null && String(lma.col).trim() !== '') {
+        allData.push(['CoL', lma.col]);
+      }
+      if (lma.remarks != null && String(lma.remarks).trim() !== '') {
+        allData.push(['Remark', lma.remarks]);
+      }
+      allData.push([]);
+    }
+  }
+
+  // 4. OUTPUT CONSISTENCY
+  const oc = unwrap(data.outputConsistency) || unwrap(data.consistencyOfRadiationOutput);
+  if (oc) {
+    const tolOp = oc.tolerance?.operator ?? oc.toleranceOperator ?? '<=';
+    const tolVal = oc.tolerance?.value ?? oc.toleranceValue ?? (typeof oc.tolerance === 'object' ? '' : oc.tolerance) ?? '0.05';
+
+    allData.push(['TEST: CONSISTENCY OF RADIATION OUTPUT']);
+    allData.push(['Tolerance Operator', tolOp]);
+    allData.push(['Tolerance Value (CoV)', tolVal]);
+
+    if (oc.ffd != null && String(oc.ffd).trim() !== '') {
+      allData.push(['FFD', oc.ffd]);
+    }
+
+    const outputRows = Array.isArray(oc.outputRows) ? oc.outputRows : [];
+    if (outputRows.length > 0) {
+      const maxMeas = Math.max(
+        0,
+        ...outputRows.map((r: any) => (Array.isArray(r.outputs) ? r.outputs.length : 0))
+      );
+      const measHeaders = resolveMeasHeaders(
+        oc.measurementHeaders || oc.measHeaders || oc.outputHeaders,
+        maxMeas,
+        'Meas'
+      );
+
+      allData.push(['kVp', 'mAs', ...measHeaders, 'Mean', 'CoV', 'Remarks']);
+      outputRows.forEach((row: any) => {
+        const outs = Array.isArray(row.outputs) ? row.outputs : [];
+        allData.push([
+          row.kvp || row.kv || '',
+          row.mas || row.mAs || '',
+          ...measHeaders.map((_: string, i: number) => cellStr(outs[i])),
+          row.mean || row.avg || '',
+          row.cov || row.cv || '',
+          row.remarks || row.remark || '',
         ]);
+      });
+    }
+    allData.push([]);
+  }
 
-        if (rows.length > 0) {
-            const maxMeas = Math.max(...(lma.table2 || []).map((r: any) => (r.measuredOutputs || []).length));
-            const measHeaders = Array.from({ length: maxMeas }, (_, i) => `Measured mR ${i + 1}`);
-
-            if (isMaLoading) {
-                const headers = ['mA Station', ...measHeaders, 'Average', 'mR/mAs'];
-                addSection('LINEARITY OF mA LOADING', headers, rows);
-            } else {
-                const headers = ['mAs Range', ...measHeaders, 'Average', 'mR/mAs'];
-                addSection('LINEARITY OF mAs LOADING', headers, rows);
-            }
-        }
+  // 5. RADIATION LEAKAGE LEVEL
+  const rl = unwrap(data.radiationLeakage) || unwrap(data.radiationLeakageLevel);
+  if (rl) {
+    if (rl.kvp || rl.ma || rl.ffd || rl.time || rl.settings) {
+      const s = rl.settings || {};
+      addSection('RADIATION LEAKAGE LEVEL - CONDITIONS', ['kV', 'mA', 'FFD', 'Time'], [
+        [rl.kvp || s.kv || '', rl.ma || s.ma || '', rl.ffd || s.fcd || s.ffd || '', rl.time || s.time || ''],
+      ]);
     }
 
-    // 4. OUTPUT CONSISTENCY
-    if (data.outputConsistency) {
-        const oc = data.outputConsistency;
-        // Test Conditions
-        if (oc.ffd) {
-            addSection('CONSISTENCY OF RADIATION OUTPUT - CONDITIONS', ['FFD'], [[oc.ffd]]);
-        }
+    const leaks = Array.isArray(rl.leakageMeasurements) ? rl.leakageMeasurements : [];
+    if (leaks.length > 0) {
+      const rows = leaks.map((row: any) => [
+        row.location || '',
+        row.front || '',
+        row.back || '',
+        row.left || '',
+        row.right || '',
+        row.max || row.maxLeakage || '',
+        row.unit || '',
+        row.remark || row.remarks || '',
+      ]);
+      addSection(
+        'RADIATION LEAKAGE LEVEL FROM X-RAY TUBE HOUSE',
+        ['Location', 'Front', 'Back', 'Left', 'Right', 'Max Leakage', 'Unit', 'Remark'],
+        rows
+      );
+    }
+  }
 
-        const rows = (oc.outputRows || []).map((row: any) => [
-            row.kvp || '',
-            row.mas || '',
-            ...(row.outputs || []),
-            row.mean || '',
-            row.cov || '',
-            row.remarks || ''
-        ]);
-
-        if (rows.length > 0) {
-            const maxMeas = Math.max(...(oc.outputRows || []).map((r: any) => (r.outputs || []).length));
-            const measHeaders = Array.from({ length: maxMeas }, (_, i) => `Meas ${i + 1}`);
-            const headers = ['kVp', 'mAs', ...measHeaders, 'Mean', 'CoV', 'Remarks'];
-            addSection('CONSISTENCY OF RADIATION OUTPUT', headers, rows);
-        }
+  // 6. RADIATION PROTECTION SURVEY
+  const rps = unwrap(data.radiationProtectionSurvey);
+  if (rps) {
+    if (rps.appliedVoltage || rps.appliedCurrent || rps.exposureTime || rps.workload) {
+      addSection('RADIATION PROTECTION SURVEY - CONDITIONS', ['kV', 'mA', 'Time', 'Workload'], [
+        [rps.appliedVoltage || '', rps.appliedCurrent || '', rps.exposureTime || '', rps.workload || ''],
+      ]);
     }
 
-    // 5. RADIATION LEAKAGE LEVEL
-    if (data.radiationLeakage) {
-        const rl = data.radiationLeakage;
-        // Test Conditions
-        if (rl.kvp || rl.ma || rl.ffd || rl.time) {
-            addSection('RADIATION LEAKAGE LEVEL - CONDITIONS', ['kV', 'mA', 'FFD', 'Time'], [[rl.kvp || '', rl.ma || '', rl.ffd || '', rl.time || '']]);
-        }
-
-        const rows = (rl.leakageMeasurements || []).map((row: any) => [
-            row.location || '',
-            row.front || '',
-            row.back || '',
-            row.left || '',
-            row.right || '',
-            row.max || '',
-            row.unit || '',
-            row.remark || ''
-        ]);
-
-        if (rows.length > 0) {
-            const headers = ['Location', 'Front', 'Back', 'Left', 'Right', 'Max Leakage', 'Unit', 'Remark'];
-            addSection('RADIATION LEAKAGE LEVEL FROM X-RAY TUBE HOUSE', headers, rows);
-        }
+    const locs = Array.isArray(rps.locations) ? rps.locations : [];
+    if (locs.length > 0) {
+      const rows = locs.map((row: any) => [
+        row.location || '',
+        row.mRPerHr || '',
+        row.mRPerWeek || '',
+        row.result || '',
+        row.calculatedResult || '',
+      ]);
+      addSection(
+        'RADIATION PROTECTION SURVEY REPORT',
+        ['LOCATION', 'MAX. RADIATION LEVEL (MR/HR)', 'MR/WEEK', 'STATUS', 'RESULT'],
+        rows
+      );
     }
+  }
 
-    // 6. RADIATION PROTECTION SURVEY
-    if (data.radiationProtectionSurvey) {
-        const rps = data.radiationProtectionSurvey;
-        // Test Conditions
-        if (rps.appliedVoltage || rps.appliedCurrent || rps.exposureTime || rps.workload) {
-            addSection('RADIATION PROTECTION SURVEY - CONDITIONS', ['kV', 'mA', 'Time', 'Workload'], [[rps.appliedVoltage || '', rps.appliedCurrent || '', rps.exposureTime || '', rps.workload || '']]);
-        }
-
-        const rows = (rps.locations || []).map((row: any) => [
-            row.location || '',
-            row.mRPerHr || '',
-            row.mRPerWeek || '',
-            row.result || '', // Status
-            row.calculatedResult || '' // Result
-        ]);
-
-        if (rows.length > 0) {
-            const headers = ['LOCATION', 'MAX. RADIATION LEVEL (MR/HR)', 'MR/WEEK', 'STATUS', 'RESULT'];
-            addSection('RADIATION PROTECTION SURVEY REPORT', headers, rows);
-        }
-    }
-
-    const ws = XLSX.utils.aoa_to_sheet(allData);
-    XLSX.utils.book_append_sheet(wb, ws, "Service Report Data");
-
-    return wb;
+  const ws = XLSX.utils.aoa_to_sheet(allData.length ? allData : [['No data']]);
+  XLSX.utils.book_append_sheet(wb, ws, 'Service Report Data');
+  return wb;
 };

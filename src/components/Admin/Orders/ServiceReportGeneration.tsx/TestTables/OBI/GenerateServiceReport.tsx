@@ -348,7 +348,11 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null; qaTestDate?
         let i = 0;
         const pushRow = (field: string, value: string, rowIndex: number, testName: string) => {
             if (String(value ?? '').trim() === '') return;
-            data.push({ 'Field Name': field, 'Value': String(value).trim(), 'Row Index': String(rowIndex), 'Test Name': testName });
+            const normalized =
+                field === 'Tolerance_Operator'
+                    ? normalizeCsvComparisonOperator(value)
+                    : String(value).trim();
+            data.push({ 'Field Name': field, 'Value': normalized, 'Row Index': String(rowIndex), 'Test Name': testName });
         };
         const colIdx = (header: string[], ...names: string[]) => {
             for (const name of names) {
@@ -483,7 +487,8 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null; qaTestDate?
                 sectionRows.forEach((r, idx) => {
                     if (idx === 0) {
                         pushRow('FFD', r[colIdx(header, 'FFD', 'FDD', 'FCD')] ?? '', 0, 'Output Consistency');
-                        pushRow('Tolerance_Value', r[colIdx(header, 'Tol Value', 'Tolerance')] ?? '', 0, 'Output Consistency');
+                        pushRow('Tolerance_Operator', r[colIdx(header, 'Tol Operator', 'Tolerance Operator', 'Tolerance Sign')] ?? '', 0, 'Output Consistency');
+                        pushRow('Tolerance_Value', r[colIdx(header, 'Tol Value', 'Tolerance', 'Tolerance Value', 'Tolerance Value (CoV)')] ?? '', 0, 'Output Consistency');
                         hCols.forEach((_, hi) => {
                             const label = r[colIdx(header, `Header ${hi + 1}`)] ?? '';
                             if (label) pushRow('MeasHeader', label, 0, 'Output Consistency');
@@ -901,6 +906,7 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null; qaTestDate?
                     const data = groupedData['Output Consistency'];
                     let ffd = '';
                     let toleranceValue = '0.05';
+                    let toleranceOperator: '<=' | '<' | '>=' | '>' = '<=';
                     const outputRows: any[] = [];
                     const headers: string[] = [];
                     let maxCols = 0;
@@ -912,6 +918,11 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null; qaTestDate?
 
                         if (field === 'FFD') ffd = value;
                         if (field === 'Tolerance_Value') toleranceValue = value;
+                        if (field === 'Tolerance_Operator' || field === 'ToleranceOperator' || field === 'Tolerance_Sign') {
+                            if (['<=', '<', '>=', '>'].includes(value)) {
+                                toleranceOperator = value as '<=' | '<' | '>=' | '>';
+                            }
+                        }
                         if (field === 'MeasHeader' && value && !headers.includes(value)) {
                             headers.push(value);
                         }
@@ -947,7 +958,7 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null; qaTestDate?
 
                     const csvData = {
                         ffd,
-                        tolerance: { operator: '<=' as const, value: toleranceValue },
+                        tolerance: { operator: toleranceOperator, value: toleranceValue },
                         outputRows: outputRows.length > 0 ? outputRows : [],
                         headers: resolvedHeaders,
                     };

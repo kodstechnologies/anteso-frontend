@@ -1270,7 +1270,22 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
                       }
                     }
                     const remarks = hasData && col !== "—" ? (pass ? "Pass" : "Fail") : "—";
-                    const measHeaders = testData.linearityOfMasLoading.measHeaders || [];
+                    const measHeadersRaw = testData.linearityOfMasLoading.measHeaders || [];
+                    const maxOutLen = Math.max(
+                      0,
+                      ...processedRows.map((r: any) => (r.measuredOutputs || []).length),
+                      Array.isArray(measHeadersRaw) ? measHeadersRaw.length : 0,
+                    );
+                    const measHeaders =
+                      Array.isArray(measHeadersRaw) && measHeadersRaw.length > 0
+                        ? [
+                            ...measHeadersRaw.map((h: string, i: number) => h || `Meas ${i + 1}`),
+                            ...Array.from(
+                              { length: Math.max(0, maxOutLen - measHeadersRaw.length) },
+                              (_, i) => `Meas ${measHeadersRaw.length + i + 1}`,
+                            ),
+                          ]
+                        : Array.from({ length: Math.max(maxOutLen, 3) }, (_, i) => `Meas ${i + 1}`);
                     return (
                       <div style={{ marginBottom: "4px" }}>
                         <table style={{ ...tableStyle, fontSize: "10px" }}>

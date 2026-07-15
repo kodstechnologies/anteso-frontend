@@ -118,10 +118,15 @@ export const createInventionalRadiologySavedExcel = (
           return Array.from({ length: colCount || 5 }, (_, i: number) => `Meas ${i + 1}`);
         })();
     const tol = oc.tolerance || {};
+    const tolOp = tol.operator || "<=";
+    const tolVal = tol.value ?? "0.05";
     const headerCols = savedHeaders.map((_, i) => `Header ${i + 1}`);
     const measCols = savedHeaders.map((_, i) => `Meas ${i + 1}`);
     allData.push(["TEST: CONSISTENCY OF RADIATION OUTPUT"]);
-    allData.push(["FDD (cm)", "kV", "mA", "Time", "Tolerance", ...headerCols, ...measCols]);
+    allData.push(["Tolerance Operator", tolOp]);
+    allData.push(["Tolerance Sign", tolOp]);
+    allData.push(["Tolerance Value (CoV)", tolVal]);
+    allData.push(["FDD (cm)", "kV", "mA", "Time", ...headerCols, ...measCols]);
     const rows = Array.isArray(oc.outputRows) ? oc.outputRows : [];
     rows.forEach((r: any, idx: number) => {
       const outs = (r.outputs ?? []).map((o: any) => (typeof o === "object" && o != null ? o.value ?? "" : o ?? ""));
@@ -131,7 +136,6 @@ export const createInventionalRadiologySavedExcel = (
         r.kvp ?? r.kv ?? "",
         r.mas ?? "",
         "",
-        idx === 0 ? (tol.value ?? "0.05") : "",
         ...headerValues,
         ...savedHeaders.map((_, i) => outs[i] ?? ""),
       ]);

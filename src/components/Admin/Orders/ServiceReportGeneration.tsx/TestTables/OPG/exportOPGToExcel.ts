@@ -14,26 +14,37 @@ export const createOPGUploadableExcel = (data: any) => {
 
     // 1. ACCURACY OF OPERATING POTENTIAL
     if (data.accuracyOfOperatingPotential) {
-        // Data has 'measurements' array with 'measuredValues' array inside
-        // Key: measurements -> [ { appliedKvp, measuredValues: [], averageKvp, remarks } ]
-        const rows = (data.accuracyOfOperatingPotential.measurements || []).map((row: any) => [
+        const aop = data.accuracyOfOperatingPotential;
+        const tolSign = aop.tolerance?.sign || aop.tolerance?.type || '±';
+        const tolVal = aop.tolerance?.value ?? '5';
+        const measurements = aop.measurements || [];
+
+        const maxMeas = measurements.length > 0
+            ? Math.max(...measurements.map((r: any) => (r.measuredValues || []).length), 0)
+            : 0;
+        const stations = Array.isArray(aop.mAStations) && aop.mAStations.length > 0
+            ? aop.mAStations
+            : Array.from({ length: Math.max(maxMeas, 2) }, (_, i) => `mA ${i + 1}`);
+        const headers = ['Applied kVp', ...stations.slice(0, Math.max(maxMeas, stations.length)), 'Average kVp', 'Remarks'];
+        const rows = measurements.map((row: any) => [
             row.appliedKvp || '',
-            ...(row.measuredValues || []),
+            ...stations.slice(0, Math.max(maxMeas, stations.length)).map((_: any, i: number) => (row.measuredValues || [])[i] ?? ''),
             row.averageKvp || '',
             row.remarks || ''
         ]);
 
+        allData.push(['TEST: ACCURACY OF OPERATING POTENTIAL']);
+        allData.push(['Tolerance Sign', tolSign]);
+        allData.push(['Tolerance Value (kVp)', tolVal]);
         if (rows.length > 0) {
-            // Calculate dynamic headers based on max measured values
-            const maxMeas = Math.max(...(data.accuracyOfOperatingPotential.measurements || []).map((r: any) => (r.measuredValues || []).length));
-            const subHeaders = Array.from({ length: maxMeas }, (_, i) => `mA ${i + 1}`);
-            const headers = ['Applied kVp', ...subHeaders, 'Average kVp', 'Remarks'];
-            addSection('ACCURACY OF OPERATING POTENTIAL', headers, rows);
+            allData.push(headers);
+            rows.forEach((row: any[]) => allData.push(row));
         }
+        allData.push([]);
 
         // Add Total Filtration Section if present
-        if (data.accuracyOfOperatingPotential.totalFiltration) {
-            const tf = data.accuracyOfOperatingPotential.totalFiltration;
+        if (aop.totalFiltration) {
+            const tf = aop.totalFiltration;
             const tfRows = [[
                 'TotalFiltration',
                 tf.measured || '',
@@ -101,7 +112,18 @@ export const createOPGUploadableExcel = (data: any) => {
 
     // 4. OUTPUT CONSISTENCY
     if (data.outputConsistency) {
-        const rows = (data.outputConsistency.outputRows || []).map((row: any) => [
+        const oc = data.outputConsistency;
+        const tolOp = oc.toleranceOperator ?? oc.tolerance?.operator ?? '<=';
+        const tolVal = oc.tolerance?.value ?? oc.toleranceValue ?? (typeof oc.tolerance === 'object' ? '' : oc.tolerance) ?? '0.05';
+
+        allData.push(['TEST: CONSISTENCY OF RADIATION OUTPUT']);
+        allData.push(['Tolerance Operator', tolOp]);
+        allData.push(['Tolerance Value (CoV)', tolVal]);
+        if (oc.ffd != null && String(oc.ffd).trim() !== '') {
+            allData.push(['FFD', oc.ffd]);
+        }
+
+        const rows = (oc.outputRows || []).map((row: any) => [
             row.kvp || '',
             row.mas || '',
             ...(row.outputs || []),
@@ -111,33 +133,40 @@ export const createOPGUploadableExcel = (data: any) => {
         ]);
 
         if (rows.length > 0) {
-            const settingsHeader = ['FFD', data.outputConsistency.ffd || ''];
-            const maxMeas = Math.max(...(data.outputConsistency.outputRows || []).map((r: any) => (r.outputs || []).length));
+            const maxMeas = Math.max(...(oc.outputRows || []).map((r: any) => (r.outputs || []).length));
             const measHeaders = Array.from({ length: Math.max(0, maxMeas) }, (_, i) => `Meas ${i + 1}`);
             const headers = ['kVp', 'mAs', ...measHeaders, 'Mean', 'CoV', 'Remarks'];
-            addSection('CONSISTENCY OF RADIATION OUTPUT', headers, [settingsHeader, ...rows]);
+            allData.push(headers);
+            rows.forEach((row: any[]) => allData.push(row));
         }
+        allData.push([]);
     }
 
-    // 5. RADIATION LEAKAGE LEVEL
+    // 5. RADIATION LEAKAGE LEVEL — Exposure Level (mGy): Front, Back, Left, Right (same as UI)
     if (data.radiationLeakage) {
-        const s = data.radiationLeakage.settings?.[0] || {};
+        const settingsArr = data.radiationLeakage.measurementSettings || data.radiationLeakage.settings;
+        const s = Array.isArray(settingsArr) ? (settingsArr[0] || {}) : (settingsArr || {});
         const rows = (data.radiationLeakage.leakageMeasurements || []).map((row: any) => [
             row.location || '',
+            row.front ?? row.top ?? '',
+            row.back ?? row.up ?? '',
             row.left || '',
             row.right || '',
-            row.top || '',
-            row.up || '',
-            row.down || '',
-            row.max || '',
+            row.max || row.maxLeakage || '',
             row.unit || '',
-            row.remark || ''
+            row.remark || row.remarks || ''
         ]);
 
-        if (rows.length > 0) {
-            const settingsHeader = ['FFD', s.ffd || '', 'kVp', s.kvp || '', 'mA', s.ma || '', 'Time', s.time || '', 'Tolerance', data.radiationLeakage.toleranceValue || ''];
+        if (rows.length > 0 || s.kv || s.kvp || s.ma) {
+            const settingsHeader = [
+                'FFD', s.ffd || s.fcd || '',
+                'kVp', s.kvp || s.kv || '',
+                'mA', s.ma || '',
+                'Time', s.time || '',
+                'Tolerance', data.radiationLeakage.toleranceValue || data.radiationLeakage.tolerance || ''
+            ];
             const workloadHeader = ['Workload', data.radiationLeakage.workload || ''];
-            const headers = ['Location', 'Left', 'Right', 'Top', 'Up', 'Down', 'Max Leakage', 'Unit', 'Remark'];
+            const headers = ['Location', 'Front', 'Back', 'Left', 'Right', 'Max', 'Unit', 'Remark'];
             addSection('RADIATION LEAKAGE LEVEL FROM X-RAY TUBE HOUSE', headers, [settingsHeader, workloadHeader, ...rows]);
         }
     }

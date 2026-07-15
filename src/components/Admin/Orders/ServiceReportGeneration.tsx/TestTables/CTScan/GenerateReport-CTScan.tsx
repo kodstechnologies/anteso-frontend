@@ -422,7 +422,9 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
             },
             'Output Consistency': {
                 'mAs': 'TestConditions_mAs', 'Slice Thickness (mm)': 'TestConditions_SliceThickness', 'Time (s)': 'TestConditions_Time',
-                'kVp': 'OutputRow_kvp', 'Meas 1': 'Result_0', 'Meas 2': 'Result_1', 'Meas 3': 'Result_2', 'Meas 4': 'Result_3', 'Meas 5': 'Result_4', 'COV': 'COV', 'Tolerance': 'Tolerance',
+                'kVp': 'OutputRow_kvp', 'Meas 1': 'Result_0', 'Meas 2': 'Result_1', 'Meas 3': 'Result_2', 'Meas 4': 'Result_3', 'Meas 5': 'Result_4', 'COV': 'COV',
+                'Tolerance': 'Tolerance', 'Tol Value': 'Tolerance', 'Tolerance Value': 'Tolerance', 'Tolerance Value (CoV)': 'Tolerance',
+                'Tolerance Operator': 'ToleranceOperator', 'Tol Operator': 'ToleranceOperator', 'Tolerance Sign': 'ToleranceOperator',
                 'Result': 'Result'
             },
             'Total Filtration': {
@@ -541,6 +543,28 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
             }
 
             if (isReadingTest && headers.length === 0 && row.some(c => c)) {
+                const key = String(firstCell || '').trim();
+                const val = String(row[1] ?? '').trim();
+                const isKeyValue =
+                    !!key &&
+                    !!val &&
+                    row.slice(2).every((c) => !String(c || '').trim());
+                if (
+                    currentTestName &&
+                    isKeyValue &&
+                    /^(Tolerance Operator|Tol Operator|Tolerance Sign)$/i.test(key)
+                ) {
+                    pushField('ToleranceOperator', val, 0, currentTestName);
+                    continue;
+                }
+                if (
+                    currentTestName &&
+                    isKeyValue &&
+                    /^(Tolerance Value \(CoV\)|Tolerance Value|Tol Value|Tolerance)$/i.test(key)
+                ) {
+                    pushField('Tolerance', val, 0, currentTestName);
+                    continue;
+                }
                 headers = row;
                 if (currentTestNameBase === 'Measurement of Operating Potential' && currentTestName) {
                     const maLabels = headers
@@ -576,13 +600,15 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
                     const st = row[colIdx(headers, 'Slice Thickness (mm)', 'Slice Thickness')] ?? '';
                     const time = row[colIdx(headers, 'Time (s)', 'Time')] ?? '';
                     const kvp = row[colIdx(headers, 'kVp', 'kV')] ?? '';
-                    const tol = row[colIdx(headers, 'Tolerance', 'Tol Value')] ?? '';
+                    const tol = row[colIdx(headers, 'Tolerance', 'Tol Value', 'Tolerance Value', 'Tolerance Value (CoV)')] ?? '';
+                    const tolOp = row[colIdx(headers, 'Tolerance Operator', 'Tol Operator', 'Tolerance Sign')] ?? '';
 
                     if (hasCArmMeas) {
                         if (rowIdx === 1) {
                             if (mas) pushField('TestConditions_mAs', mas, 0, currentTestName);
                             if (st) pushField('TestConditions_SliceThickness', st, 0, currentTestName);
                             if (time) pushField('TestConditions_Time', time, 0, currentTestName);
+                            if (tolOp) pushField('ToleranceOperator', tolOp, 0, currentTestName);
                             if (tol) pushField('Tolerance', tol, 0, currentTestName);
                             headers.forEach((h, hi) => {
                                 if (isHeaderLabelCol(h)) {
@@ -606,6 +632,7 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
                         if (mas) pushField('TestConditions_mAs', mas, 0, currentTestName);
                         if (st) pushField('TestConditions_SliceThickness', st, 0, currentTestName);
                         if (time) pushField('TestConditions_Time', time, 0, currentTestName);
+                        if (tolOp) pushField('ToleranceOperator', tolOp, 0, currentTestName);
                         if (tol) pushField('Tolerance', tol, 0, currentTestName);
                         if (kvp) pushField('OutputRow_kvp', kvp, rowIdx, currentTestName);
                         headers.forEach((h, cellIdx) => {

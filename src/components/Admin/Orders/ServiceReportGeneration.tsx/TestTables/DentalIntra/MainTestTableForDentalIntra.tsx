@@ -403,106 +403,87 @@ const MainTestTableForDentalIntra: React.FC<MainTestTableProps> = ({ testData })
     }
   }
 
-  // 4. Radiation Leakage from Tube Housing
-  if (testData.tubeHousingLeakage?.leakageMeasurements && Array.isArray(testData.tubeHousingLeakage.leakageMeasurements)) {
-    const validRows = testData.tubeHousingLeakage.leakageMeasurements.filter((row: any) => row.location || row.max);
-    if (validRows.length > 0) {
-      const toleranceValue = testData.tubeHousingLeakage.tolerance?.value || "1";
-      const testRows = validRows.map((row: any) => {
-        const max = row.max || "-";
-        const isPass = testData.tubeHousingLeakage?.calculatedResult?.remark === "Pass" ||
-          (max !== "-" && parseFloat(max) < parseFloat(toleranceValue));
-        return {
-          specified: row.location || "-",
-          measured: max !== "-" ? `${max} "mGy in one hour"` : "-",
-          tolerance: `≤ ${toleranceValue} mGy in one hour`,
-          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
-        };
-      });
-      addRowsForTest("Radiation Leakage from Tube Housing", testRows);
-    }
-  }
-
-  // Radiation Leakage Level — RadiographyFixed summary; Dental Intra rows use left/right/top/up/down (see RadiationLeakageLevel.tsx)
-  if (testData.radiationLeakageLevel?.leakageMeasurements && Array.isArray(testData.radiationLeakageLevel.leakageMeasurements)) {
-    const hasDirectionalReadings = (row: any) =>
-      !!(
-        row.max ||
-        row.result ||
-        row.front ||
-        row.back ||
-        row.left ||
-        row.right ||
-        row.top ||
-        row.up ||
-        row.down
+  // 4. Tube Housing Leakage — measured = mGy in one hour (same formula as generate)
+  {
+    const rll = testData.radiationLeakageLevel || testData.tubeHousingLeakage;
+    const sourceRows = rll?.leakageMeasurements || rll?.leakageRows;
+    if (rll && Array.isArray(sourceRows)) {
+      const validRows = sourceRows.filter(
+        (row: any) =>
+          row.location ||
+          row.front ||
+          row.back ||
+          row.left ||
+          row.right ||
+          row.top ||
+          row.up ||
+          row.down ||
+          row.max ||
+          row.result
       );
-    const validRows = testData.radiationLeakageLevel.leakageMeasurements.filter(
-      (row: any) => (row.location || hasDirectionalReadings(row)) && hasDirectionalReadings(row)
-    );
-    if (validRows.length > 0) {
-      const toleranceValue = testData.radiationLeakageLevel.toleranceValue || "1";
-      // Row exposure readings are often in mGy/h; summary tolerance line always uses mGy in one hour (RadiographyFixed-style).
-      const rowExposureUnit =
-        testData.radiationLeakageLevel.leakageMeasurements[0]?.unit || "mGy/h";
-      const toleranceDisplayUnit = "mGy in one hour";
+      if (validRows.length > 0) {
+        const toleranceValue = rll.toleranceValue || rll.tolerance?.value || rll.tolerance || "1";
+        const toleranceOp = String(rll.toleranceOperator || rll.tolerance?.operator || "less than").trim().toLowerCase();
+        const settings0 = Array.isArray(rll.settings) ? rll.settings[0] : rll.settings;
+        const meas0 = Array.isArray(rll.measurementSettings) ? rll.measurementSettings[0] : rll.measurementSettings;
+        const maValue =
+          parseFloat(String(rll.ma ?? settings0?.ma ?? meas0?.ma ?? "")) || 0;
+        const workloadValue = parseFloat(String(rll.workload?.value ?? rll.workload ?? "")) || 0;
 
-      const testRows = validRows.map((row: any) => {
-        let measuredValue = "-";
-        let isPass = false;
-
-        if (row.result) {
-          const resultValue = parseFloat(row.result);
-          if (!isNaN(resultValue)) {
-            if (rowExposureUnit === "mGy/h") {
-              measuredValue = `${(resultValue / 114).toFixed(4)} mGy in one hour`;
-              isPass = resultValue / 114 < parseFloat(toleranceValue);
-            } else {
-              measuredValue = `${resultValue.toFixed(4)} ${rowExposureUnit}`;
-              isPass = resultValue < parseFloat(toleranceValue);
-            }
-          }
-        } else if (row.max) {
-          const maxValue = parseFloat(row.max);
-          if (!isNaN(maxValue) && maxValue > 0) {
-            if (rowExposureUnit === "mGy/h") {
-              measuredValue = `${(maxValue / 114).toFixed(4)} mGy in one hour`;
-              isPass = maxValue / 114 < parseFloat(toleranceValue);
-            } else {
-              measuredValue = `${maxValue.toFixed(2)} ${rowExposureUnit}`;
-              isPass = maxValue < parseFloat(toleranceValue);
-            }
-          }
-        } else {
-          const values = [row.front, row.back, row.left, row.right, row.top, row.up, row.down]
-            .map((v: any) => parseFloat(v) || 0)
-            .filter((v: number) => v > 0);
-          if (values.length > 0) {
-            const max = Math.max(...values);
-            if (rowExposureUnit === "mGy/h") {
-              measuredValue = `${(max / 114).toFixed(4)} mGy in one hour`;
-              isPass = max / 114 < parseFloat(toleranceValue);
-            } else {
-              measuredValue = `${max.toFixed(2)} ${rowExposureUnit}`;
-              isPass = max < parseFloat(toleranceValue);
-            }
-          }
-        }
-
-        if (row.remark || testData.radiationLeakageLevel.remark) {
-          const remark = row.remark || testData.radiationLeakageLevel.remark;
-          if (remark === "PASS" || remark === "Pass") isPass = true;
-          else if (remark === "FAIL" || remark === "Fail") isPass = false;
-        }
-
-        return {
-          specified: row.location || "-",
-          measured: measuredValue,
-          tolerance: `≤ ${toleranceValue} ${toleranceDisplayUnit}`,
-          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
+        const compareMgy = (mgy: number, tol: number) => {
+          const scale = 10_000;
+          const mi = Math.round(mgy * scale);
+          const ti = Math.round(tol * scale);
+          if (toleranceOp === ">" || toleranceOp === "greater than" || toleranceOp === "gt") return mi > ti;
+          if (toleranceOp === "=" || toleranceOp === "==" || toleranceOp === "equals" || toleranceOp === "equal to")
+            return mi === ti;
+          return mi < ti;
         };
-      });
-      addRowsForTest("Radiation leakage level at 1m from tube housing", testRows);
+
+        const tolSymbol =
+          toleranceOp === ">" || toleranceOp === "greater than" || toleranceOp === "gt"
+            ? ">"
+            : toleranceOp === "=" || toleranceOp === "==" || toleranceOp === "equals" || toleranceOp === "equal to"
+              ? "="
+              : "<";
+
+        const testRows = validRows.map((row: any) => {
+          const unit = row.unit || "mGy/h";
+          const directionalValues = [row.front, row.up, row.back, row.down, row.left, row.right, row.top]
+            .map((v: any) => parseFloat(v) || 0)
+            .filter((n: number) => n > 0);
+          const parsedMax = parseFloat(String(row.max ?? ""));
+          const rowMax =
+            !isNaN(parsedMax) && parsedMax > 0
+              ? parsedMax
+              : directionalValues.length > 0
+                ? Math.max(...directionalValues)
+                : 0;
+
+          let measuredMGy = NaN;
+          if (rowMax > 0 && maValue > 0 && workloadValue > 0) {
+            const exposureLevelMR = unit === "mGy/h" || !unit ? rowMax * 114 : rowMax;
+            measuredMGy = (workloadValue * exposureLevelMR) / (60 * maValue) / 114;
+          } else if (row.result !== undefined && row.result !== null && row.result !== "" && row.result !== "-") {
+            const resultMr = parseFloat(String(row.result));
+            if (!isNaN(resultMr)) measuredMGy = resultMr / 114;
+          }
+
+          const measuredValue = !isNaN(measuredMGy) ? measuredMGy.toFixed(4) : "-";
+          let isPass = row.remark === "Pass" || row.remark === "PASS";
+          if (!isPass && row.remark !== "Fail" && row.remark !== "FAIL" && measuredValue !== "-") {
+            isPass = compareMgy(parseFloat(measuredValue), parseFloat(String(toleranceValue)) || 1);
+          }
+
+          return {
+            specified: row.location || "-",
+            measured: measuredValue !== "-" ? `${measuredValue} mGy in one hour` : "-",
+            tolerance: `${tolSymbol} ${toleranceValue} mGy in one hour`,
+            remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
+          };
+        });
+        addRowsForTest("Tube Housing Leakage", testRows);
+      }
     }
   }
 

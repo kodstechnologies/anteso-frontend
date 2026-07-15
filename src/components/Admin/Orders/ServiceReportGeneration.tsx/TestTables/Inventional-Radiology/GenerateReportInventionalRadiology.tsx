@@ -6,6 +6,7 @@ import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import toast from "react-hot-toast";
 import AuthorizedSignatorySelect from "../../AuthorizedSignatorySelect";
 import * as XLSX from "xlsx";
+import { normalizeCsvComparisonOperator } from "../shared/parseRadiographyStyleTableFormat";
 
 import Standards from "../../Standards";
 import Notes from "../../Notes";
@@ -226,7 +227,9 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
         'kV': 'Table1_kv', 'mA': 'Table1_ma', 'Time': 'Table1_time',
         'Exposure 1': 'Table2_Exp1', 'Exposure 2': 'Table2_Exp2', 'Exposure 3': 'Table2_Exp3',
         'Exposure 4': 'Table2_Exp4', 'Exposure 5': 'Table2_Exp5',
-        'Average': 'Table2_Average', 'COV': 'Table2_COV', 'Tolerance': 'Tolerance'
+        'Average': 'Table2_Average', 'COV': 'Table2_COV',
+        'Tolerance': 'Tolerance', 'Tol Value': 'Tolerance', 'Tolerance Value': 'Tolerance', 'Tolerance Value (CoV)': 'Tolerance',
+        'Tolerance Operator': 'ToleranceOperator', 'Tol Operator': 'ToleranceOperator', 'Tolerance Sign': 'ToleranceOperator',
       },
       // Match CTScan Measurement of mA Linearity component field names
       'Measurement of mA Linearity': {
@@ -283,9 +286,12 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
 
     const pushField = (field: string, value: string, rowIndex: number, testName: string) => {
       if (!field || String(value ?? '').trim() === '') return;
+      const normalizedValue = field === 'ToleranceOperator'
+        ? normalizeCsvComparisonOperator(value)
+        : String(value).trim();
       data.push({
         'Field Name': field,
-        'Value': String(value).trim(),
+        'Value': normalizedValue,
         'Row Index': rowIndex,
         'Test Name': testName,
       });
@@ -421,11 +427,11 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
           pushField('Table2_Result', row[1] ?? '', 0, currentTestName);
           continue;
         }
-        if (/Tolerance Operator|Tol Operator/i.test(label)) {
+        if (/Tolerance Operator|Tol Operator|Tolerance Sign/i.test(label)) {
           pushField('ToleranceOperator', row[1] ?? '', 0, currentTestName);
           continue;
         }
-        if (/Tolerance Value|Tol Value|^Tolerance$/i.test(label)) {
+        if (/Tolerance Value \(CoV\)|Tolerance Value|Tol Value|^Tolerance$/i.test(label)) {
           pushField('Tolerance', row[1] ?? '', 0, currentTestName);
           continue;
         }
@@ -441,6 +447,21 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
           /^\d/.test(String(row[1]).trim())
         ) {
           pushField('Table1_fcd', String(row[1]).trim(), 0, currentTestName!);
+          continue;
+        }
+        // Key-value tolerance rows before table headers (e.g. Output Consistency)
+        const key = String(firstCell || '').trim();
+        const val = String(row[1] ?? '').trim();
+        const isKeyValue =
+          !!key &&
+          !!val &&
+          row.slice(2).every((c) => !String(c || '').trim());
+        if (currentTestName && isKeyValue && /^(Tolerance Operator|Tol Operator|Tolerance Sign)$/i.test(key)) {
+          pushField('ToleranceOperator', val, 0, currentTestName);
+          continue;
+        }
+        if (currentTestName && isKeyValue && /^(Tolerance Value \(CoV\)|Tolerance Value|Tol Value|Tolerance)$/i.test(key)) {
+          pushField('Tolerance', val, 0, currentTestName);
           continue;
         }
         headers = row;
@@ -528,7 +549,8 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
           if (hasCArmMeas) {
             if (rowIdx === 1) {
               pushField('Table1_fcd', row[colIdx(headers, 'FDD (cm)', 'FFD (cm)', 'FDD', 'FCD', 'FFD')] ?? '', 0, currentTestName);
-              pushField('Tolerance', row[colIdx(headers, 'Tolerance', 'Tol Value')] ?? '', 0, currentTestName);
+              pushField('ToleranceOperator', row[colIdx(headers, 'Tolerance Operator', 'Tol Operator', 'Tolerance Sign')] ?? '', 0, currentTestName);
+              pushField('Tolerance', row[colIdx(headers, 'Tolerance', 'Tol Value', 'Tolerance Value', 'Tolerance Value (CoV)')] ?? '', 0, currentTestName);
               headers.forEach((h, hi) => {
                 if (isHeaderLabelCol(h)) {
                   const label = row[hi] ?? '';
@@ -544,6 +566,8 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
             });
           } else {
             if (rowIdx === 1) {
+              pushField('ToleranceOperator', row[colIdx(headers, 'Tolerance Operator', 'Tol Operator', 'Tolerance Sign')] ?? '', 0, currentTestName);
+              pushField('Tolerance', row[colIdx(headers, 'Tolerance', 'Tol Value', 'Tolerance Value', 'Tolerance Value (CoV)')] ?? '', 0, currentTestName);
               headers.forEach((h) => {
                 if (/^exposure\s*\d+$/i.test(String(h || '').trim())) {
                   pushField('MeasHeader', h, 0, currentTestName);

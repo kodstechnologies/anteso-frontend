@@ -1,31 +1,35 @@
-TEST: ACCURACY OF OPERATING POTENTIAL,,,,,,,,,
-Applied kVp,mA 1,23,22,,,,,,
-60,60.2,60.5,22,,,,,,
-70,70.1,70.4,44,,,,,,
-80,80.3,80.1,43,,,,,,
-,,,,,,,,,
-TEST: TOTAL FILTRATION,,,,,,,,,
-Parameter,Measured (mm Al),Required (mm Al),At kVp,,,,,,
-TotalFiltration,2.6,2.5,80,,,,,,
-,,,,,,,,,
-TEST: LINEARITY OF mAs LOADING,,,,,,,,,
-mAs Range,21,Measured mR 2,22,54,,,,,
-50,12.2,12.25,12.22,11,,,,,
-100,24.4,24.45,24.42,22,,,,,
-,,,,,,,,,
-TEST: CONSISTENCY OF RADIATION OUTPUT,,,,,,,,,
-FFD,100,,,,,,,,
-kVp,mAs,23,Meas 2,Meas 3,66,,,,
-80,100,10.2,10.1,10.3,22,,,,
-,,,,,,,,,
-TEST: RADIATION LEAKAGE LEVEL FROM X-RAY TUBE HOUSE,,,,,,,,,
+TEST: ACCURACY OF OPERATING POTENTIAL
+Tolerance Sign,±
+Tolerance Value (kVp),5
+Applied kVp,mA 1,mA 2,Average kVp,Remarks
+60,60.2,60.5,,
+70,70.1,70.4,,
+80,80.3,80.1,,
+
+TEST: TOTAL FILTRATION
+Parameter,Measured (mm Al),Required (mm Al),At kVp
+TotalFiltration,2.6,2.5,80
+
+TEST: LINEARITY OF mAs LOADING
+mAs Range,Measured mR 1,Measured mR 2,Measured mR 3,Average,mR/mAs
+50,12.2,12.25,12.22,,
+100,24.4,24.45,24.42,,
+
+TEST: CONSISTENCY OF RADIATION OUTPUT
+Tolerance Operator,<=
+Tolerance Value (CoV),0.05
+FFD,100
+kVp,mAs,Meas 1,Meas 2,Meas 3,Mean,CoV,Remarks
+80,100,10.2,10.1,10.3,,,
+
+TEST: RADIATION LEAKAGE LEVEL FROM X-RAY TUBE HOUSE
 kV,120,mA,10,Time,1.0,Workload,100,Tolerance,1.0,Tolerance Operator,<
-Location,Front,Back,Left,Right,Max Leakage,Unit,Remark,,
-Tube,0.01,0.015,0.012,0.011,,mGy/h,,,
-Collimator,0.012,0.011,0.014,0.013,,mGy/h,,,
-,,,,,,,,,
-TEST: RADIATION PROTECTION SURVEY REPORT,,,,,,,,,
-,,Applied Current (mA),10,Applied Voltage (kV),80,Exposure Time (s),1,Workload (mA.min/week),100
-LOCATION,MAX. RADIATION LEVEL (MR/HR),MR/WEEK,STATUS,RESULT,,,,,
-Control Console,0.05,,,Worker,,,,,
-Waiting Area,0.02,,,Public,,,,,
+Location,Front,Back,Left,Right,Max Leakage,Unit,Remark
+Tube,0.01,0.015,0.012,0.011,,mGy/h,
+Collimator,0.012,0.011,0.014,0.013,,mGy/h,
+
+TEST: RADIATION PROTECTION SURVEY REPORT
+Applied Current (mA),10,Applied Voltage (kV),80,Exposure Time (s),1.0,Workload (mA.min/week),100
+LOCATION,MAX. RADIATION LEVEL (MR/HR),MR/WEEK,STATUS,RESULT
+Control Console,0.05,,,Worker
+Waiting Area,0.02,,,Public

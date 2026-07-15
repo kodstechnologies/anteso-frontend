@@ -364,25 +364,42 @@ export const generateRadiographySummaryRows = (testData: any, hasTimer: boolean 
     }
   }
 
-  // 9. Tube Housing Leakage
+  // 9. Tube Housing Leakage — measured = mGy in one hour (same as detailed view)
   if (testData.radiationLeakageLevel?.leakageMeasurements && Array.isArray(testData.radiationLeakageLevel.leakageMeasurements)) {
-    const validRows = testData.radiationLeakageLevel.leakageMeasurements.filter(
-      (row: any) => row.location || row.front || row.back || row.left || row.right || row.top || row.result
+    const rll = testData.radiationLeakageLevel;
+    const validRows = rll.leakageMeasurements.filter(
+      (row: any) => row.location || row.front || row.back || row.left || row.right || row.top || row.result || row.mgy
     );
     if (validRows.length > 0) {
-      const toleranceValue = testData.radiationLeakageLevel.toleranceValue || "1";
+      const toleranceValue = rll.toleranceValue || "1";
+      const maValue = parseFloat(String(rll.ma ?? rll.settings?.ma ?? "")) || 0;
+      const workloadValue = parseFloat(String(rll.workload?.value ?? rll.workload ?? "")) || 0;
+
       const testRows = validRows.map((row: any) => {
-        const directionalValues = [row.front, row.back, row.left, row.right, row.top]
-          .map((v) => parseFloat(v))
-          .filter((n) => !isNaN(n));
-        const measuredRaw =
-          directionalValues.length > 0
-            ? Math.max(...directionalValues)
-            : (row.result !== undefined && row.result !== null && row.result !== "" ? parseFloat(row.result) : NaN);
-        const measuredValue = !isNaN(measuredRaw) ? measuredRaw.toFixed(4) : "-";
+        let measuredMGy = NaN;
+        const savedMgy = parseFloat(String(row.mgy ?? ""));
+        if (!isNaN(savedMgy) && String(row.mgy ?? "").trim() !== "" && String(row.mgy) !== "-") {
+          measuredMGy = savedMgy;
+        } else {
+          const directionalValues = [row.front, row.back, row.left, row.right, row.top]
+            .map((v) => parseFloat(v) || 0)
+            .filter((n) => n > 0);
+          const rowMax =
+            directionalValues.length > 0
+              ? Math.max(...directionalValues)
+              : parseFloat(String(row.max ?? "")) || 0;
+          if (rowMax > 0 && maValue > 0 && workloadValue > 0) {
+            measuredMGy = (workloadValue * rowMax) / (60 * maValue) / 114;
+          } else if (row.result !== undefined && row.result !== null && row.result !== "" && row.result !== "-") {
+            const resultMr = parseFloat(String(row.result));
+            if (!isNaN(resultMr)) measuredMGy = resultMr / 114;
+          }
+        }
+
+        const measuredValue = !isNaN(measuredMGy) ? measuredMGy.toFixed(4) : "-";
         let isPass = row.remark === "Pass" || row.remark === "PASS";
         if (!isPass && measuredValue !== "-") {
-          isPass = parseFloat(measuredValue) <= parseFloat(toleranceValue);
+          isPass = parseFloat(measuredValue) <= parseFloat(String(toleranceValue));
         }
         return {
           specified: row.location || "-",

@@ -715,7 +715,10 @@ const OPG: React.FC<{ serviceId: string; qaTestDate?: string | null; csvFileUrl?
             };
 
             const wb = createOPGUploadableExcel(exportData);
-            XLSX.writeFile(wb, `OPG_Report_${serviceId}.xlsx`);
+            const reportNumber = String(formData.testReportNumber || "")
+                .trim()
+                .replace(/[<>:"/\\|?*\x00-\x1F]+/g, "_");
+            XLSX.writeFile(wb, `${reportNumber || "OPG_Report"}.xlsx`);
             toast.success("Report data exported!");
 
         } catch (err) {

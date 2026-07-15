@@ -236,6 +236,24 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
       setFfd(String(ffdVal));
     }
 
+    const normalizeTolOp = (raw: any): string => {
+      const s = String(raw ?? '').trim();
+      if (['<=', '<', '>=', '>', '='].includes(s)) return s;
+      if (s === '≤' || /less\s*than\s*or\s*equal/i.test(s)) return '<=';
+      if (s === '≥' || /greater\s*than\s*or\s*equal/i.test(s)) return '>=';
+      if (/^less\s*than$/i.test(s)) return '<';
+      if (/^greater\s*than$/i.test(s)) return '>';
+      return '<=';
+    };
+    const tolOp = csvData.find((r: any) => r['Field Name'] === 'Tolerance_Operator')?.['Value'];
+    const tolVal = csvData.find((r: any) => r['Field Name'] === 'Tolerance_Value')?.['Value'];
+    if (tolOp != null && String(tolOp).trim() !== '') {
+      setToleranceOperator(normalizeTolOp(tolOp));
+    }
+    if (tolVal != null && String(tolVal).trim() !== '') {
+      setTolerance(String(tolVal).trim());
+    }
+
     const labelsMeta = csvData.find((r: any) => r['Field Name'] === 'MeasColumnLabels')?.['Value'];
     const labelsFromMeta = labelsMeta
       ? String(labelsMeta).split(',').map((s: string) => s.trim()).filter(Boolean)

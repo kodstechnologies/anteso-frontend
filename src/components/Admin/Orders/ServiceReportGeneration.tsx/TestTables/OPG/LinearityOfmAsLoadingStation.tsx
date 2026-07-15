@@ -529,17 +529,17 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
         </table>
       </div>
 
-      {/* Main Table */}
-      <div className="bg-white shadow-md rounded-lg overflow-hidden border border-gray-200">
+      {/* Main Table — scroll wide tables; sticky mAs column stays visible */}
+      <div className="bg-white shadow-md rounded-lg border border-gray-200">
         <div className="px-6 py-4 bg-blue-50 border-b">
           <h3 className="text-lg font-semibold text-blue-900">Linearity of Radiation Output Across mAs Ranges</h3>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
+          <table className="min-w-max w-full divide-y divide-gray-200">
             <thead className="bg-blue-50">
               <tr>
-                <th rowSpan={2} className="px-6 py-3 text-left text-xs font-medium text-gray-700  border-r">mAs Range</th>
+                <th rowSpan={2} className="sticky left-0 z-20 min-w-[7rem] px-6 py-3 text-left text-xs font-medium text-gray-700 border-r border-gray-200 whitespace-nowrap bg-blue-50 shadow-[4px_0_8px_-4px_rgba(0,0,0,0.15)]">mAs Range</th>
                 <th colSpan={measHeaders.length} className="px-6 py-3 text-center text-xs font-medium text-gray-700  border-r">
                   <div className="flex items-center justify-between px-4">
                     <span>Radiation Output (mGy)</span>
@@ -587,13 +587,13 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
             <tbody className="bg-white divide-y divide-gray-200">
               {processedTable2.map(p => (
                 <tr key={p.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 border-r">
+                  <td className="sticky left-0 z-10 min-w-[7rem] px-6 py-4 border-r border-gray-200 bg-white shadow-[4px_0_8px_-4px_rgba(0,0,0,0.08)]">
                     <input
                       type="text"
                       value={p.mAsRange}
                       onChange={e => updateCell(p.id, 'mAsRange', e.target.value)}
                       disabled={isViewMode}
-                      className={`w-full px-3 py-2 text-center text-sm border rounded font-medium focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''
+                      className={`w-full min-w-0 px-3 py-2 text-center text-sm border rounded font-medium focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''
                         }`}
                       placeholder="10"
                     />

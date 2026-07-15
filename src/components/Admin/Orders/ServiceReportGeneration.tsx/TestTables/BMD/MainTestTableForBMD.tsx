@@ -576,103 +576,92 @@ const MainTestTableForBMD: React.FC<MainTestTableProps> = ({ testData, hasTimer 
     ]);
   }
 
-  // Radiation leakage — RadiographyFixed (map BMD tubeHousingLeakage.leakageRows → measurements-like)
-  const leakageBlock = testData.radiationLeakageLevel || testData.tubeHousingLeakage;
-  const rawMeasurements =
-    leakageBlock?.leakageMeasurements ||
-    (Array.isArray(leakageBlock?.leakageRows)
-      ? leakageBlock.leakageRows.map((r: any) => ({
-          location: r.location,
-          result: r.result,
-          max: r.max,
-          resultMGy: r.mgy,
-          front: r.foot != null && r.foot !== "-" ? parseFloat(String(r.foot)) : undefined,
-          back: r.head != null && r.head !== "-" ? parseFloat(String(r.head)) : undefined,
-          left: r.left != null && r.left !== "-" ? parseFloat(String(r.left)) : undefined,
-          right: r.right != null && r.right !== "-" ? parseFloat(String(r.right)) : undefined,
-          top: undefined,
-          unit: r.unit,
-          remark: r.remark,
-        }))
-      : null);
+  // Radiation leakage level at 1m from tube housing — same measured-value logic as RadiographyFixed
+  const leakParent = testData.radiationLeakageLevel || testData.tubeHousingLeakage;
+  const leakMeasurements =
+    leakParent &&
+    (Array.isArray(leakParent.leakageMeasurements) && leakParent.leakageMeasurements.length > 0
+      ? leakParent.leakageMeasurements
+      : Array.isArray(leakParent.leakageRows)
+        ? leakParent.leakageRows
+        : []);
 
-  if (rawMeasurements && Array.isArray(rawMeasurements)) {
-    const validRows = rawMeasurements.filter(
+  if (leakParent && Array.isArray(leakMeasurements) && leakMeasurements.length > 0) {
+    const validRows = leakMeasurements.filter(
       (row: any) =>
-        row.location &&
-        (row.max || row.result || row.front || row.back || row.left || row.right || row.top)
+        row.location ||
+        row.front ||
+        row.back ||
+        row.left ||
+        row.right ||
+        row.top ||
+        row.foot ||
+        row.head ||
+        row.result ||
+        row.mgy
     );
     if (validRows.length > 0) {
-      const MGY_IN_ONE_HR = "mGy in one hour";
-      const toleranceNum =
-        parseFloat(String(leakageBlock.toleranceValue ?? leakageBlock.tolerance?.value ?? "1")) || 1;
-      const tolOpRaw = String(
-        leakageBlock.toleranceOperator ?? leakageBlock.tolerance?.operator ?? "less than or equal to"
-      );
-      const tolSymbol =
-        tolOpRaw === "less than or equal to" || tolOpRaw === "<="
-          ? "≤"
-          : tolOpRaw === "greater than or equal to" || tolOpRaw === ">="
-            ? "≥"
-            : tolOpRaw === "="
-              ? "="
-              : "≤";
-      const toleranceDisplay = `${tolSymbol} ${toleranceNum} ${MGY_IN_ONE_HR}`;
-
-      const maVal =
-        parseFloat(String(leakageBlock.ma ?? leakageBlock.settings?.ma ?? "")) || 0;
-      const wlVal = parseFloat(String(leakageBlock.workload ?? "")) || 0;
-
-      const leakagePasses = (mGy: number, tol: number, op: string) => {
-        if (op === "less than or equal to" || op === "<=") return mGy <= tol;
-        if (op === "greater than or equal to" || op === ">=") return mGy >= tol;
-        if (op === "=") return Math.abs(mGy - tol) < 0.01;
-        return mGy <= tol;
-      };
-
-      const mGyFromWorkloadMax = (maxMrPerHr: number) => {
-        if (!(maxMrPerHr > 0) || !(maVal > 0) || !(wlVal > 0)) return null;
-        const mRInOneHr = (wlVal * maxMrPerHr) / (60 * maVal);
-        return mRInOneHr / 114;
-      };
+      const toleranceValue =
+        leakParent.toleranceValue || leakParent.tolerance?.value || "1";
+      const maValue =
+        parseFloat(
+          String(
+            leakParent.ma ??
+              leakParent.measurementSettings?.ma ??
+              leakParent.settings?.ma ??
+              ""
+          )
+        ) || 0;
+      const workloadValue =
+        parseFloat(String(leakParent.workload?.value ?? leakParent.workload ?? "")) || 0;
 
       const testRows = validRows.map((row: any) => {
-        let measuredValue = "-";
-        let isPass = false;
-        let mGyHour: number | null = null;
-
-        const mgyRaw = row.resultMGy;
-        if (mgyRaw != null && mgyRaw !== "" && mgyRaw !== "-") {
-          const g = parseFloat(String(mgyRaw));
-          if (!isNaN(g)) mGyHour = g;
-        } else if (row.result != null && row.result !== "" && row.result !== "-") {
-          const resultMr = parseFloat(String(row.result));
-          if (!isNaN(resultMr)) mGyHour = resultMr / 114;
-        } else if (row.max != null && row.max !== "" && row.max !== "-") {
-          const maxV = parseFloat(String(row.max));
-          if (!isNaN(maxV) && maxV > 0) mGyHour = mGyFromWorkloadMax(maxV);
+        let measuredMGy = NaN;
+        const savedMgy = parseFloat(String(row.mgy ?? row.resultMGy ?? ""));
+        if (
+          !isNaN(savedMgy) &&
+          String(row.mgy ?? row.resultMGy ?? "").trim() !== "" &&
+          String(row.mgy ?? row.resultMGy) !== "-"
+        ) {
+          measuredMGy = savedMgy;
         } else {
-          const values = [row.front, row.back, row.left, row.right, row.top]
-            .map((v: any) => parseFloat(v) || 0)
-            .filter((v: number) => v > 0);
-          if (values.length > 0) mGyHour = mGyFromWorkloadMax(Math.max(...values));
+          const directionalValues = [
+            row.front,
+            row.back,
+            row.left,
+            row.right,
+            row.top,
+            row.foot,
+            row.head,
+          ]
+            .map((v) => parseFloat(v) || 0)
+            .filter((n) => n > 0);
+          const rowMax =
+            directionalValues.length > 0
+              ? Math.max(...directionalValues)
+              : parseFloat(String(row.max ?? "")) || 0;
+          if (rowMax > 0 && maValue > 0 && workloadValue > 0) {
+            measuredMGy = (workloadValue * rowMax) / (60 * maValue) / 114;
+          } else if (
+            row.result !== undefined &&
+            row.result !== null &&
+            row.result !== "" &&
+            row.result !== "-"
+          ) {
+            const resultMr = parseFloat(String(row.result));
+            if (!isNaN(resultMr)) measuredMGy = resultMr / 114;
+          }
         }
 
-        if (mGyHour != null && !isNaN(mGyHour)) {
-          measuredValue = `${mGyHour.toFixed(4)} ${MGY_IN_ONE_HR}`;
-          isPass = leakagePasses(mGyHour, toleranceNum, tolOpRaw);
+        const measuredValue = !isNaN(measuredMGy) ? measuredMGy.toFixed(4) : "-";
+        let isPass = row.remark === "Pass" || row.remark === "PASS";
+        if (!isPass && measuredValue !== "-") {
+          isPass = parseFloat(measuredValue) <= parseFloat(String(toleranceValue));
         }
-
-        if (row.remark || leakageBlock.remark) {
-          const remark = row.remark || leakageBlock.remark;
-          if (remark === "PASS" || remark === "Pass") isPass = true;
-          else if (remark === "FAIL" || remark === "Fail") isPass = false;
-        }
-
         return {
           specified: row.location || "-",
-          measured: measuredValue,
-          tolerance: toleranceDisplay,
+          measured: measuredValue !== "-" ? `${measuredValue} mGy in one hour` : "-",
+          tolerance: `≤ ${toleranceValue} mGy in one hour`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });

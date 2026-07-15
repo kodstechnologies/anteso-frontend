@@ -9,6 +9,8 @@ const appendSection = (rows: any[][], title: string, lines: any[][]) => {
 };
 
 const accuracyOfOperatingPotentialSection = (): any[][] => [
+  ["Tolerance Sign", "±"],
+  ["Tolerance Value (kVp)", "5"],
   ["Applied kVp", "mA 1", "mA 2"],
   ["60", "60.2", "60.5"],
   ["70", "70.1", "70.4"],
@@ -44,6 +46,8 @@ const linearityMasLoadingSection = (): any[][] => [
 ];
 
 const consistencySection = (): any[][] => [
+  ["Tolerance Operator", "<="],
+  ["Tolerance Value (CoV)", "0.05"],
   ["FFD", "100"],
   ["kVp", "mAs", "Meas 1", "Meas 2", "Meas 3"],
   ["80", "100", "10.2", "10.1", "10.3"],
@@ -52,9 +56,9 @@ const consistencySection = (): any[][] => [
 const radiationLeakageSection = (): any[][] => [
   ["FFD", "100", "kVp", "120", "mA", "10", "Time", "1", "Tolerance", "1"],
   ["Workload", "100"],
-  ["Location", "Left", "Right", "Top", "Up", "Down"],
-  ["Front", "0.01", "0.02", "0.015", "0.012", "0.011"],
-  ["Back", "0.012", "0.014", "0.011", "0.013", "0.015"],
+  ["Location", "Front", "Back", "Left", "Right", "Max", "Unit", "Remark"],
+  ["Tube", "0.01", "0.012", "0.015", "0.011", "", "mGy/h", ""],
+  ["Collimator", "0.012", "0.014", "0.011", "0.013", "", "mGy/h", ""],
 ];
 
 const radiationProtectionSurveySection = (): any[][] => [

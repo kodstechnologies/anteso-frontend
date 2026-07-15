@@ -148,6 +148,32 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
                 setMAStations(customHeaders);
             }
 
+            const normalizeTolSign = (raw: any): "+" | "-" | "±" => {
+                const s = String(raw ?? "").trim();
+                if (s === "+" || /^plus$/i.test(s)) return "+";
+                if (s === "-" || /^minus$/i.test(s)) return "-";
+                return "±";
+            };
+            const tolSignRow = csvData.find((r) => {
+                const k = String(r?.[0] ?? "").trim().toLowerCase();
+                return k === "tolerance sign" || k === "tolerance_sign";
+            });
+            const tolValRow = csvData.find((r) => {
+                const k = String(r?.[0] ?? "").trim().toLowerCase();
+                return (
+                    k === "tolerance value (kvp)" ||
+                    k === "tolerance value" ||
+                    k === "tolerance_value" ||
+                    k === "tolerance"
+                );
+            });
+            if (tolSignRow?.[1] != null && String(tolSignRow[1]).trim() !== "") {
+                setToleranceSign(normalizeTolSign(tolSignRow[1]));
+            }
+            if (tolValRow?.[1] != null && String(tolValRow[1]).trim() !== "") {
+                setToleranceValue(String(tolValRow[1]).trim());
+            }
+
             // Check for Total Filtration row
             const tfRow = csvData.find(r => {
                 const s = String(r[0]).trim();
@@ -173,6 +199,13 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
                 const first = String(r?.[0] ?? '').trim();
                 if (!first || first === '__MEAS_HEADERS__' || first === 'Applied kVp') return false;
                 if (first === 'TotalFiltration' || first === 'Total Filtration') return false;
+                const firstLower = first.toLowerCase();
+                if (
+                    firstLower === 'tolerance sign' ||
+                    firstLower === 'tolerance value (kvp)' ||
+                    firstLower === 'tolerance value' ||
+                    firstLower === 'tolerance'
+                ) return false;
                 return !isNaN(parseFloat(first));
             });
 
@@ -419,17 +452,18 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
             <h2 className="text-2xl font-bold text-gray-800 mb-6">Accuracy of Operating Potential</h2>
 
             {/* Main Table */}
-            <div className="bg-white shadow-lg rounded-lg overflow-hidden border border-gray-200">
+            <div className="bg-white shadow-lg rounded-lg border border-gray-200">
                 <div className="px-6 py-4 bg-blue-50 border-b border-gray-300">
                     <h3 className="text-xl font-bold text-blue-900">
                         Accuracy of kVp at Different mA Stations
                     </h3>
                 </div>
 
-                <table className="min-w-full divide-y divide-gray-200">
+                <div className="overflow-x-auto">
+                <table className="min-w-max w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                         <tr>
-                            <th rowSpan={2} className="px-6 py-3 text-left text-xs font-medium text-gray-600  tracking-wider border-r">
+                            <th rowSpan={2} className="sticky left-0 z-20 min-w-[7rem] px-6 py-3 text-left text-xs font-medium text-gray-600 tracking-wider border-r border-gray-200 whitespace-nowrap bg-gray-50 shadow-[4px_0_8px_-4px_rgba(0,0,0,0.15)]">
                                 Applied kVp
                             </th>
                             <th colSpan={mAStations.length} className="px-6 py-3 text-center text-xs font-medium text-gray-600  tracking-wider border-r">
@@ -474,13 +508,13 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
                     <tbody className="bg-white divide-y divide-gray-200">
                         {rows.map((row) => (
                             <tr key={row.id} className="hover:bg-gray-50">
-                                <td className="px-6 py-3 border-r">
+                                <td className="sticky left-0 z-10 min-w-[7rem] px-6 py-3 border-r border-gray-200 bg-white shadow-[4px_0_8px_-4px_rgba(0,0,0,0.08)]">
                                     <input
                                         type="number"
                                         value={row.appliedKvp}
                                         onChange={(e) => updateCell(row.id, "appliedKvp", e.target.value)}
                                         disabled={isViewMode}
-                                        className={`w-full px-3 py-2 text-center border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`}
+                                        className={`w-full min-w-0 px-3 py-2 text-center border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`}
                                         placeholder="80"
                                     />
                                 </td>
@@ -519,6 +553,7 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
                         ))}
                     </tbody>
                 </table>
+                </div>
 
                 {!isViewMode && (
                     <div className="px-6 py-4 bg-gray-50 border-t">

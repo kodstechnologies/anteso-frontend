@@ -56,6 +56,18 @@ const ConsistencyOfRadiationOutput: React.FC<ConsistencyOfRadiationOutputProps> 
     ]);
 
     const [tolerance, setTolerance] = useState<string>('0.05');
+    const [toleranceOperator, setToleranceOperator] = useState<string>('<=');
+
+    const compareCov = (cov: number, tol: number, op: string): boolean => {
+        switch (op) {
+            case '<': return cov < tol;
+            case '>': return cov > tol;
+            case '>=': return cov >= tol;
+            case '=': return Math.abs(cov - tol) < 1e-9;
+            case '<=':
+            default: return cov <= tol;
+        }
+    };
 
     const processedRows = useMemo(() => {
         return outputRows.map((row) => {
@@ -85,7 +97,7 @@ const ConsistencyOfRadiationOutput: React.FC<ConsistencyOfRadiationOutputProps> 
             if (tolerance) {
                 const tol = parseFloat(tolerance);
                 if (!isNaN(tol) && !isNaN(cov)) {
-                    remarks = cov <= tol ? 'Pass' : 'Fail';
+                    remarks = compareCov(cov, tol, toleranceOperator) ? 'Pass' : 'Fail';
                 }
             }
 
@@ -96,7 +108,7 @@ const ConsistencyOfRadiationOutput: React.FC<ConsistencyOfRadiationOutputProps> 
                 remarks,
             };
         });
-    }, [outputRows, tolerance]);
+    }, [outputRows, tolerance, toleranceOperator]);
 
     const remark = useMemo(() => {
         if (!tolerance || !isSaved) return '';
@@ -105,11 +117,11 @@ const ConsistencyOfRadiationOutput: React.FC<ConsistencyOfRadiationOutputProps> 
 
         const allPass = processedRows.every((row) => {
             if (!row.cov) return true;
-            return parseFloat(row.cov) <= tol;
+            return compareCov(parseFloat(row.cov), tol, toleranceOperator);
         });
 
         return allPass ? 'Pass' : 'Fail';
-    }, [processedRows, tolerance, isSaved]);
+    }, [processedRows, tolerance, toleranceOperator, isSaved]);
 
     useEffect(() => {
         const loadTest = async () => {
@@ -155,11 +167,13 @@ const ConsistencyOfRadiationOutput: React.FC<ConsistencyOfRadiationOutputProps> 
                     );
                     setHeaders(data.measurementHeaders || headers);
                     const tol = data.tolerance;
-                    setTolerance(
-                        typeof tol === 'object' && tol && 'value' in tol
-                            ? String(tol.value ?? '0.05')
-                            : String(tol ?? '0.05')
-                    );
+                    if (typeof tol === 'object' && tol) {
+                        setTolerance(String(tol.value ?? '0.05'));
+                        setToleranceOperator(String(tol.operator ?? data.toleranceOperator ?? '<='));
+                    } else {
+                        setTolerance(String(tol ?? '0.05'));
+                        setToleranceOperator(data.toleranceOperator || '<=');
+                    }
                     setIsSaved(true);
                 } else {
                     setIsSaved(false);
@@ -176,61 +190,93 @@ const ConsistencyOfRadiationOutput: React.FC<ConsistencyOfRadiationOutputProps> 
     }, [propTestId, serviceId]);
 
     useEffect(() => {
-        if (csvData && csvData.length > 0) {
-            const csvMeasLabels = csvData.find(r => r['Field Name'] === 'MeasColumnLabels')?.['Value'];
-            const ffdVal = csvData.find(r => r['Field Name'] === 'FFD')?.['Value'];
-            if (ffdVal) {
-                setFfd(ffdVal);
-            }
+        if (isLoading || !csvData || csvData.length === 0) return;
 
-            const rowIndices = [...new Set(csvData
-                .filter(r => r['Field Name'] && (r['Field Name'] === 'kVp' || r['Field Name'] === 'mAs' || r['Field Name'].startsWith('Measured_')))
-                .map(r => parseInt(r['Row Index']))
-                .filter(i => !isNaN(i) && i >= 0)
-            )].sort((a, b) => a - b);
-
-            if (rowIndices.length > 0) {
-                const newRows = rowIndices.map(idx => {
-                    const rowData = csvData.filter(r => parseInt(r['Row Index']) === idx);
-                    const kvp = rowData.find(r => r['Field Name'] === 'kVp')?.['Value'] || '';
-                    const mas = rowData.find(r => r['Field Name'] === 'mAs')?.['Value'] || '';
-
-                    const measured: string[] = [];
-                    for (let i = 0; i < 10; i++) {
-                        const val = rowData.find(r => r['Field Name'] === `Measured_${i}`)?.['Value'];
-                        if (val !== undefined) measured.push(val);
-                        else break;
-                    }
-
-                    return {
-                        id: String(idx),
-                        kvp,
-                        mas,
-                        outputs: measured,
-                        mean: '',
-                        cov: '',
-                        remarks: '' as ''
-                    };
-                });
-
-                setOutputRows(newRows);
-
-                const maxMeas = Math.max(...newRows.map(r => r.outputs.length));
-                setHeaders(prev => {
-                    const targetCount = Math.max(maxMeas, 3);
-                    const base = (csvMeasLabels
-                        ? String(csvMeasLabels).split(',').map((h: string) => h.trim()).filter(Boolean)
-                        : prev).slice(0, targetCount);
-                    while (base.length < targetCount) {
-                        base.push(`Meas ${base.length + 1}`);
-                    }
-                    return base;
-                });
-            }
-
-            if (!testId && (rowIndices.length > 0 || ffdVal)) setIsSaved(false);
+        const ffdVal = csvData.find(
+            (r) => r['Field Name'] === 'FFD' || r['Field Name'] === 'FDD' || r['Field Name'] === 'FCD'
+        )?.['Value'];
+        if (ffdVal !== undefined && ffdVal !== null && String(ffdVal).trim() !== '') {
+            setFfd(String(ffdVal));
         }
-    }, [csvData, testId]);
+
+        const normalizeTolOp = (raw: any): string => {
+            const s = String(raw ?? '').trim();
+            if (['<=', '<', '>=', '>', '='].includes(s)) return s;
+            if (s === '≤' || /less\s*than\s*or\s*equal/i.test(s)) return '<=';
+            if (s === '≥' || /greater\s*than\s*or\s*equal/i.test(s)) return '>=';
+            if (/^less\s*than$/i.test(s)) return '<';
+            if (/^greater\s*than$/i.test(s)) return '>';
+            return '<=';
+        };
+        const tolOp = csvData.find((r) => r['Field Name'] === 'Tolerance_Operator')?.['Value'];
+        const tolVal = csvData.find((r) => r['Field Name'] === 'Tolerance_Value')?.['Value'];
+        if (tolOp != null && String(tolOp).trim() !== '') {
+            setToleranceOperator(normalizeTolOp(tolOp));
+        }
+        if (tolVal != null && String(tolVal).trim() !== '') {
+            setTolerance(String(tolVal).trim());
+        }
+
+        const labelsMeta = csvData.find((r) => r['Field Name'] === 'MeasColumnLabels')?.['Value'];
+        const labelsFromMeta = labelsMeta
+            ? String(labelsMeta).split(',').map((s: string) => s.trim()).filter(Boolean)
+            : [];
+
+        const rowIndices = [...new Set(csvData
+            .filter((r) => r['Field Name'] && (r['Field Name'] === 'kVp' || r['Field Name'] === 'mAs' || String(r['Field Name']).startsWith('Measured_')))
+            .map((r) => parseInt(r['Row Index']))
+            .filter((i) => !isNaN(i) && i >= 0)
+        )].sort((a, b) => a - b);
+
+        if (rowIndices.length > 0) {
+            const newRows = rowIndices.map((idx) => {
+                const rowData = csvData.filter((r) => parseInt(r['Row Index']) === idx);
+                const kvp = rowData.find((r) => r['Field Name'] === 'kVp')?.['Value'] || '';
+                const mas = rowData.find((r) => r['Field Name'] === 'mAs')?.['Value'] || '';
+
+                const measured: string[] = [];
+                if (labelsFromMeta.length > 0) {
+                    for (let i = 0; i < labelsFromMeta.length; i++) {
+                        const val = rowData.find((r) => r['Field Name'] === `Measured_${i}`)?.['Value'];
+                        measured.push(val !== undefined && val !== null ? String(val) : '');
+                    }
+                } else {
+                    for (let i = 0; i < 20; i++) {
+                        const val = rowData.find((r) => r['Field Name'] === `Measured_${i}`)?.['Value'];
+                        if (val !== undefined && val !== '') measured.push(String(val));
+                        else if (val === undefined) break;
+                    }
+                }
+
+                return {
+                    id: String(idx),
+                    kvp: String(kvp),
+                    mas: String(mas),
+                    outputs: measured,
+                    mean: '',
+                    cov: '',
+                    remarks: '' as '',
+                };
+            });
+
+            const maxMeas = labelsFromMeta.length > 0
+                ? labelsFromMeta.length
+                : Math.max(...newRows.map((r) => r.outputs.length), 1);
+            const newHeaders = labelsFromMeta.length > 0
+                ? labelsFromMeta
+                : Array.from({ length: maxMeas }, (_, i) => `Meas ${i + 1}`);
+
+            setHeaders(newHeaders);
+            setOutputRows(newRows.map((r) => ({
+                ...r,
+                outputs: Array.from({ length: maxMeas }, (_, i) => r.outputs[i] ?? ''),
+            })));
+            setIsSaved(false);
+        } else if (labelsFromMeta.length > 0 || (ffdVal != null && String(ffdVal).trim() !== '')) {
+            if (labelsFromMeta.length > 0) setHeaders(labelsFromMeta);
+            if (!testId) setIsSaved(false);
+        }
+    }, [csvData, isLoading, testId]);
 
     const handleSave = async () => {
         if (!serviceId) {
@@ -259,7 +305,7 @@ const ConsistencyOfRadiationOutput: React.FC<ConsistencyOfRadiationOutputProps> 
             tolerance:
                 typeof tolerance === 'object' && tolerance && 'value' in tolerance
                     ? { operator: (tolerance as { operator?: string }).operator ?? '<=', value: String((tolerance as { value?: string }).value ?? '') }
-                    : { operator: '<=', value: typeof tolerance === 'string' ? tolerance.trim() : String(tolerance ?? '') },
+                    : { operator: toleranceOperator, value: typeof tolerance === 'string' ? tolerance.trim() : String(tolerance ?? '') },
         };
 
         try {
@@ -520,7 +566,19 @@ const ConsistencyOfRadiationOutput: React.FC<ConsistencyOfRadiationOutputProps> 
                     Tolerance
                 </label>
                 <div className="flex items-center gap-2 mb-4">
-                    <span className="text-sm text-gray-600">CoV &lt;</span>
+                    <span className="text-sm text-gray-600">CoV</span>
+                    <select
+                        value={toleranceOperator}
+                        onChange={(e) => setToleranceOperator(e.target.value)}
+                        disabled={isViewMode}
+                        className={`px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+                    >
+                        <option value="<=">{'<='}</option>
+                        <option value="<">{'<'}</option>
+                        <option value=">=">{'>='}</option>
+                        <option value=">">{'>'}</option>
+                        <option value="=">{'='}</option>
+                    </select>
                     <input
                         type="text"
                         value={tolerance}

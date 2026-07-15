@@ -58,12 +58,14 @@ const totalFiltrationSection = (): any[][] => [
 ];
 
 const reproducibilityOfOutputSection = (): any[][] => [
-  ["FDD (cm)", "kV", "mAs", "Measured Output 1", "Measured Output 2", "Measured Output 3", "Tolerance"],
-  ["65", "25", "25", "10.5", "10.4", "10.6", "0.05"],
-  ["", "28", "25", "12.1", "12.0", "12.2", ""],
-  ["", "35", "25", "14.5", "14.4", "14.6", ""],
-  ["", "40", "25", "16.2", "16.1", "16.3", ""],
-  ["", "49", "25", "18.0", "17.9", "18.1", ""],
+  ["Tolerance Operator", "<="],
+  ["Tolerance Value (CoV)", "0.05"],
+  ["FDD (cm)", "kV", "mAs", "Measured Output 1", "Measured Output 2", "Measured Output 3"],
+  ["65", "25", "25", "10.5", "10.4", "10.6"],
+  ["", "28", "25", "12.1", "12.0", "12.2"],
+  ["", "35", "25", "14.5", "14.4", "14.6"],
+  ["", "40", "25", "16.2", "16.1", "16.3"],
+  ["", "49", "25", "18.0", "17.9", "18.1"],
 ];
 
 const radiationLeakageSection = (): any[][] => [

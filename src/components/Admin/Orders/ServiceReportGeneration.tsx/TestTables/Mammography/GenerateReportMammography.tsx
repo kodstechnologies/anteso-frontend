@@ -58,7 +58,8 @@ const MAMMOGRAPHY_FIXED_HEADERS_BY_TEST: Record<string, Set<string>> = {
     ]),
     'Reproducibility of Output': new Set([
         ...MAMMOGRAPHY_DISTANCE_HEADER_ALIASES,
-        'kV', 'mAs', 'Tolerance', 'Tolerance Operator', 'Tol Operator',
+        'kV', 'mAs', 'Tolerance', 'Tolerance Operator', 'Tol Operator', 'Tol Value',
+        'Tolerance Value', 'Tolerance Value (CoV)',
     ]),
 };
 
@@ -430,6 +431,24 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
             }
 
             if (isReadingTest && headers.length === 0 && row.some(c => c !== '')) {
+                // Key-value settings rows (e.g. Tolerance Operator / Tolerance Value) before the data header
+                const mapForKv = headerMap[currentTestName] || {};
+                const fieldForKey = mapForKv[firstCell];
+                if (fieldForKey && row[1] !== undefined && row[1] !== '' && row.slice(2).every(c => !c)) {
+                    const trimmedVal = String(row[1]).trim();
+                    const normalizedValue =
+                        fieldForKey === 'ToleranceOperator'
+                            ? normalizeMammographyToleranceOperator(trimmedVal)
+                            : trimmedVal;
+                    data.push({
+                        'Field Name': fieldForKey,
+                        'Value': normalizedValue,
+                        'Row Index': '0',
+                        'Test Name': currentTestName,
+                    });
+                    continue;
+                }
+
                 headers = row;
                 sectionMeasColIndices = [];
                 if (currentTestName && MAMMOGRAPHY_MEAS_FIELD_PREFIX_BY_TEST[currentTestName]) {
@@ -1189,10 +1208,10 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
                         }
                     });
 
-                    if (outputRows.length > 0) {
+                    if (outputRows.length > 0 || tolerance || toleranceOperator) {
                         const measHeaderCount = outputMeasHeaders.length > 0
                             ? outputMeasHeaders.length
-                            : Math.max(...outputRows.map((r) => r.outputs?.length || 0), 3);
+                            : Math.max(...(outputRows.length ? outputRows.map((r) => r.outputs?.length || 0) : [3]), 3);
                         setCsvDataForComponents(prev => ({
                             ...prev,
                             reproducibilityOfOutput: {

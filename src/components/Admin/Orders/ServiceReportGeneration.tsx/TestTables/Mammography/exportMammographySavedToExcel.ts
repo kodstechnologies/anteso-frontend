@@ -90,12 +90,16 @@ export const createMammographySavedExcel = (
   }
 
   const ro = unwrap(data.reproducibilityOfOutput);
-  if (ro?.outputRows?.length > 0) {
+  if (ro?.outputRows?.length > 0 || ro?.tolerance != null || ro?.toleranceOperator) {
     const ffdVal = ro.ffd?.value ?? ro.ffd ?? "";
+    const tolOp = ro.toleranceOperator ?? ro.tolerance?.operator ?? "<=";
+    const tolVal = ro.tolerance?.value ?? (typeof ro.tolerance === "object" ? "" : ro.tolerance) ?? "0.05";
     allData.push(["TEST: REPRODUCIBILITY OF RADIATION OUTPUT"]);
-    allData.push(["FFD", ffdVal]);
+    allData.push(["Tolerance Operator", tolOp]);
+    allData.push(["Tolerance Value (CoV)", tolVal]);
+    if (ffdVal !== "" && ffdVal != null) allData.push(["FFD", ffdVal]);
     allData.push(["kVp", "mAs", "Reading 1", "Reading 2", "Reading 3", "Mean", "CoV"]);
-    ro.outputRows.forEach((r: any) => {
+    (ro.outputRows || []).forEach((r: any) => {
       const outs = (r.outputs || []).map((o: any) => (o?.value !== undefined ? o.value : o));
       allData.push([r.kv ?? r.kvp ?? "", r.mas ?? "", outs[0] ?? "", outs[1] ?? "", outs[2] ?? "", r.mean ?? "", r.cov ?? ""]);
     });

@@ -749,20 +749,45 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
             if (labelCell.startsWith("mA Station")) pushRow(testName, "mAStations", valCell, 0);
           }
 
+          // Header row (Applied kVp / Measured N / Average / Remark) may already be consumed above
+          const headerLookback = (lines[j - 1] || "").split(",").map((c) => c.trim());
+          const isMeta = (h: string) => /^(avg|average|mean|remark|remarks|result)$/i.test(h);
+          let stationCount = 0;
+          if (/^Applied kVp$/i.test(headerLookback[0] || "")) {
+            for (let c = 1; c < headerLookback.length; c++) {
+              if (!headerLookback[c] || isMeta(headerLookback[c])) break;
+              stationCount++;
+            }
+          }
+
           // measurement rows
           let idx = 0;
           for (; j < lines.length; j++) {
             const l = lines[j].trim();
             if (!l || l.startsWith("TEST:")) break;
-            const cells = l.split(",");
-            const kvp = (cells[0] || "").trim();
-            if (kvp) {
-              pushRow(testName, "Measurement_appliedKvp", kvp, idx);
-              if (cells[1] !== undefined) pushRow(testName, "Measurement_measuredValue1", cells[1], idx);
-              if (cells[2] !== undefined) pushRow(testName, "Measurement_measuredValue2", cells[2], idx);
-              if (cells[3] !== undefined) pushRow(testName, "Measurement_measuredValue3", cells[3], idx);
-              idx++;
+            const cells = l.split(",").map((c) => c.trim());
+            const kvp = cells[0] || "";
+            if (!kvp || isNaN(Number(kvp))) continue;
+            pushRow(testName, "Measurement_appliedKvp", kvp, idx);
+            const measCount =
+              stationCount > 0
+                ? stationCount
+                : Math.max(0, cells.length - 1 - (cells.some((c, ci) => ci > 0 && /^(pass|fail|-)$/i.test(c)) ? 1 : 0));
+            for (let c = 0; c < measCount; c++) {
+              const val = cells[c + 1];
+              if (val !== undefined && val !== "") {
+                pushRow(testName, `Measurement_measuredValue${c + 1}`, val, idx);
+              }
             }
+            const remark =
+              cells[measCount + 2] ?? // Applied, meas..., Average, Remark
+              cells[measCount + 1];
+            if (remark && /^(pass|fail|-)$/i.test(remark)) {
+              pushRow(testName, "Measurement_remarks", remark, idx);
+            } else if (cells[measCount + 2]) {
+              pushRow(testName, "Measurement_remarks", cells[measCount + 2], idx);
+            }
+            idx++;
           }
           i = j;
           continue;
@@ -779,6 +804,11 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
           if (kv) pushRow(testName, "ExposureCondition_kv", kv, 0);
           if (time) pushRow(testName, "ExposureCondition_time", time, 0);
 
+          const headerCells = (lines[i + 2] || "").split(",").map((c) => c.trim());
+          const isMeta = (h: string) => /^(avg|average|mean|col|coL|remark|remarks|x\s*max|x\s*min)$/i.test(h);
+          const measHeaders = headerCells.slice(1).filter((h) => h && !isMeta(h));
+          measHeaders.forEach((h, hi) => pushRow(testName, "MeasHeader", h, hi));
+
           let idx = 0;
           let j = i + 3;
           while (j < lines.length) {
@@ -790,16 +820,18 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
               pushRow(testName, "Tolerance_operator", normalizeCsvComparisonOperator((cells[1] || "").trim()), 0);
             } else if (firstCell.startsWith("Tolerance Value")) {
               pushRow(testName, "Tolerance_value", (cells[1] || "").trim(), 0);
+            } else if (/^remark$/i.test(firstCell)) {
+              pushRow(testName, "Remark", (cells[1] || "").trim(), 0);
+            } else if (/^col$/i.test(firstCell)) {
+              pushRow(testName, "CoL", (cells[1] || "").trim(), 0);
             } else if (firstCell !== "mA Applied" && firstCell && !isNaN(Number(firstCell))) {
               pushRow(testName, "Table2_mAApplied", firstCell, idx);
-              if (cells[1] !== undefined && String(cells[1]).trim() !== "") {
-                pushRow(testName, "Table2_measuredOutput1", String(cells[1]).trim(), idx);
-              }
-              if (cells[2] !== undefined && String(cells[2]).trim() !== "") {
-                pushRow(testName, "Table2_measuredOutput2", String(cells[2]).trim(), idx);
-              }
-              if (cells[3] !== undefined && String(cells[3]).trim() !== "") {
-                pushRow(testName, "Table2_measuredOutput3", String(cells[3]).trim(), idx);
+              const count = measHeaders.length > 0 ? measHeaders.length : Math.max(0, cells.length - 1);
+              for (let c = 0; c < count; c++) {
+                const val = cells[c + 1];
+                if (val !== undefined && String(val).trim() !== "") {
+                  pushRow(testName, `Table2_measuredOutput${c + 1}`, String(val).trim(), idx);
+                }
               }
               idx++;
             }
@@ -818,6 +850,11 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
           if (fcd) pushRow(testName, "Table1_fcd", fcd, 0);
           if (kv) pushRow(testName, "Table1_kv", kv, 0);
 
+          const headerCells = (lines[i + 2] || "").split(",").map((c) => c.trim());
+          const isMeta = (h: string) => /^(avg|average|mean|col|coL|remark|remarks|x\s*max|x\s*min)$/i.test(h);
+          const measHeaders = headerCells.slice(1).filter((h) => h && !isMeta(h));
+          measHeaders.forEach((h, hi) => pushRow(testName, "MeasHeader", h, hi));
+
           let idx = 0;
           let j = i + 3;
           while (j < lines.length) {
@@ -829,16 +866,18 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
               pushRow(testName, "Tolerance_operator", normalizeCsvComparisonOperator((cells[1] || "").trim()), 0);
             } else if (firstCell.startsWith("Tolerance Value")) {
               pushRow(testName, "Tolerance_value", (cells[1] || "").trim(), 0);
+            } else if (/^remark$/i.test(firstCell)) {
+              pushRow(testName, "Remark", (cells[1] || "").trim(), 0);
+            } else if (/^col$/i.test(firstCell)) {
+              pushRow(testName, "CoL", (cells[1] || "").trim(), 0);
             } else if (firstCell !== "mAs Range" && firstCell) {
               pushRow(testName, "Table2_mAsRange", firstCell, idx);
-              if (cells[1] !== undefined && String(cells[1]).trim() !== "") {
-                pushRow(testName, "Table2_Meas1", String(cells[1]).trim(), idx);
-              }
-              if (cells[2] !== undefined && String(cells[2]).trim() !== "") {
-                pushRow(testName, "Table2_Meas2", String(cells[2]).trim(), idx);
-              }
-              if (cells[3] !== undefined && String(cells[3]).trim() !== "") {
-                pushRow(testName, "Table2_Meas3", String(cells[3]).trim(), idx);
+              const count = measHeaders.length > 0 ? measHeaders.length : Math.max(0, cells.length - 1);
+              for (let c = 0; c < count; c++) {
+                const val = cells[c + 1];
+                if (val !== undefined && String(val).trim() !== "") {
+                  pushRow(testName, `Table2_Meas${c + 1}`, String(val).trim(), idx);
+                }
               }
               idx++;
             }
@@ -856,7 +895,11 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
           if (ffd) pushRow(testName, "FFD", ffd, 0);
 
           const headerLine = (lines[i + 2] || "").split(",");
-          const headerCells = headerLine.slice(2).map((cell) => cell.trim()).filter(Boolean);
+          const isMeta = (h: string) => /^(avg|average|mean|cov|cv|remark|remarks|result)$/i.test(h);
+          const headerCells = headerLine
+            .slice(2)
+            .map((cell) => cell.trim())
+            .filter((h) => h && !isMeta(h));
           headerCells.forEach((header, headerIdx) => {
             pushRow(testName, "MeasHeader", header, headerIdx);
           });
@@ -900,6 +943,18 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
                 if (val !== undefined && String(val).trim() !== "") {
                   pushRow(testName, `Measurement_output${col + 1}`, String(val).trim(), idx);
                 }
+              }
+              const remarkIdx = 2 + outputCount + 2; // after outputs, Average, CoV → Remark
+              const avgIdx = 2 + outputCount;
+              const covIdx = 2 + outputCount + 1;
+              if (cells[avgIdx] !== undefined && String(cells[avgIdx]).trim() !== "") {
+                pushRow(testName, "Measurement_avg", String(cells[avgIdx]).trim(), idx);
+              }
+              if (cells[covIdx] !== undefined && String(cells[covIdx]).trim() !== "") {
+                pushRow(testName, "Measurement_cov", String(cells[covIdx]).trim(), idx);
+              }
+              if (cells[remarkIdx] !== undefined && String(cells[remarkIdx]).trim() !== "") {
+                pushRow(testName, "Measurement_remark", String(cells[remarkIdx]).trim(), idx);
               }
               idx++;
             }
@@ -1225,9 +1280,14 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
               const mIdx = parseInt(measValMatch[1]) - 1;
               while (meas[idx].measuredValues.length <= mIdx) meas[idx].measuredValues.push('');
               meas[idx].measuredValues[mIdx] = val;
+            } else if (field === 'remarks' || field === 'remark') {
+              meas[idx].remarks = val;
             } else {
               meas[idx][field] = val;
             }
+          } else if (key === 'Measurement_remarks' || key === 'Measurement_remark') {
+            if (currentMeas) currentMeas.remarks = val;
+            else if (meas[idx]) meas[idx].remarks = val;
           } else if (key.startsWith('Tolerance_')) tol[key.split('_')[1]] = val;
           else if (key.startsWith('TotalFiltration_')) total[key.split('_')[1]] = val;
         });
@@ -1244,15 +1304,21 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
         const data = groupedData['Linearity Of mA Loading'];
         const cond: any = {};
         const rows: any[] = [];
+        const measHeaders: string[] = [];
         let tol = '';
         let tolOp = '<=';
+        let remarks = '';
         let currentRow: any = null;
         let currentRowIdx = -1;
         data.forEach(row => {
           const key = (row['Key'] || '').trim();
           const val = (row['Value'] || '').trim();
           const idx = parseInt(row['Index']) || 0;
-          if (key.startsWith('ExposureCondition_')) {
+          if (key === 'MeasHeader' && val) {
+            measHeaders.push(val);
+          } else if (key === 'Remark' || key === 'Remarks') {
+            remarks = val;
+          } else if (key.startsWith('ExposureCondition_')) {
             const field = key.split('_')[1];
             cond[field === 'ffd' || field === 'fdd' ? 'fcd' : field] = val;
           } else if (key.startsWith('Table1_')) {
@@ -1289,7 +1355,14 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
             else if (key === 'Tolerance_operator') tolOp = normalizeCsvComparisonOperator(val) || val;
           }
         });
-        newDataForComponents.linearityOfMaLoading = { table1: cond, table2: rows.filter(Boolean), tolerance: tol, toleranceOperator: tolOp };
+        newDataForComponents.linearityOfMaLoading = {
+          table1: cond,
+          table2: rows.filter(Boolean),
+          tolerance: tol,
+          toleranceOperator: tolOp,
+          ...(measHeaders.length > 0 ? { measHeaders } : {}),
+          ...(remarks ? { remarks } : {}),
+        };
       }
 
       // Linearity of mAs Loading
@@ -1297,15 +1370,21 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
         const data = groupedData['Linearity Of mAs Loading'];
         const cond: any = {};
         const rows: any[] = [];
+        const measHeaders: string[] = [];
         let tol = '';
         let tolOp = '<=';
+        let remarks = '';
         let currentRow: any = null;
         let currentRowIdx = -1;
         data.forEach(row => {
           const key = (row['Key'] || '').trim();
           const val = (row['Value'] || '').trim();
           const idx = parseInt(row['Index']) || 0;
-          if (key.startsWith('Table1_') || key.startsWith('ExposureCondition_')) {
+          if (key === 'MeasHeader' && val) {
+            measHeaders.push(val);
+          } else if (key === 'Remark' || key === 'Remarks') {
+            remarks = val;
+          } else if (key.startsWith('Table1_') || key.startsWith('ExposureCondition_')) {
             const field = key.split('_')[1];
             cond[field === 'ffd' || field === 'fdd' ? 'fcd' : field] = val;
           } else if (key === 'Table2_mAsRange' || key === 'Table2_mAsApplied') {
@@ -1343,6 +1422,8 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
           table2: rows.filter(Boolean),
           tolerance: tol,
           toleranceOperator: tolOp,
+          ...(measHeaders.length > 0 ? { measHeaders } : {}),
+          ...(remarks ? { remarks } : {}),
         };
       }
 
@@ -1380,6 +1461,13 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
               while (currentRow.outputs.length <= oIdx) currentRow.outputs.push({ value: '' });
               currentRow.outputs[oIdx] = { value: val };
             }
+          } else if ((key === 'Measurement_avg' || key === 'Measurement_average') && currentRow) {
+            currentRow.avg = val;
+          } else if ((key === 'Measurement_cov' || key === 'Measurement_cv') && currentRow) {
+            currentRow.cv = val;
+            currentRow.cov = val;
+          } else if ((key === 'Measurement_remark' || key === 'Measurement_remarks') && currentRow) {
+            currentRow.remark = val;
           } else if (key === 'OutputRow_kV') {
             currentRowIdx++;
             currentRow = { kv: val, mas: '', outputs: [] };
@@ -1644,8 +1732,20 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
         return;
       }
       const wb = createRadiographyFixedUploadableExcel(exportData as RadiographyFixedExportData);
-      const timestamp = new Date().toISOString().split('T')[0];
-      const filename = `Radiography_Fixed_Test_Data_${timestamp}.xlsx`;
+      const headerRaw = exportData.reportHeader as any;
+      const header =
+        headerRaw?.data && typeof headerRaw.data === "object" && !Array.isArray(headerRaw.data)
+          ? headerRaw.data
+          : headerRaw;
+      const reportNumber = String(
+        formData.testReportNumber ||
+          header?.testReportNumber ||
+          header?.qaTestReportNumber ||
+          ""
+      )
+        .trim()
+        .replace(/[<>:"/\\|?*\x00-\x1F]+/g, "_");
+      const filename = `${reportNumber || "Radiography_Fixed_Report"}.xlsx`;
 
       XLSX.writeFile(wb, filename);
       toast.success('Data exported successfully!', { id: 'export-excel' });

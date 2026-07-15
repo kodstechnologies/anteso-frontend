@@ -11,6 +11,7 @@ import {
 import toast from 'react-hot-toast';
 
 interface SettingsRow {
+  ffd: string;
   kv: string;
   ma: string;
   time: string;
@@ -34,11 +35,72 @@ interface Props {
   csvData?: any[];
 }
 
+/** Only strict &lt;, &gt;, and = (legacy ≤/≥ from API/CSV map onto these). */
+type LeakageToleranceOperator = 'less than' | 'greater than' | '=';
+
+/** API/CSV symbols/phrases → one of the three operators above. */
+function normalizeLeakageToleranceOperator(raw: unknown): LeakageToleranceOperator {
+  const s = String(raw ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .replace(/≤/g, '<=')
+    .replace(/≥/g, '>=');
+  if (!s) return 'less than';
+  if (s === '=' || s === '==' || s === 'equals' || s === 'equal to') return '=';
+  if (s === '<' || s === 'less than' || s === 'lt') return 'less than';
+  if (s === '>' || s === 'greater than' || s === 'gt') return 'greater than';
+  // Legacy “or equal” forms → closest strict operator for this form
+  if (s === '<=' || s === 'less than or equal to' || s === 'less than or equal' || s === 'lte')
+    return 'less than';
+  if (s === '>=' || s === 'greater than or equal to' || s === 'greater than or equal' || s === 'gte')
+    return 'greater than';
+  return 'less than';
+}
+
+function leakageToleranceSymbol(op: LeakageToleranceOperator): string {
+  switch (op) {
+    case 'less than':
+      return '<';
+    case 'greater than':
+      return '>';
+    case '=':
+      return '=';
+    default:
+      return '<';
+  }
+}
+
+const LEAKAGE_RESULT_MR_DECIMALS = 3;
+
+function formatToleranceEquivalentMR(raw: string): string {
+  const n = parseFloat(String(raw).trim());
+  if (Number.isNaN(n)) return '—';
+  return (n * 114).toFixed(LEAKAGE_RESULT_MR_DECIMALS);
+}
+
+/** Pass ⇔ scaled mGy vs tolerance at 4 dp. */
+function compareMgyToTolerance(mgyValue: number, tol: number, op: LeakageToleranceOperator): boolean {
+  const scale = 10_000;
+  const mi = Math.round(mgyValue * scale);
+  const ti = Math.round(tol * scale);
+  switch (op) {
+    case 'less than':
+      return mi < ti;
+    case 'greater than':
+      return mi > ti;
+    case '=':
+      return mi === ti;
+    default:
+      return mi < ti;
+  }
+}
+
 export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propTestId, onRefresh, csvData }: Props) {
   const [testId, setTestId] = useState<string | null>(propTestId || null);
 
   // Fixed rows
-  const [settings, setSettings] = useState<SettingsRow>({ kv: '', ma: '', time: '' });
+  const [settings, setSettings] = useState<SettingsRow>({ ffd: '', kv: '', ma: '', time: '' });
   const [leakageRows, setLeakageRows] = useState<LeakageRow[]>([
     {
       location: 'Tube',
@@ -55,18 +117,15 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
   const [workload, setWorkload] = useState<string>('');
   const [workloadUnit, setWorkloadUnit] = useState<string>('mA·min/week');
   const [toleranceValue, setToleranceValue] = useState<string>('1');
-  const [toleranceOperator, setToleranceOperator] = useState<'less than or equal to' | 'greater than or equal to' | '='>('less than or equal to');
+  const [toleranceOperator, setToleranceOperator] = useState<LeakageToleranceOperator>('less than');
   const [toleranceTime, setToleranceTime] = useState<string>('1');
 
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [hasSaved, setHasSaved] = useState(false);
-  const formatToleranceEquivalentMR = (value: string): string => {
-    const numeric = Number(value);
-    if (!Number.isFinite(numeric)) return '0.000';
-    return (numeric * 114).toFixed(3);
-  };
+
+  const toleranceOpNormalized = normalizeLeakageToleranceOperator(toleranceOperator);
 
   // === Auto Max per row ===
   const processedLeakage = useMemo(() => {
@@ -119,20 +178,17 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
   // === Auto Remark ===
   const finalRemark = useMemo(() => {
     const result = parseFloat(globalMaxResultMGy || '0') || 0;
-    const tol = parseFloat(toleranceValue) || 0;
+    const tolStr = String(toleranceValue ?? '').trim();
+    const tol = parseFloat(tolStr);
 
-    if (!toleranceValue || globalMaxResultMGy === '—') return '';
+    if (!tolStr || globalMaxResultMGy === '—' || Number.isNaN(tol)) return '';
 
-    let pass = false;
-    if (toleranceOperator === 'less than or equal to') pass = result <= tol;
-    if (toleranceOperator === 'greater than or equal to') pass = result >= tol;
-    if (toleranceOperator === '=') pass = Math.abs(result - tol) < 0.01;
-
+    const pass = compareMgyToTolerance(result, tol, toleranceOpNormalized);
     return pass ? 'Pass' : 'Fail';
-  }, [globalMaxResultMGy, toleranceValue, toleranceOperator]);
+  }, [globalMaxResultMGy, toleranceValue, toleranceOpNormalized]);
 
   // === Update Handlers ===
-  const updateSettings = (field: 'kv' | 'ma' | 'time', value: string) => {
+  const updateSettings = (field: keyof SettingsRow, value: string) => {
     setSettings(prev => ({ ...prev, [field]: value }));
   };
 
@@ -146,6 +202,7 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
   const isFormValid = useMemo(() => {
     return (
       !!serviceId &&
+      settings.ffd.trim() &&
       settings.kv.trim() &&
       settings.ma.trim() &&
       settings.time.trim() &&
@@ -182,6 +239,7 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
             if (rec.settings?.[0] || rec.measurementSettings?.[0]) {
               const s = rec.settings?.[0] || rec.measurementSettings?.[0];
               setSettings({
+                ffd: String(s.ffd || s.fdd || s.fcd || ''),
                 kv: String(s.kv || s.kvp || ''),
                 ma: String(s.ma || ''),
                 time: String(s.time || ''),
@@ -206,7 +264,7 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
             setWorkload(rec.workload || '');
             setWorkloadUnit(rec.workloadUnit || 'mA·min/week');
             setToleranceValue(rec.toleranceValue || rec.tolerance || '');
-            setToleranceOperator(rec.toleranceOperator || 'less than or equal to');
+            setToleranceOperator(normalizeLeakageToleranceOperator(rec.toleranceOperator || 'less than'));
             setToleranceTime(rec.toleranceTime || '1');
 
             setHasSaved(true);
@@ -259,11 +317,11 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
           if (i > 0 && key) colMap[key] = i;
         });
       } else {
-        colMap.left = 1;
-        colMap.right = 2;
-        colMap.top = 3;
-        colMap.up = 4;
-        colMap.down = 5;
+        // Default column order matches UI Exposure Level (mGy): Front, Back, Left, Right
+        colMap.front = 1;
+        colMap.back = 2;
+        colMap.left = 3;
+        colMap.right = 4;
       }
 
       const getCol = (row: any[], ...names: string[]) => {
@@ -283,6 +341,7 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
         const firstLower = first.toLowerCase();
 
         if (row.some(isFfdLabel) && row.some(isKvLabel)) {
+          const fIndex = row.findIndex(isFfdLabel);
           const kIndex = row.findIndex(isKvLabel);
           const maIndex = row.findIndex(isMaLabel);
           const tIndex = row.findIndex(isTimeLabel);
@@ -290,6 +349,7 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
 
           setSettings(prev => ({
             ...prev,
+            ffd: fIndex >= 0 && row[fIndex + 1] != null ? String(row[fIndex + 1]) : prev.ffd,
             kv: kIndex >= 0 && row[kIndex + 1] != null ? String(row[kIndex + 1]) : prev.kv,
             ma: maIndex >= 0 && row[maIndex + 1] != null ? String(row[maIndex + 1]) : prev.ma,
             time: tIndex >= 0 && row[tIndex + 1] != null ? String(row[tIndex + 1]) : prev.time,
@@ -349,13 +409,15 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
     const getField = (...names: string[]) =>
       csvData.find((r: any) => names.includes(String(r['Field Name'] || '')))?.['Value'];
 
+    const ffd = getField('FFD', 'ffd', 'FDD', 'fdd', 'FCD', 'fcd');
     const kv = getField('kV', 'kVp', 'kv', 'kvp');
     const ma = getField('mA', 'ma');
     const time = getField('Time', 'time');
 
-    if (kv || ma || time) {
+    if (ffd || kv || ma || time) {
       setSettings(prev => ({
         ...prev,
+        ffd: ffd ? String(ffd) : prev.ffd,
         kv: kv ? String(kv) : prev.kv,
         ma: ma ? String(ma) : prev.ma,
         time: time ? String(time) : prev.time,
@@ -394,7 +456,7 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
     if (wl) setWorkload(String(wl));
     if (wlUnit) setWorkloadUnit(String(wlUnit));
     if (tol) setToleranceValue(String(tol));
-    if (tolOp) setToleranceOperator(String(tolOp) as any);
+    if (tolOp) setToleranceOperator(normalizeLeakageToleranceOperator(tolOp));
     if (tolTime) setToleranceTime(String(tolTime));
 
     setIsEditing(true);
@@ -409,7 +471,17 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
     const payload = {
       measurementSettings: [
         {
+          ffd: settings.ffd.trim(),
           kv: parseFloat(settings.kv) || 0,
+          ma: parseFloat(settings.ma) || 0,
+          time: parseFloat(settings.time) || 0,
+        },
+      ],
+      settings: [
+        {
+          ffd: settings.ffd.trim(),
+          kv: parseFloat(settings.kv) || 0,
+          kvp: parseFloat(settings.kv) || 0,
           ma: parseFloat(settings.ma) || 0,
           time: parseFloat(settings.time) || 0,
         },
@@ -474,7 +546,7 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
     <div className="p-6 max-w-full overflow-x-auto space-y-8">
       <h2 className="text-2xl font-bold mb-6">Radiation Leakage Level from X-Ray</h2>
 
-      {/* ==================== Table 1: kV, mA, Time (Fixed) ==================== */}
+      {/* ==================== Table 1: FDD, kV, mA, Time ==================== */}
       <div className="bg-white shadow-md rounded-lg overflow-hidden">
         <h3 className="px-6 py-3 text-lg font-semibold bg-gray-50 border-b">
           Measurement Settings
@@ -482,6 +554,9 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500  tracking-wider border-r">
+                FDD (cm)
+              </th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500  tracking-wider border-r">
                 kV
               </th>
@@ -495,6 +570,17 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             <tr className="hover:bg-gray-50">
+              <td className="px-4 py-2 border-r">
+                <input
+                  type="text"
+                  value={settings.ffd}
+                  onChange={(e) => updateSettings('ffd', e.target.value)}
+                  disabled={isViewMode}
+                  className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'
+                    }`}
+                  placeholder="100"
+                />
+              </td>
               <td className="px-4 py-2 border-r">
                 <input
                   type="text"
@@ -740,45 +826,53 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
 
       {/* ==================== Tolerance ==================== */}
       <div className="bg-white shadow-md rounded-lg p-6">
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Tolerance
-        </label>
-        <div className="flex flex-wrap items-center gap-2 max-w-3xl">
-          <input
-            type="text"
-            value={toleranceValue}
-            onChange={(e) => setToleranceValue(e.target.value)}
-            disabled={isViewMode}
-            className={`w-24 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'
-              }`}
-            placeholder="1.0"
-          />
-          <select
-            value={toleranceOperator}
-            onChange={(e) => setToleranceOperator(e.target.value as any)}
-            disabled={isViewMode}
-            className={`px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'
-              }`}
-          >
-            <option value="less than or equal to">less than or equal to</option>
-            <option value="greater than or equal to">greater than or equal to</option>
-            <option value="=">{'='}</option>
-          </select>
-          <span className="text-sm text-gray-600">in</span>
-          <input
-            type="text"
-            value={toleranceTime}
-            onChange={(e) => setToleranceTime(e.target.value)}
-            disabled={isViewMode}
-            className={`w-20 px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'
-              }`}
-            placeholder="1"
-          />
-          <span className="text-sm text-gray-600">hr</span>
-          <span className="text-sm text-gray-700">
+        <h3 className="text-lg font-semibold mb-3">Tolerance</h3>
+        <div className="text-sm text-gray-700">
+          <p>
+            <strong>Tolerance:</strong> Calculated leakage (in one hour) must satisfy{' '}
+            <select
+              value={toleranceOperator}
+              onChange={(e) =>
+                setToleranceOperator(normalizeLeakageToleranceOperator(e.target.value))
+              }
+              disabled={isViewMode}
+              className={`px-2 py-1 border rounded text-sm font-medium ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+            >
+              <option value="less than">{'<'}</option>
+              <option value="greater than">{">"}</option>
+              <option value="=">{'='}</option>
+            </select>{' '}
+            <input
+              type="text"
+              value={toleranceValue}
+              onChange={(e) => setToleranceValue(e.target.value)}
+              disabled={isViewMode}
+              className={`min-w-[6.5rem] max-w-[14rem] w-auto px-2 py-1 border rounded text-sm text-center font-medium ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+              placeholder="1"
+            />
+            {' '}
             (
             <span className="tabular-nums font-medium">{formatToleranceEquivalentMR(toleranceValue)}</span> mR) in one hour.
-          </span>
+          </p>
+          <p className="mt-2 text-xs text-gray-600">
+            Formula: (workload × max exposure mR/h) ÷ (60 × mA) ÷ 114. Pass when this value{' '}
+            <span className="font-mono">{leakageToleranceSymbol(toleranceOpNormalized)}</span> tolerance (compare at 4 decimal places).
+          </p>
+          {finalRemark ? (
+            <p className="mt-4 text-base font-semibold">
+              Overall result:{' '}
+              <span
+                className={
+                  finalRemark === 'Pass' ? 'text-green-700' : 'text-red-700'
+                }
+              >
+                {finalRemark}
+              </span>
+              <span className="font-normal text-gray-600 text-sm ml-2">
+                (based on highest calculated leakage vs tolerance)
+              </span>
+            </p>
+          ) : null}
         </div>
       </div>
 

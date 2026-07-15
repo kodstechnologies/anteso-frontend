@@ -23,13 +23,50 @@ export const createDentalHandHeldUploadableExcel = (data: DentalHandHeldExportDa
 
     // 1. ACCURACY OF OPERATING POTENTIAL
     if (data.accuracyOfOperatingPotential) {
-        const rows = (data.accuracyOfOperatingPotential.readings || []).map((row: any) => [
-            row.kvp || '',
-            row.avgKvp || '',
-            row.remark || '',
-            data.accuracyOfOperatingPotential.tolerance || ''
-        ]);
-        addSection('ACCURACY OF OPERATING POTENTIAL', ['Applied kVp', 'Average kVp', 'Remarks', 'Tolerance'], rows);
+        const aop = data.accuracyOfOperatingPotential;
+        const tolSign =
+            aop.kvpToleranceSign ||
+            aop.tolerance?.sign ||
+            aop.tolerance?.type ||
+            '±';
+        const tolVal =
+            aop.kvpToleranceValue ??
+            aop.tolerance?.value ??
+            '5';
+        const measurements: any[] =
+            Array.isArray(aop.measurements) ? aop.measurements :
+            Array.isArray(aop.rows) ? aop.rows :
+            Array.isArray(aop.readings) ? aop.readings : [];
+
+        const getMeasured = (row: any): string[] => {
+            if (Array.isArray(row.measuredValues)) return row.measuredValues.map((v: any) => String(v ?? ''));
+            if (Array.isArray(row.maStations)) {
+                return row.maStations.map((s: any) => String(s?.kvp ?? s?.value ?? s ?? ''));
+            }
+            return [];
+        };
+
+        const maxMeas = measurements.length > 0
+            ? Math.max(...measurements.map((r) => getMeasured(r).length), 0)
+            : 0;
+        const stations = Array.isArray(aop.mAStations) && aop.mAStations.length > 0
+            ? aop.mAStations.map((s: any) => String(s))
+            : Array.from({ length: Math.max(maxMeas, 2) }, (_, i) => `mA ${i + 1}`);
+
+        allData.push(['TEST: ACCURACY OF OPERATING POTENTIAL']);
+        allData.push(['Tolerance Sign', tolSign]);
+        allData.push(['Tolerance Value (kVp)', tolVal]);
+        if (measurements.length > 0) {
+            allData.push(['Applied kVp', ...stations]);
+            measurements.forEach((row) => {
+                const vals = getMeasured(row);
+                allData.push([
+                    row.appliedKvp || row.kvp || '',
+                    ...stations.map((_: string, i: number) => vals[i] ?? ''),
+                ]);
+            });
+        }
+        allData.push([]);
     }
 
     // 2. ACCURACY OF IRRADIATION TIME
@@ -77,19 +114,53 @@ export const createDentalHandHeldUploadableExcel = (data: DentalHandHeldExportDa
 
     // 5. CONSISTENCY OF RADIATION OUTPUT
     if (data.consistencyOfRadiationOutput) {
-        const rows = (data.consistencyOfRadiationOutput.readings || []).map((row: any) => [
-            row.kv || '',
-            row.ma || '',
-            row.time || '',
-            row.meas1 || '',
-            row.meas2 || '',
-            row.meas3 || '',
-            row.meas4 || '',
-            row.average || '',
-            row.cov || '',
-            data.consistencyOfRadiationOutput.tolerance || ''
-        ]);
-        addSection('CONSISTENCY OF RADIATION OUTPUT', ['kV', 'mA', 'Time (s)', 'Meas 1', 'Meas 2', 'Meas 3', 'Meas 4', 'Average', 'CoV', 'Tolerance'], rows);
+        const oc = data.consistencyOfRadiationOutput;
+        const tolOp = oc.tolerance?.operator ?? oc.toleranceOperator ?? '<=';
+        const tolVal =
+            oc.tolerance?.value ??
+            oc.toleranceValue ??
+            (typeof oc.tolerance === 'object' ? '' : oc.tolerance) ??
+            '0.05';
+        const measurements: any[] =
+            Array.isArray(oc.outputRows) ? oc.outputRows :
+            Array.isArray(oc.readings) ? oc.readings : [];
+
+        const getOutputs = (row: any): string[] => {
+            if (Array.isArray(row.outputs)) {
+                return row.outputs.map((o: any) =>
+                    o != null && typeof o === 'object' && 'value' in o ? String(o.value ?? '') : String(o ?? '')
+                );
+            }
+            return [row.meas1, row.meas2, row.meas3, row.meas4, row.meas5]
+                .filter((v) => v != null && String(v).trim() !== '')
+                .map((v) => String(v));
+        };
+
+        const maxMeas = measurements.length > 0
+            ? Math.max(...measurements.map((r) => getOutputs(r).length), 0)
+            : 0;
+        const stations = Array.isArray(oc.measurementHeaders) && oc.measurementHeaders.length > 0
+            ? oc.measurementHeaders.map((s: any) => String(s))
+            : Array.from({ length: Math.max(maxMeas, 3) }, (_, i) => `Meas ${i + 1}`);
+
+        allData.push(['TEST: CONSISTENCY OF RADIATION OUTPUT']);
+        allData.push(['Tolerance Operator', tolOp]);
+        allData.push(['Tolerance Value (CoV)', tolVal]);
+        if (oc.ffd != null && String(oc.ffd).trim() !== '') {
+            allData.push(['FFD', oc.ffd]);
+        }
+        if (measurements.length > 0) {
+            allData.push(['Test kV', 'Test mAs', ...stations]);
+            measurements.forEach((row) => {
+                const outs = getOutputs(row);
+                allData.push([
+                    row.kvp || row.kv || '',
+                    row.mas || row.mAs || row.ma || '',
+                    ...stations.map((_: string, i: number) => outs[i] ?? ''),
+                ]);
+            });
+        }
+        allData.push([]);
     }
 
     // 6. RADIATION LEAKAGE LEVEL (Tube Housing Leakage)

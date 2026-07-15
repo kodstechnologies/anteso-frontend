@@ -1358,15 +1358,15 @@ const ViewServiceReportDentalHandHeld: React.FC = () => {
                     <div></div>
                   </div>
 
-                  {/* Exposure Level Table */}
+                  {/* Exposure Level Table — Result columns match generate TubeHousingLeakage */}
                   <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
                     <table className="w-full border-2 border-black text-sm print:text-[8px] compact-table" style={{ fontSize: '10px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
                       <thead className="bg-gray-100">
                         <tr className="bg-blue-50">
                           <th rowSpan={2} className="border border-black p-1 text-center font-bold" style={{ width: '15%', padding: '0px 2px', fontSize: '10px' }}>Location</th>
                           <th colSpan={5} className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>Exposure Level (mR/hr)</th>
-                          <th rowSpan={2} className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>Result (mR in 1 hr)</th>
-                          <th rowSpan={2} className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>Result (mGy in 1 hr)</th>
+                          <th rowSpan={2} className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>Result (mR in one hour)</th>
+                          <th rowSpan={2} className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>Result (mGy in one hour)</th>
                           <th rowSpan={2} className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>Remarks</th>
                         </tr>
                         <tr className="bg-gray-50">
@@ -1381,23 +1381,48 @@ const ViewServiceReportDentalHandHeld: React.FC = () => {
                         {measurements.map((row: any, i: number) => {
                           const gets = (val: any) => parseFloat(val) || 0;
                           const values = [row.left, row.right, row.front, row.back, row.top].map(gets).filter(v => v > 0);
-                          const rowMax = values.length > 0 ? Math.max(...values) : 0;
+                          const parsedMax = parseFloat(String(row.max ?? ""));
+                          const rowMax = !isNaN(parsedMax) && parsedMax > 0
+                            ? parsedMax
+                            : values.length > 0
+                              ? Math.max(...values)
+                              : 0;
 
-                          let resMRValue = 0;
-                          let resMGyValue = 0;
-                          let calculatedMR = "-";
-                          let calculatedMGy = "-";
-                          let remark = row.remark || "-";
+                          let calculatedMR = "—";
+                          let calculatedMGy = "—";
+                          let remark = row.remark || row.remarks || "—";
 
-                          if (rowMax > 0 && maUsed > 0 && workloadVal > 0) {
-                            resMRValue = (workloadVal * rowMax) / (60 * maUsed);
+                          // Generate stores exposures in mR/hr — same formula as TubeHousingLeakage
+                          if (row.result != null && row.result !== "" && row.result !== "-") {
+                            const savedMr = parseFloat(String(row.result));
+                            if (!isNaN(savedMr) && savedMr > 0) {
+                              calculatedMR = savedMr.toFixed(3);
+                              const savedMgy = parseFloat(String(row.mgy ?? ""));
+                              calculatedMGy = !isNaN(savedMgy) && String(row.mgy ?? "").trim() !== ""
+                                ? savedMgy.toFixed(4)
+                                : (savedMr / 114).toFixed(4);
+                            }
+                          } else if (rowMax > 0 && maUsed > 0 && workloadVal > 0) {
+                            const resMRValue = (workloadVal * rowMax) / (60 * maUsed);
                             calculatedMR = resMRValue.toFixed(3);
-                            resMGyValue = resMRValue / 114;
+                            const resMGyValue = resMRValue / 114;
                             calculatedMGy = resMGyValue.toFixed(4);
+                          }
 
-                            if (remark === "-" || !remark) {
-                              const passed = (tolOp === "less than or equal to" || tolOp === "<=") ? resMGyValue <= tolVal : resMGyValue >= tolVal;
-                              remark = passed ? "Pass" : "Fail";
+                          if ((remark === "—" || remark === "-" || !remark) && calculatedMGy !== "—") {
+                            const resMGyValue = parseFloat(calculatedMGy);
+                            const op = String(tolOp).trim().toLowerCase();
+                            const scale = 10_000;
+                            const mi = Math.round(resMGyValue * scale);
+                            const ti = Math.round(tolVal * scale);
+                            if (op === ">" || op === "greater than" || op === "gt" || op === "greater than or equal to" || op === ">=") {
+                              remark = (op.includes("equal") || op === ">=") ? (mi >= ti ? "Pass" : "Fail") : (mi > ti ? "Pass" : "Fail");
+                            } else if (op === "=" || op === "==" || op === "equals" || op === "equal to") {
+                              remark = mi === ti ? "Pass" : "Fail";
+                            } else if (op === "less than or equal to" || op === "<=") {
+                              remark = mi <= ti ? "Pass" : "Fail";
+                            } else {
+                              remark = mi < ti ? "Pass" : "Fail";
                             }
                           }
 
@@ -1426,25 +1451,32 @@ const ViewServiceReportDentalHandHeld: React.FC = () => {
                   {/* Formula and Summary Blocks */}
                   {(() => {
                     const gets = (val: any) => parseFloat(val) || 0;
-                    const getSummary = (locName: string) => {
-                      const row = measurements.find((m: any) => (m.location || '').toLowerCase().includes(locName.toLowerCase()));
+                    const getSummary = (match: (loc: string) => boolean) => {
+                      const row = measurements.find((m: any) => match(String(m.location || "").toLowerCase()));
                       if (!row) return null;
                       const values = [row.left, row.right, row.front, row.back, row.top].map(gets).filter(v => v > 0);
-                      const max = values.length > 0 ? Math.max(...values) : 0;
+                      const parsedMax = parseFloat(String(row.max ?? ""));
+                      const max = !isNaN(parsedMax) && parsedMax > 0
+                        ? parsedMax
+                        : values.length > 0
+                          ? Math.max(...values)
+                          : 0;
+                      if (max <= 0 || maUsed <= 0 || workloadVal <= 0) return null;
+                      // Generate exposures are mR/hr
                       const resMR = (workloadVal * max) / (60 * maUsed);
                       const resMGy = resMR / 114;
                       return { max, resMR, resMGy, location: row.location };
                     };
 
-                    const tubeSummary = getSummary("Tube");
-                    const collimatorSummary = getSummary("Collimator");
+                    const tubeSummary = getSummary((loc) => loc.includes("tube") && !loc.includes("collimator"));
+                    const collimatorSummary = getSummary((loc) => loc.includes("collimator"));
 
                     return (
                       <div className="space-y-4 print:space-y-1">
                         <div className="bg-gray-50 p-4 print:p-1 rounded border border-gray-200">
                           <p className="text-sm print:text-[10px] font-bold mb-2 print:mb-1">Calculation Formula:</p>
                           <div className="bg-white p-3 print:p-1 border border-dashed border-gray-400 text-center font-mono text-sm print:text-[10px]">
-                            Maximum Leakage (mR in 1 hr) = (Workload × Max Exposure) / (60 × mA used for measurement)
+                            Maximum Leakage (mR in one hour) = (Workload × Max Exposure mR/hr) / (60 × mA used for measurement)
                           </div>
                           <p className="text-[10px] print:text-[8px] mt-2 text-gray-600 italic">
                             Where: Workload = {workload} | mA = {maUsed} | 1 mGy = 114 mR
@@ -1456,10 +1488,9 @@ const ViewServiceReportDentalHandHeld: React.FC = () => {
                             <div className="border border-blue-200 rounded p-3 print:p-1 bg-blue-50/30">
                               <p className="font-bold text-xs print:text-[9px] text-blue-800 mb-2">{tubeSummary.location} Summary:</p>
                               <div className="text-[11px] print:text-[8px] space-y-1">
-                                <p>Max Measured: <strong>{tubeSummary.max} mR/hr</strong></p>
-                                <p>Result: ({workload} × {tubeSummary.max}) / (60 × {maUsed}) = <strong>{tubeSummary.resMR.toFixed(3)} mR</strong></p>
-                                <p>In mGy: {tubeSummary.resMR.toFixed(3)} / 114 = <span className="font-bold text-blue-700">{tubeSummary.resMGy.toFixed(4)} mGy</span></p>
-                                <p><strong>Result: {tubeSummary.resMGy <= tolVal ? "Pass" : "Fail"}</strong></p>
+                                <p>Max Measured: <strong>{tubeSummary.max.toFixed(2)} mR/hr</strong></p>
+                                <p>Result: <strong>{tubeSummary.resMR.toFixed(3)} mR in one hour</strong></p>
+                                <p>In mGy: <span className="font-bold text-blue-700">{tubeSummary.resMGy.toFixed(4)} mGy in one hour</span></p>
                               </div>
                             </div>
                           )}
@@ -1467,10 +1498,9 @@ const ViewServiceReportDentalHandHeld: React.FC = () => {
                             <div className="border border-indigo-200 rounded p-3 print:p-1 bg-indigo-50/30">
                               <p className="font-bold text-xs print:text-[9px] text-indigo-800 mb-2">{collimatorSummary.location} Summary:</p>
                               <div className="text-[11px] print:text-[8px] space-y-1">
-                                <p>Max Measured: <strong>{collimatorSummary.max} mR/hr</strong></p>
-                                <p>Result: ({workload} × {collimatorSummary.max}) / (60 × {maUsed}) = <strong>{collimatorSummary.resMR.toFixed(3)} mR</strong></p>
-                                <p>In mGy: {collimatorSummary.resMR.toFixed(3)} / 114 = <span className="font-bold text-indigo-700">{collimatorSummary.resMGy.toFixed(4)} mGy</span></p>
-                                <p><strong>Result: {collimatorSummary.resMGy <= tolVal ? "Pass" : "Fail"}</strong></p>
+                                <p>Max Measured: <strong>{collimatorSummary.max.toFixed(2)} mR/hr</strong></p>
+                                <p>Result: <strong>{collimatorSummary.resMR.toFixed(3)} mR in one hour</strong></p>
+                                <p>In mGy: <span className="font-bold text-indigo-700">{collimatorSummary.resMGy.toFixed(4)} mGy in one hour</span></p>
                               </div>
                             </div>
                           )}
@@ -1478,9 +1508,9 @@ const ViewServiceReportDentalHandHeld: React.FC = () => {
 
                         <div className="bg-blue-50 p-4 print:p-1 border-l-4 border-blue-500 rounded-r">
                           <p className="text-[11px] print:text-[8px] leading-relaxed">
-                            <strong>Tolerance:</strong> Maximum Leakage Radiation Level at 1 meter from the Focus should be{" "}
+                            <strong>Tolerance:</strong> Calculated leakage (in one hour) must satisfy{" "}
                             {getDisplayOp(tolOp)}{" "}
-                            <strong>{tolVal} mGy ({tolVal * 114} mR) in {tolTime} hour.</strong>
+                            <strong>{tolVal} mGy ({(tolVal * 114).toFixed(3)} mR) in {tolTime} hour.</strong>
                           </p>
                         </div>
                       </div>

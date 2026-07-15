@@ -440,6 +440,11 @@ const GenerateReportForDentalHandHeld: React.FC<DentalProps> = ({ serviceId, qaT
                 'Total Filtration Required (mm Al)': 'Required',
                 'Total Filtration At kVp': 'atKvp',
                 'kV': 'kV', 'kVp': 'kVp',
+                'Tolerance Sign': 'Tolerance_Sign', 'tolerance sign': 'Tolerance_Sign',
+                'Tolerance Value (kVp)': 'Tolerance_Value', 'Tolerance Value': 'Tolerance_Value',
+                'tolerance value (kvp)': 'Tolerance_Value', 'tolerance value': 'Tolerance_Value',
+                'Tolerance': 'Tolerance_Value', 'tolerance': 'Tolerance_Value',
+                'mA 1': 'Measured_0', 'mA 2': 'Measured_1', 'mA 3': 'Measured_2', 'mA 4': 'Measured_3', 'mA 5': 'Measured_4',
             },
             'accuracyOfIrradiationTime': {
                 'Set Time (mSec)': 'Set_Time',
@@ -465,9 +470,21 @@ const GenerateReportForDentalHandHeld: React.FC<DentalProps> = ({ serviceId, qaT
                 'Measured mR 1': 'Measured_0', 'Measured mR 2': 'Measured_1', 'Measured mR 3': 'Measured_2',
             },
             'consistencyOfRadiationOutput': {
-                'FFD': 'FFD',
-                'Test kV': 'kVp', 'Test mAs': 'mAs',
-                'Meas 1': 'Measured_0', 'Meas 2': 'Measured_1', 'Meas 3': 'Measured_2', 'Meas 4': 'Measured_3', 'Meas 5': 'Measured_4',
+                'FFD': 'FFD', 'ffd': 'FFD', 'FDD': 'FFD', 'fdd': 'FFD', 'FCD': 'FFD', 'fcd': 'FFD',
+                'Test kV': 'kVp', 'Test kVp': 'kVp', 'Test KV': 'kVp',
+                'kV': 'kVp', 'kv': 'kVp', 'KV': 'kVp',
+                'kVp': 'kVp', 'kvp': 'kVp', 'KVp': 'kVp', 'KVP': 'kVp',
+                'Test mAs': 'mAs', 'Test Mas': 'mAs',
+                'mAs': 'mAs', 'mas': 'mAs', 'MAS': 'mAs',
+                'Mean': 'Mean', 'mean': 'Mean', 'Average': 'Mean', 'average': 'Mean',
+                'CoV': 'CoV', 'cov': 'CoV', 'COV': 'CoV',
+                'Remarks': 'Remarks', 'remarks': 'Remarks', 'Remark': 'Remarks', 'remark': 'Remarks',
+                'Tolerance Operator': 'Tolerance_Operator', 'tolerance operator': 'Tolerance_Operator',
+                'Tol Operator': 'Tolerance_Operator', 'tol operator': 'Tolerance_Operator',
+                'Tolerance Value (CoV)': 'Tolerance_Value', 'Tolerance Value': 'Tolerance_Value',
+                'tolerance value (cov)': 'Tolerance_Value', 'tolerance value': 'Tolerance_Value',
+                'Tol Value': 'Tolerance_Value', 'tol value': 'Tolerance_Value',
+                'Tolerance': 'Tolerance_Value', 'tolerance': 'Tolerance_Value',
             },
             'radiationLeakageLevel': {
                 'Location': 'Table2_Area', 'Front': 'Table2_Front', 'Back': 'Table2_Back',
@@ -483,6 +500,8 @@ const GenerateReportForDentalHandHeld: React.FC<DentalProps> = ({ serviceId, qaT
                 'kV': 'kV', 'mA': 'mA', 'Time': 'Time', 'Workload': 'Workload'
             }
         };
+
+        const skipProtectionSurveyFields = new Set(['Date', 'Survey Date', 'survey date']);
 
         const sectionRowCounter: { [key: string]: number } = {};
         const testsWithMeasLabelMeta = new Set([
@@ -502,6 +521,8 @@ const GenerateReportForDentalHandHeld: React.FC<DentalProps> = ({ serviceId, qaT
                 'Applied kVp', 'applied kvp', 'Applied KVp',
                 'Measured 1', 'Measured 2', 'Measurement 1', 'Measurement 2',
                 'Measured (mm Al)', 'Required (mm Al)', 'At kVp', 'kV', 'kVp',
+                'mA 1', 'mA 2', 'mA 3', 'mA 4', 'mA 5',
+                'Tolerance Sign', 'Tolerance Value (kVp)', 'Tolerance Value', 'Tolerance',
             ]),
             linearityOfMaLoading: new Set([
                 'mA Station', 'kV', 'Time', 'FCD',
@@ -512,8 +533,16 @@ const GenerateReportForDentalHandHeld: React.FC<DentalProps> = ({ serviceId, qaT
                 'Measured mR 1', 'Measured mR 2', 'Measured mR 3', 'Measured mR 4', 'Measured mR 5',
             ]),
             consistencyOfRadiationOutput: new Set([
-                'FFD', 'Test kV', 'Test mAs',
-                'Meas 1', 'Meas 2', 'Meas 3', 'Meas 4', 'Meas 5',
+                'FFD', 'ffd', 'FDD', 'fdd', 'FCD', 'fcd',
+                'Test kV', 'Test kVp', 'Test KV',
+                'kV', 'kv', 'KV', 'kVp', 'kvp', 'KVp', 'KVP',
+                'Test mAs', 'Test Mas', 'mAs', 'mas', 'MAS',
+                'Mean', 'mean', 'Average', 'average',
+                'CoV', 'cov', 'COV',
+                'Remarks', 'remarks', 'Remark', 'remark',
+                'Tolerance Operator', 'tolerance operator', 'Tol Operator', 'tol operator',
+                'Tolerance Value (CoV)', 'Tolerance Value', 'tolerance value (cov)', 'tolerance value',
+                'Tol Value', 'tol value', 'Tolerance', 'tolerance',
             ]),
         };
         const isDynamicMeasHeader = (testName: string, header: string, map: Record<string, string>) => {
@@ -653,12 +682,21 @@ const GenerateReportForDentalHandHeld: React.FC<DentalProps> = ({ serviceId, qaT
                         }
                     }
                     if (internalField && value) {
+                        if (currentTestName === 'radiationProtectionSurvey' && skipProtectionSurveyFields.has(header)) {
+                            return;
+                        }
                         data.push({
                             'Field Name': internalField,
                             'Value': value,
                             'Row Index': rowIdx,
                             'Test Name': currentTestName,
                         });
+                    } else if (
+                        currentTestName === 'radiationProtectionSurvey' &&
+                        skipProtectionSurveyFields.has(String(header || '').trim())
+                    ) {
+                        // Explicitly ignore Survey Date / Date from Excel even if unmapped
+                        return;
                     }
                 });
             }
@@ -1276,7 +1314,7 @@ const GenerateReportForDentalHandHeld: React.FC<DentalProps> = ({ serviceId, qaT
                             testId={savedTestIds.RadiationProtectionSurveyDentalHandHeld || null}
                             onTestSaved={(id: string) => setSavedTestIds(prev => ({ ...prev, RadiationProtectionSurveyDentalHandHeld: id }))}
                             csvData={csvDataForComponents['radiationProtectionSurvey']}
-                            initialSurveyDate={qaTestDate ?? undefined}
+                            initialSurveyDate={qaTestDate ?? formData.testDate ?? undefined}
                         />
                     },
                 ].map((item, idx) => (

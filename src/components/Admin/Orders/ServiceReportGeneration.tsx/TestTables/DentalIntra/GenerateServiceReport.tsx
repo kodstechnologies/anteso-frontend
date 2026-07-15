@@ -27,6 +27,7 @@ import DetailsOfRadiationProtection from "./DetailsOfRadiationProtection";
 
 import { createDentalIntraUploadableExcel, DentalIntraExportData } from "./exportDentalIntraToExcel";
 import { isExcelFileUrl } from "../../../../../../utils/spreadsheetFile";
+import { normalizeCsvComparisonOperator } from "../shared/parseRadiographyStyleTableFormat";
 import {
     getAccuracyOfOperatingPotentialByServiceIdForDentalIntra,
     getAccuracyOfIrradiationTimeByServiceIdForDentalIntra,
@@ -462,6 +463,11 @@ const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId, qaTestDate,
                 'Total Filtration Required (mm Al)': 'Required',
                 'Total Filtration At kVp': 'atKvp',
                 'kV': 'kV', 'kVp': 'kVp',
+                'Tolerance Sign': 'Tolerance_Sign', 'tolerance sign': 'Tolerance_Sign',
+                'Tolerance Value (kVp)': 'Tolerance_Value', 'Tolerance Value': 'Tolerance_Value',
+                'tolerance value (kvp)': 'Tolerance_Value', 'tolerance value': 'Tolerance_Value',
+                'Tolerance': 'Tolerance_Value', 'tolerance': 'Tolerance_Value',
+                'mA 1': 'Measured_0', 'mA 2': 'Measured_1', 'mA 3': 'Measured_2', 'mA 4': 'Measured_3', 'mA 5': 'Measured_4',
             },
             'accuracyOfIrradiationTime': {
                 'Set Time (mSec)': 'Set_Time',
@@ -475,6 +481,11 @@ const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId, qaTestDate,
                 'mA Station': 'mA_Station',
                 'Measured mR 1': 'Measured_0', 'Measured mR 2': 'Measured_1', 'Measured mR 3': 'Measured_2', 'Measured mR 4': 'Measured_3', 'Measured mR 5': 'Measured_4',
                 'kV': 'kV', 'Time': 'time', 'FCD': 'FCD',
+                'Tolerance Operator': 'Tolerance_Operator', 'tolerance operator': 'Tolerance_Operator',
+                'Tol Operator': 'Tolerance_Operator', 'tol operator': 'Tolerance_Operator',
+                'Tolerance Sign': 'Tolerance_Operator', 'tolerance sign': 'Tolerance_Operator',
+                'Tolerance Value (CoL)': 'Tolerance', 'Tolerance Value': 'Tolerance',
+                'tolerance value (col)': 'Tolerance', 'Tol Value': 'Tolerance', 'Tolerance': 'Tolerance',
             },
             'linearityOfMasLoading': {
                 'mAs Range': 'mAs_Range',
@@ -487,9 +498,21 @@ const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId, qaTestDate,
                 'Measured mR 1': 'Measured_0', 'Measured mR 2': 'Measured_1', 'Measured mR 3': 'Measured_2',
             },
             'consistencyOfRadiationOutput': {
-                'FFD': 'FFD',
-                'Test kV': 'kVp', 'Test mAs': 'mAs',
-                'Meas 1': 'Measured_0', 'Meas 2': 'Measured_1', 'Meas 3': 'Measured_2', 'Meas 4': 'Measured_3', 'Meas 5': 'Measured_4',
+                'FFD': 'FFD', 'ffd': 'FFD', 'FDD': 'FFD', 'fdd': 'FFD', 'FCD': 'FFD', 'fcd': 'FFD',
+                'Test kV': 'kVp', 'Test kVp': 'kVp', 'Test KV': 'kVp',
+                'kV': 'kVp', 'kv': 'kVp', 'KV': 'kVp',
+                'kVp': 'kVp', 'kvp': 'kVp', 'KVp': 'kVp', 'KVP': 'kVp',
+                'Test mAs': 'mAs', 'Test Mas': 'mAs',
+                'mAs': 'mAs', 'mas': 'mAs', 'MAS': 'mAs',
+                'Mean': 'Mean', 'mean': 'Mean', 'Average': 'Mean', 'average': 'Mean',
+                'CoV': 'CoV', 'cov': 'CoV', 'COV': 'CoV',
+                'Remarks': 'Remarks', 'remarks': 'Remarks', 'Remark': 'Remarks', 'remark': 'Remarks',
+                'Tolerance Operator': 'Tolerance_Operator', 'tolerance operator': 'Tolerance_Operator',
+                'Tol Operator': 'Tolerance_Operator', 'tol operator': 'Tolerance_Operator',
+                'Tolerance Value (CoV)': 'Tolerance_Value', 'Tolerance Value': 'Tolerance_Value',
+                'tolerance value (cov)': 'Tolerance_Value', 'tolerance value': 'Tolerance_Value',
+                'Tol Value': 'Tolerance_Value', 'tol value': 'Tolerance_Value',
+                'Tolerance': 'Tolerance_Value', 'tolerance': 'Tolerance_Value',
             },
             'radiationLeakageLevel': {
                 'Location': 'Table2_Area', 'Front': 'Table2_Front', 'Back': 'Table2_Back',
@@ -525,18 +548,31 @@ const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId, qaTestDate,
                 'Applied kVp', 'applied kvp', 'Applied KVp',
                 'Measured 1', 'Measured 2', 'Measurement 1', 'Measurement 2',
                 'Measured (mm Al)', 'Required (mm Al)', 'At kVp', 'kV', 'kVp',
+                'mA 1', 'mA 2', 'mA 3', 'mA 4', 'mA 5',
+                'Tolerance Sign', 'Tolerance Value (kVp)', 'Tolerance Value', 'Tolerance',
             ]),
             linearityOfMaLoading: new Set([
                 'mA Station', 'kV', 'Time', 'FCD',
                 'Measured mR 1', 'Measured mR 2', 'Measured mR 3', 'Measured mR 4', 'Measured mR 5',
+                'Tolerance Operator', 'tolerance operator', 'Tol Operator', 'tol operator',
+                'Tolerance Sign', 'tolerance sign',
+                'Tolerance Value (CoL)', 'Tolerance Value', 'tolerance value (col)', 'Tol Value', 'Tolerance',
             ]),
             linearityOfMasLoading: new Set([
                 'mAs Range', 'kV', 'FCD',
                 'Measured mR 1', 'Measured mR 2', 'Measured mR 3', 'Measured mR 4', 'Measured mR 5',
             ]),
             consistencyOfRadiationOutput: new Set([
-                'FFD', 'Test kV', 'Test mAs',
-                'Meas 1', 'Meas 2', 'Meas 3', 'Meas 4', 'Meas 5',
+                'FFD', 'ffd', 'FDD', 'fdd', 'FCD', 'fcd',
+                'Test kV', 'Test kVp', 'Test KV',
+                'kV', 'kv', 'KV', 'kVp', 'kvp', 'KVp', 'KVP',
+                'Test mAs', 'Test Mas', 'mAs', 'mas', 'MAS',
+                'Mean', 'mean', 'Average', 'average',
+                'CoV', 'cov', 'COV',
+                'Remarks', 'remarks', 'Remark', 'remark',
+                'Tolerance Operator', 'tolerance operator', 'Tol Operator', 'tol operator',
+                'Tolerance Value (CoV)', 'Tolerance Value', 'tolerance value (cov)', 'tolerance value',
+                'Tol Value', 'tol value', 'Tolerance', 'tolerance',
             ]),
         };
         const isDynamicMeasHeader = (testName: string, header: string, map: Record<string, string>) => {
@@ -632,8 +668,10 @@ const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId, qaTestDate,
                     sectionRowCounter[currentTestName] = (sectionRowCounter[currentTestName] || 0) + 1;
                     data.push({
                         'Field Name': fieldForKey,
-                        'Value': row[1],
-                        'Row Index': sectionRowCounter[currentTestName],
+                        'Value': fieldForKey === 'Tolerance_Operator'
+                            ? normalizeCsvComparisonOperator(row[1])
+                            : row[1],
+                        'Row Index': fieldForKey.startsWith('Tolerance') ? 0 : sectionRowCounter[currentTestName],
                         'Test Name': currentTestName,
                     });
                     continue;
@@ -670,6 +708,20 @@ const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId, qaTestDate,
             }
 
             if (isReadingTest && currentTestName && headers.length > 0) {
+                // Allow RF-style key-value rows after table data (e.g. Tolerance Operator / Value)
+                const fieldForKey = (headerMap[currentTestName] || {})[firstCell];
+                if (fieldForKey && row[1] && row.slice(2).every(c => !c)) {
+                    const value = fieldForKey === 'Tolerance_Operator'
+                        ? normalizeCsvComparisonOperator(row[1])
+                        : row[1];
+                    data.push({
+                        'Field Name': fieldForKey,
+                        'Value': value,
+                        'Row Index': 0,
+                        'Test Name': currentTestName,
+                    });
+                    continue;
+                }
                 sectionRowCounter[currentTestName]++;
                 const rowIdx = sectionRowCounter[currentTestName];
                 row.forEach((value, cellIdx) => {
@@ -687,7 +739,9 @@ const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId, qaTestDate,
                         }
                         data.push({
                             'Field Name': internalField,
-                            'Value': value,
+                            'Value': internalField === 'Tolerance_Operator'
+                                ? normalizeCsvComparisonOperator(value)
+                                : value,
                             'Row Index': rowIdx,
                             'Test Name': currentTestName,
                         });
@@ -1314,6 +1368,7 @@ const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId, qaTestDate,
                             testId={savedTestIds.RadiationProtectionSurveyDentalIntra || null}
                             onTestSaved={(id) => setSavedTestIds(prev => ({ ...prev, RadiationProtectionSurveyDentalIntra: id }))}
                             csvData={csvDataForComponents['radiationProtectionSurvey']}
+                            initialSurveyDate={qaTestDate ?? formData.testDate ?? undefined}
                         />
                     },
                 ].map((item, idx) => (
