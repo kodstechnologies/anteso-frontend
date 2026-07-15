@@ -47,11 +47,10 @@ const consistencySection = (): any[][] => [
 ];
 
 const radiationLeakageSection = (): any[][] => [
-  ["FFD", "100", "kVp", "120", "mA", "10", "Time", "1.0", "Tolerance", "1.0"],
-  ["Workload", "100"],
-  ["Location", "Left", "Right", "Top", "Up", "Down", "Max Leakage", "Unit", "Remark"],
-  ["Front", "0.01", "0.02", "0.015", "0.012", "0.011", "", "", ""],
-  ["Back", "0.012", "0.014", "0.011", "0.013", "0.015", "", "", ""],
+  ["kV", "120", "mA", "10", "Time", "1.0", "Workload", "100", "Tolerance", "1.0", "Tolerance Operator", "<"],
+  ["Location", "Front", "Back", "Left", "Right", "Max Leakage", "Unit", "Remark"],
+  ["Tube", "0.01", "0.015", "0.012", "0.011", "", "mGy/h", ""],
+  ["Collimator", "0.012", "0.011", "0.014", "0.013", "", "mGy/h", ""],
 ];
 
 const radiationProtectionSurveySection = (): any[][] => [

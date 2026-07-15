@@ -1,39 +1,38 @@
-TEST: ACCURACY OF OPERATING POTENTIAL
-Applied kVp,mA 1,mA 2,Average kVp,Remarks
-60,60.2,60.5,,
-70,70.1,70.4,,
-80,80.3,80.1,,
-
-TEST: TOTAL FILTRATION
-Parameter,Measured (mm Al),Required (mm Al),At kVp
-TotalFiltration,2.6,2.5,80
-
-TEST: ACCURACY OF IRRADIATION TIME
-FCD,100,kV,70,mA,10
-Set Time (mSec),Measured Time (mSec),% Error
-100,102,
-200,198,
-
-TEST: LINEARITY OF mA LOADING
-FCD,100,kV,70,Timer,0.1
-mA Station,Measured mR 1,Measured mR 2,Measured mR 3,Average,mR/mAs
-10,2.4,2.45,2.42,,
-20,4.8,4.85,4.82,,
-
-TEST: CONSISTENCY OF RADIATION OUTPUT
-FFD,100
-kVp,mAs,Meas 1,Meas 2,Meas 3,Mean,CoV,Remarks
-80,100,10.2,10.1,10.3,,,
-
-TEST: RADIATION LEAKAGE LEVEL FROM X-RAY TUBE HOUSE
-FFD,100,kVp,120,mA,10,Time,1.0,Tolerance,1.0
-Workload,100
-Location,Left,Right,Top,Up,Down,Max Leakage,Unit,Remark
-Front,0.01,0.02,0.015,0.012,0.011,,,
-Back,0.012,0.014,0.011,0.013,0.015,,,
-
-TEST: RADIATION PROTECTION SURVEY REPORT
-Survey Date,2024-01-01,Applied Current (mA),10,Applied Voltage (kV),80,Exposure Time (s),1.0,Workload (mA.min/week),100
-LOCATION,MAX. RADIATION LEVEL (MR/HR),MR/WEEK,STATUS,RESULT
-Control Console,0.05,,,Worker
-Waiting Area,0.02,,,Public
+TEST: ACCURACY OF OPERATING POTENTIAL,,,,,,,,,,,
+Applied kVp,mA 1,mA 2,Average kVp,Remarks,,,,,,,
+60,60.2,60.5,,,,,,,,,
+70,70.1,70.4,,,,,,,,,
+80,80.3,80.1,,,,,,,,,
+,,,,,,,,,,,
+TEST: TOTAL FILTRATION,,,,,,,,,,,
+Parameter,Measured (mm Al),Required (mm Al),At kVp,,,,,,,,
+TotalFiltration,2.6,2.5,80,,,,,,,,
+,,,,,,,,,,,
+TEST: ACCURACY OF IRRADIATION TIME,,,,,,,,,,,
+FCD,100,kV,70,mA,10,,,,,,
+Set Time (mSec),Measured Time (mSec),% Error,,,,,,,,,
+100,102,,,,,,,,,,
+200,198,,,,,,,,,,
+,,,,,,,,,,,
+TEST: LINEARITY OF mA LOADING,,,,,,,,,,,
+FCD,100,kV,70,Timer,0.1,,,,,,
+mA Station,Measured mR 1,Measured mR 2,Measured mR 3,Average,mR/mAs,,,,,,
+10,2.4,2.45,2.42,,,,,,,,
+20,4.8,4.85,4.82,,,,,,,,
+,,,,,,,,,,,
+TEST: CONSISTENCY OF RADIATION OUTPUT,,,,,,,,,,,
+FFD,100,,,,,,,,,,
+kVp,mAs,Meas 1,Meas 2,Meas 3,Mean,CoV,Remarks,,,,
+80,100,10.2,10.1,10.3,,,,,,,
+,,,,,,,,,,,
+TEST: RADIATION LEAKAGE LEVEL FROM X-RAY TUBE HOUSE,,,,,,,,,,,
+kV,120,mA,10,Time,1,Workload,100,Tolerance,1,Tolerance Operator,<
+Location,Front,Back,Left,Right,Max Leakage,Unit,,,,,
+Tube,0.01,0.015,0.012,0.011,,mGy/h,,,,,
+Collimator,0.012,0.011,0.014,0.013,,mGy/h,,,,,
+,,,,,,,,,,,
+TEST: RADIATION PROTECTION SURVEY REPORT,,,,,,,,,,,
+,,Applied Current (mA),10,Applied Voltage (kV),80,Exposure Time (s),1,Workload (mA.min/week),100,,
+LOCATION,MAX. RADIATION LEVEL (MR/HR),MR/WEEK,STATUS,RESULT,,,,,,,
+Control Console,0.05,,,Worker,,,,,,,
+Waiting Area,0.02,,,Public,,,,,,,

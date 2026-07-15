@@ -263,7 +263,16 @@ const ReproducibilityOfOutput: React.FC<{
           if (data.outputRows && Array.isArray(data.outputRows) && data.outputRows.length > 0) {
             const firstRow = data.outputRows[0];
             const numCols = firstRow.outputs?.length || 5;
-            setOutputHeaders(Array.from({ length: numCols }, (_, i) => `Meas ${i + 1}`));
+            const savedHeaders = Array.isArray(data.outputHeaders) ? data.outputHeaders.filter((h: any) => h != null && String(h).trim() !== '') : [];
+            setOutputHeaders(
+              savedHeaders.length > 0
+                ? Array.from({ length: Math.max(numCols, savedHeaders.length) }, (_, i) =>
+                    savedHeaders[i] != null && String(savedHeaders[i]).trim() !== ''
+                      ? String(savedHeaders[i])
+                      : `Meas ${i + 1}`
+                  )
+                : Array.from({ length: numCols }, (_, i) => `Meas ${i + 1}`)
+            );
 
             setOutputRows(data.outputRows.map((r: any, i: number) => ({
               id: Date.now().toString() + i,
@@ -311,6 +320,7 @@ const ReproducibilityOfOutput: React.FC<{
         cov: r.cov,
         remark: r.remark || '',
       })),
+      outputHeaders,
       tolerance,
       toleranceOperator,
     };

@@ -281,13 +281,13 @@ const ImagingPhantom: React.FC<Props> = ({ serviceId, onRefresh, refreshKey, ini
         </h3>
 
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
+          <table className="min-w-[960px] w-full divide-y divide-gray-200">
             <thead className="bg-blue-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r w-16">
                   Sr No
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 tracking-wider border-r min-w-[280px] whitespace-nowrap">
                   Name of the object
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">
@@ -309,14 +309,15 @@ const ImagingPhantom: React.FC<Props> = ({ serviceId, onRefresh, refreshKey, ini
                     {index + 1}
                   </td>
 
-                  <td className="px-6 py-4 border-r">
+                  <td className="px-6 py-4 border-r min-w-[280px] align-top">
                     <input
                       type="text"
                       value={row.name}
                       onChange={(e) => updateRow(row.id, 'name', e.target.value)}
                       readOnly={isViewMode}
                       placeholder="e.g. Fibers"
-                      className={`w-full px-3 py-2 border rounded-md text-sm font-medium focus:outline-none focus:ring-2 focus:ring-teal-500 ${isViewMode
+                      title={row.name}
+                      className={`w-full min-w-[240px] px-3 py-2 border rounded-md text-sm font-medium focus:outline-none focus:ring-2 focus:ring-teal-500 ${isViewMode
                         ? 'bg-gray-50 text-gray-700 cursor-not-allowed border-gray-300'
                         : 'border-gray-300'
                         }`}
@@ -338,9 +339,9 @@ const ImagingPhantom: React.FC<Props> = ({ serviceId, onRefresh, refreshKey, ini
                     />
                   </td>
 
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="relative">
+                  <td className="px-6 py-4 min-w-[320px] align-top">
+                    <div className="flex items-start gap-3 flex-wrap">
+                      <div className="relative shrink-0">
                         <select
                           value={row.toleranceOperator}
                           onChange={(e) => updateRow(row.id, 'toleranceOperator', e.target.value as any)}
@@ -348,8 +349,7 @@ const ImagingPhantom: React.FC<Props> = ({ serviceId, onRefresh, refreshKey, ini
                           className={`appearance-none bg-white border rounded-md px-4 py-2 pr-8 text-center font-medium focus:outline-none focus:ring-2 focus:ring-teal-500 ${isViewMode
                             ? 'bg-gray-50 text-gray-600 cursor-not-allowed'
                             : 'hover:border-gray-400'
-                            }ividual
-                          }`}
+                            }`}
                         >
                           {operators.map(op => (
                             <option key={op} value={op}>{op}</option>
@@ -365,14 +365,14 @@ const ImagingPhantom: React.FC<Props> = ({ serviceId, onRefresh, refreshKey, ini
                         value={row.toleranceValue}
                         onChange={(e) => updateRow(row.id, 'toleranceValue', e.target.value)}
                         readOnly={isViewMode}
-                        className={`w-24 px-3 py-2 text-center border rounded-md font-medium focus:outline-none focus:ring-2 focus:ring-teal-500 ${isViewMode
+                        className={`w-24 shrink-0 px-3 py-2 text-center border rounded-md font-medium focus:outline-none focus:ring-2 focus:ring-teal-500 ${isViewMode
                           ? 'bg-gray-50 text-gray-700 cursor-not-allowed border-gray-300'
                           : 'border-gray-300'
                           }`}
                         placeholder="5"
                       />
 
-                      <span className="text-sm font-medium text-gray-700 whitespace-nowrap">
+                      <span className="text-sm font-medium text-gray-700 break-words max-w-md">
                         {row.name.trim() ? `${row.name.toLowerCase()} must be clearly visible` : 'objects must be clearly visible'}
                       </span>
                     </div>

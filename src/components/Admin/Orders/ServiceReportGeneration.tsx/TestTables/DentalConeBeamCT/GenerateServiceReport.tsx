@@ -190,24 +190,21 @@ const DentalConeBeamCT: React.FC<{ serviceId: string; qaTestDate?: string | null
                 'Location': 'Table2_Area', 'location': 'Table2_Area',
                 'Front': 'Table2_Front', 'front': 'Table2_Front',
                 'Back': 'Table2_Back', 'back': 'Table2_Back',
-                // Template variants that use Top/Up/Down instead of Front/Back
-                'Top': 'Table2_Front', 'top': 'Table2_Front',
-                'Up': 'Table2_Back', 'up': 'Table2_Back', 'Down': 'Table2_Back', 'down': 'Table2_Back',
                 'Left': 'Table2_Left', 'left': 'Table2_Left',
                 'Right': 'Table2_Right', 'right': 'Table2_Right',
-                'Max Leakage': 'Table2_Max', 'max leakage': 'Table2_Max',
+                'Max Leakage': 'Table2_Max', 'max leakage': 'Table2_Max', 'Max': 'Table2_Max', 'max': 'Table2_Max',
                 'Unit': 'Table2_Unit', 'unit': 'Table2_Unit',
-                'Remark': 'Table2_Remark', 'remark': 'Table2_Remark',
+                'Remark': 'Table2_Remark', 'remark': 'Table2_Remark', 'Remarks': 'Table2_Remark', 'remarks': 'Table2_Remark',
                 'kV': 'kV', 'kv': 'kV', 'KV': 'kV',
                 'kVp': 'kV', 'kvp': 'kV', 'KVp': 'kV', 'KVP': 'kV',
                 'mA': 'mA', 'ma': 'mA', 'MA': 'mA',
-                'FFD': 'FFD', 'ffd': 'FFD',
+                'FFD': 'FFD', 'ffd': 'FFD', 'FDD': 'FFD', 'fdd': 'FFD',
                 'Time': 'Time', 'time': 'Time',
                 // Workload + tolerance fields (consumed by the component)
                 'Workload': 'Workload', 'workload': 'Workload',
                 'Workload Unit': 'WorkloadUnit', 'workload unit': 'WorkloadUnit', 'WorkloadUnit': 'WorkloadUnit', 'workloadunit': 'WorkloadUnit',
                 'Tolerance': 'ToleranceValue', 'tolerance': 'ToleranceValue', 'Tolerance Value': 'ToleranceValue', 'tolerance value': 'ToleranceValue',
-                'Tolerance Operator': 'ToleranceOperator', 'tolerance operator': 'ToleranceOperator',
+                'Tolerance Operator': 'ToleranceOperator', 'tolerance operator': 'ToleranceOperator', 'Tol Operator': 'ToleranceOperator',
                 'Tolerance Time': 'ToleranceTime', 'tolerance time': 'ToleranceTime'
             },
             'radiationProtectionSurvey': {

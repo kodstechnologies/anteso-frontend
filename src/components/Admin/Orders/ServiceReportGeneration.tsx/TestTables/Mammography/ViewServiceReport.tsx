@@ -1512,7 +1512,13 @@ const ViewServiceReportMammography: React.FC = () => {
                             Output (mGy)
                           </th>
                           <th className="border border-black border-b-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px' }}>Avg Output</th>
-                          <th className="border border-black border-b-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px' }}>X ({xUnitLabel})</th>
+                          <th
+                            className="border border-black border-b-0 p-1.5 print:p-[3px] text-center"
+                            style={{ fontSize: '10px', padding: '4px 6px', minWidth: isTimerSelected ? '88px' : '72px', width: isTimerSelected ? '12%' : '10%', whiteSpace: 'normal', lineHeight: 1.25 }}
+                          >
+                            <div>X</div>
+                            <div style={{ fontSize: '9px', fontWeight: 600 }}>({xUnitLabel})</div>
+                          </th>
                           <th className="border border-black border-b-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px' }}>X MAX</th>
                           <th className="border border-black border-b-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px' }}>X MIN</th>
                           <th className="border border-black border-b-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px' }}>CoL</th>
@@ -1738,6 +1744,18 @@ const ViewServiceReportMammography: React.FC = () => {
                   };
                   const measCount = Math.max(1, ...rows.map((r: any) => deriveRowMeasCount(r)));
                   const rep = testData.reproducibilityOfOutput as any;
+                  const savedHeaders: string[] = Array.isArray(rep.outputHeaders)
+                    ? rep.outputHeaders.map((h: any, i: number) =>
+                        h != null && String(h).trim() !== '' ? String(h).trim() : `Meas ${i + 1}`
+                      )
+                    : Array.isArray(rep.measHeaders)
+                      ? rep.measHeaders.map((h: any, i: number) =>
+                          h != null && String(h).trim() !== '' ? String(h).trim() : `Meas ${i + 1}`
+                        )
+                      : [];
+                  const measHeaders = Array.from({ length: Math.max(measCount, savedHeaders.length || 0) }, (_, i) =>
+                    savedHeaders[i] || `Meas ${i + 1}`
+                  );
                   const tolOp = normalizeComparisonOperator(
                     (typeof rep.tolerance === 'object' && rep.tolerance?.operator) ||
                     rep.toleranceOperator ||
@@ -1762,57 +1780,75 @@ const ViewServiceReportMammography: React.FC = () => {
                     return NaN;
                   };
 
+                  // Same calc as generate / backend: avg 4dp, CoV 4dp (0 when <2 samples)
+                  const calcRowStats = (row: any) => {
+                    const nums = (row.outputs ?? [])
+                      .map(getVal)
+                      .filter((n: number) => !isNaN(n) && n > 0);
+
+                    if (nums.length === 0) {
+                      const savedAvg = row.avg != null && String(row.avg).trim() !== '' ? String(row.avg) : '-';
+                      const savedCov = row.cov != null && String(row.cov).trim() !== ''
+                        ? String(row.cov)
+                        : row.cv != null && String(row.cv).trim() !== ''
+                          ? String(row.cv)
+                          : '-';
+                      const savedRemark = row.remark || '-';
+                      return { avgDisplay: savedAvg, covDisplay: savedCov, remark: savedRemark };
+                    }
+
+                    const mean = nums.reduce((a: number, b: number) => a + b, 0) / nums.length;
+                    let cov = 0;
+                    if (nums.length > 1) {
+                      const variance =
+                        nums.reduce((sum: number, val: number) => sum + Math.pow(val - mean, 2), 0) /
+                        nums.length;
+                      const stdDev = Math.sqrt(variance);
+                      cov = mean > 0 ? stdDev / mean : 0;
+                    }
+                    const avgDisplay = mean.toFixed(4);
+                    const covDisplay = cov.toFixed(4);
+                    const remark = passesCoV(cov) ? 'Pass' : 'Fail';
+                    return { avgDisplay, covDisplay, remark };
+                  };
+
                   return (
                     <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
                       <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'auto', borderCollapse: 'collapse', borderSpacing: '0' }}>
                         <thead className="bg-gray-100">
                           <tr>
-                            <th className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>kV</th>
-                            <th className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>mAs</th>
-                            {Array.from({ length: measCount }, (_, i) => (
-                              <th key={i} className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>Meas {i + 1}</th>
+                            <th rowSpan={2} className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px', verticalAlign: 'middle' }}>Applied kV</th>
+                            <th rowSpan={2} className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px', verticalAlign: 'middle' }}>mAs</th>
+                            <th colSpan={measHeaders.length} className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>
+                              Radiation Output (mGy)
+                            </th>
+                            <th rowSpan={2} className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px', verticalAlign: 'middle' }}>Avg (X̄)</th>
+                            <th rowSpan={2} className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px', verticalAlign: 'middle' }}>CoV</th>
+                            <th rowSpan={2} className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px', verticalAlign: 'middle' }}>Remark</th>
+                          </tr>
+                          <tr>
+                            {measHeaders.map((header, i) => (
+                              <th key={i} className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>
+                                {header}
+                              </th>
                             ))}
-                            <th className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>Avg (X̄)</th>
-                            <th className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>CoV</th>
-                            <th className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>Remark</th>
                           </tr>
                         </thead>
                         <tbody>
                           {rows.map((row: any, i: number) => {
-                            const outputs: number[] = (row.outputs ?? []).map(getVal).filter((n: number) => !isNaN(n) && n > 0);
-                            const avg = outputs.length > 0 ? outputs.reduce((a: number, b: number) => a + b, 0) / outputs.length : null;
-                            const avgDisplay = avg !== null ? avg.toFixed(4) : (row.avg || '-');
-                            let covDisplay = '-';
-                            let remark = row.remark || '-';
-
-                            if (avg !== null && avg > 0) {
-                              const variance = outputs.reduce((s: number, v: number) => s + Math.pow(v - avg, 2), 0) / outputs.length;
-                              const cov = Math.sqrt(variance) / avg;
-                              if (isFinite(cov)) {
-                                covDisplay = cov.toFixed(3);
-                                remark = passesCoV(cov) ? 'Pass' : 'Fail';
-                              }
-                            } else if (row.cov || row.cv) {
-                              const rawCv = row.cov || row.cv;
-                              const cvNum = parseFloat(rawCv);
-                              if (!isNaN(cvNum)) {
-                                const covNormalized = cvNum > 1 ? (cvNum / 100) : cvNum;
-                                covDisplay = covNormalized.toFixed(3);
-                                remark = passesCoV(covNormalized) ? 'Pass' : 'Fail';
-                              }
-                            }
+                            const { avgDisplay, covDisplay, remark } = calcRowStats(row);
 
                             return (
                               <tr key={i} className="text-center font-medium">
                                 <td className="border border-black p-1 text-center font-semibold" style={{ padding: '0px 2px', fontSize: '10px' }}>{row.kv || "-"}</td>
                                 <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{row.mas || (row.mAs || "-")}</td>
-                                {Array.from({ length: measCount }, (_, idx) => {
+                                {measHeaders.map((_: string, idx: number) => {
                                   let val = "-";
                                   const raw = (row.outputs ?? [])[idx];
-                                  if (raw != null) {
-                                    val = (typeof raw === 'object' && 'value' in raw) ? raw.value : String(raw);
-                                  } else {
-                                    val = row[`meas${idx + 1}`] || "-";
+                                  if (raw != null && String(raw).trim() !== '') {
+                                    val = (typeof raw === 'object' && 'value' in raw) ? String(raw.value) : String(raw);
+                                  } else if (row[`meas${idx + 1}`] != null && String(row[`meas${idx + 1}`]).trim() !== '') {
+                                    val = String(row[`meas${idx + 1}`]);
                                   }
                                   return (
                                     <td key={idx} className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{val}</td>

@@ -50,7 +50,7 @@ const MAMMOGRAPHY_FIXED_HEADERS_BY_TEST: Record<string, Set<string>> = {
     ]),
     'Linearity of mAs Loading Stations': new Set([
         ...MAMMOGRAPHY_DISTANCE_HEADER_ALIASES,
-        'kV', 'mAs Range', 'mAs Applied', 'Tolerance', 'Tolerance Operator', 'Tol Operator',
+        'kV', 'mAs', 'mAs Range', 'mAs Applied', 'Tolerance', 'Tolerance Operator', 'Tol Operator', 'Tol Value',
     ]),
     'Linearity of mA Loading Stations': new Set([
         ...MAMMOGRAPHY_DISTANCE_HEADER_ALIASES,
@@ -360,10 +360,13 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
                 'FDD': 'Table1_FCD', 'FDD (cm)': 'Table1_FCD',
                 'FFD': 'Table1_FCD', 'FFD (cm)': 'Table1_FCD',
                 'kV': 'Table1_kV',
+                'mAs': 'Table2_mAsApplied',
                 'mAs Applied': 'Table2_mAsApplied',
                 'mAs Range': 'Table2_mAsApplied',
                 'Tolerance Operator': 'ToleranceOperator',
+                'Tol Operator': 'ToleranceOperator',
                 'Tolerance': 'Tolerance',
+                'Tol Value': 'Tolerance',
             },
             'Linearity of mA Loading Stations': {
                 'FCD': 'Table1_FCD', 'FCD (cm)': 'Table1_FCD',
@@ -430,8 +433,12 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
                 headers = row;
                 sectionMeasColIndices = [];
                 if (currentTestName && MAMMOGRAPHY_MEAS_FIELD_PREFIX_BY_TEST[currentTestName]) {
+                    const namedMap = headerMap[currentTestName] || {};
                     headers.forEach((headerCell, colIdx) => {
                         const trimmed = (headerCell || '').trim();
+                        if (!trimmed) return;
+                        // Named columns (e.g. mAs / mA) must never become Meas* fields
+                        if (namedMap[trimmed]) return;
                         if (!isMammographyMeasColumn(currentTestName, trimmed)) return;
                         sectionMeasColIndices.push(colIdx);
                         data.push({
@@ -463,6 +470,7 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
                     if (!header) return;
                     let internalField = map[header];
                     if (!internalField && measPrefix) {
+                        // Prefer named fields; only fall back to Meas* for true measurement columns
                         const measIdx = sectionMeasColIndices.indexOf(cellIdx);
                         if (measIdx >= 0) {
                             internalField = `${measPrefix}${measIdx + 1}`;
@@ -887,7 +895,12 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
                         }
                         if (field === 'Tolerance') tolerance = value;
                         if (field === 'ToleranceOperator') toleranceOperator = value;
-                        if (field === 'MeasHeader' && value && !measHeaderList.includes(value)) measHeaderList.push(value);
+                        if (field === 'MeasHeader' && value && !measHeaderList.includes(value)) {
+                            // Ignore accidental capture of fixed columns (old buggy imports)
+                            if (!/^(mAs|mA|kV|FDD|FCD|FFD)(\s*\(.*\))?$/i.test(value)) {
+                                measHeaderList.push(value);
+                            }
+                        }
                         if (field.startsWith('Table2_')) {
                             while (table2.length <= idx) {
                                 table2.push({ mAsRange: '', measuredOutputs: [] as string[] });
