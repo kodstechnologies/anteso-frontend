@@ -206,9 +206,6 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, refreshKey, ini
   useEffect(() => {
     if (initialData) {
       console.log('RadiationProtectionSurvey: Loading initial data from CSV:', initialData);
-      if (initialData.surveyDate) {
-        setSurveyDate(normalizeDateForInput(initialData.surveyDate));
-      }
       if (initialData.hasValidCalibration !== undefined) {
         setHasValidCalibration(initialData.hasValidCalibration);
       }

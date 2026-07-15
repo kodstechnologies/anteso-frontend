@@ -408,7 +408,7 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
                 'Name': 'PhantomRow_Name', 'Visible Count': 'PhantomRow_VisibleCount', 'Tol Operator': 'PhantomRow_ToleranceOperator', 'Tol Value': 'PhantomRow_ToleranceValue',
             },
             'Radiation Protection Survey': {
-                'Date': 'SurveyDate', 'Calibrated': 'HasValidCalibration', 'mA': 'AppliedCurrent', 'kV': 'AppliedVoltage', 'Time': 'ExposureTime', 'Workload': 'Workload',
+                'Calibrated': 'HasValidCalibration', 'mA': 'AppliedCurrent', 'kV': 'AppliedVoltage', 'Time': 'ExposureTime', 'Workload': 'Workload',
                 'Location': 'Location_Location', 'mR/hr': 'Location_mRPerHr', 'Category': 'Location_Category',
             },
         };
@@ -1345,7 +1345,6 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
             if (groupedData['Radiation Protection Survey'] && groupedData['Radiation Protection Survey'].length > 0) {
                 try {
                     const data = groupedData['Radiation Protection Survey'];
-                    let surveyDate = '';
                     let hasValidCalibration = '';
                     let appliedCurrent = '100';
                     let appliedVoltage = '28';
@@ -1358,7 +1357,8 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
                         const value = row['Value'] || '';
                         const rowIndex = parseInt(row['Row Index'] || '0');
 
-                        if (field === 'SurveyDate') surveyDate = value;
+                        // Survey date is never taken from Excel — UI uses SRF / form test date
+                        if (field === 'SurveyDate' || /^survey\s*date$/i.test(field) || field === 'Date') return;
                         if (field === 'HasValidCalibration') hasValidCalibration = value;
                         if (field === 'AppliedCurrent') appliedCurrent = value;
                         if (field === 'AppliedVoltage') appliedVoltage = value;
@@ -1382,12 +1382,11 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
                         }
                     });
 
-                    if (locations.length > 0 || surveyDate || hasValidCalibration) {
+                    if (locations.length > 0 || hasValidCalibration) {
                         // Store data for component instead of saving
                         setCsvDataForComponents(prev => ({
                             ...prev,
                             radiationProtectionSurvey: {
-                                surveyDate,
                                 hasValidCalibration,
                                 appliedCurrent,
                                 appliedVoltage,

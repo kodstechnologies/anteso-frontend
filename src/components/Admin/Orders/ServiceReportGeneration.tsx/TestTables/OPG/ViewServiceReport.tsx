@@ -891,9 +891,6 @@ const ViewServiceReportOPG: React.FC = () => {
         {/* PAGE 2+ - SUMMARY TABLE */}
         <ReportPage>
           <div className="max-w-5xl mx-auto print:max-w-none" style={{ width: '100%', maxWidth: 'none' }}>
-            <h2 className="text-center text-2xl font-bold underline mb-4 print:mb-2 print:text-xl">
-              SUMMARY OF QA TEST RESULTS
-            </h2>
             <MainTestTableForOPG testData={testData} />
           </div>
         </ReportPage>

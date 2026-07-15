@@ -227,7 +227,12 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
             kv: data.table1?.kv || '',
             time: data.table1?.time || '',
           });
-          // Note: CBCT doesn't have measHeaders, we'll use default
+          if (Array.isArray(data.measHeaders) && data.measHeaders.length > 0) {
+            setMeasHeaders(data.measHeaders);
+          } else if (data.table2?.[0]?.measuredOutputs?.length) {
+            const count = data.table2[0].measuredOutputs.length;
+            setMeasHeaders(Array.from({ length: count }, (_, i) => `Measured mR ${i + 1}`));
+          }
           if (Array.isArray(data.table2) && data.table2.length > 0) {
             setTable2Rows(
               data.table2.map((r: any, i: number) => ({
@@ -242,11 +247,6 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
                 remarks: r.remarks || '',
               }))
             );
-            // Set measHeaders based on first row's measuredOutputs length
-            if (data.table2[0]?.measuredOutputs?.length) {
-              const count = data.table2[0].measuredOutputs.length;
-              setMeasHeaders(Array.from({ length: count }, (_, i) => `Measured mR ${i + 1}`));
-            }
           }
           setTolerance(data.tolerance || '0.1');
           setToleranceOperator(data.toleranceOperator || '<=');
@@ -388,6 +388,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
         })),
         tolerance,
         toleranceOperator,
+        measHeaders,
       };
 
       let result;
@@ -525,50 +526,51 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
         <div className="px-4 py-3 bg-blue-50 border-b">
           <h3 className="text-lg font-semibold text-blue-900">{sectionTitle}</h3>
         </div>
-        <table className="min-w-full divide-y divide-gray-200">
+        <div className="overflow-x-auto w-full">
+        <table className="w-max min-w-full divide-y divide-gray-200">
           <thead className="bg-blue-50">
             <tr>
               {/* Header – make mA column wider */}
               <th
                 rowSpan={2}
-                className="px-6 py-3 w-28 text-left text-xs font-medium text-gray-700  tracking-wider border-r whitespace-nowrap"
+                className="px-6 py-3 w-28 min-w-[7rem] text-left text-xs font-medium text-gray-700 tracking-wider border-r whitespace-nowrap sticky left-0 bg-blue-50 z-10"
               >
                 mA
               </th>
               <th
                 colSpan={measHeaders.length}
-                className="px-4 py-3 text-center text-xs font-medium text-gray-700  tracking-wider border-r"
+                className="px-4 py-3 text-center text-xs font-medium text-gray-700 tracking-wider border-r"
               >
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-2 min-w-max">
                   <span>Output (mGy)</span>
                   {!isViewMode && (
-                    <button onClick={addMeasColumn} className="p-1 text-green-600 hover:bg-green-100 rounded">
+                    <button onClick={addMeasColumn} className="p-1 text-green-600 hover:bg-green-100 rounded shrink-0">
                       <Plus className="w-4 h-4" />
                     </button>
                   )}
                 </div>
               </th>
-              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">Avg Output</th>
-              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">X ({xUnitLabel})</th>
-              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">X MAX</th>
-              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">X MIN</th>
-              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">CoL</th>
-              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider">Remarks</th>
+              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 tracking-wider border-r whitespace-nowrap min-w-[6rem]">Avg Output</th>
+              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 tracking-wider border-r whitespace-nowrap min-w-[6rem]">X ({xUnitLabel})</th>
+              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 tracking-wider border-r whitespace-nowrap min-w-[5rem]">X MAX</th>
+              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 tracking-wider border-r whitespace-nowrap min-w-[5rem]">X MIN</th>
+              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 tracking-wider border-r whitespace-nowrap min-w-[4rem]">CoL</th>
+              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 tracking-wider whitespace-nowrap min-w-[5rem]">Remarks</th>
               <th rowSpan={2} className="w-10" />
             </tr>
             <tr>
               {measHeaders.map((header, idx) => (
-                <th key={idx} className="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider border-r">
+                <th key={idx} className="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider border-r min-w-[7rem]">
                   <div className="flex items-center justify-center gap-1">
                     <input
                       type="text"
                       value={header}
                       onChange={e => updateMeasHeader(idx, e.target.value)}
                       disabled={isViewMode}
-                      className={`w-20 px-1 py-0.5 text-xs border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'}`}
+                      className={`w-20 min-w-[5rem] px-1 py-0.5 text-xs border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'}`}
                     />
                     {measHeaders.length > 1 && !isViewMode && (
-                      <button onClick={() => removeMeasColumn(idx)} className="p-0.5 text-red-600 hover:bg-red-100 rounded">
+                      <button onClick={() => removeMeasColumn(idx)} className="p-0.5 text-red-600 hover:bg-red-100 rounded shrink-0">
                         <Trash2 className="w-3 h-3" />
                       </button>
                     )}
@@ -580,34 +582,34 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
           <tbody className="bg-white divide-y divide-gray-200">
             {processedTable2.rows.map((p, rowIdx) => (
               <tr key={p.id} className="hover:bg-gray-50">
-                <td className="px-4 py-2 border-r">
+                <td className="px-4 py-2 border-r min-w-[7rem] sticky left-0 bg-white z-10">
                   <input
                     type="text"
                     value={p.ma}
                     onChange={e => updateTable2Cell(p.id, 'ma', e.target.value)}
                     disabled={isViewMode}
-                    className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'}`}
+                    className={`w-full min-w-[5rem] px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'}`}
                     placeholder="100"
                   />
                 </td>
 
                 {p.measuredOutputs.map((val, colIdx) => (
-                  <td key={colIdx} className="px-2 py-2 border-r">
+                  <td key={colIdx} className="px-2 py-2 border-r min-w-[7rem]">
                     <input
                       type="number"
                       step="any"
                       value={val}
                       onChange={e => updateTable2Cell(p.id, colIdx, e.target.value)}
                       disabled={isViewMode}
-                      className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'}`}
+                      className={`w-full min-w-[5rem] px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'}`}
                     />
                   </td>
                 ))}
 
-                <td className="px-4 py-2 text-center border-r font-medium bg-gray-50">
+                <td className="px-4 py-2 text-center border-r font-medium bg-gray-50 whitespace-nowrap min-w-[6rem]">
                   {p.average}
                 </td>
-                <td className="px-4 py-2 text-center border-r font-medium bg-gray-50">
+                <td className="px-4 py-2 text-center border-r font-medium bg-gray-50 whitespace-nowrap min-w-[6rem]">
                   {p.x}
                 </td>
                 {/* Show X MAX / X MIN / CoL only once using rowSpan, centered vertically */}
@@ -615,25 +617,25 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
                   <>
                     <td
                       rowSpan={processedTable2.summary.rowSpan}
-                      className="px-4 py-2 text-center border-r font-medium bg-yellow-50 align-middle"
+                      className="px-4 py-2 text-center border-r font-medium bg-yellow-50 align-middle whitespace-nowrap min-w-[5rem]"
                     >
                       {processedTable2.summary.xMax}
                     </td>
                     <td
                       rowSpan={processedTable2.summary.rowSpan}
-                      className="px-4 py-2 text-center border-r font-medium bg-yellow-50 align-middle"
+                      className="px-4 py-2 text-center border-r font-medium bg-yellow-50 align-middle whitespace-nowrap min-w-[5rem]"
                     >
                       {processedTable2.summary.xMin}
                     </td>
                     <td
                       rowSpan={processedTable2.summary.rowSpan}
-                      className="px-4 py-2 text-center border-r font-medium bg-yellow-50 align-middle"
+                      className="px-4 py-2 text-center border-r font-medium bg-yellow-50 align-middle whitespace-nowrap min-w-[4rem]"
                     >
                       {processedTable2.summary.col}
                     </td>
                     <td
                       rowSpan={processedTable2.summary.rowSpan}
-                      className="px-4 py-2 text-center align-middle"
+                      className="px-4 py-2 text-center align-middle min-w-[5rem]"
                     >
                       <span
                         className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${processedTable2.summary.remarks === 'Pass'
@@ -663,6 +665,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
             ))}
           </tbody>
         </table>
+        </div>
 
         <div className="px-4 py-3 bg-gray-50 border-t flex justify-between items-center">
           {!isViewMode && (

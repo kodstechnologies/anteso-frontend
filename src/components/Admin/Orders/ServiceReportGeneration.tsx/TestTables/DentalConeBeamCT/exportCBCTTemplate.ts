@@ -55,8 +55,6 @@ const radiationLeakageSection = (): any[][] => [
 
 const radiationProtectionSurveySection = (): any[][] => [
   [
-    "Survey Date",
-    "2024-01-01",
     "Applied Current (mA)",
     "10",
     "Applied Voltage (kV)",

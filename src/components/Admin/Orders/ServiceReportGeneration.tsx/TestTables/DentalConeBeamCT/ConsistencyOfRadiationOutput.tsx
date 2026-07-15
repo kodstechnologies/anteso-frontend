@@ -203,7 +203,13 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
               };
             }) || outputRows
           );
-          setHeaders(data.measurementHeaders || headers);
+          setHeaders(
+            Array.isArray(data.measurementHeaders) && data.measurementHeaders.some((h: any) => String(h ?? "").trim() !== "")
+              ? data.measurementHeaders.map((h: any, i: number) =>
+                  String(h ?? "").trim() || `Meas ${i + 1}`
+                )
+              : headers
+          );
           setIsSaved(true);
         } else if (!data) {
           setIsSaved(false);
@@ -441,52 +447,52 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
         <h3 className="px-6 py-3 text-lg font-semibold bg-teal-50 border-b">
           Radiation Output Consistency
         </h3>
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
+        <div className="overflow-x-auto w-full">
+          <table className="w-max min-w-full divide-y divide-gray-200">
             <thead className="bg-blue-50">
               <tr>
-                <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  border-r">
+                <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 border-r whitespace-nowrap min-w-[5rem] sticky left-0 bg-blue-50 z-10">
                   kVp
                 </th>
-                <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  border-r">
+                <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 border-r whitespace-nowrap min-w-[5rem]">
                   mAs
                 </th>
                 <th
                   colSpan={headers.length}
-                  className="px-4 py-3 text-center text-xs font-medium text-gray-700  border-r relative"
+                  className="px-4 py-3 text-center text-xs font-medium text-gray-700 border-r relative"
                 >
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-2 min-w-max">
                     <span>Radiation Output (mGy)</span>
                     {!isViewMode && (
-                      <button onClick={addColumn} className="p-1 text-green-600 hover:bg-green-100 rounded">
+                      <button onClick={addColumn} className="p-1 text-green-600 hover:bg-green-100 rounded shrink-0">
                         <Plus className="w-4 h-4" />
                       </button>
                     )}
                   </div>
                 </th>
-                <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  border-r">
+                <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 border-r whitespace-nowrap min-w-[5rem]">
                   Mean (X̄)
                 </th>
-                <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  border-r">
+                <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 border-r whitespace-nowrap min-w-[5rem]">
                   CoV
                 </th>
-                <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  border-r">
+                <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700 border-r whitespace-nowrap min-w-[5rem]">
                   Remarks
                 </th>
               </tr>
               <tr>
                 {headers.map((h, i) => (
-                  <th key={i} className="px-2 py-2 text-center text-xs font-medium text-gray-700 uppercase border-r">
+                  <th key={i} className="px-2 py-2 text-center text-xs font-medium text-gray-700 uppercase border-r min-w-[7rem]">
                     <div className="flex items-center justify-center gap-1">
                       <input
                         type="text"
                         value={h}
                         onChange={(e) => updateHeader(i, e.target.value)}
                         disabled={isViewMode}
-                        className={`w-20 px-1 py-0.5 text-xs border rounded focus:outline-none focus:ring-2 focus:ring-teal-500 ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+                        className={`w-20 min-w-[5rem] px-1 py-0.5 text-xs border rounded focus:outline-none focus:ring-2 focus:ring-teal-500 ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
                       />
                       {headers.length > 1 && !isViewMode && (
-                        <button onClick={() => removeColumn(i)} className="text-red-600 hover:bg-red-100 p-0.5 rounded">
+                        <button onClick={() => removeColumn(i)} className="text-red-600 hover:bg-red-100 p-0.5 rounded shrink-0">
                           <Trash2 className="w-3 h-3" />
                         </button>
                       )}
@@ -498,45 +504,45 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
             <tbody className="bg-white divide-y divide-gray-200">
               {processedRows.map((row) => (
                 <tr key={row.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-2 border-r">
+                  <td className="px-4 py-2 border-r min-w-[5rem] sticky left-0 bg-white z-10">
                     <input
                       type="text"
                       value={row.kvp}
                       onChange={(e) => updateOutputCell(row.id, 'kvp', e.target.value)}
                       disabled={isViewMode}
-                      className={`w-full px-2 py-1 border rounded text-center text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+                      className={`w-full min-w-[4rem] px-2 py-1 border rounded text-center text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
                       placeholder="120"
                     />
                   </td>
-                  <td className="px-4 py-2 border-r">
+                  <td className="px-4 py-2 border-r min-w-[5rem]">
                     <input
                       type="text"
                       value={row.mas}
                       onChange={(e) => updateOutputCell(row.id, 'mas', e.target.value)}
                       disabled={isViewMode}
-                      className={`w-full px-2 py-1 border rounded text-center text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+                      className={`w-full min-w-[4rem] px-2 py-1 border rounded text-center text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
                       placeholder="100"
                     />
                   </td>
                   {headers.map((_, idx) => (
-                    <td key={idx} className="px-2 py-2 border-r">
+                    <td key={idx} className="px-2 py-2 border-r min-w-[7rem]">
                       <input
                         type="text"
                         value={row.outputs[idx] ?? ''}
                         onChange={(e) => updateOutputCell(row.id, idx, e.target.value)}
                         disabled={isViewMode}
-                        className={`w-full px-2 py-1 border rounded text-center text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+                        className={`w-full min-w-[5rem] px-2 py-1 border rounded text-center text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
                         placeholder="0.00"
                       />
                     </td>
                   ))}
-                  <td className="px-4 py-2 border-r text-center font-medium">
+                  <td className="px-4 py-2 border-r text-center font-medium whitespace-nowrap min-w-[5rem]">
                     {row.mean ? parseFloat(row.mean).toFixed(3) : '-'}
                   </td>
-                  <td className="px-4 py-2 border-r text-center font-medium">
+                  <td className="px-4 py-2 border-r text-center font-medium whitespace-nowrap min-w-[5rem]">
                     {row.cov ? parseFloat(row.cov).toFixed(4) : '-'}
                   </td>
-                  <td className="px-4 py-2 border-r text-center">
+                  <td className="px-4 py-2 border-r text-center min-w-[5rem]">
                     {row.remarks && (
                       <span
                         className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${row.remarks === 'Pass'

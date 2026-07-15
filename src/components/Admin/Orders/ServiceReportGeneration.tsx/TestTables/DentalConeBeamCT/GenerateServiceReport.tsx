@@ -215,7 +215,7 @@ const DentalConeBeamCT: React.FC<{ serviceId: string; qaTestDate?: string | null
                 'RESULT': 'Result', 'result': 'Result',
                 'LOCATION ': 'Location', 'MAX. RADIATION LEVEL (mR/hr)': 'mR_hr',
                 'Category': 'Category', 'category': 'Category',
-                // Settings row labels
+                // Settings row labels (Survey Date intentionally omitted — never imported from Excel)
                 'Applied Current (mA)': 'mA', 'APPLIED CURRENT (MA)': 'mA',
                 'Applied Voltage (kV)': 'kV', 'APPLIED VOLTAGE (KV)': 'kV',
                 'Exposure Time (s)': 'Time', 'EXPOSURE TIME (S)': 'Time',
@@ -363,6 +363,8 @@ const DentalConeBeamCT: React.FC<{ serviceId: string; qaTestDate?: string | null
                         const label = row[idx];
                         const value = row[idx + 1];
                         if (!label || !value) continue;
+                        // Survey date is always taken from SRF / UI — never from Excel
+                        if (/^survey\s*date$/i.test(String(label).trim())) continue;
                         const internalLabel = map[label];
                         const internalValueAsHeader = map[value];
                         if (internalLabel && value) {

@@ -624,8 +624,10 @@ const ViewServiceReportMammography: React.FC = () => {
                 })
               };
             })(),
-            maLoadingStations: maLoadingStationsRes || (data.LinearityOfMaLoadingStationsMammography ? (() => {
-              const linearity = data.LinearityOfMaLoadingStationsMammography;
+            maLoadingStations: (() => {
+              const linearity = maLoadingStationsRes || data.LinearityOfMaLoadingStationsMammography;
+              if (!linearity) return null;
+
               const rows = linearity.table2 || [];
               const xValues: number[] = [];
 
@@ -674,9 +676,23 @@ const ViewServiceReportMammography: React.FC = () => {
               const tolOp = normalizeComparisonOperator((linearity as any).toleranceOperator || "<=");
               const isPass = hasData ? compareByOperator(colNum, tol, tolOp) : false;
 
+              const maxMeas = Math.max(
+                0,
+                ...rows.map((r: any) => (Array.isArray(r.measuredOutputs) ? r.measuredOutputs.length : 0))
+              );
+              const savedHeaders = Array.isArray(linearity.measHeaders)
+                ? linearity.measHeaders.map((h: any) => String(h ?? "").trim()).filter(Boolean)
+                : [];
+              const measHeaders =
+                maxMeas > 0 || savedHeaders.length > 0
+                  ? Array.from({ length: Math.max(maxMeas, savedHeaders.length) }, (_, i) =>
+                      savedHeaders[i] || `Meas ${i + 1}`
+                    )
+                  : ["Meas 1", "Meas 2", "Meas 3"];
+
               return {
                 ...linearity,
-                measHeaders: linearity.measHeaders || ["Meas 1", "Meas 2", "Meas 3"],
+                measHeaders,
                 toleranceOperator: tolOp,
                 table2: calculatedMeasurements.map((m: any) => ({
                   ...m,
@@ -690,7 +706,7 @@ const ViewServiceReportMammography: React.FC = () => {
                 col,
                 remarks: hasData ? (isPass ? "Pass" : "Fail") : "-"
               };
-            })() : null),
+            })(),
             totalFiltrationAndAluminium: totalFiltrationRes || data.TotalFilterationAndAlluminiumMammography || null,
             reproducibilityOfOutput: (() => {
               const raw = reproducibilityRes || data.ReproducibilityOfRadiationOutputMammography || null;
@@ -712,10 +728,34 @@ const ViewServiceReportMammography: React.FC = () => {
                 (raw as any).FDD ??
                 (raw as any).testConditions?.fdd ??
                 "";
+              const rows = Array.isArray(raw.outputRows) ? raw.outputRows : [];
+              const maxMeas = Math.max(
+                0,
+                ...rows.map((r: any) => (Array.isArray(r.outputs) ? r.outputs.length : 0))
+              );
+              const savedHeaders = (
+                Array.isArray((raw as any).outputHeaders)
+                  ? (raw as any).outputHeaders
+                  : Array.isArray((raw as any).measHeaders)
+                    ? (raw as any).measHeaders
+                    : Array.isArray((raw as any).measurementHeaders)
+                      ? (raw as any).measurementHeaders
+                      : []
+              )
+                .map((h: any) => String(h ?? "").trim())
+                .filter(Boolean);
+              const outputHeaders =
+                maxMeas > 0 || savedHeaders.length > 0
+                  ? Array.from({ length: Math.max(maxMeas, savedHeaders.length) }, (_, i) =>
+                      savedHeaders[i] || `Meas ${i + 1}`
+                    )
+                  : ["Meas 1", "Meas 2", "Meas 3", "Meas 4", "Meas 5"];
               return {
                 ...raw,
                 fdd: fddVal !== undefined && fddVal !== null ? String(fddVal) : "",
                 tolerance: toleranceNormalized,
+                outputHeaders,
+                measHeaders: outputHeaders,
               };
             })(),
             radiationLeakageLevel: leakageRes || data.RadiationLeakageLevelMammography || null,
@@ -1501,6 +1541,20 @@ const ViewServiceReportMammography: React.FC = () => {
                   const timeStr = timeRaw != null ? String(timeRaw).trim() : '';
                   const isTimerSelected = timeStr !== '';
                   const xUnitLabel = isTimerSelected ? 'mGy/(mA*s)' : 'mGy/mA';
+                  const tableRows = testData.maLoadingStations.table2 || [];
+                  const maxMeas = Math.max(
+                    0,
+                    ...tableRows.map((r: any) => (Array.isArray(r.measuredOutputs) ? r.measuredOutputs.length : 0))
+                  );
+                  const savedHeaders = Array.isArray(testData.maLoadingStations.measHeaders)
+                    ? testData.maLoadingStations.measHeaders.map((h: any) => String(h ?? "").trim()).filter(Boolean)
+                    : [];
+                  const measHeaders =
+                    maxMeas > 0 || savedHeaders.length > 0
+                      ? Array.from({ length: Math.max(maxMeas, savedHeaders.length) }, (_, i) =>
+                          savedHeaders[i] || `Meas ${i + 1}`
+                        )
+                      : ["Meas 1", "Meas 2", "Meas 3"];
 
                   return (
                   <div className="overflow-x-auto mb-6 print:mb-1 print:overflow-visible" style={{ marginBottom: '4px' }}>
@@ -1508,7 +1562,7 @@ const ViewServiceReportMammography: React.FC = () => {
                       <thead className="bg-gray-100">
                         <tr>
                           <th className="border border-black border-b-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px' }}>mA Applied</th>
-                          <th colSpan={testData.maLoadingStations.measHeaders?.length || 0} className="border border-black p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px' }}>
+                          <th colSpan={measHeaders.length} className="border border-black p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px' }}>
                             Output (mGy)
                           </th>
                           <th className="border border-black border-b-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px' }}>Avg Output</th>
@@ -1526,7 +1580,7 @@ const ViewServiceReportMammography: React.FC = () => {
                         </tr>
                         <tr>
                           <th className="border border-black border-t-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px' }}></th>
-                          {testData.maLoadingStations.measHeaders?.map((header: string, idx: number) => (
+                          {measHeaders.map((header: string, idx: number) => (
                             <th key={idx} className="border border-black p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px' }}>
                               {header || `Meas ${idx + 1}`}
                             </th>
@@ -1541,7 +1595,7 @@ const ViewServiceReportMammography: React.FC = () => {
                       </thead>
                       <tbody>
                         {(() => {
-                          const rows = testData.maLoadingStations.table2;
+                          const rows = tableRows;
                           const tolVal = parseFloat(testData.maLoadingStations.tolerance ?? '0.1') || 0.1;
                           const tolOp = normalizeComparisonOperator(testData.maLoadingStations.toleranceOperator || "<=");
 
@@ -1597,7 +1651,7 @@ const ViewServiceReportMammography: React.FC = () => {
                           return processedRows.map((row: any, i: number) => (
                             <tr key={i} className="text-center" style={{ fontSize: '10px' }}>
                               <td className="border border-black p-1.5 print:p-[3px] text-center font-medium" style={{ fontSize: '10px', padding: '5px' }}>{formatV(row.mAsApplied || row.ma)}</td>
-                              {testData.maLoadingStations.measHeaders?.map((_: string, idx: number) => (
+                              {measHeaders.map((_: string, idx: number) => (
                                 <td key={idx} className="border border-black p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px' }}>
                                   {formatV(row.measuredOutputs?.[idx])}
                                 </td>
@@ -1744,17 +1798,19 @@ const ViewServiceReportMammography: React.FC = () => {
                   };
                   const measCount = Math.max(1, ...rows.map((r: any) => deriveRowMeasCount(r)));
                   const rep = testData.reproducibilityOfOutput as any;
-                  const savedHeaders: string[] = Array.isArray(rep.outputHeaders)
-                    ? rep.outputHeaders.map((h: any, i: number) =>
-                        h != null && String(h).trim() !== '' ? String(h).trim() : `Meas ${i + 1}`
-                      )
+                  const rawSaved: any[] = Array.isArray(rep.outputHeaders)
+                    ? rep.outputHeaders
                     : Array.isArray(rep.measHeaders)
-                      ? rep.measHeaders.map((h: any, i: number) =>
-                          h != null && String(h).trim() !== '' ? String(h).trim() : `Meas ${i + 1}`
-                        )
-                      : [];
-                  const measHeaders = Array.from({ length: Math.max(measCount, savedHeaders.length || 0) }, (_, i) =>
-                    savedHeaders[i] || `Meas ${i + 1}`
+                      ? rep.measHeaders
+                      : Array.isArray(rep.measurementHeaders)
+                        ? rep.measurementHeaders
+                        : [];
+                  const cleanedSaved = rawSaved
+                    .map((h: any) => String(h ?? "").trim())
+                    .filter(Boolean);
+                  const measHeaders = Array.from(
+                    { length: Math.max(measCount, cleanedSaved.length || 0) },
+                    (_, i) => cleanedSaved[i] || `Meas ${i + 1}`
                   );
                   const tolOp = normalizeComparisonOperator(
                     (typeof rep.tolerance === 'object' && rep.tolerance?.operator) ||

@@ -432,10 +432,28 @@ const ViewServiceReportCBCT: React.FC = () => {
           // Transform LinearityOfMaLoadingCBCT data
           const linearityData = data.LinearityOfMaLoadingCBCT;
           if (linearityData && Array.isArray(linearityData.table2)) {
+            const maxMeas = Math.max(
+              0,
+              ...linearityData.table2.map((r: any) => (Array.isArray(r.measuredOutputs) ? r.measuredOutputs.length : 0))
+            );
+            const savedHeaders = Array.isArray(linearityData.measHeaders)
+              ? linearityData.measHeaders.map((h: any) => String(h ?? "").trim()).filter(Boolean)
+              : Array.isArray(linearityData.measurementHeaders)
+                ? linearityData.measurementHeaders.map((h: any) => String(h ?? "").trim()).filter(Boolean)
+                : [];
+            const measurementHeaders =
+              maxMeas > 0 || savedHeaders.length > 0
+                ? Array.from({ length: Math.max(maxMeas, savedHeaders.length) }, (_, i) =>
+                    savedHeaders[i] || `Measured mR ${i + 1}`
+                  )
+                : ["Measured mR 1", "Measured mR 2", "Measured mR 3"];
+
             setTestData((prev: any) => ({
               ...prev,
               linearityOfMaLoading: {
                 ...linearityData,
+                measurementHeaders,
+                measHeaders: measurementHeaders,
                 table2Rows: linearityData.table2.map((r: any, i: number) => ({
                   id: String(i + 1),
                   ma: r.ma || '-',
@@ -714,9 +732,6 @@ const ViewServiceReportCBCT: React.FC = () => {
         {/* PAGE 2+ - SUMMARY TABLE */}
         <ReportPage>
           <div className="max-w-5xl mx-auto print:max-w-none" style={{ width: '100%', maxWidth: 'none' }}>
-            <h2 className="text-center text-2xl font-bold underline mb-4 print:mb-2 print:text-xl">
-              SUMMARY OF QA TEST RESULTS
-            </h2>
             <MainTestTableForDentalConeBeamCT testData={testData} />
           </div>
         </ReportPage>
@@ -978,7 +993,22 @@ const ViewServiceReportCBCT: React.FC = () => {
   {/* 4. Linearity of mAs Loading */}
             {testData.linearityOfMaLoading?.table2Rows?.length > 0 && (() => {
               const rows = testData.linearityOfMaLoading.table2Rows;
-              const measHeaders = testData.linearityOfMaLoading.measurementHeaders || ["Meas 1", "Meas 2", "Meas 3"];
+              const maxMeas = Math.max(
+                0,
+                ...rows.map((r: any) => (Array.isArray(r.measuredOutputs) ? r.measuredOutputs.length : 0))
+              );
+              const savedHeaders = Array.isArray(testData.linearityOfMaLoading.measurementHeaders)
+                ? testData.linearityOfMaLoading.measurementHeaders
+                : Array.isArray(testData.linearityOfMaLoading.measHeaders)
+                  ? testData.linearityOfMaLoading.measHeaders
+                  : [];
+              const cleanedHeaders = savedHeaders.map((h: any) => String(h ?? "").trim()).filter(Boolean);
+              const measHeaders =
+                maxMeas > 0 || cleanedHeaders.length > 0
+                  ? Array.from({ length: Math.max(maxMeas, cleanedHeaders.length) }, (_, i) =>
+                      cleanedHeaders[i] || `Measured mR ${i + 1}`
+                    )
+                  : ["Measured mR 1", "Measured mR 2", "Measured mR 3"];
               const measCount = measHeaders.length;
               const tolerance = testData.linearityOfMaLoading.tolerance || "0.1";
               const table1 = Array.isArray(testData.linearityOfMaLoading.table1)
@@ -1109,10 +1139,29 @@ const ViewServiceReportCBCT: React.FC = () => {
             })()}
 
             {/* 3. Output Consistency */}
-            {testData.outputConsistency?.outputRows?.length > 0 && (
+            {testData.outputConsistency?.outputRows?.length > 0 && (() => {
+              const oc = testData.outputConsistency;
+              const rows = oc.outputRows || [];
+              const maxMeas = Math.max(
+                0,
+                ...rows.map((r: any) => (Array.isArray(r.outputs) ? r.outputs.length : 0))
+              );
+              const savedHeaders = Array.isArray(oc.measurementHeaders)
+                ? oc.measurementHeaders.map((h: any) => String(h ?? "").trim()).filter(Boolean)
+                : Array.isArray(oc.measHeaders)
+                  ? oc.measHeaders.map((h: any) => String(h ?? "").trim()).filter(Boolean)
+                  : [];
+              const measHeaders =
+                maxMeas > 0 || savedHeaders.length > 0
+                  ? Array.from({ length: Math.max(maxMeas, savedHeaders.length) }, (_, i) =>
+                      savedHeaders[i] || `Meas ${i + 1}`
+                    )
+                  : ["Meas 1", "Meas 2", "Meas 3"];
+
+              return (
               <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
                 <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>{nextDetailedSectionNumber()}. Output Consistency</h3>
-                {testData.outputConsistency.ffd != null && (
+                {oc.ffd != null && (
                   <div className="mb-6 print:mb-1 bg-gray-50 p-4 print:p-1 rounded border overflow-x-auto" style={{ marginBottom: '4px', padding: '2px 4px' }}>
                     <p className="font-semibold mb-2 print:mb-0.5 print:text-xs" style={{ marginBottom: '2px', fontSize: '8px' }}>Test Conditions:</p>
                     <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', borderCollapse: 'collapse', borderSpacing: '0' }}>
@@ -1123,7 +1172,7 @@ const ViewServiceReportCBCT: React.FC = () => {
                       </thead>
                       <tbody>
                         <tr className="text-center">
-                          <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{testData.outputConsistency.ffd || "-"}</td>
+                          <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{oc.ffd || "-"}</td>
                         </tr>
                       </tbody>
                     </table>
@@ -1135,7 +1184,7 @@ const ViewServiceReportCBCT: React.FC = () => {
                       <tr>
                         <th rowSpan={2} className="border border-black p-2 print:p-1 text-center align-middle" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center', verticalAlign: 'middle' }}>Applied kV</th>
                         <th rowSpan={2} className="border border-black p-2 print:p-1 text-center align-middle" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center', verticalAlign: 'middle' }}>mAs</th>
-                        <th colSpan={testData.outputConsistency.measurementHeaders?.length || testData.outputConsistency.outputRows[0]?.outputs?.length || 3} className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>
+                        <th colSpan={measHeaders.length} className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>
                           Radiation Output mGy
                         </th>
                         <th rowSpan={2} className="border border-black p-2 print:p-1 text-center align-middle" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center', verticalAlign: 'middle' }}>Avg. (X)</th>
@@ -1143,21 +1192,20 @@ const ViewServiceReportCBCT: React.FC = () => {
                         <th rowSpan={2} className="border border-black p-2 print:p-1 text-center align-middle" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center', verticalAlign: 'middle' }}>Remarks</th>
                       </tr>
                       <tr>
-                        {(testData.outputConsistency.measurementHeaders ||
-                          Array.from({ length: testData.outputConsistency.outputRows[0]?.outputs?.length || 3 }, (_, i) => i + 1)
-                        ).map((h: string | number, idx: number) => (
+                        {measHeaders.map((h: string, idx: number) => (
                           <th key={idx} className="border border-black p-1 print:p-0.5 text-xs text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>
-                            {typeof h === 'number' ? h : idx + 1}
+                            {h || `Meas ${idx + 1}`}
                           </th>
                         ))}
                       </tr>
                     </thead>
                     <tbody>
-                      {testData.outputConsistency.outputRows.map((row: any, i: number) => {
+                      {rows.map((row: any, i: number) => {
                         const outputsArr = Array.isArray(row.outputs) ? row.outputs : [];
                         const outputVals = outputsArr.map((v: any) => (typeof v === 'object' && v != null && 'value' in v ? v.value : v));
-                        const numCols = Math.max(outputVals.length, testData.outputConsistency.measurementHeaders?.length || 3);
-                        const cells = Array.from({ length: numCols }, (_, idx) => outputVals[idx] != null && outputVals[idx] !== "" ? String(outputVals[idx]) : "-");
+                        const cells = Array.from({ length: measHeaders.length }, (_, idx) =>
+                          outputVals[idx] != null && outputVals[idx] !== "" ? String(outputVals[idx]) : "-"
+                        );
                         return (
                         <tr key={i} className="text-center">
                           <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.kvp ?? row.kv ?? "-"}</td>
@@ -1201,15 +1249,16 @@ const ViewServiceReportCBCT: React.FC = () => {
                   </table>
                 </div>
                 {/* Tolerance Statement */}
-                {testData.outputConsistency.tolerance != null && (
+                {oc.tolerance != null && (
                   <div className="bg-gray-50 p-4 print:p-1 rounded border" style={{ padding: '2px 4px', marginTop: '4px' }}>
                     <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
-                      <strong>Acceptance Criteria:</strong> CoV {testData.outputConsistency.tolerance?.operator ?? "<="} {testData.outputConsistency.tolerance?.value ?? testData.outputConsistency.tolerance ?? "0.05"}
+                      <strong>Acceptance Criteria:</strong> CoV {oc.tolerance?.operator ?? "<="} {oc.tolerance?.value ?? oc.tolerance ?? "0.05"}
                     </p>
                   </div>
                 )}
               </div>
-            )}
+              );
+            })()}
 
           
 

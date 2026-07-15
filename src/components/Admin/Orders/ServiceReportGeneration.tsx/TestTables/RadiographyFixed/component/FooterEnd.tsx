@@ -14,8 +14,8 @@ export const ReportPdfPageFooterEnd: React.FC<{
             // borderTop: '1px solid #ccc',
         }}
     >
-        <p style={{ fontSize: '10px', lineHeight: '1.2' }}><strong>Date:</strong> {todayDate}</p>
-        <p style={{ fontSize: '10px', lineHeight: '1.2' }}><strong>Place:</strong> {customerCity}</p>
+        {/* <p style={{ fontSize: '10px', lineHeight: '1.2' }}><strong>Date:</strong> {todayDate}</p>
+        <p style={{ fontSize: '10px', lineHeight: '1.2' }}><strong>Place:</strong> {customerCity}</p> */}
         <footer style={{ textAlign: 'center', fontSize: '9px', color: '#555', marginTop: '6px', lineHeight: '1.25' }}>
             <p>ANTESO Biomedical OPC Pvt. Ltd.</p>
             <p>2nd Floor, D-290, PKT-7, Sector - 6, Rohini, New Delhi - 110085</p>

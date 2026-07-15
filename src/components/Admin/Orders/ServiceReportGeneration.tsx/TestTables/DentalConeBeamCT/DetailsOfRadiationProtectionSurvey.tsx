@@ -250,7 +250,7 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, csvData }) => {
     checkCalibration();
   }, [serviceId]);
 
-  // CSV Data Injection
+  // CSV Data Injection — do not import Survey Date from Excel (use SRF / UI date)
   useEffect(() => {
     if (csvData && csvData.length > 0) {
       // Global Params

@@ -32,7 +32,7 @@ Tube,0.01,0.015,0.012,0.011,,mGy/h,
 Collimator,0.012,0.011,0.014,0.013,,mGy/h,
 
 TEST: RADIATION PROTECTION SURVEY REPORT
-Survey Date,2024-01-01,Applied Current (mA),10,Applied Voltage (kV),80,Exposure Time (s),1.0,Workload (mA.min/week),100
+Applied Current (mA),10,Applied Voltage (kV),80,Exposure Time (s),1.0,Workload (mA.min/week),100
 LOCATION,MAX. RADIATION LEVEL (MR/HR),MR/WEEK,STATUS,RESULT
 Control Console,0.05,,,Worker
 Waiting Area,0.02,,,Public
