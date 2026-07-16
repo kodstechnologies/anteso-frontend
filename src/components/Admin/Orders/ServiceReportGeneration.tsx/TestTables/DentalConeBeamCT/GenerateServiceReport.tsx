@@ -10,6 +10,7 @@ import { getDetails, getTools } from "../../../../../../api";
 import * as XLSX from 'xlsx';
 import { createCBCTUploadableExcel } from './exportCBCTToExcel';
 import { isExcelFileUrl } from '../../../../../../utils/spreadsheetFile';
+import { TestExportRegistryProvider, useTestExportRegistry } from "../shared/TestExportRegistry";
 
 import Standards from "../../Standards";
 import Notes from "../../Notes";
@@ -48,8 +49,9 @@ interface DetailsResponse {
     qaTests: Array<{ createdAt: string; qaTestReportNumber: string }>;
 }
 
-const DentalConeBeamCT: React.FC<{ serviceId: string; qaTestDate?: string | null; csvFileUrl?: string | null }> = ({ serviceId, qaTestDate, csvFileUrl }) => {
+const DentalConeBeamCTContent: React.FC<{ serviceId: string; qaTestDate?: string | null; csvFileUrl?: string | null }> = ({ serviceId, qaTestDate, csvFileUrl }) => {
     const navigate = useNavigate();
+    const exportRegistry = useTestExportRegistry();
 
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -166,7 +168,12 @@ const DentalConeBeamCT: React.FC<{ serviceId: string; qaTestDate?: string | null
                 'kVp': 'kV', 'kvp': 'kV', 'KVp': 'kV', 'KVP': 'kV',
                 'mA': 'mA', 'ma': 'mA', 'MA': 'mA',
                 'time': 'time', 'Time': 'time', 'Timer': 'time', 'timer': 'time',
-                'FCD': 'FCD', 'fcd': 'FCD', 'FDD': 'FCD', 'fdd': 'FCD', 'FFD': 'FFD', 'ffd': 'FFD'
+                'FCD': 'FCD', 'fcd': 'FCD', 'FDD': 'FCD', 'fdd': 'FCD', 'FFD': 'FFD', 'ffd': 'FFD',
+                'Tolerance Operator': 'Tolerance_Operator', 'tolerance operator': 'Tolerance_Operator',
+                'Tol Operator': 'Tolerance_Operator', 'tol operator': 'Tolerance_Operator',
+                'Tolerance Sign': 'Tolerance_Operator', 'tolerance sign': 'Tolerance_Operator',
+                'Tolerance Value (CoL)': 'Tolerance', 'Tolerance Value': 'Tolerance',
+                'tolerance value (col)': 'Tolerance', 'Tol Value': 'Tolerance', 'Tolerance': 'Tolerance',
             },
             'linearityOfMasLoading': {
                 'mAs Range': 'mAs_Range', 'mas range': 'mAs_Range',
@@ -177,7 +184,12 @@ const DentalConeBeamCT: React.FC<{ serviceId: string; qaTestDate?: string | null
                 'kV': 'kV', 'kv': 'kV', 'KV': 'kV',
                 'kVp': 'kV', 'kvp': 'kV', 'KVp': 'kV', 'KVP': 'kV',
                 'mA': 'mA', 'ma': 'mA', 'MA': 'mA',
-                'FCD': 'FCD', 'fcd': 'FCD', 'FDD': 'FCD', 'fdd': 'FCD', 'FFD': 'FFD', 'ffd': 'FFD'
+                'FCD': 'FCD', 'fcd': 'FCD', 'FDD': 'FCD', 'fdd': 'FCD', 'FFD': 'FFD', 'ffd': 'FFD',
+                'Tolerance Operator': 'Tolerance_Operator', 'tolerance operator': 'Tolerance_Operator',
+                'Tol Operator': 'Tolerance_Operator', 'tol operator': 'Tolerance_Operator',
+                'Tolerance Sign': 'Tolerance_Operator', 'tolerance sign': 'Tolerance_Operator',
+                'Tolerance Value (CoL)': 'Tolerance', 'Tolerance Value': 'Tolerance',
+                'tolerance value (col)': 'Tolerance', 'Tol Value': 'Tolerance', 'Tolerance': 'Tolerance',
             },
             'consistencyOfRadiationOutput': {
                 'kVp': 'kVp', 'kvp': 'kVp', 'Kvp': 'kVp',
@@ -279,6 +291,9 @@ const DentalConeBeamCT: React.FC<{ serviceId: string; qaTestDate?: string | null
                 'mA', 'ma', 'MA',
                 'time', 'Time', 'Timer', 'timer',
                 'FCD', 'fcd', 'FDD', 'fdd', 'FFD', 'ffd',
+                'Tolerance Operator', 'tolerance operator', 'Tol Operator', 'tol operator',
+                'Tolerance Sign', 'tolerance sign',
+                'Tolerance Value (CoL)', 'Tolerance Value', 'tolerance value (col)', 'Tol Value', 'Tolerance',
             ]),
             linearityOfMasLoading: new Set([
                 'mAs Range', 'mas range',
@@ -289,6 +304,9 @@ const DentalConeBeamCT: React.FC<{ serviceId: string; qaTestDate?: string | null
                 'kV', 'kv', 'KV', 'kVp', 'kvp', 'KVp', 'KVP',
                 'mA', 'ma', 'MA',
                 'FCD', 'fcd', 'FDD', 'fdd', 'FFD', 'ffd',
+                'Tolerance Operator', 'tolerance operator', 'Tol Operator', 'tol operator',
+                'Tolerance Sign', 'tolerance sign',
+                'Tolerance Value (CoL)', 'Tolerance Value', 'tolerance value (col)', 'Tol Value', 'Tolerance',
             ]),
             consistencyOfRadiationOutput: new Set([
                 'kVp', 'kvp', 'Kvp',
@@ -945,39 +963,47 @@ const DentalConeBeamCT: React.FC<{ serviceId: string; qaTestDate?: string | null
         if (!serviceId) return;
         setIsExporting(true);
         try {
-            // Fetch all data
-            const [
-                kvpRes,
-                timeRes,
-                linMaRes,
-                // linMasRes, // Assume one linearity test usually
-                consRes,
-                leakRes,
-                protRes
-            ] = await Promise.all([
-                getAccuracyOfOperatingPotentialByServiceIdForCBCT(serviceId),
-                getAccuracyOfIrradiationTimeByServiceIdForCBCT(serviceId),
-                getLinearityOfMaLoadingByServiceIdForCBCT(serviceId),
-                getConsistencyOfRadiationOutputByServiceIdForCBCT(serviceId),
-                getRadiationLeakageLevelByServiceIdForCBCT(serviceId),
-                getRadiationProtectionSurveyByServiceIdForCBCT(serviceId)
-            ]);
+            const pageData = exportRegistry?.collect() ?? {};
 
-            // Construct data object (API returns { success, data } — keep raw so exporter can unwrap)
-            const exportData = {
-                accuracyOfOperatingPotential: kvpRes,
-                accuracyOfIrradiationTime: timeRes,
-                linearityOfMaLoading: linMaRes,
-                outputConsistency: consRes,
-                radiationLeakage: leakRes,
-                radiationProtectionSurvey: protRes
+            const fetchSaved = async (fn: () => Promise<any>) => {
+                try {
+                    return (await fn()) ?? null;
+                } catch {
+                    return null;
+                }
             };
 
-            // Check for mAs linearity if mA is empty or user selected no timer?
-            // Actually `getLinearityOfMaLoadingByServiceIdForCBCT` might handle both or we need `getLinearityOfMasLoading`.
-            // Assuming separate for now if needed.
-            // If hasTimer is false, we might want to check the mAs endpoint. 
-            // But for now let's stick to what's imported.
+            const resolveSection = async (pageValue: unknown, fetchFn: () => Promise<any>) => {
+                if (pageValue != null) return pageValue;
+                return fetchSaved(fetchFn);
+            };
+
+            const exportData = {
+                accuracyOfOperatingPotential: await resolveSection(
+                    pageData.accuracyOfOperatingPotential,
+                    () => getAccuracyOfOperatingPotentialByServiceIdForCBCT(serviceId)
+                ),
+                accuracyOfIrradiationTime: await resolveSection(
+                    pageData.accuracyOfIrradiationTime,
+                    () => getAccuracyOfIrradiationTimeByServiceIdForCBCT(serviceId)
+                ),
+                linearityOfMaLoading: await resolveSection(
+                    pageData.linearityOfMaLoading,
+                    () => getLinearityOfMaLoadingByServiceIdForCBCT(serviceId)
+                ),
+                outputConsistency: await resolveSection(
+                    pageData.outputConsistency,
+                    () => getConsistencyOfRadiationOutputByServiceIdForCBCT(serviceId)
+                ),
+                radiationLeakage: await resolveSection(
+                    pageData.radiationLeakage,
+                    () => getRadiationLeakageLevelByServiceIdForCBCT(serviceId)
+                ),
+                radiationProtectionSurvey: await resolveSection(
+                    pageData.radiationProtectionSurvey,
+                    () => getRadiationProtectionSurveyByServiceIdForCBCT(serviceId)
+                ),
+            };
 
             const wb = createCBCTUploadableExcel(exportData);
             const reportNumber = String(formData.testReportNumber || "")
@@ -1277,5 +1303,11 @@ const DentalConeBeamCT: React.FC<{ serviceId: string; qaTestDate?: string | null
         </div>
     );
 };
+
+const DentalConeBeamCT: React.FC<{ serviceId: string; qaTestDate?: string | null; csvFileUrl?: string | null }> = (props) => (
+    <TestExportRegistryProvider>
+        <DentalConeBeamCTContent {...props} />
+    </TestExportRegistryProvider>
+);
 
 export default DentalConeBeamCT;

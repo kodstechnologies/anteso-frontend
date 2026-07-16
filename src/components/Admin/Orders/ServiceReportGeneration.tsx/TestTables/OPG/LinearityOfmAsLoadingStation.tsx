@@ -1,7 +1,7 @@
 // components/TestTables/LinearityOfMasLoading.tsx
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { Plus, Trash2, Save, Edit3, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
@@ -10,6 +10,7 @@ import {
   getLinearityOfMaLoadingByTestIdForOPG,
   updateLinearityOfMaLoadingForOPG,
 } from '../../../../../../api';
+import { useRegisterTestExport } from '../shared/TestExportRegistry';
 
 interface ExposureCondition {
   fcd: string;
@@ -236,6 +237,18 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
         const normalizedRow = row.map((c: any) => c?.toString()?.trim().toLowerCase());
 
         if (String(firstCell || '') === '__MEAS_HEADERS__') return;
+
+        // Tolerance Operator / Value rows
+        if (firstCell && /^(Tolerance Operator|Tol Operator|Tolerance_Operator)$/i.test(firstCell)) {
+          const op = String(row[1] ?? '').trim();
+          if (['<', '>', '<=', '>=', '='].includes(op)) setToleranceOperator(op);
+          return;
+        }
+        if (firstCell && /^(Tolerance Value \(CoL\)|Tolerance Value|Tol Value|Tolerance)$/i.test(firstCell)) {
+          const val = String(row[1] ?? '').trim();
+          if (val) setTolerance(val);
+          return;
+        }
 
         // 1. Parameter Row: FCD, 100, kV, 70... (not the mAs Range header row)
         if (!isMasRangeHeaderRow(row) &&
@@ -476,6 +489,54 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
       remarks: hasData ? (pass ? 'Pass' : 'Fail') : '—',
     }));
   }, [table2Rows, tolerance, toleranceOperator]);
+
+  const getExportData = useCallback(() => {
+    const hasRows = processedTable2.some(
+      (r) =>
+        String(r.mAsRange || '').trim() ||
+        r.measuredOutputs.some((v) => String(v).trim())
+    );
+    const hasConditions =
+      String(exposureCondition.fcd || '').trim() ||
+      String(exposureCondition.kv || '').trim();
+    if (!hasRows && !hasConditions) return null;
+    return {
+      table1: {
+        fcd: exposureCondition.fcd,
+        kv: exposureCondition.kv,
+        time: '',
+      },
+      table2: processedTable2.map((r) => {
+        let maValue = '';
+        const match = r.mAsRange.match(/(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)/);
+        if (match) {
+          const mid = (parseFloat(match[1]) + parseFloat(match[2])) / 2;
+          maValue = mid.toString();
+        } else {
+          const singleMatch = r.mAsRange.match(/(\d+(?:\.\d+)?)/);
+          maValue = singleMatch ? singleMatch[1] : r.mAsRange.replace(/[^\d.]/g, '');
+        }
+        return {
+          ma: maValue || r.mAsRange,
+          measuredOutputs: r.measuredOutputs.map((v) => {
+            const val = v.trim();
+            return val === '' ? '' : val;
+          }),
+          average: r.average || '',
+          x: r.x || '',
+          xMax: r.xMax || '',
+          xMin: r.xMin || '',
+          col: r.col || '',
+          remarks: r.remarks || '',
+        };
+      }),
+      measHeaders,
+      tolerance,
+      toleranceOperator,
+    };
+  }, [processedTable2, exposureCondition, measHeaders, tolerance, toleranceOperator]);
+
+  useRegisterTestExport('linearityOfMaLoading', getExportData);
 
   if (isLoading) {
     return (

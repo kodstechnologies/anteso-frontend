@@ -1,7 +1,7 @@
 // components/TestTables/LinearityOfMasLoading.tsx
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { Plus, Trash2, Save, Edit3, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
@@ -9,6 +9,8 @@ import {
     getLinearityOfMasLoadingByServiceIdForDentalHandHeld,
     updateLinearityOfMasLoadingForDentalHandHeld,
 } from '../../../../../../api';
+import { normalizeCsvComparisonOperator } from '../shared/parseRadiographyStyleTableFormat';
+import { useRegisterTestExport } from '../shared/TestExportRegistry';
 
 interface ExposureCondition {
     fcd: string;
@@ -35,6 +37,13 @@ interface Props {
     csvData?: any[];
 }
 
+const padMeasuredOutputs = (outputs: unknown, count: number): string[] => {
+    const src = Array.isArray(outputs) ? outputs : [];
+    const next = src.map((v) => (v != null ? String(v) : ''));
+    while (next.length < count) next.push('');
+    return next.slice(0, Math.max(count, 1));
+};
+
 const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId = null, onTestSaved, onRefresh, csvData }) => {
     const [testId, setTestId] = useState<string | null>(propTestId || null);
     const [isSaving, setIsSaving] = useState(false);
@@ -53,38 +62,61 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
     ]);
 
     const [tolerance, setTolerance] = useState<string>('0.1');
+    const [toleranceOperator, setToleranceOperator] = useState<string>('<=');
+
+    const isViewMode = hasSaved && !isEditing;
+
+    const syncRowsToHeaderCount = (rows: Table2Row[], headerCount: number): Table2Row[] =>
+        rows.map((r) => ({ ...r, measuredOutputs: padMeasuredOutputs(r.measuredOutputs, headerCount) }));
 
     const addMeasColumn = () => {
-        setMeasHeaders(p => [...p, `Measured mR ${p.length + 1}`]);
-        setTable2Rows(p => p.map(r => ({ ...r, measuredOutputs: [...r.measuredOutputs, ''] })));
+        if (isViewMode) return;
+        const nextCount = measHeaders.length + 1;
+        setMeasHeaders((p) => [...p, `Measured mR ${p.length + 1}`]);
+        setTable2Rows((rows) => syncRowsToHeaderCount(rows, nextCount));
     };
 
     const removeMeasColumn = (idx: number) => {
         if (measHeaders.length <= 1) return;
-        setMeasHeaders(p => p.filter((_, i) => i !== idx));
-        setTable2Rows(p => p.map(r => ({ ...r, measuredOutputs: r.measuredOutputs.filter((_, i) => i !== idx) })));
+        setMeasHeaders((p) => p.filter((_, i) => i !== idx));
+        setTable2Rows((p) =>
+            p.map((r) => ({
+                ...r,
+                measuredOutputs: r.measuredOutputs.filter((_, i) => i !== idx),
+            }))
+        );
     };
 
     const addTable2Row = () => {
-        setTable2Rows(p => [
+        setTable2Rows((p) => [
             ...p,
-            { id: Date.now().toString(), mAsRange: '', measuredOutputs: Array(measHeaders.length).fill(''), average: '', x: '', xMax: '', xMin: '', col: '', remarks: '' },
+            {
+                id: Date.now().toString(),
+                mAsRange: '',
+                measuredOutputs: Array(measHeaders.length).fill(''),
+                average: '',
+                x: '',
+                xMax: '',
+                xMin: '',
+                col: '',
+                remarks: '',
+            },
         ]);
     };
 
     const removeTable2Row = (id: string) => {
         if (table2Rows.length <= 1) return;
-        setTable2Rows(p => p.filter(r => r.id !== id));
+        setTable2Rows((p) => p.filter((r) => r.id !== id));
     };
 
     const updateCell = (rowId: string, field: 'mAsRange' | number, value: string) => {
         if (isViewMode) return;
-        setTable2Rows(p =>
-            p.map(r => {
+        setTable2Rows((p) =>
+            p.map((r) => {
                 if (r.id !== rowId) return r;
                 if (field === 'mAsRange') return { ...r, mAsRange: value };
                 if (typeof field === 'number') {
-                    const outputs = [...r.measuredOutputs];
+                    const outputs = padMeasuredOutputs(r.measuredOutputs, measHeaders.length);
                     outputs[field] = value;
                     return { ...r, measuredOutputs: outputs };
                 }
@@ -99,39 +131,64 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
                 setIsLoading(false);
                 return;
             }
+            const hasCsvImport = Array.isArray(csvData) && csvData.length > 0;
             try {
                 const res = await getLinearityOfMasLoadingByServiceIdForDentalHandHeld(serviceId);
                 const data = res?.data;
                 if (data) {
                     setTestId(data._id || null);
-                    if (data.table1) {
-                        setExposureCondition({
-                            fcd: data.table1.fcd || '100',
-                            kv: data.table1.kv || '80',
-                        });
-                    }
-                    if (Array.isArray(data.table2) && data.table2.length > 0) {
-                        setTable2Rows(
-                            data.table2.map((r: any, i: number) => {
-                                const maValue = r.ma || '';
-                                const mAsRange = maValue ? `${maValue} mAs` : '';
-                                return {
-                                    id: String(i + 1),
-                                    mAsRange: mAsRange,
-                                    measuredOutputs: (r.measuredOutputs || []).map((v: any) => (v != null ? String(v) : '')),
-                                    average: r.average || '',
-                                    x: r.x || '',
-                                    xMax: r.xMax || '',
-                                    xMin: r.xMin || '',
-                                    col: r.col || '',
-                                    remarks: r.remarks || '',
-                                };
-                            })
+                    if (!hasCsvImport) {
+                        if (data.table1) {
+                            setExposureCondition({
+                                fcd: data.table1.fcd || '100',
+                                kv: data.table1.kv || '80',
+                            });
+                        }
+                        if (Array.isArray(data.table2) && data.table2.length > 0) {
+                            const maxCols = Math.max(
+                                Array.isArray(data.measHeaders) ? data.measHeaders.length : 0,
+                                ...data.table2.map((r: any) => (Array.isArray(r.measuredOutputs) ? r.measuredOutputs.length : 0)),
+                                3
+                            );
+                            const headers =
+                                Array.isArray(data.measHeaders) && data.measHeaders.length > 0
+                                    ? Array.from({ length: maxCols }, (_, i) =>
+                                        String(data.measHeaders[i] ?? '').trim() || `Measured mR ${i + 1}`
+                                      )
+                                    : Array.from({ length: maxCols }, (_, i) => `Measured mR ${i + 1}`);
+                            setMeasHeaders(headers);
+                            setTable2Rows(
+                                data.table2.map((r: any, i: number) => {
+                                    const maValue = r.mAsRange || r.ma || r.mas || '';
+                                    const mAsRange = maValue
+                                        ? (/\bmAs\b/i.test(String(maValue)) || /[-–]/.test(String(maValue))
+                                            ? String(maValue)
+                                            : `${maValue}`)
+                                        : '';
+                                    return {
+                                        id: String(i + 1),
+                                        mAsRange,
+                                        measuredOutputs: padMeasuredOutputs(r.measuredOutputs, headers.length),
+                                        average: r.average || '',
+                                        x: r.x || '',
+                                        xMax: r.xMax || '',
+                                        xMin: r.xMin || '',
+                                        col: r.col || '',
+                                        remarks: r.remarks || '',
+                                    };
+                                })
+                            );
+                        }
+                        setTolerance(data.tolerance || '0.1');
+                        setToleranceOperator(
+                            normalizeCsvComparisonOperator(data.toleranceOperator || '<=')
                         );
+                        setHasSaved(true);
+                        setIsEditing(false);
+                    } else {
+                        setIsEditing(true);
+                        setHasSaved(false);
                     }
-                    setTolerance(data.tolerance || '0.1');
-                    setHasSaved(true);
-                    setIsEditing(false);
                     if (data._id && !propTestId) {
                         onTestSaved?.(data._id);
                     }
@@ -148,12 +205,33 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
             }
         };
         load();
-    }, [serviceId]);
+    }, [serviceId, csvData]);
 
     useEffect(() => {
         if (csvData && csvData.length > 0) {
+            const csvMeasLabels = csvData.find(r => r['Field Name'] === 'MeasColumnLabels')?.['Value'];
             const fcd = csvData.find(r => r['Field Name'] === 'FCD')?.['Value'];
             const kv = csvData.find(r => r['Field Name'] === 'kV')?.['Value'];
+            const tolOp = csvData.find(r => {
+                const f = String(r['Field Name'] || '').trim();
+                return (
+                    f === 'Tolerance_Operator' ||
+                    f === 'ToleranceOperator' ||
+                    f === 'Tolerance_Sign' ||
+                    /^tolerance[_\s]?operator$/i.test(f) ||
+                    /^tol[_\s]?operator$/i.test(f)
+                );
+            })?.['Value'];
+            const tolVal = csvData.find(r => {
+                const f = String(r['Field Name'] || '').trim();
+                return (
+                    f === 'Tolerance' ||
+                    f === 'Tolerance_Value' ||
+                    f === 'Tolerance Value' ||
+                    /^tolerance[_\s]?value/i.test(f) ||
+                    /^tol[_\s]?value$/i.test(f)
+                );
+            })?.['Value'];
 
             if (fcd || kv) {
                 setExposureCondition(prev => ({
@@ -161,6 +239,12 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
                     kv: kv || prev.kv
                 }));
             }
+
+            if (tolOp != null && String(tolOp).trim() !== '') {
+                const op = normalizeCsvComparisonOperator(tolOp);
+                if (['<', '>', '<=', '>=', '='].includes(op)) setToleranceOperator(op);
+            }
+            if (tolVal != null && String(tolVal).trim() !== '') setTolerance(String(tolVal).trim());
 
             const rowIndices = [...new Set(csvData
                 .filter(r => r['Field Name'] && (r['Field Name'] === 'mAs_Range' || r['Field Name'].startsWith('Measured_')))
@@ -174,7 +258,7 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
                     const mAsRange = rowData.find(r => r['Field Name'] === 'mAs_Range')?.['Value'] || '';
 
                     const measured: string[] = [];
-                    for (let i = 0; i < 10; i++) {
+                    for (let i = 0; i < 20; i++) {
                         const val = rowData.find(r => r['Field Name'] === `Measured_${i}`)?.['Value'];
                         if (val !== undefined) measured.push(val);
                         else break;
@@ -189,18 +273,20 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
                     } as Table2Row;
                 });
 
-                setTable2Rows(newRows);
-
-                const maxMeas = Math.max(...newRows.map(r => r.measuredOutputs.length));
-                if (maxMeas > measHeaders.length) {
-                    const newCols = Array.from({ length: maxMeas - measHeaders.length }, (_, i) => `Measured mR ${measHeaders.length + i + 1}`);
-                    setMeasHeaders(prev => [...prev, ...newCols]);
-                }
+                const maxMeas = Math.max(3, ...newRows.map(r => r.measuredOutputs.length));
+                const labelList = csvMeasLabels
+                    ? String(csvMeasLabels).split(',').map((h: string) => h.trim()).filter(Boolean)
+                    : [];
+                const headers = Array.from({ length: maxMeas }, (_, i) =>
+                    labelList[i] || `Measured mR ${i + 1}`
+                );
+                setMeasHeaders(headers);
+                setTable2Rows(syncRowsToHeaderCount(newRows, headers.length));
             }
 
             if (!testId && (rowIndices.length > 0 || fcd || kv)) setIsEditing(true);
         }
-    }, [csvData, testId, measHeaders.length]);
+    }, [csvData, testId]);
 
     const handleSave = async () => {
         if (!serviceId) {
@@ -228,8 +314,10 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
                     }
 
                     return {
-                        ma: maValue || r.mAsRange,
-                        measuredOutputs: r.measuredOutputs.map(v => {
+                        mAsRange: r.mAsRange || '',
+                        ma: r.mAsRange || maValue,
+                        mas: r.mAsRange || maValue,
+                        measuredOutputs: padMeasuredOutputs(r.measuredOutputs, measHeaders.length).map(v => {
                             const val = v.trim();
                             return val === '' ? '' : val;
                         }),
@@ -238,10 +326,12 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
                         xMax: r.xMax || '',
                         xMin: r.xMin || '',
                         col: r.col || '',
-                        remarks: r.remarks || '',
+                        remarks: r.remarks === 'Pass' || r.remarks === 'Fail' ? r.remarks : '',
                     };
                 }),
                 tolerance,
+                toleranceOperator,
+                measHeaders,
             };
 
             let result;
@@ -271,6 +361,8 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
                 }
                 toast.success('Saved successfully!');
             }
+            // Keep columns locked to current headers after save
+            setTable2Rows((prev) => syncRowsToHeaderCount(prev, measHeaders.length));
             setHasSaved(true);
             setIsEditing(false);
             onRefresh?.();
@@ -285,16 +377,17 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
     const toggleEdit = () => {
         setIsEditing(true);
     };
-    const isViewMode = hasSaved && !isEditing;
     const buttonText = isViewMode ? 'Edit' : testId ? 'Update' : 'Save';
     const ButtonIcon = isViewMode ? Edit3 : Save;
 
     const processedTable2 = useMemo(() => {
         const tol = parseFloat(tolerance) || 0.1;
         const xValues: number[] = [];
+        const colCount = Math.max(measHeaders.length, 1);
 
         const rowsWithX = table2Rows.map(row => {
-            const outputs = row.measuredOutputs.map(v => parseFloat(v)).filter(v => !isNaN(v) && v > 0);
+            const measuredOutputs = padMeasuredOutputs(row.measuredOutputs, colCount);
+            const outputs = measuredOutputs.map(v => parseFloat(v)).filter(v => !isNaN(v) && v > 0);
             const avg = outputs.length > 0 ? (outputs.reduce((a, b) => a + b, 0) / outputs.length).toFixed(3) : '—';
 
             const match = row.mAsRange.match(/(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)/);
@@ -305,7 +398,7 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
             const x = avg !== '—' && midMas > 0 ? (parseFloat(avg) / midMas).toFixed(4) : '—';
             if (x !== '—') xValues.push(parseFloat(x));
 
-            return { ...row, average: avg, x };
+            return { ...row, measuredOutputs, average: avg, x };
         });
 
         const hasData = xValues.length > 0;
@@ -315,14 +408,27 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
             ? Math.abs(parseFloat(xMax) - parseFloat(xMin)) / (parseFloat(xMax) + parseFloat(xMin))
             : 0;
         const col = hasData ? colNum.toFixed(3) : '—';
-        const pass = hasData && colNum <= tol;
+
+        let pass = false;
+        if (hasData && col !== '—') {
+            switch (toleranceOperator) {
+                case '<': pass = colNum < tol; break;
+                case '>': pass = colNum > tol; break;
+                case '<=': pass = colNum <= tol; break;
+                case '>=': pass = colNum >= tol; break;
+                case '=': pass = Math.abs(colNum - tol) < 0.0001; break;
+                default: pass = colNum <= tol;
+            }
+        }
 
         return rowsWithX.map(row => ({
             ...row,
+            xMax,
+            xMin,
             col,
             remarks: hasData ? (pass ? 'Pass' : 'Fail') : '—',
         }));
-    }, [table2Rows, tolerance]);
+    }, [table2Rows, measHeaders.length, tolerance, toleranceOperator]);
 
     const isFormValid = useMemo(() => {
         return (
@@ -332,6 +438,51 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
             table2Rows.every(r => r.mAsRange.trim() && r.measuredOutputs.some(v => v.trim()))
         );
     }, [serviceId, exposureCondition, table2Rows]);
+
+    const getExportData = useCallback(() => {
+        const hasRows = processedTable2.some(
+            (r) => String(r.mAsRange || '').trim() || r.measuredOutputs.some((v) => String(v).trim())
+        );
+        const hasConditions =
+            String(exposureCondition.fcd || '').trim() || String(exposureCondition.kv || '').trim();
+        if (!hasRows && !hasConditions) return null;
+        return {
+            table1: {
+                fcd: exposureCondition.fcd,
+                kv: exposureCondition.kv,
+                time: '',
+            },
+            table2: processedTable2.map((r) => ({
+                mAsRange: r.mAsRange || '',
+                ma: r.mAsRange || '',
+                mas: r.mAsRange || '',
+                measuredOutputs: r.measuredOutputs.map((v) => {
+                    const val = v.trim();
+                    return val === '' ? '' : val;
+                }),
+                average: r.average || '',
+                x: r.x || '',
+                xMax: r.xMax || '',
+                xMin: r.xMin || '',
+                col: r.col || '',
+                remarks: r.remarks === 'Pass' || r.remarks === 'Fail' ? r.remarks : '',
+            })),
+            readings: processedTable2.map((r) => ({
+                mas: r.mAsRange,
+                meas1: r.measuredOutputs[0] || '',
+                meas2: r.measuredOutputs[1] || '',
+                meas3: r.measuredOutputs[2] || '',
+                average: r.average || '',
+                mRmAs: r.x || '',
+                col: r.col || '',
+            })),
+            tolerance,
+            toleranceOperator,
+            measHeaders,
+        };
+    }, [processedTable2, exposureCondition, tolerance, toleranceOperator, measHeaders]);
+
+    useRegisterTestExport('linearityOfMasLoading', getExportData);
 
     if (isLoading) {
         return (
@@ -390,10 +541,10 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
                 </div>
 
                 <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
+                    <table className="min-w-max w-full divide-y divide-gray-200">
                         <thead className="bg-blue-50">
                             <tr>
-                                <th rowSpan={2} className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase border-r">mAs Range</th>
+                                <th rowSpan={2} className="sticky left-0 z-10 bg-blue-50 px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase border-r whitespace-nowrap">mAs Range</th>
                                 <th colSpan={measHeaders.length} className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase border-r">
                                     <div className="flex items-center justify-between px-4">
                                         <span>Radiation Output (mGy)</span>
@@ -441,23 +592,23 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
                         <tbody className="bg-white divide-y divide-gray-200">
                             {processedTable2.map(p => (
                                 <tr key={p.id} className="hover:bg-gray-50">
-                                    <td className="px-6 py-4 border-r">
+                                    <td className="sticky left-0 z-10 bg-white px-6 py-4 border-r">
                                         <input
                                             type="text"
                                             value={p.mAsRange}
                                             onChange={e => updateCell(p.id, 'mAsRange', e.target.value)}
                                             disabled={isViewMode}
-                                            className={`w-full px-3 py-2 text-center text-sm border rounded font-medium focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''
+                                            className={`w-full min-w-[120px] px-3 py-2 text-center text-sm border rounded font-medium focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''
                                                 }`}
                                             placeholder="10 - 20"
                                         />
                                     </td>
-                                    {p.measuredOutputs.map((val, idx) => (
+                                    {measHeaders.map((_, idx) => (
                                         <td key={idx} className="px-3 py-4 text-center border-r">
                                             <input
                                                 type="number"
                                                 step="any"
-                                                value={val}
+                                                value={p.measuredOutputs[idx] ?? ''}
                                                 onChange={e => updateCell(p.id, idx, e.target.value)}
                                                 disabled={isViewMode}
                                                 className={`w-24 px-3 py-2 text-center text-sm border rounded focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''
@@ -496,7 +647,19 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
                         </button>
                     )}
                     <div className="flex items-center gap-3 ml-auto">
-                        <span className="text-sm font-medium text-gray-700">Tolerance (CoL) ≤</span>
+                        <span className="text-sm font-medium text-gray-700">Tolerance (CoL)</span>
+                        <select
+                            value={toleranceOperator}
+                            onChange={e => setToleranceOperator(e.target.value)}
+                            disabled={isViewMode}
+                            className={`px-3 py-2.5 border-2 border-blue-400 rounded-lg focus:ring-4 focus:ring-blue-200 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`}
+                        >
+                            <option value="<">&lt;</option>
+                            <option value=">">&gt;</option>
+                            <option value="<=">&lt;=</option>
+                            <option value=">=">&gt;=</option>
+                            <option value="=">=</option>
+                        </select>
                         <input
                             type="number"
                             step="0.001"

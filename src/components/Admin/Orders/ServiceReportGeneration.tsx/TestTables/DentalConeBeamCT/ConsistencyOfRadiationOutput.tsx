@@ -1,5 +1,5 @@
 // src/components/TestTables/OutputConsistencyForCArm.tsx
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Plus, Trash2, Loader2, Edit3, Save } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
@@ -8,6 +8,7 @@ import {
   getConsistencyOfRadiationOutputByTestIdForCBCT,
   updateConsistencyOfRadiationOutputForCBCT,
 } from "../../../../../../api";
+import { useRegisterTestExport } from '../shared/TestExportRegistry';
 
 interface OutputRow {
   id: string;
@@ -430,6 +431,32 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
       })
     );
   };
+
+  const getExportData = useCallback(() => {
+    const hasRows = processedRows.some(
+      (r) =>
+        String(r.kvp || '').trim() ||
+        String(r.mas || '').trim() ||
+        r.outputs.some((v) => String(v || '').trim())
+    );
+    if (!hasRows && !String(ffd || '').trim()) return null;
+    return {
+      ffd: ffd.trim(),
+      outputRows: processedRows.map((row) => ({
+        kvp: row.kvp.trim(),
+        mas: row.mas.trim(),
+        outputs: row.outputs.map((v) => v.trim()),
+        mean: row.mean || '',
+        cov: row.cov || '',
+        remarks: row.remarks || '',
+      })),
+      measurementHeaders: headers,
+      tolerance: tolerance.trim(),
+      toleranceOperator,
+    };
+  }, [processedRows, ffd, headers, tolerance, toleranceOperator]);
+
+  useRegisterTestExport('outputConsistency', getExportData);
 
   if (isLoading) {
     return (

@@ -1,5 +1,5 @@
 // src/components/TestTables/AccuracyOfIrradiationTime.tsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { PlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { Edit3, Save, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
@@ -8,6 +8,7 @@ import {
     getAccuracyOfIrradiationTimeByServiceIdForDentalHandHeld,
     updateAccuracyOfIrradiationTimeForDentalHandHeld,
 } from "../../../../../../api";
+import { useRegisterTestExport } from "../shared/TestExportRegistry";
 
 interface AccuracyOfIrradiationTimeProps {
     serviceId: string;
@@ -36,7 +37,7 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
     csvData
 }) => {
     const [testId, setTestId] = useState<string | null>(initialTestId);
-    const [loading, setLoading] = useState(!!initialTestId);
+    const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [isSaved, setIsSaved] = useState(!!initialTestId);
     const [isEditing, setIsEditing] = useState(false);
@@ -111,43 +112,107 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
         }
     };
 
+    const applyCsvImport = (rows: any[]) => {
+        const rowIndices = [...new Set(rows
+            .filter(r => r['Field Name'] === 'Set_Time' || r['Field Name'] === 'Measured_Time')
+            .map(r => parseInt(r['Row Index']))
+            .filter(i => !isNaN(i) && i >= 0)
+        )].sort((a, b) => a - b);
+
+        if (rowIndices.length > 0) {
+            const settingsIdx = rowIndices[0];
+            const settingsRow = rows.filter(r => parseInt(r['Row Index']) === settingsIdx);
+            const fcd = settingsRow.find(r => r['Field Name'] === 'FCD')?.['Value']
+                ?? rows.find(r => r['Field Name'] === 'FCD')?.['Value'];
+            const kv = settingsRow.find(r => r['Field Name'] === 'kV' || r['Field Name'] === 'kVp')?.['Value']
+                ?? rows.find(r => r['Field Name'] === 'kV' || r['Field Name'] === 'kVp')?.['Value'];
+            const ma = settingsRow.find(r => r['Field Name'] === 'mA')?.['Value']
+                ?? rows.find(r => r['Field Name'] === 'mA')?.['Value'];
+
+            if (fcd || kv || ma) {
+                setTable1Row(prev => ({
+                    ...prev,
+                    fcd: fcd ? String(fcd) : prev.fcd,
+                    kv: kv ? String(kv) : prev.kv,
+                    ma: ma ? String(ma) : prev.ma,
+                }));
+            }
+
+            setTable2Rows(rowIndices.map(idx => {
+                const rowData = rows.filter(r => parseInt(r['Row Index']) === idx);
+                return {
+                    id: String(idx),
+                    setTime: String(rowData.find(r => r['Field Name'] === 'Set_Time')?.['Value'] ?? ''),
+                    measuredTime: String(rowData.find(r => r['Field Name'] === 'Measured_Time')?.['Value'] ?? ''),
+                };
+            }));
+        } else {
+            const fcd = rows.find(r => r['Field Name'] === 'FCD')?.['Value'];
+            const kv = rows.find(r => r['Field Name'] === 'kV' || r['Field Name'] === 'kVp')?.['Value'];
+            const ma = rows.find(r => r['Field Name'] === 'mA')?.['Value'];
+            if (fcd || kv || ma) {
+                setTable1Row(prev => ({
+                    ...prev,
+                    fcd: fcd ? String(fcd) : prev.fcd,
+                    kv: kv ? String(kv) : prev.kv,
+                    ma: ma ? String(ma) : prev.ma,
+                }));
+            }
+        }
+
+        const tolOp = rows.find(r => r['Field Name'] === 'Tolerance_Sign' || r['Field Name'] === 'Tolerance_Operator')?.['Value'];
+        const tolVal = rows.find(r => r['Field Name'] === 'Tolerance_Value')?.['Value'];
+        if (tolOp != null && String(tolOp).trim() !== '') setToleranceOperator(String(tolOp).trim());
+        if (tolVal != null && String(tolVal).trim() !== '') setToleranceValue(String(tolVal).trim());
+
+        setIsSaved(false);
+        setIsEditing(true);
+    };
+
     useEffect(() => {
         const fetchData = async () => {
-            if (!serviceId) return;
+            if (!serviceId) {
+                setLoading(false);
+                return;
+            }
             setLoading(true);
+            const hasCsvImport = !!(csvData && csvData.length > 0);
             try {
                 const res = await getAccuracyOfIrradiationTimeByServiceIdForDentalHandHeld(serviceId);
-                const data = res?.data;
-                if (data) {
+                const data = res?.data?.data || res?.data || res;
+                if (data && data._id) {
                     setTestId(data._id || null);
-
-                    // Table 1 Row (Test Conditions)
-                    const firstRow = data.rows?.[0] || {};
-                    setTable1Row({
-                        id: "1",
-                        fcd: data.testConditions?.fcd || data.ffd || "",
-                        kv: data.testConditions?.kv || firstRow.appliedKvp || "",
-                        ma: data.testConditions?.ma || data.mAStations?.[0] || "",
-                    });
-
-                    // Table 2 Rows (Irradiation Times) - currently this component only supports 1 mA station in its UI
-                    // but the backend supports multiple. We'll map the first station's time.
-                    setTable2Rows(
-                        data.rows && data.rows.length > 0
-                            ? data.rows.map((row: any, i: number) => ({
-                                id: String(i + 1),
-                                setTime: row.setTime || "",
-                                measuredTime: row.maStations?.[0]?.time || "",
-                            }))
-                            : [{ id: "1", setTime: "", measuredTime: "" }]
-                    );
-
-                    setToleranceOperator(data.timeToleranceSign || "<=");
-                    setToleranceValue(data.timeToleranceValue || "10");
-                    setIsSaved(true);
-                    setIsEditing(false);
-                    if (data._id && !initialTestId) {
-                        onTestSaved?.(data._id);
+                    if (!hasCsvImport) {
+                        setTable1Row({
+                            id: "1",
+                            fcd: String(data.testConditions?.fcd || data.ffd || ""),
+                            kv: String(data.testConditions?.kv || ""),
+                            ma: String(data.testConditions?.ma || ""),
+                        });
+                        setTable2Rows(
+                            data.rows && data.rows.length > 0
+                                ? data.rows.map((t: any, i: number) => ({
+                                    id: String(i + 1),
+                                    setTime: String(t.setTime || ""),
+                                    measuredTime: String(
+                                        t.maStations?.[0]?.time
+                                        ?? t.maStation1?.time
+                                        ?? ""
+                                    ),
+                                }))
+                                : [{ id: "1", setTime: "", measuredTime: "" }]
+                        );
+                        setToleranceOperator(data.timeToleranceSign || "<=");
+                        setToleranceValue(data.timeToleranceValue || "10");
+                        setIsSaved(true);
+                        setIsEditing(false);
+                        (window as any).accuracyOfOperatingPotentialAndTimeFullDataDentalHandHeld = data;
+                        if (data._id && !initialTestId) {
+                            onTestSaved?.(data._id);
+                        }
+                    } else {
+                        setIsSaved(false);
+                        setIsEditing(true);
                     }
                 } else {
                     setIsSaved(false);
@@ -156,51 +221,20 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
             } catch (err) {
                 console.log("No saved data or failed to load:", err);
                 setIsSaved(false);
+                setIsEditing(true);
             } finally {
                 setLoading(false);
             }
         };
 
         fetchData();
-    }, [serviceId, initialTestId]);
+    }, [serviceId, csvData]);
 
-    // CSV Data Injection
+    // Apply CSV after load finishes so server/empty state does not overwrite import
     useEffect(() => {
-        if (csvData && csvData.length > 0) {
-            const fcd = csvData.find(r => r['Field Name'] === 'FCD')?.['Value'];
-            const kv = csvData.find(r => r['Field Name'] === 'kV')?.['Value'];
-            const ma = csvData.find(r => r['Field Name'] === 'mA')?.['Value'];
-
-            if (fcd || kv || ma) {
-                setTable1Row(prev => ({
-                    ...prev,
-                    fcd: fcd || prev.fcd,
-                    kv: kv || prev.kv,
-                    ma: ma || prev.ma
-                }));
-            }
-
-            const rowIndices = [...new Set(csvData
-                .filter(r => r['Field Name'] && (r['Field Name'] === 'Set_Time' || r['Field Name'] === 'Measured_Time'))
-                .map(r => parseInt(r['Row Index']))
-                .filter(i => !isNaN(i) && i >= 0)
-            )].sort((a, b) => a - b);
-
-            if (rowIndices.length > 0) {
-                const newTable2Rows = rowIndices.map(idx => {
-                    const rowData = csvData.filter(r => parseInt(r['Row Index']) === idx);
-                    return {
-                        id: String(idx),
-                        setTime: rowData.find(r => r['Field Name'] === 'Set_Time')?.['Value'] || '',
-                        measuredTime: rowData.find(r => r['Field Name'] === 'Measured_Time')?.['Value'] || '',
-                    };
-                });
-                setTable2Rows(newTable2Rows);
-            }
-
-            if (!testId && (rowIndices.length > 0 || fcd || kv || ma)) setIsEditing(true);
-        }
-    }, [csvData, testId]);
+        if (loading || !csvData || csvData.length === 0) return;
+        applyCsvImport(csvData);
+    }, [csvData, loading]);
 
     const handleSave = async () => {
         if (!serviceId) {
@@ -210,10 +244,14 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
 
         setSaving(true);
         try {
-            // LOAD EXISTING DATA FIRST TO MERGE (Preserve kVp measurements)
-            const res = await getAccuracyOfIrradiationTimeByServiceIdForDentalHandHeld(serviceId);
-            const fullData = res?.data || {};
-            const existingRows = fullData.rows || [];
+            // Merge against latest DB so AOP measured columns stay aligned
+            const existingRes = await getAccuracyOfIrradiationTimeByServiceIdForDentalHandHeld(serviceId);
+            const fullData =
+                existingRes?.data?.data ||
+                existingRes?.data ||
+                (window as any).accuracyOfOperatingPotentialAndTimeFullDataDentalHandHeld ||
+                {};
+            const existingRows = Array.isArray(fullData.rows) ? fullData.rows : [];
 
             const payload = {
                 testConditions: {
@@ -221,39 +259,53 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
                     kv: table1Row.kv,
                     ma: table1Row.ma,
                 },
-                // MERGE STRATEGY: Preserve kVp data from existing rows
                 rows: table2Rows.map((r, i) => {
                     const existingRow = existingRows[i] || {};
+                    const existingStations = Array.isArray(existingRow.maStations)
+                        ? existingRow.maStations
+                        : [];
+                    const stationCount = Math.max(existingStations.length, 1);
                     return {
-                        ...existingRow,
-                        appliedKvp: table1Row.kv || existingRow.appliedKvp || "",
+                        appliedKvp: existingRow.appliedKvp || table1Row.kv || "",
                         setTime: r.setTime,
-                        maStations: [
-                            {
-                                ...(existingRow.maStations?.[0] || {}),
-                                time: r.measuredTime
-                            },
-                            ...(existingRow.maStations?.slice(1) || [])
-                        ]
+                        avgKvp: existingRow.avgKvp || "",
+                        avgTime: existingRow.avgTime || "",
+                        remark: existingRow.remark || "",
+                        maStations: Array.from({ length: stationCount }, (_, j) => ({
+                            kvp: existingStations[j]?.kvp ?? "",
+                            time: j === 0 ? r.measuredTime : (existingStations[j]?.time ?? ""),
+                        })),
                     };
                 }),
                 timeToleranceSign: toleranceOperator,
                 timeToleranceValue: toleranceValue,
+                ...(fullData.kvpToleranceSign != null ? { kvpToleranceSign: fullData.kvpToleranceSign } : {}),
+                ...(fullData.kvpToleranceValue != null ? { kvpToleranceValue: fullData.kvpToleranceValue } : {}),
+                ...(fullData.totalFiltration ? { totalFiltration: fullData.totalFiltration } : {}),
+                ...(fullData.filtrationTolerance ? { filtrationTolerance: fullData.filtrationTolerance } : {}),
             };
 
             let result;
-            if (testId) {
-                result = await updateAccuracyOfIrradiationTimeForDentalHandHeld(testId, payload);
+            let currentTestId = testId;
+            if (currentTestId) {
+                result = await updateAccuracyOfIrradiationTimeForDentalHandHeld(currentTestId, payload);
                 toast.success("Updated successfully!");
             } else {
                 result = await addAccuracyOfIrradiationTimeForDentalHandHeld(serviceId, payload);
-                const newTestId = result?.data?.testId || result?.data?._id;
+                const newTestId = result?.data?.testId || result?.data?._id || result?.testId;
                 if (newTestId) {
+                    currentTestId = newTestId;
                     setTestId(newTestId);
                     onTestSaved?.(newTestId);
                 }
                 toast.success("Saved successfully!");
             }
+
+            (window as any).accuracyOfOperatingPotentialAndTimeFullDataDentalHandHeld = {
+                ...fullData,
+                ...payload,
+                _id: currentTestId || fullData._id,
+            };
             setIsSaved(true);
             setIsEditing(false);
         } catch (err: any) {
@@ -268,6 +320,43 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
         setIsEditing(true);
         setIsSaved(false);
     };
+
+    const getExportData = useCallback(() => {
+        const hasConditions =
+            String(table1Row.fcd || "").trim() ||
+            String(table1Row.kv || "").trim() ||
+            String(table1Row.ma || "").trim();
+        const hasTimes = table2Rows.some(
+            (r) => String(r.setTime || "").trim() || String(r.measuredTime || "").trim()
+        );
+        if (!hasConditions && !hasTimes) return null;
+        return {
+            testConditions: {
+                fcd: table1Row.fcd,
+                kv: table1Row.kv,
+                ma: table1Row.ma,
+            },
+            rows: table2Rows.map((r) => ({
+                appliedKvp: table1Row.kv || "",
+                setTime: r.setTime,
+                avgKvp: "",
+                avgTime: "",
+                remark: "",
+                maStations: [{ kvp: "", time: r.measuredTime }],
+            })),
+            readings: table2Rows.map((r) => ({
+                time: r.setTime,
+                observedTime: r.measuredTime,
+                error: "",
+                remark: "",
+            })),
+            timeToleranceSign: toleranceOperator,
+            timeToleranceValue: toleranceValue,
+            tolerance: toleranceValue,
+        };
+    }, [table1Row, table2Rows, toleranceOperator, toleranceValue]);
+
+    useRegisterTestExport("accuracyOfIrradiationTime", getExportData);
 
     if (loading) {
         return (
@@ -339,13 +428,14 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
                         2. Accuracy of Irradiation Time
                     </h3>
                 </div>
-                <table className="min-w-full divide-y divide-gray-200">
+                <div className="overflow-x-auto">
+                <table className="min-w-max w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                         <tr>
-                            <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700  tracking-wider">Set Time (sec)</th>
-                            <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700  tracking-wider">Measured Time (sec)</th>
-                            <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700  tracking-wider">% Error</th>
-                            <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700  tracking-wider">Remarks</th>
+                            <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 tracking-wider whitespace-nowrap">Set Time (sec)</th>
+                            <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 tracking-wider whitespace-nowrap">Measured Time (sec)</th>
+                            <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 tracking-wider whitespace-nowrap">% Error</th>
+                            <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 tracking-wider whitespace-nowrap">Remarks</th>
                             <th className="px-4 py-3 w-12"></th>
                         </tr>
                     </thead>
@@ -394,6 +484,7 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
                         })}
                     </tbody>
                 </table>
+                </div>
                 {!isViewMode && (
                     <div className="px-4 py-3 bg-gray-50 border-t border-gray-300 flex justify-start">
                         <button onClick={addTable2Row} className="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 font-medium">

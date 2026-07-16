@@ -1,5 +1,5 @@
 // src/components/TestTables/AccuracyOfIrradiationTime.tsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { PlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { Edit3, Save, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
@@ -8,6 +8,7 @@ import {
   getAccuracyOfIrradiationTimeByServiceIdForDentalIntra,
   updateAccuracyOfIrradiationTimeForDentalIntra,
 } from "../../../../../../api";
+import { useRegisterTestExport } from "../shared/TestExportRegistry";
 
 interface AccuracyOfIrradiationTimeProps {
   serviceId: string;
@@ -225,36 +226,64 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
       return;
     }
 
-    const fullData = (window as any).accuracyOfOperatingPotentialAndTimeFullData || {};
-    const existingRows = fullData.rows || [];
-
-    const payload = {
-      testConditions: {
-        fcd: table1Row.fcd,
-        kv: table1Row.kv,
-        ma: table1Row.ma,
-      },
-      // Merge with existing rows if possible, or create new ones
-      rows: table2Rows.map((r, i) => {
-        const existingRow = existingRows[i] || {};
-        return {
-          ...existingRow,
-          setTime: r.setTime,
-          maStations: [
-            {
-              ...(existingRow.maStations?.[0] || {}),
-              time: r.measuredTime
-            },
-            ...(existingRow.maStations?.slice(1) || [])
-          ]
-        };
-      }),
-      timeToleranceSign: toleranceOperator,
-      timeToleranceValue: toleranceValue,
-    };
-
     setSaving(true);
     try {
+      // Merge against latest DB so AOP measured columns stay aligned
+      const existingRes = await getAccuracyOfIrradiationTimeByServiceIdForDentalIntra(serviceId);
+      const fullData = existingRes?.data?.data || existingRes?.data || (window as any).accuracyOfOperatingPotentialAndTimeFullData || {};
+      const existingRows = Array.isArray(fullData.rows) ? fullData.rows : [];
+
+      const payload = {
+        testConditions: {
+          fcd: table1Row.fcd,
+          kv: table1Row.kv,
+          ma: table1Row.ma,
+        },
+        // Preserve all AOP rows when irradiation has fewer rows (shared document)
+        rows: (() => {
+          const maxLen = Math.max(existingRows.length, table2Rows.length);
+          return Array.from({ length: maxLen }, (_, i) => {
+            const existingRow = existingRows[i] || {};
+            const timeRow = table2Rows[i];
+            const existingStations = Array.isArray(existingRow.maStations) ? existingRow.maStations : [];
+            const stationCount = Math.max(
+              existingStations.length,
+              existingRow.maStation1 || existingRow.maStation2 ? 2 : 0,
+              1
+            );
+            return {
+              appliedKvp: existingRow.appliedKvp || "",
+              setTime: timeRow ? timeRow.setTime : (existingRow.setTime || ""),
+              avgKvp: existingRow.avgKvp || "",
+              avgTime: existingRow.avgTime || "",
+              remark: existingRow.remark || "",
+              maStations: Array.from({ length: stationCount }, (_, j) => ({
+                kvp:
+                  existingStations[j]?.kvp ??
+                  (j === 0 ? existingRow.maStation1?.kvp : undefined) ??
+                  (j === 1 ? existingRow.maStation2?.kvp : undefined) ??
+                  "",
+                time:
+                  timeRow && j === 0
+                    ? timeRow.measuredTime
+                    : (existingStations[j]?.time ??
+                      (j === 0 ? existingRow.maStation1?.time : undefined) ??
+                      (j === 1 ? existingRow.maStation2?.time : undefined) ??
+                      ""),
+              })),
+            };
+          });
+        })(),
+        timeToleranceSign: toleranceOperator,
+        timeToleranceValue: toleranceValue,
+        ...(Array.isArray(fullData.mAStations) ? { mAStations: fullData.mAStations } : {}),
+        ...(fullData.ffd != null ? { ffd: fullData.ffd } : {}),
+        ...(fullData.kvpToleranceSign != null ? { kvpToleranceSign: fullData.kvpToleranceSign } : {}),
+        ...(fullData.kvpToleranceValue != null ? { kvpToleranceValue: fullData.kvpToleranceValue } : {}),
+        ...(fullData.totalFiltration ? { totalFiltration: fullData.totalFiltration } : {}),
+        ...(fullData.filtrationTolerance ? { filtrationTolerance: fullData.filtrationTolerance } : {}),
+      };
+
       let result;
       if (testId) {
         result = await updateAccuracyOfIrradiationTimeForDentalIntra(testId, payload);
@@ -268,6 +297,11 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
         }
         toast.success("Saved successfully!");
       }
+      (window as any).accuracyOfOperatingPotentialAndTimeFullData = {
+        ...fullData,
+        ...payload,
+        _id: testId || result?.data?.testId || result?.data?._id || fullData._id,
+      };
       setIsSaved(true);
       setIsEditing(false);
     } catch (err: any) {
@@ -282,6 +316,43 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
     setIsEditing(true);
     setIsSaved(false);
   };
+
+  const getExportData = useCallback(() => {
+    const hasConditions =
+      String(table1Row.fcd || "").trim() ||
+      String(table1Row.kv || "").trim() ||
+      String(table1Row.ma || "").trim();
+    const hasTimes = table2Rows.some(
+      (r) => String(r.setTime || "").trim() || String(r.measuredTime || "").trim()
+    );
+    if (!hasConditions && !hasTimes) return null;
+    return {
+      testConditions: {
+        fcd: table1Row.fcd,
+        kv: table1Row.kv,
+        ma: table1Row.ma,
+      },
+      rows: table2Rows.map((r) => ({
+        appliedKvp: table1Row.kv || "",
+        setTime: r.setTime,
+        avgKvp: "",
+        avgTime: "",
+        remark: "",
+        maStations: [{ kvp: "", time: r.measuredTime }],
+      })),
+      readings: table2Rows.map((r) => ({
+        time: r.setTime,
+        observedTime: r.measuredTime,
+        error: "",
+        remark: "",
+      })),
+      timeToleranceSign: toleranceOperator,
+      timeToleranceValue: toleranceValue,
+      tolerance: toleranceValue,
+    };
+  }, [table1Row, table2Rows, toleranceOperator, toleranceValue]);
+
+  useRegisterTestExport("accuracyOfIrradiationTime", getExportData);
 
   if (loading) {
     return (
@@ -353,13 +424,14 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
             2. Accuracy of Irradiation Time
           </h3>
         </div>
-        <table className="min-w-full divide-y divide-gray-200">
+        <div className="overflow-x-auto">
+        <table className="min-w-max w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700  tracking-wider">Set Time (mSec)</th>
-              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700  tracking-wider">Measured Time (mSec)</th>
-              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700  tracking-wider">% Error</th>
-              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700  tracking-wider">Remarks</th>
+              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 tracking-wider whitespace-nowrap">Set Time (mSec)</th>
+              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 tracking-wider whitespace-nowrap">Measured Time (mSec)</th>
+              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 tracking-wider whitespace-nowrap">% Error</th>
+              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 tracking-wider whitespace-nowrap">Remarks</th>
               <th className="px-4 py-3 w-12"></th>
             </tr>
           </thead>
@@ -408,6 +480,7 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
             })}
           </tbody>
         </table>
+        </div>
         {!isViewMode && (
           <div className="px-4 py-3 bg-gray-50 border-t border-gray-300 flex justify-start">
             <button onClick={addTable2Row} className="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 font-medium">

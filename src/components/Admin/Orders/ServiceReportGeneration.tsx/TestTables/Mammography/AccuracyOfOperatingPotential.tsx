@@ -1,5 +1,6 @@
 // components/TestTables/AccuracyOfOperatingPotential.tsx
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useRegisterTestExport } from '../shared/TestExportRegistry';
 import { Loader2, Edit3, Save, Plus, Trash2 } from 'lucide-react';
 import {
   addAccuracyOfOperatingPotentialForMammography,
@@ -509,6 +510,46 @@ const AccuracyOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: prop
   const isViewMode = hasSaved && !isEditing;
   const buttonText = isViewMode ? 'Edit' : testId ? 'Update' : 'Save';
   const ButtonIcon = isViewMode ? Edit3 : Save;
+
+  const getExportData = useCallback(() => {
+    const hasRows = table2RowsWithCalculations.some(
+      (r) =>
+        String(r.setKV || '').trim() ||
+        r.maColumns.some((col) => String(col.value || '').trim())
+    );
+    const hasTable1 =
+      String(table1Row.time || '').trim() || String(table1Row.sliceThickness || '').trim();
+    if (!hasRows && !hasTable1) return null;
+    return {
+      table1: [table1Row],
+      table2: table2RowsWithCalculations.map((r) => {
+        const maValues: any = {};
+        r.maColumns.forEach((col) => {
+          const key = canonicalMammoMaKey(col.label);
+          maValues[key] = col.value.trim() === '' ? null : parseFloat(col.value) || col.value;
+        });
+        return {
+          setKV: parseFloat(r.setKV) || r.setKV,
+          ...maValues,
+          avgKvp: r.avgKvp ? parseFloat(r.avgKvp) : null,
+          remarks: r.remarks,
+        };
+      }),
+      toleranceValue,
+      toleranceType,
+      toleranceSign,
+      mAStations: globalMAColumns.map((c) => c.label),
+    };
+  }, [
+    table1Row,
+    table2RowsWithCalculations,
+    toleranceValue,
+    toleranceType,
+    toleranceSign,
+    globalMAColumns,
+  ]);
+
+  useRegisterTestExport('accuracyOfOperatingPotential', getExportData);
 
   if (isLoading) {
     return (

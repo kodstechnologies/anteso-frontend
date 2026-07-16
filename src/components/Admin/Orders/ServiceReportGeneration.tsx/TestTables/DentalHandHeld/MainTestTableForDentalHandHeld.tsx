@@ -63,15 +63,16 @@ const MainTestTableForDentalHandHeld: React.FC<MainTestTableProps> = ({ testData
 
   const normalizeToleranceOperator = (op: string | undefined): "<=" | "<" | ">=" | ">" => {
     const o = String(op ?? "<=").trim();
-    if (o === "â‰¤" || o === "<=") return "<=";
-    if (o === "â‰¥" || o === ">=") return ">=";
+    if (o === "" || o === "<=") return "<=";
+    if (o === "" || o === ">=") return ">=";
     if (o === "<") return "<";
     if (o === ">") return ">";
     return "<=";
   };
 
   // Accuracy of Irradiation Time — same summary shape as RadiographyFixed (per-row remarks, tolerance text)
-  const irrBlocks = testData.accuracyOfIrradiationTime;
+  // Skip in no-timer / mAs-only reports
+  const irrBlocks = hasTimer ? testData.accuracyOfIrradiationTime : null;
   const irrList =
     irrBlocks?.irradiationTimes ??
     irrBlocks?.table2 ??
@@ -124,8 +125,14 @@ const MainTestTableForDentalHandHeld: React.FC<MainTestTableProps> = ({ testData
   if (testData.accuracyOfOperatingPotential?.measurements && Array.isArray(testData.accuracyOfOperatingPotential.measurements)) {
     const validRows = testData.accuracyOfOperatingPotential.measurements.filter((row: any) => row.appliedKvp || row.averageKvp);
     if (validRows.length > 0) {
-      const toleranceValue = testData.accuracyOfOperatingPotential.tolerance?.value || "2.0";
-      const toleranceType = testData.accuracyOfOperatingPotential.tolerance?.type || "Â±";
+      const toleranceValue =
+        testData.accuracyOfOperatingPotential.kvpToleranceValue ||
+        testData.accuracyOfOperatingPotential.tolerance?.value ||
+        "2.0";
+      const toleranceType =
+        testData.accuracyOfOperatingPotential.kvpToleranceSign ||
+        testData.accuracyOfOperatingPotential.tolerance?.type ||
+        "±";
 
       const kvpRows = validRows.map((row: any) => ({
         specified: row.appliedKvp || "-",
@@ -246,8 +253,8 @@ const MainTestTableForDentalHandHeld: React.FC<MainTestTableProps> = ({ testData
     }
   }
 
-  // 3. Linearity of Time
-  if (testData.linearityOfTime?.table2 && Array.isArray(testData.linearityOfTime.table2)) {
+  // 3. Linearity of Time — timer mode only
+  if (hasTimer && testData.linearityOfTime?.table2 && Array.isArray(testData.linearityOfTime.table2)) {
     const validRows = testData.linearityOfTime.table2.filter((row: any) => row.time);
     if (validRows.length > 0) {
       const tolerance = testData.linearityOfTime.tolerance || "0.1";
@@ -258,7 +265,7 @@ const MainTestTableForDentalHandHeld: React.FC<MainTestTableProps> = ({ testData
       const testRows = [{
         specified: "-",
         measured: col,
-        tolerance: `â‰¤ ${tolerance}`,
+        tolerance: ` ${tolerance}`,
         remarks: (isPass ? "Pass" : remarks ? "Fail" : "-") as any,
       }];
       addRowsForTest("Linearity of Time (Coefficient of Linearity)", testRows);
@@ -367,7 +374,7 @@ const MainTestTableForDentalHandHeld: React.FC<MainTestTableProps> = ({ testData
 
   // Linearity of mA Loading — RadiographyFixed (dedicated linearityOfmALoading + ma rows)
   let addedMaLinearityFromMaLoading = false;
-  if (testData.linearityOfmALoading?.table2 && Array.isArray(testData.linearityOfmALoading.table2)) {
+  if (hasTimer && testData.linearityOfmALoading?.table2 && Array.isArray(testData.linearityOfmALoading.table2)) {
     const lob = testData.linearityOfmALoading;
     const validRows = lob.table2.filter((row: any) => row.ma);
     if (validRows.length > 0) {

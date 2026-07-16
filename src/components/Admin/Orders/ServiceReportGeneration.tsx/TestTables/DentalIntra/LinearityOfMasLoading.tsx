@@ -1,7 +1,7 @@
 // components/TestTables/LinearityOfMasLoading.tsx
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { Plus, Trash2, Save, Edit3, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
@@ -10,6 +10,8 @@ import {
   getLinearityOfMasLoadingByTestIdForDentalIntra,
   updateLinearityOfMasLoadingForDentalIntra,
 } from '../../../../../../api';
+import { normalizeCsvComparisonOperator } from '../shared/parseRadiographyStyleTableFormat';
+import { useRegisterTestExport } from '../shared/TestExportRegistry';
 
 interface ExposureCondition {
   fcd: string;
@@ -130,6 +132,20 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
                 };
               })
             );
+            if (Array.isArray(data.measHeaders) && data.measHeaders.length > 0) {
+              const count = Math.max(
+                data.measHeaders.length,
+                data.table2?.[0]?.measuredOutputs?.length || 0,
+              );
+              setMeasHeaders(
+                Array.from({ length: Math.max(count, 1) }, (_, i) =>
+                  String(data.measHeaders[i] ?? "").trim() || `Measured mR ${i + 1}`
+                )
+              );
+            } else if (data.table2[0]?.measuredOutputs?.length) {
+              const count = data.table2[0].measuredOutputs.length;
+              setMeasHeaders(Array.from({ length: count }, (_, i) => `Measured mR ${i + 1}`));
+            }
           }
           setTolerance(data.tolerance || '0.1');
           setToleranceOperator(data.toleranceOperator || '<=');
@@ -158,6 +174,16 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
       const csvMeasLabels = csvData.find(r => r['Field Name'] === 'MeasColumnLabels')?.['Value'];
       const fcd = csvData.find(r => r['Field Name'] === 'FCD')?.['Value'];
       const kv = csvData.find(r => r['Field Name'] === 'kV')?.['Value'];
+      const tolOp = csvData.find(r =>
+        r['Field Name'] === 'Tolerance_Operator' ||
+        r['Field Name'] === 'ToleranceOperator' ||
+        r['Field Name'] === 'Tolerance_Sign'
+      )?.['Value'];
+      const tolVal = csvData.find(r =>
+        r['Field Name'] === 'Tolerance' ||
+        r['Field Name'] === 'Tolerance_Value' ||
+        r['Field Name'] === 'Tolerance Value'
+      )?.['Value'];
 
       if (fcd || kv) {
         setExposureCondition(prev => ({
@@ -165,6 +191,12 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
           kv: kv || prev.kv
         }));
       }
+
+      if (tolOp) {
+        const op = normalizeCsvComparisonOperator(tolOp);
+        if (['<', '>', '<=', '>=', '='].includes(op)) setToleranceOperator(op);
+      }
+      if (tolVal) setTolerance(String(tolVal).trim());
 
       const rowIndices = [...new Set(csvData
         .filter(r => r['Field Name'] && (r['Field Name'] === 'mAs_Range' || r['Field Name'].startsWith('Measured_')))
@@ -253,6 +285,7 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
         }),
         tolerance,
         toleranceOperator,
+        measHeaders,
       };
 
       let result;
@@ -357,6 +390,62 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
     }));
   }, [table2Rows, tolerance, toleranceOperator]);
 
+  const getExportData = useCallback(() => {
+    const hasRows = processedTable2.some(
+      (r) => String(r.mAsRange || '').trim() || r.measuredOutputs.some((v) => String(v).trim())
+    );
+    const hasConditions =
+      String(exposureCondition.fcd || '').trim() || String(exposureCondition.kv || '').trim();
+    if (!hasRows && !hasConditions) return null;
+    return {
+      table1: {
+        fcd: exposureCondition.fcd,
+        kv: exposureCondition.kv,
+        time: '',
+      },
+      table2: processedTable2.map((r) => {
+        let maValue = '';
+        const match = r.mAsRange.match(/(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)/);
+        if (match) {
+          const mid = (parseFloat(match[1]) + parseFloat(match[2])) / 2;
+          maValue = mid.toString();
+        } else {
+          const singleMatch = r.mAsRange.match(/(\d+(?:\.\d+)?)/);
+          maValue = singleMatch ? singleMatch[1] : r.mAsRange.replace(/[^\d.]/g, '');
+        }
+        return {
+          ma: maValue || r.mAsRange,
+          mAsRange: r.mAsRange,
+          mas: maValue || r.mAsRange,
+          measuredOutputs: r.measuredOutputs.map((v) => {
+            const val = v.trim();
+            return val === '' ? '' : val;
+          }),
+          average: r.average || '',
+          x: r.x || '',
+          xMax: r.xMax || '',
+          xMin: r.xMin || '',
+          col: r.col || '',
+          remarks: r.remarks || '',
+        };
+      }),
+      readings: processedTable2.map((r) => ({
+        mas: r.mAsRange,
+        meas1: r.measuredOutputs[0] || '',
+        meas2: r.measuredOutputs[1] || '',
+        meas3: r.measuredOutputs[2] || '',
+        average: r.average || '',
+        mRmAs: r.x || '',
+        col: r.col || '',
+      })),
+      tolerance,
+      toleranceOperator,
+      measHeaders,
+    };
+  }, [processedTable2, exposureCondition, tolerance, toleranceOperator, measHeaders]);
+
+  useRegisterTestExport('linearityOfMasLoading', getExportData);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center p-10">
@@ -414,10 +503,10 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
         </div>
 
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
+          <table className="min-w-max w-full divide-y divide-gray-200">
             <thead className="bg-blue-50">
               <tr>
-                <th rowSpan={2} className="px-6 py-3 min-w-[170px] text-left text-xs font-medium text-gray-700 border-r">mAs Range</th>
+                <th rowSpan={2} className="sticky left-0 z-10 bg-blue-50 px-6 py-3 min-w-[170px] text-left text-xs font-medium text-gray-700 border-r whitespace-nowrap">mAs Range</th>
                 <th colSpan={measHeaders.length} className="px-6 py-3 text-center text-xs font-medium text-gray-700  border-r">
                   <div className="flex items-center justify-between px-4">
                     <span>Radiation Output (mGy)</span>
@@ -467,7 +556,7 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
             <tbody className="bg-white divide-y divide-gray-200">
               {processedTable2.map((p, rowIdx) => (
                 <tr key={p.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 border-r">
+                  <td className="sticky left-0 z-10 bg-white px-6 py-4 border-r">
                     <input
                       type="text"
                       value={p.mAsRange || (p as any).ma || ''}

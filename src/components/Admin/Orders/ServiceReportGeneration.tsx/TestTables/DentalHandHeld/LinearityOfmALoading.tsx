@@ -1,7 +1,7 @@
 // components/TestTables/LinearityOfMaLoading.tsx
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Plus, Trash2, Loader2, Edit3, Save } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
@@ -9,6 +9,7 @@ import {
     getLinearityOfMaLoadingByServiceIdForDentalHandHeld,
     updateLinearityOfMaLoadingForDentalHandHeld,
 } from '../../../../../../api';
+import { useRegisterTestExport } from '../shared/TestExportRegistry';
 
 interface Table1Row {
     fcd: string;
@@ -270,6 +271,16 @@ const LinearityOfMaLoading: React.FC<LinearityOfMaLoadingProps> = ({
             const fcd = csvData.find(r => r['Field Name'] === 'FCD')?.['Value'];
             const kv = csvData.find(r => r['Field Name'] === 'kV')?.['Value'];
             const time = csvData.find(r => r['Field Name'] === 'time')?.['Value'];
+            const tolOp = csvData.find(r =>
+                r['Field Name'] === 'Tolerance_Operator' ||
+                r['Field Name'] === 'ToleranceOperator' ||
+                r['Field Name'] === 'Tolerance_Sign'
+            )?.['Value'];
+            const tolVal = csvData.find(r =>
+                r['Field Name'] === 'Tolerance' ||
+                r['Field Name'] === 'Tolerance_Value' ||
+                r['Field Name'] === 'Tolerance Value'
+            )?.['Value'];
 
             if (fcd || kv || time) {
                 setTable1Row(prev => ({
@@ -278,6 +289,12 @@ const LinearityOfMaLoading: React.FC<LinearityOfMaLoadingProps> = ({
                     time: time || prev.time
                 }));
             }
+
+            if (tolOp) {
+                const op = String(tolOp).trim();
+                if (['<', '>', '<=', '>=', '='].includes(op)) setToleranceOperator(op);
+            }
+            if (tolVal) setTolerance(String(tolVal).trim());
 
             const rowIndices = [...new Set(csvData
                 .filter(r => r['Field Name'] && (r['Field Name'] === 'mA_Station' || r['Field Name'].startsWith('Measured_')))
@@ -413,6 +430,44 @@ const LinearityOfMaLoading: React.FC<LinearityOfMaLoadingProps> = ({
         : 'Linearity of mA Loading Stations';
     const xUnitLabel = isTimerSelected ? 'mGy/(mA*s)' : 'mGy/mA';
 
+    const getExportData = useCallback(() => {
+        const hasRows = processedTable2.rows.some(
+            (r) => String(r.ma || '').trim() || r.measuredOutputs.some((v) => String(v).trim())
+        );
+        const hasConditions =
+            String(table1Row.fcd || '').trim() ||
+            String(table1Row.kv || '').trim() ||
+            String(table1Row.time || '').trim();
+        if (!hasRows && !hasConditions) return null;
+        return {
+            table1: {
+                fcd: table1Row.fcd,
+                kv: table1Row.kv,
+                time: table1Row.time,
+                ma: table1Row.time,
+            },
+            table2: processedTable2.rows.map((r) => ({
+                ma: r.ma,
+                time: r.ma,
+                measuredOutputs: r.measuredOutputs.map((v) => {
+                    const val = v.trim();
+                    return val === '' ? '' : val;
+                }),
+                average: r.average || '',
+                x: r.x || '',
+                xMax: processedTable2.summary.xMax,
+                xMin: processedTable2.summary.xMin,
+                col: processedTable2.summary.col,
+                remarks: processedTable2.summary.remarks,
+            })),
+            tolerance,
+            toleranceOperator,
+            measHeaders,
+        };
+    }, [processedTable2, table1Row, tolerance, toleranceOperator, measHeaders]);
+
+    useRegisterTestExport('linearityOfMaLoading', getExportData);
+
     if (isLoading) {
         return (
             <div className="flex items-center justify-center p-10">
@@ -423,7 +478,7 @@ const LinearityOfMaLoading: React.FC<LinearityOfMaLoadingProps> = ({
     }
 
     return (
-        <div className="p-6 max-w-full overflow-x-auto">
+        <div className="p-6 max-w-full">
             <h2 className="text-2xl font-bold mb-6">{tableTitle}</h2>
 
             {!isViewMode && table1Row.time.trim() && !hasValidTime && (
@@ -484,13 +539,14 @@ const LinearityOfMaLoading: React.FC<LinearityOfMaLoadingProps> = ({
                 <div className="px-4 py-3 bg-blue-50 border-b">
                     <h3 className="text-lg font-semibold text-blue-900">{sectionTitle}</h3>
                 </div>
-                <table className="min-w-full divide-y divide-gray-200">
+                <div className="overflow-x-auto">
+                <table className="min-w-max w-full divide-y divide-gray-200">
                     <thead className="bg-blue-50">
                         <tr>
                             {/* Fixed width for mA column */}
                             <th
                                 rowSpan={2}
-                                className="px-6 py-3 w-32 text-left text-xs font-medium text-gray-700 tracking-wider border-r whitespace-nowrap"
+                                className="sticky left-0 z-10 px-6 py-3 w-32 text-left text-xs font-medium text-gray-700 tracking-wider border-r whitespace-nowrap bg-blue-50"
                             >
                                 mA
                             </th>
@@ -498,10 +554,10 @@ const LinearityOfMaLoading: React.FC<LinearityOfMaLoadingProps> = ({
                                 colSpan={measHeaders.length}
                                 className="px-4 py-3 text-center text-xs font-medium text-gray-700 tracking-wider border-r"
                             >
-                                <div className="flex items-center justify-between">
+                                <div className="flex items-center justify-between whitespace-nowrap">
                                     <span>Output (mGy)</span>
                                     {!isViewMode && (
-                                        <button onClick={addMeasColumn} className="p-1 text-green-600 hover:bg-green-100 rounded">
+                                        <button onClick={addMeasColumn} className="p-1 text-green-600 hover:bg-green-100 rounded ml-2">
                                             <Plus className="w-4 h-4" />
                                         </button>
                                     )}
@@ -539,7 +595,7 @@ const LinearityOfMaLoading: React.FC<LinearityOfMaLoadingProps> = ({
                     <tbody className="bg-white divide-y divide-gray-200">
                         {processedTable2.rows.map((p, rowIdx) => (
                             <tr key={p.id} className="hover:bg-gray-50">
-                                <td className="px-4 py-2 border-r">
+                                <td className="sticky left-0 z-10 px-4 py-2 border-r bg-white">
                                     <input
                                         type="text"
                                         value={p.ma}
@@ -621,6 +677,7 @@ const LinearityOfMaLoading: React.FC<LinearityOfMaLoadingProps> = ({
                         ))}
                     </tbody>
                 </table>
+                </div>
 
                 <div className="px-4 py-3 bg-gray-50 border-t flex justify-between items-center">
                     {!isViewMode && (

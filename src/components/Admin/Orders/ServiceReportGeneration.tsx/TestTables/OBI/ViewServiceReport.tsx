@@ -1390,7 +1390,7 @@ const ViewServiceReportOBI: React.FC = () => {
                               <tr>
                                 <td className="border border-black font-medium" style={{ padding: '0px 4px', fontSize: '11px' }}>Required (Tolerance)</td>
                                 <td className="border border-black text-center" style={{ padding: '0px 4px', fontSize: '11px' }}>
-                                  {!isNaN(requiredTol) ? `â‰¥ ${requiredTol} mm Al` : "-"}
+                                  {!isNaN(requiredTol) ? ` ${requiredTol} mm Al` : "-"}
                                 </td>
                               </tr>
                               <tr>
@@ -1405,7 +1405,7 @@ const ViewServiceReportOBI: React.FC = () => {
                             <div style={{ marginTop: '4px', fontSize: '10px', color: '#555' }}>
                               <span className="font-semibold">Tolerance criteria: </span>
                               {ft.forKvGreaterThan70 ?? "1.5"} mm Al for kV &lt; {ft.kvThreshold1 ?? "70"} |&nbsp;
-                              {ft.forKvBetween70And100 ?? "2.0"} mm Al for {ft.kvThreshold1 ?? "70"} â‰¤ kV â‰¤ {ft.kvThreshold2 ?? "100"} |&nbsp;
+                              {ft.forKvBetween70And100 ?? "2.0"} mm Al for {ft.kvThreshold1 ?? "70"} kV  {ft.kvThreshold2 ?? "100"} |&nbsp;
                               {ft.forKvGreaterThan100 ?? "2.5"} mm Al for kV &gt; {ft.kvThreshold2 ?? "100"}
                             </div>
                           )}
@@ -1888,10 +1888,10 @@ const ViewServiceReportOBI: React.FC = () => {
                   <p className="text-sm print:text-[10px]" style={{ fontSize: "10px", margin: "2px 0" }}>
                     <strong>Tolerance (CoL):</strong>{" "}
                     {testData.linearityOfTime.toleranceOperator === "<="
-                      ? "â‰¤"
+                      ? ""
                       : testData.linearityOfTime.toleranceOperator === ">="
-                        ? "â‰¥"
-                        : testData.linearityOfTime.toleranceOperator || "â‰¤"}{" "}
+                        ? ""
+                        : testData.linearityOfTime.toleranceOperator || ""}{" "}
                     {testData.linearityOfTime.tolerance || "0.1"}
                   </p>
                 </div>
@@ -1970,7 +1970,13 @@ const ViewServiceReportOBI: React.FC = () => {
                 {/* Tolerance */}
                 <div className="bg-gray-50 p-4 print:p-1 rounded border" style={{ padding: '2px 4px', marginTop: '4px' }}>
                   <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
-                    <strong>Tolerance:</strong> Coefficient of Linearity {testData.linearityOfMasLoading.tolerance || "0.1"}
+                    <strong>Tolerance (CoL):</strong>{" "}
+                    {testData.linearityOfMasLoading.toleranceOperator === "<="
+                      ? "≤"
+                      : testData.linearityOfMasLoading.toleranceOperator === ">="
+                        ? "≥"
+                        : testData.linearityOfMasLoading.toleranceOperator || "≤"}{" "}
+                    {testData.linearityOfMasLoading.tolerance || "0.1"}
                   </p>
                 </div>
               </div>

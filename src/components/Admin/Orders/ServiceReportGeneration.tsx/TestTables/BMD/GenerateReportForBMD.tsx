@@ -1,5 +1,5 @@
 // GenerateReportForBMD.tsx
-import React, { useEffect, useState, useRef, useMemo } from "react";
+import React, { useEffect, useState, useRef, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Disclosure } from "@headlessui/react";
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
@@ -25,6 +25,7 @@ import {
     proxyFile,
 } from "../../../../../../api";
 import { createBMDSavedExcel, BMDSavedExportData } from "./exportBMDSavedToExcel";
+import { TestExportRegistryProvider, useTestExportRegistry } from "../shared/TestExportRegistry";
 import { isExcelFileUrl } from "../../../../../../utils/spreadsheetFile";
 
 // Test-table imports
@@ -96,7 +97,41 @@ interface BMDProps {
   qaTestDate?: string | null;
 }
 
-const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl, qaTestDate }) => {
+const mapTotalFiltrationPageToAccuracyOp = (tf: any) => {
+  const measurements = tf?.measurements;
+  if (!Array.isArray(measurements) || measurements.length === 0) return null;
+  const hasValues = measurements.some(
+    (m: any) =>
+      String(m.appliedKvp || "").trim() ||
+      (m.measuredValues || []).some((v: string) => String(v).trim())
+  );
+  if (!hasValues) return null;
+  return {
+    measurements: measurements.map((row: any) => ({
+      appliedKvp: row.appliedKvp ?? "",
+      measuredValues: Array.isArray(row.measuredValues) ? [...row.measuredValues] : [],
+      averageKvp: row.averageKvp ?? "",
+      remarks: row.remarks ?? "",
+    })),
+    table2: measurements.map((row: any) => {
+      const vals = Array.isArray(row.measuredValues) ? row.measuredValues : [];
+      const mapped: any = {
+        setKV: row.appliedKvp ?? "",
+        measuredValues: [...vals],
+      };
+      vals.forEach((v: string, i: number) => {
+        mapped[`meas${i + 1}`] = v ?? "";
+      });
+      return mapped;
+    }),
+    mAStations: tf.mAStations,
+    tolerance: tf.tolerance,
+    totalFiltration: tf.totalFiltration,
+  };
+};
+
+const GenerateReportForBMDContent: React.FC<BMDProps> = ({ serviceId, csvFileUrl, qaTestDate }) => {
+  const exportRegistry = useTestExportRegistry();
   const navigate = useNavigate();
 
   const [details, setDetails] = useState<DetailsResponse | null>(null);
@@ -181,6 +216,17 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl, qaTes
     return result;
   };
 
+  const normalizeLeakageToleranceOperator = (value: string) => {
+    const v = String(value || '').trim().toLowerCase();
+    if (!v) return 'less than or equal to' as const;
+    if (v === '<=' || v === '≤' || v === '<') return 'less than or equal to' as const;
+    if (v === '>=' || v === '≥' || v === '>') return 'greater than or equal to' as const;
+    if (v === '=' || v === '==') return '=' as const;
+    if (v.includes('less than or equal')) return 'less than or equal to' as const;
+    if (v.includes('greater than or equal')) return 'greater than or equal to' as const;
+    return 'less than or equal to' as const;
+  };
+
   const parseFieldValueData = (rows: string[][]): any[] => {
     if (rows.length === 0) return [];
     const headers = rows[0];
@@ -191,6 +237,7 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl, qaTes
       '========== ACCURACY OF IRRADIATION TIME ==========': 'Accuracy of Irradiation Time',
       '========== TOTAL FILTRATION ==========': 'Total Filtration',
       '========== LINEARITY OF MA LOADING ==========': 'Linearity of mA Loading',
+      '========== LINEARITY OF MA LOADING STATIONS ==========': 'Linearity of mA Loading',
       '========== REPRODUCIBILITY OF RADIATION OUTPUT ==========': 'Reproducibility of Radiation Output',
       '========== RADIATION LEAKAGE LEVEL AT 1M FROM TUBE HOUSING ==========': 'Tube Housing Leakage',
       '========== RADIATION PROTECTION SURVEY ==========': 'Radiation Protection Survey',
@@ -212,7 +259,7 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl, qaTes
       }
       if (firstColumn.startsWith('---') || firstColumn === '' || !fieldName) continue;
 
-      const isKnownField = fieldName.match(/^(Table|Tolerance|TestConditions|IrradiationTime|Measurement|Row|OutputRow|Settings|Workload|LeakageMeasurement|Location|SurveyDate|AppliedCurrent|AppliedVoltage|ExposureTime|mAStations|TotalFiltration|FiltrationTolerance|FCD|FFD|MeasurementCount|MeasColumnLabels)/);
+      const isKnownField = fieldName.match(/^(Table|Tolerance|TestConditions|IrradiationTime|Measurement|Row|OutputRow|Settings|Workload|LeakageMeasurement|Location|SurveyDate|AppliedCurrent|AppliedVoltage|ExposureTime|mAStations|TotalFiltration|FiltrationTolerance|FCD|FFD|MeasurementCount|MeasHeader|MeasColumnLabels)/);
       if (!isKnownField) continue;
 
       if (currentTestName) {
@@ -229,6 +276,60 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl, qaTes
     const pushRow = (field: string, value: string, rowIndex: number, testName: string) => {
       if (String(value ?? '').trim() === '') return;
       data.push({ 'Field Name': field, 'Value': String(value).trim(), 'Row Index': String(rowIndex), 'Test Name': testName });
+    };
+    const colIdx = (hdr: string[], ...names: string[]) => {
+      for (const name of names) {
+        const idx = hdr.findIndex((h) => String(h || '').trim().toLowerCase().includes(name.toLowerCase()));
+        if (idx >= 0) return idx;
+      }
+      return -1;
+    };
+    const isMeasCol = (h: string) => /^meas\s*\d+$/i.test(String(h || '').trim());
+    const isHeaderLabelCol = (h: string) => /^(?:header|heder)\s*\d+$/i.test(String(h || '').trim());
+    const isMaCol = (h: string) => {
+      const n = String(h || '').trim().toLowerCase();
+      return n === 'ma' || /^m\s*a$/i.test(n) || /^ma\s*applied$/i.test(n) || /^m\s*a\s*station$/i.test(n);
+    };
+    const resolveMeasValueColumns = (hdr: string[], anchorNames: string[]) => {
+      const explicit = hdr
+        .map((h, idx) => ({ h: String(h || '').trim(), idx }))
+        .filter(({ h }) => isMeasCol(h))
+        .sort(
+          (a, b) =>
+            parseInt(a.h.replace(/^meas\s*/i, ''), 10) - parseInt(b.h.replace(/^meas\s*/i, ''), 10),
+        );
+      if (explicit.length > 0) return explicit;
+      const headerCount = hdr.filter((h) => isHeaderLabelCol(h)).length;
+      if (headerCount === 0) return [];
+      let anchorIdx = hdr.findIndex((h) => isMaCol(h));
+      if (anchorIdx < 0) {
+        for (const name of anchorNames) {
+          const idx = hdr.findIndex((h) => String(h || '').trim().toLowerCase() === name.toLowerCase());
+          if (idx >= 0) {
+            anchorIdx = idx;
+            break;
+          }
+        }
+      }
+      if (anchorIdx < 0) return [];
+      return Array.from({ length: headerCount }, (_, n) => ({
+        h: `Meas ${n + 1}`,
+        idx: anchorIdx + 1 + n,
+      }));
+    };
+    const pushMeasFields = (
+      row: string[],
+      hdr: string[],
+      rowIndex: number,
+      testName: string,
+      fieldPrefix: string,
+      anchorNames: string[],
+    ) => {
+      resolveMeasValueColumns(hdr, anchorNames).forEach(({ h, idx: ci }, mi) => {
+        const m = h.match(/^meas\s*(\d+)$/i);
+        const measNum = m ? m[1] : String(mi + 1);
+        pushRow(`${fieldPrefix}Meas${measNum}`, row[ci] ?? '', rowIndex, testName);
+      });
     };
 
     const isTestHeader = (r: string[]) => /^TEST\s*:/i.test((r[0] || '').trim());
@@ -319,45 +420,35 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl, qaTes
         }
       } else if (title.includes('LINEARITY OF MA LOADING')) {
         if (sectionRows.length > 0) {
-          const first = sectionRows[0];
-          const headerLower = header.map((h) => String(h || '').trim().toLowerCase());
-          const fddIdx = headerLower.findIndex((h) => h.includes('fdd') || h.includes('ffd') || h.includes('fcd'));
-          const kvIdx = headerLower.findIndex((h) => h === 'kv' || h === 'kvp' || h.includes('k v'));
-          const timeIdx = headerLower.findIndex((h) => h.includes('time'));
-          const tolOpIdx = headerLower.findIndex((h) => h.includes('tol operator') || h.includes('tolerance operator'));
-          const tolValIdx = headerLower.findIndex((h) => h.includes('tol value') || h.includes('tolerance value'));
-          const maIdx = headerLower.findIndex((h) => h === 'ma' || h.includes('m a'));
-          const measIdxs = headerLower
-            .map((h, idx) => ({ h, idx }))
-            .filter((x) => /^meas\s*\d+$/i.test(x.h))
-            .map((x) => x.idx);
-          const headerLabelIdxs = headerLower
-            .map((h, idx) => ({ h, idx }))
-            .filter((x) => /^header\s*\d+$/i.test(x.h))
-            .map((x) => x.idx);
-
-          pushRow('Table1_FCD', first[fddIdx >= 0 ? fddIdx : 0], 0, 'Linearity of mA Loading');
-          pushRow('Table1_kV', first[kvIdx >= 0 ? kvIdx : 1], 0, 'Linearity of mA Loading');
-          pushRow('Table1_Time', first[timeIdx >= 0 ? timeIdx : 2], 0, 'Linearity of mA Loading');
-          pushRow('ToleranceOperator', first[tolOpIdx >= 0 ? tolOpIdx : 3], 0, 'Linearity of mA Loading');
-          pushRow('Tolerance', first[tolValIdx >= 0 ? tolValIdx : 4], 0, 'Linearity of mA Loading');
-          const labels = (headerLabelIdxs.length > 0
-            ? headerLabelIdxs.map((idx) => first[idx])
-            : [first[5], first[6], first[7]])
-            .map((x) => String(x || '').trim())
-            .filter(Boolean);
-          if (labels.length) pushRow('MeasColumnLabels', labels.join(','), 0, 'Linearity of mA Loading');
+          const testName = 'Linearity of mA Loading';
           sectionRows.forEach((r, idx) => {
-            pushRow('Table2_ma', r[maIdx >= 0 ? maIdx : 8], idx, 'Linearity of mA Loading');
-            if (measIdxs.length > 0) {
-              measIdxs.forEach((colIdx, mIdx) => {
-                pushRow(`Table2_Meas${mIdx + 1}`, r[colIdx], idx, 'Linearity of mA Loading');
+            if (idx === 0) {
+              pushRow('Table1_FCD', r[colIdx(header, 'FDD', 'FCD', 'FFD')] ?? '', 0, testName);
+              pushRow('Table1_kV', r[colIdx(header, 'kV', 'kVp')] ?? '', 0, testName);
+              pushRow('Table1_Time', r[colIdx(header, 'Time')] ?? '', 0, testName);
+              pushRow('ToleranceOperator', r[colIdx(header, 'Tol Operator', 'Tolerance Operator')] ?? '', 0, testName);
+              pushRow('Tolerance', r[colIdx(header, 'Tol Value', 'Tolerance')] ?? '', 0, testName);
+
+              const measCols = resolveMeasValueColumns(header, ['mA Applied', 'mA']);
+              const labels: string[] = [];
+              measCols.forEach(({ h: measColName }, mi) => {
+                let label = measColName;
+                const headerNum = mi + 1;
+                const headerLabelIdx = header.findIndex((h) => {
+                  const match = String(h || '').trim().match(/^(?:Header|Heder)\s*(\d+)$/i);
+                  return match ? parseInt(match[1], 10) === headerNum : false;
+                });
+                if (headerLabelIdx >= 0) {
+                  const val = String(r[headerLabelIdx] ?? '').trim();
+                  if (val) label = val;
+                }
+                labels.push(label);
               });
-            } else {
-              pushRow('Table2_Meas1', r[9], idx, 'Linearity of mA Loading');
-              pushRow('Table2_Meas2', r[10], idx, 'Linearity of mA Loading');
-              pushRow('Table2_Meas3', r[11], idx, 'Linearity of mA Loading');
+              if (labels.length) pushRow('MeasColumnLabels', labels.join(','), 0, testName);
             }
+            const maIdx = header.findIndex((h) => isMaCol(h));
+            pushRow('Table2_ma', r[maIdx >= 0 ? maIdx : colIdx(header, 'mA Applied', 'mA')] ?? '', idx, testName);
+            pushMeasFields(r, header, idx, testName, 'Table2_', ['mA Applied', 'mA']);
           });
           continue;
         }
@@ -838,6 +929,12 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl, qaTes
             if (field === 'MeasColumnLabels') {
               measHeaders = value.split(',').map((v: string) => v.trim()).filter(Boolean);
             }
+            if (field === 'MeasHeader') {
+              const order = parseInt((row['Column Index'] || rowIndexStr || String(measHeaders.length)).trim(), 10);
+              const safeOrder = Number.isFinite(order) ? order : measHeaders.length;
+              while (measHeaders.length <= safeOrder) measHeaders.push('');
+              measHeaders[safeOrder] = value;
+            }
 
             if (field === 'Table2_mAApplied' || field === 'Table2_mAsApplied' || field === 'Table2_ma') {
               currentRowIdx++;
@@ -870,6 +967,24 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl, qaTes
               else if (fieldName === 'col') table2Rows[rowIndex].col = value;
             }
           });
+
+          const derivedMeasCount = Math.max(
+            0,
+            ...table2Rows.map((r) => (Array.isArray(r.measuredOutputs) ? r.measuredOutputs.length : 0)),
+          );
+          if (derivedMeasCount > 0) {
+            measHeaders = measHeaders.filter(Boolean).slice(0, derivedMeasCount);
+            while (measHeaders.length < derivedMeasCount) {
+              measHeaders.push(`Meas ${measHeaders.length + 1}`);
+            }
+            measHeaders = measHeaders.map((h, i) => h || `Meas ${i + 1}`);
+            table2Rows.forEach((r) => {
+              while ((r.measuredOutputs || []).length < derivedMeasCount) {
+                r.measuredOutputs.push('');
+              }
+              r.measuredOutputs = r.measuredOutputs.slice(0, derivedMeasCount);
+            });
+          }
 
           if (table1Row.fcd || table1Row.kv || table1Row.time || table2Rows.length > 0) {
             setCsvDataForComponents((prev: any) => ({
@@ -1031,7 +1146,7 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl, qaTes
               leakageHeaders = value.split(',').map((v: string) => v.trim()).filter(Boolean);
             }
             if (field === 'ToleranceValue') toleranceValue = value;
-            if (field === 'ToleranceOperator') toleranceOperator = value as any;
+            if (field === 'ToleranceOperator') toleranceOperator = normalizeLeakageToleranceOperator(value) as any;
             if (field === 'ToleranceTime') toleranceTime = value;
 
             if (field.startsWith('LeakageMeasurement_')) {
@@ -1576,6 +1691,15 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl, qaTes
     }
   };
 
+  const fetchSavedTest = useCallback(async (fn: () => Promise<any>) => {
+    try {
+      const res = await fn();
+      return res ?? null;
+    } catch {
+      return null;
+    }
+  }, []);
+
   const handleExportSavedData = async () => {
     if (!serviceId) {
       toast.error("Service ID is missing");
@@ -1584,35 +1708,87 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl, qaTes
     try {
       toast.loading("Exporting data to Excel...", { id: "export-excel" });
       setIsExporting(true);
+
+      const pageData = exportRegistry?.collect() ?? {};
       const exportData: BMDSavedExportData & { reportHeader?: any } = {};
 
       try {
         const headerRes = await getReportHeaderForBMD(serviceId);
-        if (headerRes?.data || headerRes?.exists) exportData.reportHeader = headerRes;
+        if (headerRes?.data || headerRes?.exists) {
+          exportData.reportHeader = {
+            ...headerRes,
+            data: { ...(headerRes.data || headerRes), ...formData },
+            exists: true,
+          };
+        } else {
+          exportData.reportHeader = { data: { ...formData }, exists: true };
+        }
       } catch (err) {
         console.log("Report header not found or error:", err);
+        exportData.reportHeader = { data: { ...formData }, exists: true };
       }
 
-      const fetchTest = async (fn: () => Promise<any>) => {
-        try {
-          const res = await fn();
-          return res ?? null;
-        } catch {
-          return null;
+      const resolveSection = async (
+        key: keyof BMDSavedExportData,
+        pageValue: unknown,
+        fetchFn: () => Promise<any>
+      ) => {
+        if (pageValue != null) {
+          exportData[key] = pageValue;
+          return;
         }
+        exportData[key] = await fetchSavedTest(fetchFn);
       };
 
-      exportData.accuracyOfIrradiationTime = await fetchTest(() => getAccuracyOfIrradiationTimeByServiceIdForBMD(serviceId));
-      exportData.totalFiltration = await fetchTest(() => getTotalFiltrationByServiceIdForBMD(serviceId));
-      exportData.accuracyOfOperatingPotentialAndTime = await fetchTest(() => getAccuracyOfOperatingPotentialAndTimeByServiceIdForBMD(serviceId));
-      exportData.linearityOfMaLoading = await fetchTest(() => getLinearityOfMaLoadingByServiceIdForBMD(serviceId));
-      exportData.reproducibilityOfRadiationOutput = await fetchTest(() => getReproducibilityOfRadiationOutputByServiceIdForBmd(serviceId));
-      exportData.radiationLeakageLevel = await fetchTest(() => getRadiationLeakageLevelByServiceIdForBMD(serviceId));
-      exportData.radiationProtectionSurvey = await fetchTest(() => getRadiationProtectionSurveyByServiceIdForBmd(serviceId));
+      await resolveSection(
+        "accuracyOfIrradiationTime",
+        pageData.accuracyOfIrradiationTime,
+        () => getAccuracyOfIrradiationTimeByServiceIdForBMD(serviceId)
+      );
 
-      const hasData = Object.keys(exportData).filter((k) => k !== "reportHeader").some((k) => exportData[k] != null);
+      const pageTotalFiltration = pageData.totalFiltration;
+      if (pageTotalFiltration != null) {
+        exportData.totalFiltration = pageTotalFiltration;
+        const mappedAccuracy = mapTotalFiltrationPageToAccuracyOp(pageTotalFiltration);
+        if (mappedAccuracy) {
+          exportData.accuracyOfOperatingPotentialAndTime = mappedAccuracy;
+        }
+      } else {
+        exportData.totalFiltration = await fetchSavedTest(() => getTotalFiltrationByServiceIdForBMD(serviceId));
+      }
+
+      if (!exportData.accuracyOfOperatingPotentialAndTime) {
+        exportData.accuracyOfOperatingPotentialAndTime = await fetchSavedTest(() =>
+          getAccuracyOfOperatingPotentialAndTimeByServiceIdForBMD(serviceId)
+        );
+      }
+
+      await resolveSection(
+        "linearityOfMaLoading",
+        pageData.linearityOfMaLoading,
+        () => getLinearityOfMaLoadingByServiceIdForBMD(serviceId)
+      );
+      await resolveSection(
+        "reproducibilityOfRadiationOutput",
+        pageData.reproducibilityOfRadiationOutput,
+        () => getReproducibilityOfRadiationOutputByServiceIdForBmd(serviceId)
+      );
+      await resolveSection(
+        "radiationLeakageLevel",
+        pageData.radiationLeakageLevel,
+        () => getRadiationLeakageLevelByServiceIdForBMD(serviceId)
+      );
+      await resolveSection(
+        "radiationProtectionSurvey",
+        pageData.radiationProtectionSurvey,
+        () => getRadiationProtectionSurveyByServiceIdForBmd(serviceId)
+      );
+
+      const hasData = Object.keys(exportData).some((k) => exportData[k] != null);
       if (!hasData) {
-        toast.error("No data found to export. Please save test data first.", { id: "export-excel" });
+        toast.error("No data found to export. Enter test data on this page or save test data first.", {
+          id: "export-excel",
+        });
         return;
       }
       const wb = createBMDSavedExcel(exportData as BMDSavedExportData);
@@ -1978,5 +2154,11 @@ const GenerateReportForBMD: React.FC<BMDProps> = ({ serviceId, csvFileUrl, qaTes
     </div>
   );
 };
+
+const GenerateReportForBMD: React.FC<BMDProps> = (props) => (
+  <TestExportRegistryProvider>
+    <GenerateReportForBMDContent {...props} />
+  </TestExportRegistryProvider>
+);
 
 export default GenerateReportForBMD;

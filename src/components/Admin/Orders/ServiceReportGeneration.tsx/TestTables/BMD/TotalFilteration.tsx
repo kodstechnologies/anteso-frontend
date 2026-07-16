@@ -8,6 +8,7 @@ import {
     getTotalFiltrationByServiceIdForBMD,
     updateTotalFiltrationForBMD,
 } from "../../../../../../api";
+import { useRegisterTestExport } from "../shared/TestExportRegistry";
 interface RowData {
     id: string;
     appliedKvp: string;
@@ -487,6 +488,33 @@ const TotalFilterationForInventionalRadiology: React.FC<TotalFilterationForInven
         return measured >= requiredTolerance ? "PASS" : "FAIL";
     };
 
+    const getExportData = useCallback(() => {
+        const hasMeasurements = rows.some(
+            (r) =>
+                String(r.appliedKvp || "").trim() ||
+                r.measuredValues.some((v) => String(v).trim())
+        );
+        const hasFiltration =
+            String(totalFiltration.measured || "").trim() ||
+            String(totalFiltration.required || "").trim() ||
+            String(totalFiltration.atKvp || "").trim();
+        if (!hasMeasurements && !hasFiltration) return null;
+        return {
+            mAStations,
+            measurements: rows.map((r) => ({
+                appliedKvp: r.appliedKvp,
+                measuredValues: r.measuredValues,
+                averageKvp: r.averageKvp,
+                remarks: r.remarks,
+            })),
+            tolerance: { sign: toleranceSign, value: toleranceValue },
+            totalFiltration,
+            filtrationTolerance,
+        };
+    }, [rows, mAStations, toleranceSign, toleranceValue, totalFiltration, filtrationTolerance]);
+
+    useRegisterTestExport("totalFiltration", getExportData);
+
     if (isLoading) {
         return (
             <div className="flex items-center justify-center py-20">
@@ -508,7 +536,7 @@ const TotalFilterationForInventionalRadiology: React.FC<TotalFilterationForInven
                 <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                         <tr>
-                            <th rowSpan={2} className="px-6 py-3 text-left text-xs font-medium text-gray-600  tracking-wider border-r">
+                            <th rowSpan={2} className="px-6 py-3 text-left text-xs font-medium text-gray-600  tracking-wider border-r sticky left-0 z-20 bg-gray-50 min-w-[120px]">
                                 Applied kVp
                             </th>
                             <th colSpan={mAStations.length} className="px-6 py-3 text-center text-xs font-medium text-gray-600  tracking-wider border-r">
@@ -550,7 +578,7 @@ const TotalFilterationForInventionalRadiology: React.FC<TotalFilterationForInven
                     <tbody className="bg-white divide-y divide-gray-200">
                         {rows.map((row) => (
                             <tr key={row.id} className="hover:bg-gray-50">
-                                <td className="px-6 py-3 border-r">
+                                <td className="px-6 py-3 border-r sticky left-0 z-10 bg-white min-w-[120px]">
                                     <input
                                         type="number"
                                         value={row.appliedKvp}

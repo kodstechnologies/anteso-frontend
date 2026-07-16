@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Loader2, Edit3, Save } from 'lucide-react';
 import {
   addRadiationLeakageLevelForOPG,
@@ -9,6 +9,7 @@ import {
   updateRadiationLeakageLevelForOPG,
 } from '../../../../../../api';
 import toast from 'react-hot-toast';
+import { useRegisterTestExport } from '../shared/TestExportRegistry';
 
 interface SettingsRow {
   ffd: string;
@@ -532,6 +533,65 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
   const isViewMode = hasSaved && !isEditing;
   const buttonText = isViewMode ? 'Edit' : testId ? 'Update' : 'Save';
   const ButtonIcon = isViewMode ? Edit3 : Save;
+
+  const getExportData = useCallback(() => {
+    const hasSettings =
+      String(settings.ffd || '').trim() ||
+      String(settings.kv || '').trim() ||
+      String(settings.ma || '').trim() ||
+      String(settings.time || '').trim();
+    const hasLeakage = leakageRows.some(
+      (r) =>
+        String(r.location || '').trim() ||
+        String(r.front || '').trim() ||
+        String(r.back || '').trim() ||
+        String(r.left || '').trim() ||
+        String(r.right || '').trim()
+    );
+    if (!hasSettings && !hasLeakage) return null;
+    return {
+      measurementSettings: [
+        {
+          ffd: settings.ffd.trim(),
+          kv: parseFloat(settings.kv) || 0,
+          ma: parseFloat(settings.ma) || 0,
+          time: parseFloat(settings.time) || 0,
+        },
+      ],
+      settings: [
+        {
+          ffd: settings.ffd.trim(),
+          kv: parseFloat(settings.kv) || 0,
+          kvp: parseFloat(settings.kv) || 0,
+          ma: parseFloat(settings.ma) || 0,
+          time: parseFloat(settings.time) || 0,
+        },
+      ],
+      leakageMeasurements: leakageRows.map((r) => ({
+        location: r.location,
+        front: parseFloat(r.front) || 0,
+        back: parseFloat(r.back) || 0,
+        left: parseFloat(r.left) || 0,
+        right: parseFloat(r.right) || 0,
+        unit: r.unit,
+      })),
+      workload: parseFloat(workload) || 0,
+      workloadUnit,
+      tolerance: toleranceValue.trim(),
+      toleranceOperator,
+      toleranceTime: toleranceTime.trim(),
+    };
+  }, [
+    settings,
+    leakageRows,
+    workload,
+    workloadUnit,
+    toleranceValue,
+    toleranceOperator,
+    toleranceTime,
+  ]);
+
+  useRegisterTestExport('radiationLeakage', getExportData);
 
   if (isLoading) {
     return (

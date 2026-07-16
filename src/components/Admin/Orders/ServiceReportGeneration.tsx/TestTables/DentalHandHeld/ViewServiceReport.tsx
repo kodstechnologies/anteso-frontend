@@ -210,7 +210,17 @@ const ViewServiceReportDentalHandHeld: React.FC = () => {
               (Array.isArray(d.mAStations) && d.mAStations.length > 0
                 ? d.mAStations
                 : Array.from({ length: derivedCount }, (_, i) => `mA ${i + 1}`));
-            return { ...d, measurements: d.measurements || mappedRows, mAStations: headers };
+            return {
+              ...d,
+              measurements: d.measurements || mappedRows,
+              mAStations: headers,
+              kvpToleranceSign: d.kvpToleranceSign ?? d.tolerance?.type ?? "±",
+              kvpToleranceValue: d.kvpToleranceValue ?? d.tolerance?.value ?? "2.0",
+              tolerance: {
+                type: d.kvpToleranceSign ?? d.tolerance?.type ?? "±",
+                value: d.kvpToleranceValue ?? d.tolerance?.value ?? "2.0",
+              },
+            };
           };
           const normalizeIrradiationTime = (d: any) => {
             if (!d) return null;
@@ -242,7 +252,27 @@ const ViewServiceReportDentalHandHeld: React.FC = () => {
           };
           const normalizeLinearity = (d: any) => {
             if (!d) return null;
-            return { ...d, table2: d.table2 || d.table2Rows || [] };
+            const table2 = (d.table2 || d.table2Rows || []).map((r: any) => {
+              const maVal = r.mAsRange ?? r.mas ?? r.ma ?? r.mAsApplied ?? "";
+              return {
+                ...r,
+                mAsRange: maVal,
+                ma: r.ma ?? maVal,
+                mas: r.mas ?? maVal,
+                measuredOutputs: Array.isArray(r.measuredOutputs) ? r.measuredOutputs : [],
+                average: r.average ?? r.avg ?? "",
+                x: r.x ?? "",
+                xMax: r.xMax ?? "",
+                xMin: r.xMin ?? "",
+                col: r.col ?? r.colValue ?? "",
+                remarks: r.remarks ?? r.remark ?? "",
+              };
+            });
+            return {
+              ...d,
+              table2,
+              measHeaders: Array.isArray(d.measHeaders) ? d.measHeaders : [],
+            };
           };
           const normalizeConsistency = (d: any) => {
             if (!d) return null;
@@ -266,7 +296,13 @@ const ViewServiceReportDentalHandHeld: React.FC = () => {
                 remarks: remark,
               };
             });
-            return { ...d, outputRows: mappedRows };
+            const headers =
+              (Array.isArray(d.measurementHeaders) && d.measurementHeaders.length > 0
+                ? d.measurementHeaders
+                : Array.isArray(d.measHeaders) && d.measHeaders.length > 0
+                  ? d.measHeaders
+                  : []);
+            return { ...d, outputRows: mappedRows, measurementHeaders: headers };
           };
           const normalizeLeakage = (d: any) => {
             if (!d) return null;
@@ -390,13 +426,45 @@ const ViewServiceReportDentalHandHeld: React.FC = () => {
 
           const headerCombined = data.AccuracyOfOperatingPotentialAndTimeDentalHandHeld || null;
 
+          const masNormalized = normalizeLinearity(pick(linearityMasData, data.LinearityOfmAsLoadingDentalHandHeld));
+          const maNormalized = normalizeLinearity(pick(linearityMaData, data.LinearityOfMaLoadingDentalHandHeld));
+          const timeNormalized = normalizeLinearity(pick(linearityTimeData, data.LinearityOfTimeDentalHandHeld));
+          const irrNormalized = normalizeIrradiationTime(pick(accuracyTimeData, headerCombined));
+
+          const hasMasRows = !!(
+            masNormalized &&
+            Array.isArray(masNormalized.table2) &&
+            masNormalized.table2.length > 0
+          );
+          const hasMaRows = !!(
+            maNormalized &&
+            Array.isArray(maNormalized.table2) &&
+            maNormalized.table2.length > 0
+          );
+          const hasRealIrradiationRows = !!(
+            irrNormalized &&
+            Array.isArray(irrNormalized.irradiationTimes) &&
+            irrNormalized.irradiationTimes.some(
+              (r: any) =>
+                String(r?.setTime ?? "").trim() !== "" ||
+                String(r?.measuredTime ?? "").trim() !== ""
+            )
+          );
+
+          // No-timer mode: mAs loading present and no dedicated timer-mode tests
+          const isNoTimerMode = hasMasRows && !hasMaRows && !hasRealIrradiationRows;
+
           setTestData({
             accuracyOfOperatingPotential: normalizeOperatingPotential(pick(accuracyPotentialData, headerCombined)),
-            accuracyOfIrradiationTime: normalizeIrradiationTime(pick(accuracyTimeData, headerCombined)),
-            linearityOfTime: normalizeLinearity(pick(linearityTimeData, data.LinearityOfTimeDentalHandHeld)),
-            linearityOfmALoading: normalizeLinearity(pick(linearityMaData, data.LinearityOfMaLoadingDentalHandHeld)),
-            linearityOfMasLoading: normalizeLinearity(pick(linearityMasData, data.LinearityOfmAsLoadingDentalHandHeld)),
-            consistencyOfRadiationOutput: normalizeConsistency(pick(consistencyData, data.ConsistencyOfRadiationOutputDentalHandHeld)),
+            accuracyOfIrradiationTime: isNoTimerMode ? null : (hasRealIrradiationRows ? irrNormalized : null),
+            linearityOfTime: isNoTimerMode ? null : timeNormalized,
+            linearityOfmALoading: isNoTimerMode ? null : maNormalized,
+            linearityOfMasLoading: masNormalized,
+            consistencyOfRadiationOutput: normalizeConsistency(pick(
+              consistencyData,
+              data.ConsistencyOfRadiationOutputDentalHandHeld,
+              data.ReproducibilityOfRadiationOutputDentalHandHeld
+            )),
             tubeHousingLeakage: normalizeLeakage(pick(leakageData, data.TubeHousingLeakageDentalHandHeld)),
             radiationProtectionSurvey: normalizeRadiationProtection(
               pick(radiationProtectionData, data.RadiationProtectionSurveyDentalHandHeld)
@@ -411,6 +479,7 @@ const ViewServiceReportDentalHandHeld: React.FC = () => {
                 data.totalFilteration
               )
             ),
+            _isNoTimerMode: isNoTimerMode,
           });
         } else {
           setNotFound(true);
@@ -435,6 +504,18 @@ const ViewServiceReportDentalHandHeld: React.FC = () => {
     }
     return String(v);
   };
+  const formatToleranceOperatorSymbol = (operator: any, fallback = "≤") => {
+    const raw = String(operator ?? "").trim();
+    if (!raw) return fallback;
+    const lower = raw.toLowerCase();
+    if (lower === "<=" || lower === "≤" || lower === "lte" || lower === "less than or equal to") return "≤";
+    if (lower === "<" || lower === "lt" || lower === "less than") return "<";
+    if (lower === ">=" || lower === "≥" || lower === "gte" || lower === "greater than or equal to") return "≥";
+    if (lower === ">" || lower === "gt" || lower === "greater than") return ">";
+    if (lower === "=" || lower === "==" || lower === "eq" || lower === "equal to") return "=";
+    if (raw === "+" || raw === "-" || raw === "±") return raw;
+    return raw;
+  };
   const normalizeToleranceValue = (tol: any, fallback = "-") => {
     if (tol == null || tol === "") return fallback;
     if (typeof tol === "object") {
@@ -447,10 +528,10 @@ const ViewServiceReportDentalHandHeld: React.FC = () => {
     if (tol == null || tol === "") return fallback;
     if (typeof tol === "object") {
       const op = "operator" in tol ? (tol as any).operator : null;
-      if (op != null && op !== "") return String(op);
+      if (op != null && op !== "") return formatToleranceOperatorSymbol(op, fallback);
       return fallback;
     }
-    return fallback;
+    return formatToleranceOperatorSymbol(tol, fallback);
   };
 
   const downloadPDF = async () => {
@@ -691,9 +772,14 @@ const ViewServiceReportDentalHandHeld: React.FC = () => {
             <MainTestTableForDentalHandHeld
               testData={testData}
               hasTimer={
+                !testData._isNoTimerMode &&
                 Boolean(
-                  testData.accuracyOfIrradiationTime?.irradiationTimes?.length ||
-                    testData.accuracyOfIrradiationTime?.rows?.length
+                  testData.accuracyOfIrradiationTime?.irradiationTimes?.some(
+                    (r: any) =>
+                      String(r?.setTime ?? "").trim() !== "" ||
+                      String(r?.measuredTime ?? "").trim() !== ""
+                  ) ||
+                    testData.linearityOfmALoading?.table2?.length
                 )
               }
             />
@@ -706,8 +792,10 @@ const ViewServiceReportDentalHandHeld: React.FC = () => {
             <h2 className="font-bold text-center underline mb-4" style={{ fontSize: "16px" }}>DETAILED TEST RESULTS</h2>
 
 
-            {/* 2. Accuracy of Irradiation Time */}
-            {testData.accuracyOfIrradiationTime && (
+            {/* 2. Accuracy of Irradiation Time — timer mode only */}
+            {!testData._isNoTimerMode && testData.accuracyOfIrradiationTime?.irradiationTimes?.some(
+              (r: any) => String(r?.setTime ?? "").trim() !== "" || String(r?.measuredTime ?? "").trim() !== ""
+            ) && (
               <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
                 <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>1. Accuracy of Irradiation Time</h3>
                 {testData.accuracyOfIrradiationTime.testConditions && (
@@ -757,8 +845,8 @@ const ViewServiceReportDentalHandHeld: React.FC = () => {
                   };
 
                   return (
-                    <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
-                      <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
+                    <div className="report-data-table-wrap mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
+                      <table className="report-data-table border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', borderCollapse: 'collapse', borderSpacing: '0' }}>
                         <thead className="bg-gray-100">
                           <tr>
                             <th className="border border-black p-2 print:p-1 text-center font-bold" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Set Time (mSec)</th>
@@ -816,8 +904,8 @@ const ViewServiceReportDentalHandHeld: React.FC = () => {
                     : Array.from({ length: measCount }, (_: any, i: number) => `mA ${i + 1}`));
 
                   return (
-                    <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
-                      <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
+                    <div className="report-data-table-wrap mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
+                      <table className="report-data-table border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', borderCollapse: 'collapse', borderSpacing: '0' }}>
                         <thead className="bg-gray-100">
                           <tr>
                             <th rowSpan={2} className="border border-black p-2 print:p-1 text-center font-bold">Applied kVp</th>
@@ -858,7 +946,7 @@ const ViewServiceReportDentalHandHeld: React.FC = () => {
 
                 <div className="bg-gray-50 p-4 print:p-1 rounded border mb-4" style={{ padding: '2px 4px', marginTop: '4px' }}>
                   <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
-                    <strong>Tolerance:</strong> {testData.accuracyOfOperatingPotential?.tolerance?.type || "±"} {testData.accuracyOfOperatingPotential?.tolerance?.value || "2.0"} kV
+                    <strong>Tolerance:</strong> {testData.accuracyOfOperatingPotential?.kvpToleranceSign || testData.accuracyOfOperatingPotential?.tolerance?.type || "±"} {testData.accuracyOfOperatingPotential?.kvpToleranceValue || testData.accuracyOfOperatingPotential?.tolerance?.value || "2.0"} kV
                   </p>
                 </div>
               </div>
@@ -979,13 +1067,13 @@ const ViewServiceReportDentalHandHeld: React.FC = () => {
               </div>
             )}
 
-            {/* 3. Linearity of Time */}
-            {testData.linearityOfTime?.table2?.length > 0 && (
+            {/* 3. Linearity of Time — timer mode only */}
+            {!testData._isNoTimerMode && testData.linearityOfTime?.table2?.length > 0 && (
               <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
                 <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>3. Linearity of Time</h3>
 
-                <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
-                  <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
+                <div className="report-data-table-wrap mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
+                  <table className="report-data-table border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', borderCollapse: 'collapse', borderSpacing: '0' }}>
                     <thead className="bg-gray-100">
                       <tr>
                         <th className="border border-black p-2 print:p-1 text-center font-bold">Time (sec)</th>
@@ -1027,8 +1115,8 @@ const ViewServiceReportDentalHandHeld: React.FC = () => {
               </div>
             )}
 
-            {/* 4. Linearity of mA Loading */}
-            {testData.linearityOfmALoading?.table2?.length > 0 && (() => {
+            {/* 4. Linearity of mA Loading — timer mode only */}
+            {!testData._isNoTimerMode && testData.linearityOfmALoading?.table2?.length > 0 && (() => {
               const rows = testData.linearityOfmALoading.table2;
               const tolerance = normalizeToleranceValue(testData.linearityOfmALoading?.tolerance, "0.1");
               const toleranceOperator = testData.linearityOfmALoading?.toleranceOperator || normalizeToleranceOperator(testData.linearityOfmALoading?.tolerance, "<");
@@ -1093,8 +1181,8 @@ const ViewServiceReportDentalHandHeld: React.FC = () => {
                     </table>
                   </div>
                 )}
-                <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
-                  <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
+                <div className="report-data-table-wrap mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
+                  <table className="report-data-table border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', borderCollapse: 'collapse', borderSpacing: '0' }}>
                     <thead className="bg-gray-100">
                       <tr>
                         <th className="border border-black p-2 print:p-1 text-center font-bold">mA</th>
@@ -1137,15 +1225,94 @@ const ViewServiceReportDentalHandHeld: React.FC = () => {
             )})()}
 
             {/* 5. Linearity of mAs Loading */}
-            {testData.linearityOfMasLoading?.table2?.length > 0 && (
+            {testData.linearityOfMasLoading?.table2?.length > 0 && (() => {
+              const rows = testData.linearityOfMasLoading.table2;
+              const table1 = Array.isArray(testData.linearityOfMasLoading.table1)
+                ? testData.linearityOfMasLoading.table1?.[0]
+                : testData.linearityOfMasLoading.table1;
+              const measHeadersRaw = Array.isArray(testData.linearityOfMasLoading.measHeaders)
+                ? testData.linearityOfMasLoading.measHeaders
+                : [];
+              const maxOutLen = Math.max(
+                0,
+                ...rows.map((r: any) => (Array.isArray(r.measuredOutputs) ? r.measuredOutputs.length : 0)),
+                measHeadersRaw.length,
+                1
+              );
+              const measHeaders =
+                measHeadersRaw.length > 0
+                  ? Array.from({ length: Math.max(maxOutLen, measHeadersRaw.length) }, (_, i) =>
+                      String(measHeadersRaw[i] ?? "").trim() || `Measured mR ${i + 1}`
+                    )
+                  : Array.from({ length: maxOutLen }, (_, i) => `Measured mR ${i + 1}`);
+
+              const xResults = rows.map((row: any) => {
+                const outputsArr = Array.isArray(row.measuredOutputs) ? row.measuredOutputs : [];
+                const values = outputsArr.map((v: any) => parseFloat(String(v))).filter((n: number) => !isNaN(n) && n > 0);
+                const avg = values.length > 0
+                  ? values.reduce((a: number, b: number) => a + b, 0) / values.length
+                  : parseFloat(String(row.average || "")) || 0;
+                const masLabel = String(row.mAsRange ?? row.mas ?? row.ma ?? "").trim();
+                const rangeMatch = masLabel.match(/(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)/);
+                const midMas = rangeMatch
+                  ? (parseFloat(rangeMatch[1]) + parseFloat(rangeMatch[2])) / 2
+                  : parseFloat(masLabel.replace(/[^\d.]/g, "")) || 0;
+                let x = parseFloat(String(row.x || "")) || 0;
+                if ((!x || x <= 0) && avg > 0 && midMas > 0) {
+                  x = avg / midMas;
+                }
+                return { row, masLabel, avg, x, outputsArr };
+              });
+
+              const xValues = xResults.map((r: any) => r.x).filter((x: number) => x > 0);
+              const xMax = xValues.length > 0 ? Math.max(...xValues) : 0;
+              const xMin = xValues.length > 0 ? Math.min(...xValues) : 0;
+              const col = (xMax + xMin) > 0 ? Math.abs(xMax - xMin) / (xMax + xMin) : 0;
+              const tolerance = normalizeToleranceValue(testData.linearityOfMasLoading?.tolerance, "0.1");
+              const toleranceOperator =
+                testData.linearityOfMasLoading?.toleranceOperator ||
+                normalizeToleranceOperator(testData.linearityOfMasLoading?.tolerance, "<=");
+              const tolNum = parseFloat(tolerance);
+              let isPassOverall = false;
+              if (col > 0 && !isNaN(tolNum)) {
+                switch (toleranceOperator) {
+                  case '<': isPassOverall = col < tolNum; break;
+                  case '>': isPassOverall = col > tolNum; break;
+                  case '<=': isPassOverall = col <= tolNum; break;
+                  case '>=': isPassOverall = col >= tolNum; break;
+                  case '=': isPassOverall = Math.abs(col - tolNum) < 0.0001; break;
+                  default: isPassOverall = col <= tolNum;
+                }
+              }
+
+              return (
               <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
                 <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>5. Linearity of mAs Loading</h3>
 
-                <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
-                  <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
+                {(table1?.fcd != null || table1?.kv != null) && (
+                  <div className="mb-6 print:mb-1 bg-gray-50 p-4 print:p-1 rounded border overflow-x-auto" style={{ marginBottom: '4px', padding: '2px 4px' }}>
+                    <p className="font-semibold mb-2 print:mb-0.5 print:text-xs" style={{ marginBottom: '2px', fontSize: '8px' }}>Test Conditions:</p>
+                    <table className="w-full border border-black text-sm print:text-[9px]" style={{ fontSize: '11px', borderCollapse: 'collapse', borderSpacing: 0 }}>
+                      <thead className="bg-gray-100"><tr>
+                        <th className="border border-black px-2 py-1 text-center" style={{ padding: '0px 1px' }}>FDD (cm)</th>
+                        <th className="border border-black px-2 py-1 text-center" style={{ padding: '0px 1px' }}>kV</th>
+                      </tr></thead>
+                      <tbody><tr>
+                        <td className="border border-black px-2 py-1 text-center" style={{ padding: '0px 1px' }}>{table1?.fcd || "-"}</td>
+                        <td className="border border-black px-2 py-1 text-center" style={{ padding: '0px 1px' }}>{table1?.kv || "-"}</td>
+                      </tr></tbody>
+                    </table>
+                  </div>
+                )}
+
+                <div className="report-data-table-wrap mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
+                  <table className="report-data-table border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', borderCollapse: 'collapse', borderSpacing: '0' }}>
                     <thead className="bg-gray-100">
                       <tr>
                         <th className="border border-black p-2 print:p-1 text-center font-bold">mAs Range</th>
+                        {measHeaders.map((header: string, idx: number) => (
+                          <th key={idx} className="border border-black p-2 print:p-1 text-center font-bold">{header}</th>
+                        ))}
                         <th className="border border-black p-2 print:p-1 text-center font-bold">Avg Output</th>
                         <th className="border border-black p-2 print:p-1 text-center font-bold">X (mGy/mAs)</th>
                         <th className="border border-black p-2 print:p-1 text-center font-bold">X MAX</th>
@@ -1155,18 +1322,21 @@ const ViewServiceReportDentalHandHeld: React.FC = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {testData.linearityOfMasLoading.table2.map((row: any, i: number) => (
+                      {xResults.map((res: any, i: number) => (
                         <tr key={i} className="text-center">
-                          <td className="border border-black p-2 print:p-1 font-semibold">{displayValue(row.mAsRange)}</td>
-                          <td className="border border-black p-2 print:p-1">{displayValue(row.average)}</td>
-                          <td className="border border-black p-2 print:p-1">{displayValue(row.x)}</td>
+                          <td className="border border-black p-2 print:p-1 font-semibold">{displayValue(res.masLabel)}</td>
+                          {measHeaders.map((_: string, idx: number) => (
+                            <td key={idx} className="border border-black p-2 print:p-1">{displayValue(res.outputsArr[idx])}</td>
+                          ))}
+                          <td className="border border-black p-2 print:p-1">{res.avg > 0 ? res.avg.toFixed(4) : displayValue(res.row.average)}</td>
+                          <td className="border border-black p-2 print:p-1">{res.x > 0 ? res.x.toFixed(4) : displayValue(res.row.x)}</td>
                           {i === 0 && (
                             <>
-                              <td rowSpan={testData.linearityOfMasLoading.table2.length} className="border border-black p-2 print:p-1 align-middle">{row.xMax || "-"}</td>
-                              <td rowSpan={testData.linearityOfMasLoading.table2.length} className="border border-black p-2 print:p-1 align-middle">{row.xMin || "-"}</td>
-                              <td rowSpan={testData.linearityOfMasLoading.table2.length} className="border border-black p-2 print:p-1 font-bold align-middle">{row.col || "-"}</td>
-                              <td rowSpan={testData.linearityOfMasLoading.table2.length} className={`border border-black p-2 print:p-1 font-bold align-middle ${row.remarks?.toUpperCase() === "PASS" ? "text-green-800 bg-green-100" : "text-red-800 bg-red-100"}`}>
-                                {row.remarks || "-"}
+                              <td rowSpan={rows.length} className="border border-black p-2 print:p-1 align-middle">{col > 0 ? xMax.toFixed(4) : (rows[0]?.xMax || "-")}</td>
+                              <td rowSpan={rows.length} className="border border-black p-2 print:p-1 align-middle">{col > 0 ? xMin.toFixed(4) : (rows[0]?.xMin || "-")}</td>
+                              <td rowSpan={rows.length} className="border border-black p-2 print:p-1 font-bold align-middle">{col > 0 ? col.toFixed(4) : (rows[0]?.col || "-")}</td>
+                              <td rowSpan={rows.length} className={`border border-black p-2 print:p-1 font-bold align-middle ${isPassOverall ? "text-green-800 bg-green-100" : "text-red-800 bg-red-100"}`}>
+                                {isPassOverall ? "Pass" : col > 0 ? "Fail" : (rows[0]?.remarks || "-")}
                               </td>
                             </>
                           )}
@@ -1178,11 +1348,12 @@ const ViewServiceReportDentalHandHeld: React.FC = () => {
 
                 <div className="bg-gray-50 p-4 print:p-1 rounded border mt-4" style={{ padding: '2px 4px', marginTop: '4px' }}>
                   <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
-                    <strong>Tolerance (CoL):</strong> {normalizeToleranceOperator(testData.linearityOfMasLoading?.tolerance, "≤")} {normalizeToleranceValue(testData.linearityOfMasLoading?.tolerance, "0.1")}
+                    <strong>Tolerance (CoL):</strong> {formatToleranceOperatorSymbol(toleranceOperator, "≤")} {tolerance}
                   </p>
                 </div>
               </div>
-            )}
+              );
+            })()}
 
             {/* 6. Consistency of Radiation Output */}
             {testData.consistencyOfRadiationOutput && (
@@ -1207,8 +1378,20 @@ const ViewServiceReportDentalHandHeld: React.FC = () => {
                 )}
                 {testData.consistencyOfRadiationOutput.outputRows?.length > 0 && (() => {
                   const rows = testData.consistencyOfRadiationOutput.outputRows;
-                  // Determine max measurement count across all rows
-                  const measCount = Math.max(...rows.map((r: any) => (r.outputs ?? []).length), 1);
+                  const headersRaw = Array.isArray(testData.consistencyOfRadiationOutput.measurementHeaders)
+                    ? testData.consistencyOfRadiationOutput.measurementHeaders
+                    : [];
+                  const measCount = Math.max(
+                    ...rows.map((r: any) => (r.outputs ?? []).length),
+                    headersRaw.length,
+                    1
+                  );
+                  const measHeaders =
+                    headersRaw.length > 0
+                      ? Array.from({ length: measCount }, (_, i) =>
+                          String(headersRaw[i] ?? "").trim() || `Meas ${i + 1}`
+                        )
+                      : Array.from({ length: measCount }, (_, i) => `Meas ${i + 1}`);
                   const tol = testData.consistencyOfRadiationOutput.tolerance;
                   const tolVal = parseFloat(typeof tol === 'object' ? tol.value : tol) || 0.05;
                   const tolOp = (typeof tol === 'object' ? tol.operator : null) || '<=';
@@ -1222,18 +1405,18 @@ const ViewServiceReportDentalHandHeld: React.FC = () => {
                   };
 
                   return (
-                    <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
-                      <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '10px', tableLayout: 'auto', borderCollapse: 'collapse', borderSpacing: '0' }}>
+                    <div className="report-data-table-wrap mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
+                      <table className="report-data-table border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', borderCollapse: 'collapse', borderSpacing: '0' }}>
                         <thead className="bg-gray-100">
                           <tr>
-                            <th className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>kV</th>
-                            <th className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>mAs</th>
-                            {Array.from({ length: measCount }, (_, i) => (
-                              <th key={i} className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>Meas {i + 1}</th>
+                            <th className="border border-black text-center">kV</th>
+                            <th className="border border-black text-center">mAs</th>
+                            {measHeaders.map((header: string, i: number) => (
+                              <th key={i} className="border border-black text-center">{header}</th>
                             ))}
-                            <th className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>Avg (X̄)</th>
-                            <th className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>CoV</th>
-                            <th className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>Remark</th>
+                            <th className="border border-black text-center">Avg (X̄)</th>
+                            <th className="border border-black text-center">CoV</th>
+                            <th className="border border-black text-center">Remark</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -1258,18 +1441,18 @@ const ViewServiceReportDentalHandHeld: React.FC = () => {
                             }
                             return (
                               <tr key={i} className="text-center">
-                                <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{row.kv || '-'}</td>
-                                <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{row.mas || '-'}</td>
+                                <td className="border border-black text-center">{row.kv || '-'}</td>
+                                <td className="border border-black text-center">{row.mas || '-'}</td>
                                 {Array.from({ length: measCount }, (_, j) => {
                                   const raw = (row.outputs ?? [])[j];
                                   const display = raw != null ? (typeof raw === 'object' && 'value' in raw ? raw.value : String(raw)) : '-';
                                   return (
-                                    <td key={j} className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{display || '-'}</td>
+                                    <td key={j} className="border border-black text-center">{display || '-'}</td>
                                   );
                                 })}
-                                <td className="border border-black p-1 text-center font-semibold" style={{ padding: '0px 2px', fontSize: '10px' }}>{avgDisplay}</td>
-                                <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{covDisplay}</td>
-                                <td className="border border-black p-1 text-center font-semibold" style={{ padding: '0px 2px', fontSize: '10px' }}>
+                                <td className="border border-black text-center font-semibold">{avgDisplay}</td>
+                                <td className="border border-black text-center">{covDisplay}</td>
+                                <td className="border border-black text-center font-semibold">
                                   <span className={String(remark).toUpperCase() === 'PASS' ? 'text-green-600' : String(remark).toUpperCase() === 'FAIL' ? 'text-red-600' : ''}>
                                     {remark}
                                   </span>
@@ -1359,8 +1542,8 @@ const ViewServiceReportDentalHandHeld: React.FC = () => {
                   </div>
 
                   {/* Exposure Level Table — Result columns match generate TubeHousingLeakage */}
-                  <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
-                    <table className="w-full border-2 border-black text-sm print:text-[8px] compact-table" style={{ fontSize: '10px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
+                  <div className="report-data-table-wrap mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
+                    <table className="report-data-table border-2 border-black text-sm print:text-[8px] compact-table" style={{ fontSize: '11px', borderCollapse: 'collapse', borderSpacing: '0' }}>
                       <thead className="bg-gray-100">
                         <tr className="bg-blue-50">
                           <th rowSpan={2} className="border border-black p-1 text-center font-bold" style={{ width: '15%', padding: '0px 2px', fontSize: '10px' }}>Location</th>
@@ -1529,7 +1712,7 @@ const ViewServiceReportDentalHandHeld: React.FC = () => {
                 {(testData.radiationProtectionSurvey.surveyDate || testData.radiationProtectionSurvey.hasValidCalibration) && (
                   <div className="mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
                     <h4 className="text-lg font-semibold mb-4 print:mb-1 print:text-xs" style={{ marginBottom: '4px', fontSize: '10px' }}>1. Survey Details</h4>
-                    <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
+                    <div className="report-data-table-wrap mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
                       <table className="w-full border-2 border-black text-sm compact-table" style={{ fontSize: '11px', borderCollapse: 'collapse', borderSpacing: '0' }}>
                         <tbody>
                           <tr style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
@@ -1550,7 +1733,7 @@ const ViewServiceReportDentalHandHeld: React.FC = () => {
                 {(testData.radiationProtectionSurvey.appliedCurrent || testData.radiationProtectionSurvey.appliedVoltage || testData.radiationProtectionSurvey.exposureTime || testData.radiationProtectionSurvey.workload) && (
                   <div className="mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
                     <h4 className="text-lg font-semibold mb-4 print:mb-1 print:text-xs" style={{ marginBottom: '4px', fontSize: '10px' }}>2. Equipment Setting</h4>
-                    <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
+                    <div className="report-data-table-wrap mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
                       <table className="w-full border-2 border-black text-sm compact-table" style={{ fontSize: '11px', borderCollapse: 'collapse', borderSpacing: '0' }}>
                         <tbody>
                           <tr style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
@@ -1579,7 +1762,7 @@ const ViewServiceReportDentalHandHeld: React.FC = () => {
                 {testData.radiationProtectionSurvey.locations?.length > 0 && (
                   <div className="mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
                     <h4 className="text-lg font-semibold mb-4 print:mb-1 print:text-xs" style={{ marginBottom: '4px', fontSize: '10px' }}>3. Measured Maximum Radiation Levels (mR/hr) at different Locations</h4>
-                    <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
+                    <div className="report-data-table-wrap mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
                       <table className="w-full border-2 border-black text-sm compact-table" style={{ fontSize: '11px', borderCollapse: 'collapse', borderSpacing: '0' }}>
                         <thead className="bg-gray-100">
                           <tr>
@@ -1611,7 +1794,7 @@ const ViewServiceReportDentalHandHeld: React.FC = () => {
                 {/* 4. Calculation Formula */}
                 <div className="mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
                   <h4 className="text-lg font-semibold mb-4 print:mb-1 print:text-xs" style={{ marginBottom: '4px', fontSize: '10px' }}>4. Calculation Formula</h4>
-                  <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
+                  <div className="report-data-table-wrap mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
                     <table className="w-full border-2 border-black text-sm compact-table" style={{ fontSize: '11px', borderCollapse: 'collapse', borderSpacing: '0' }}>
                       <tbody>
                         <tr style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
@@ -1649,7 +1832,7 @@ const ViewServiceReportDentalHandHeld: React.FC = () => {
                   return (
                     <div className="mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
                       <h4 className="text-lg font-semibold mb-4 print:mb-1 print:text-xs" style={{ marginBottom: '4px', fontSize: '10px' }}>5. Summary of Maximum Radiation Level/week (mR/wk)</h4>
-                      <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
+                      <div className="report-data-table-wrap mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
                         <table className="w-full border-2 border-black text-sm compact-table" style={{ fontSize: '11px', borderCollapse: 'collapse', borderSpacing: '0' }}>
                           <thead className="bg-gray-100">
                             <tr>
@@ -1717,7 +1900,7 @@ const ViewServiceReportDentalHandHeld: React.FC = () => {
                 {/* 6. Permissible Limit */}
                 <div className="mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
                   <h4 className="text-lg font-semibold mb-4 print:mb-1 print:text-xs" style={{ marginBottom: '4px', fontSize: '10px' }}>6. Permissible Limit</h4>
-                  <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
+                  <div className="report-data-table-wrap mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
                     <table className="w-full border-2 border-black text-sm compact-table" style={{ fontSize: '11px', borderCollapse: 'collapse', borderSpacing: '0' }}>
                       <tbody>
                         <tr style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
@@ -1787,12 +1970,34 @@ const ViewServiceReportDentalHandHeld: React.FC = () => {
           box-sizing: border-box !important;
           vertical-align: middle !important;
           text-align: center !important;
-          padding-top: 8px !important;
-          padding-bottom: 8px !important;
-          padding-left: 2px !important;
-          padding-right: 2px !important;
-          line-height: 1.1 !important;
-          vertical-align: middle !important;
+          padding-top: 6px !important;
+          padding-bottom: 6px !important;
+          padding-left: 4px !important;
+          padding-right: 4px !important;
+          line-height: 1.25 !important;
+        }
+        .fixed-report-pdf .report-data-table-wrap {
+          overflow-x: hidden !important;
+          max-width: 100%;
+          width: 100%;
+        }
+        .fixed-report-pdf .report-data-table {
+          width: 100% !important;
+          min-width: 0 !important;
+          table-layout: fixed !important;
+        }
+        .fixed-report-pdf .report-data-table th,
+        .fixed-report-pdf .report-data-table td {
+          white-space: normal !important;
+          word-break: break-word !important;
+          overflow-wrap: anywhere !important;
+          min-width: 0 !important;
+          max-width: none !important;
+          padding-top: 6px !important;
+          padding-bottom: 6px !important;
+          padding-left: 3px !important;
+          padding-right: 3px !important;
+          font-size: 10px !important;
         }
         .is-generating-pdf td,
         .is-generating-pdf th {
@@ -1827,6 +2032,12 @@ const ViewServiceReportDentalHandHeld: React.FC = () => {
              margin: 0 !important;
              box-shadow: none !important;
              page-break-after: always !important;
+          }
+          .fixed-report-pdf .report-data-table th,
+          .fixed-report-pdf .report-data-table td {
+            font-size: 9px !important;
+            padding-left: 2px !important;
+            padding-right: 2px !important;
           }
         }
       `}</style>

@@ -8,6 +8,7 @@ import {
     getAccuracyOfOperatingPotentialByTestIdForCBCT,
     updateAccuracyOfOperatingPotentialForCBCT,
 } from "../../../../../../api";
+import { useRegisterTestExport } from "../shared/TestExportRegistry";
 interface RowData {
     id: string;
     appliedKvp: string;
@@ -422,6 +423,34 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
 
         return m >= requiredTolerance ? "PASS" : "FAIL";
     };
+
+    const getExportData = useCallback(() => {
+        const hasMeasurements = rows.some(
+            (r) =>
+                String(r.appliedKvp || "").trim() ||
+                r.measuredValues.some((v) => String(v || "").trim())
+        );
+        const hasFiltration =
+            String(totalFiltration.measured || "").trim() ||
+            String(totalFiltration.required || "").trim() ||
+            String(totalFiltration.atKvp || "").trim();
+        if (!hasMeasurements && !hasFiltration && !String(ffd || "").trim()) return null;
+        return {
+            mAStations,
+            ffd,
+            measurements: rows.map((r) => ({
+                appliedKvp: r.appliedKvp,
+                measuredValues: r.measuredValues,
+                averageKvp: r.averageKvp,
+                remarks: r.remarks,
+            })),
+            tolerance: { type: toleranceSign, value: toleranceValue },
+            totalFiltration,
+            filtrationTolerance,
+        };
+    }, [mAStations, ffd, rows, toleranceSign, toleranceValue, totalFiltration, filtrationTolerance]);
+
+    useRegisterTestExport("accuracyOfOperatingPotential", getExportData);
 
     if (isLoading) {
         return (

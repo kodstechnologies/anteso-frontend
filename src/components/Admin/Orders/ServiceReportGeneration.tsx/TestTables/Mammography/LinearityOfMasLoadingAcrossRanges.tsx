@@ -3,7 +3,8 @@
  * RadiographyMobile/LinearityOfMasLoadingStations with hasTimer=false, wired to
  * mammography linearity-of-mas-loading APIs.
  */
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { useRegisterTestExport } from '../shared/TestExportRegistry';
 import { Plus, Trash2, Save, Edit3, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
@@ -414,6 +415,41 @@ const LinearityOfMasLoadingAcrossRanges: React.FC<Props> = ({
   const isViewMode = hasSaved && !isEditing;
   const buttonText = isViewMode ? 'Edit' : testId ? 'Update' : 'Save';
   const ButtonIcon = isViewMode ? Edit3 : Save;
+
+  const getExportData = useCallback(() => {
+    const hasRows = processedTable2.rows.some(
+      (r) => String(r.mAsRange || '').trim() || r.measuredOutputs.some((v) => String(v).trim())
+    );
+    const hasConditions =
+      String(exposureCondition.fcd || '').trim() || String(exposureCondition.kv || '').trim();
+    if (!hasRows && !hasConditions) return null;
+    return {
+      exposureCondition: { fcd: exposureCondition.fcd, kv: exposureCondition.kv },
+      measurementHeaders: measHeaders,
+      measHeaders,
+      measurements: processedTable2.rows.map((r) => ({
+        mAsRange: r.mAsRange,
+        measuredOutputs: r.measuredOutputs.map((v) => {
+          const val = v.trim();
+          return val === '' ? '' : val;
+        }),
+      })),
+      // Excel writer expects table2
+      table1: { fcd: exposureCondition.fcd, kv: exposureCondition.kv },
+      table2: processedTable2.rows.map((r) => ({
+        mAsRange: r.mAsRange,
+        mAsApplied: r.mAsRange,
+        measuredOutputs: r.measuredOutputs.map((v) => {
+          const val = v.trim();
+          return val === '' ? '' : val;
+        }),
+      })),
+      tolerance,
+      toleranceOperator,
+    };
+  }, [processedTable2, exposureCondition, measHeaders, tolerance, toleranceOperator]);
+
+  useRegisterTestExport('linearityOfMasLoading', getExportData);
 
   if (isLoading) {
     return (

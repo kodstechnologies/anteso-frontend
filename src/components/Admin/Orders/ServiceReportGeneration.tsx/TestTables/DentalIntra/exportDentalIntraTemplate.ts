@@ -26,19 +26,19 @@ const totalFiltrationSection = (): any[][] => [
 ];
 
 const accuracyOfIrradiationTimeSection = (): any[][] => [
-  ["FCD", "kV", "mA", "Set Time (mSec)", "mA Station 1 Time", "mA Station 2 Time"],
+  ["FDD (cm)", "kV", "mA", "Set Time (mSec)", "mA Station 1 Time", "mA Station 2 Time"],
   ["100", "80", "100", "100", "101", "99"],
   ["100", "80", "100", "200", "201", "199"],
 ];
 
 const linearityOfTimeSection = (): any[][] => [
-  ["FCD", "kV", "mA", "Time Station (sec)", "Measured mR 1", "Measured mR 2", "Measured mR 3"],
+  ["FDD (cm)", "kV", "mA", "Time Station (sec)", "Measured mR 1", "Measured mR 2", "Measured mR 3"],
   ["100", "80", "100", "0.1", "10.1", "10.2", "10.1"],
   ["100", "80", "100", "0.2", "20.1", "20.2", "20.1"],
 ];
 
 const linearityMaLoadingSection = (): any[][] => [
-  ["FCD", "kV", "Time", "mA Station", "Measured mR 1", "Measured mR 2", "Measured mR 3"],
+  ["FDD (cm)", "kV", "Time", "mA Station", "Measured mR 1", "Measured mR 2", "Measured mR 3"],
   ["100", "80", "0.5", "50", "5.1", "5.2", "5.1"],
   ["100", "80", "0.5", "100", "10.1", "10.2", "10.1"],
   ["100", "80", "0.5", "200", "20.1", "20.2", "20.1"],
@@ -48,17 +48,19 @@ const linearityMaLoadingSection = (): any[][] => [
 ];
 
 const linearityMasLoadingSection = (): any[][] => [
-  ["FCD", "kV", "mAs Range", "Measured mR 1", "Measured mR 2", "Measured mR 3"],
+  ["FDD (cm)", "kV", "mAs Range", "Measured mR 1", "Measured mR 2", "Measured mR 3"],
   ["100", "80", "5", "4.1", "4.2", "4.1"],
   ["100", "80", "10", "8.1", "8.2", "8.1"],
   ["100", "80", "20", "16.1", "16.2", "16.1"],
   ["100", "80", "50", "40.1", "40.2", "40.1"],
+  ["Tolerance Operator", "<="],
+  ["Tolerance Value (CoL)", "0.1"],
 ];
 
 const consistencySection = (): any[][] => [
   ["Tolerance Operator", "<="],
   ["Tolerance Value (CoV)", "0.05"],
-  ["FFD", "Test kV", "Test mAs", "Meas 1", "Meas 2", "Meas 3"],
+  ["FDD (cm)", "Test kV", "Test mAs", "Meas 1", "Meas 2", "Meas 3"],
   ["40", "120", "100", "50.1", "50.2", "50.1"],
 ];
 
@@ -130,10 +132,10 @@ const applyTextFormatGuards = (ws: XLSX.WorkSheet, rows: any[][]) => {
     };
 
     if (inLinearityMas) {
-      if (/^FCD$/i.test(first) || /^mAs Range$/i.test(first)) {
+      if (/^(?:FCD|FDD(?:\s*\(cm\))?)$/i.test(first) || /^mAs Range$/i.test(first)) {
         seenMasHeader = true;
       }
-      if (seenMasHeader && /^\d+(\.\d+)?$/.test(first) && !/^FCD$/i.test(first)) {
+      if (seenMasHeader && /^\d+(\.\d+)?$/.test(first) && !/^(?:FCD|FDD(?:\s*\(cm\))?)$/i.test(first)) {
         markText(r, 0);
       }
     }

@@ -1,5 +1,5 @@
 // src/components/TestTables/AccuracyOfIrradiationTime.tsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { PlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { Edit3, Save, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
@@ -8,6 +8,7 @@ import {
   getAccuracyOfIrradiationTimeByServiceIdForOPG,
   updateAccuracyOfIrradiationTimeForOPG,
 } from "../../../../../../api";
+import { useRegisterTestExport } from "../shared/TestExportRegistry";
 
 interface AccuracyOfIrradiationTimeProps {
   serviceId: string;
@@ -262,6 +263,35 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
     setIsEditing(true);
     setIsSaved(false);
   };
+
+  const getExportData = useCallback(() => {
+    const hasConditions = table1Row.fcd.trim() || table1Row.kv.trim() || table1Row.ma.trim();
+    const hasTimes = table2Rows.some((r) => r.setTime.trim() || r.measuredTime.trim());
+    if (!hasConditions && !hasTimes) return null;
+    return {
+      testConditions: {
+        fcd: table1Row.fcd,
+        kv: table1Row.kv,
+        ma: table1Row.ma,
+      },
+      // OPG excel exporter reads table1 for conditions
+      table1: {
+        fcd: table1Row.fcd,
+        kv: table1Row.kv,
+        ma: table1Row.ma,
+      },
+      irradiationTimes: table2Rows.map((r) => ({
+        setTime: r.setTime,
+        measuredTime: r.measuredTime,
+      })),
+      tolerance: {
+        operator: toleranceOperator,
+        value: toleranceValue,
+      },
+    };
+  }, [table1Row, table2Rows, toleranceOperator, toleranceValue]);
+
+  useRegisterTestExport("accuracyOfIrradiationTime", getExportData);
 
   if (loading) {
     return (

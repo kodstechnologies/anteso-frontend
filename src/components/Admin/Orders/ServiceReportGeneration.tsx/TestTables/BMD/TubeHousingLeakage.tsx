@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Loader2, Edit3, Save, Plus, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
@@ -8,6 +8,7 @@ import {
   getRadiationLeakageLevelByServiceIdForBMD,
   updateRadiationLeakageLevelForBMD,
 } from '../../../../../../api';
+import { useRegisterTestExport } from '../shared/TestExportRegistry';
 
 interface SettingsRow {
   fcd: string;
@@ -433,6 +434,43 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
   const isViewMode = hasSaved && !isEditing;
   const buttonText = isViewMode ? 'Edit' : testId ? 'Update' : 'Save';
   const ButtonIcon = isViewMode ? Edit3 : Save;
+
+  const getExportData = useCallback(() => {
+    const hasSettings =
+      String(settings.fcd || '').trim() ||
+      String(settings.kv || '').trim() ||
+      String(settings.ma || '').trim() ||
+      String(settings.time || '').trim();
+    const hasMeasurements = processedLeakage.some((row) =>
+      [row.left, row.right, row.front, row.back, row.top].some((v) => String(v || '').trim())
+    );
+    if (!hasSettings && !hasMeasurements && !String(workload || '').trim()) return null;
+    return {
+      settings: {
+        fcd: settings.fcd,
+        kv: settings.kv,
+        ma: settings.ma,
+        time: settings.time,
+      },
+      leakageMeasurements: processedLeakage.map((row) => ({
+        location: row.location,
+        left: String(row.left || ''),
+        right: String(row.right || ''),
+        front: String(row.front || ''),
+        back: String(row.back || ''),
+        top: String(row.top || ''),
+        max: row.max || '',
+        unit: row.unit || 'mR/h',
+      })),
+      leakageHeaders,
+      workload,
+      toleranceValue,
+      toleranceOperator,
+      toleranceTime,
+    };
+  }, [settings, processedLeakage, leakageHeaders, workload, toleranceValue, toleranceOperator, toleranceTime]);
+
+  useRegisterTestExport('radiationLeakageLevel', getExportData);
 
   if (isLoading) {
     return (

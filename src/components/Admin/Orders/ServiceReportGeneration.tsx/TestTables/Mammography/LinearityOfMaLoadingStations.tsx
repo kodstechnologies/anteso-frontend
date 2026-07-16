@@ -1,7 +1,8 @@
 // components/TestTables/Mammography/LinearityOfMaLoadingStations.tsx
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useRegisterTestExport } from '../shared/TestExportRegistry';
 import { Plus, Trash2, Loader2, Edit3, Save } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
@@ -421,6 +422,39 @@ const LinearityOfMaLoadingStations: React.FC<Props> = ({ serviceId, testId: prop
   const tableTitle = 'Linearity of mA Loading';
   const sectionTitle = 'Linearity of mA Loading';
   const xUnitLabel = 'mGy/mA';
+
+  const getExportData = useCallback(() => {
+    const hasRows = processedTable2.rows.some(
+      (r) => String(r.ma || '').trim() || r.measuredOutputs.some((v) => String(v).trim())
+    );
+    const hasConditions =
+      String(table1Row.fcd || '').trim() ||
+      String(table1Row.kv || '').trim() ||
+      String(table1Row.time || '').trim();
+    if (!hasRows && !hasConditions) return null;
+    return {
+      table1: { ...table1Row },
+      table2: processedTable2.rows.map((r) => ({
+        mAsApplied: r.ma,
+        ma: r.ma,
+        measuredOutputs: r.measuredOutputs.map((v) => {
+          const val = v.trim();
+          return val === '' ? '' : val;
+        }),
+        average: r.average || '',
+        x: r.x || '',
+      })),
+      measHeaders,
+      tolerance,
+      toleranceOperator,
+      xMax: processedTable2.summary.xMax,
+      xMin: processedTable2.summary.xMin,
+      col: processedTable2.summary.col,
+      remarks: processedTable2.summary.remarks,
+    };
+  }, [processedTable2, table1Row, measHeaders, tolerance, toleranceOperator]);
+
+  useRegisterTestExport('linearityOfMaLoading', getExportData);
 
   if (isLoading) {
     return (

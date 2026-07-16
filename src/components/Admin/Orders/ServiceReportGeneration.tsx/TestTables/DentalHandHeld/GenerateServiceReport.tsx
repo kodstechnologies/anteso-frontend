@@ -37,6 +37,8 @@ import TubeHousingLeakage from "./TubeHousingLeakage";
 import DetailsOfRadiationProtection from "./DetailsOfRadiationProtection";
 
 import { createDentalHandHeldUploadableExcel, DentalHandHeldExportData } from "./exportDentalHandHeldToExcel";
+import { normalizeCsvComparisonOperator } from "../shared/parseRadiographyStyleTableFormat";
+import { TestExportRegistryProvider, useTestExportRegistry } from "../shared/TestExportRegistry";
 
 export interface Standard {
     slNumber: string;
@@ -77,7 +79,8 @@ interface DentalProps {
     csvFileUrl?: string | null;
 }
 
-const GenerateReportForDentalHandHeld: React.FC<DentalProps> = ({ serviceId, qaTestDate, csvFileUrl: csvFileUrlFromProps }) => {
+const GenerateReportForDentalHandHeldContent: React.FC<DentalProps> = ({ serviceId, qaTestDate, csvFileUrl: csvFileUrlFromProps }) => {
+    const exportRegistry = useTestExportRegistry();
     const navigate = useNavigate();
 
     const [details, setDetails] = useState<DetailsResponse | null>(null);
@@ -264,19 +267,32 @@ const GenerateReportForDentalHandHeld: React.FC<DentalProps> = ({ serviceId, qaT
                         RadiationProtectionSurveyDentalHandHeld: res.data.RadiationProtectionSurveyDentalHandHeld?._id || res.data.RadiationProtectionSurveyDentalHandHeld,
                     });
 
-                    // If AccuracyOfIrradiationTime exists, set hasTimer to true
-                    const hasTestId = res.data.AccuracyOfOperatingPotentialAndTimeDentalHandHeld;
-                    if (hasTestId) {
+                    // Resolve timer mode from saved tests; unambiguous mAs-only / mA-only
+                    // overrides sticky localStorage (previous bug set hasTimer from AOP alone).
+                    const savedChoice = localStorage.getItem(`dental_hand_held_timer_choice_${serviceId}`);
+                    const hasMaLinearity = !!res.data.LinearityOfMaLoadingDentalHandHeld;
+                    const hasMasLinearity = !!res.data.LinearityOfmAsLoadingDentalHandHeld;
+                    const hasLinearityOfTime = !!res.data.LinearityOfTimeDentalHandHeld;
+
+                    if (hasMasLinearity && !hasMaLinearity && !hasLinearityOfTime) {
+                        setHasTimer(false);
+                        setShowTimerModal(false);
+                        localStorage.setItem(`dental_hand_held_timer_choice_${serviceId}`, JSON.stringify(false));
+                    } else if ((hasMaLinearity || hasLinearityOfTime) && !hasMasLinearity) {
                         setHasTimer(true);
                         setShowTimerModal(false);
+                        localStorage.setItem(`dental_hand_held_timer_choice_${serviceId}`, JSON.stringify(true));
+                    } else if (savedChoice !== null) {
+                        setHasTimer(JSON.parse(savedChoice));
+                        setShowTimerModal(false);
+                    } else if (hasMaLinearity || hasLinearityOfTime) {
+                        setHasTimer(true);
+                        setShowTimerModal(false);
+                    } else if (hasMasLinearity) {
+                        setHasTimer(false);
+                        setShowTimerModal(false);
                     } else {
-                        const savedChoice = localStorage.getItem(`dental_hand_held_timer_choice_${serviceId}`);
-                        if (savedChoice !== null) {
-                            setHasTimer(JSON.parse(savedChoice));
-                            setShowTimerModal(false);
-                        } else {
-                            setShowTimerModal(true);
-                        }
+                        setShowTimerModal(true);
                     }
                 } else {
                     // No report header exists, check localStorage
@@ -452,25 +468,35 @@ const GenerateReportForDentalHandHeld: React.FC<DentalProps> = ({ serviceId, qaT
                 'mA Station 2 Time': 'Measured_Time_ignore',
                 'Measured Time (mSec)': 'Measured_Time',
                 'kV': 'kV', 'kVp': 'kVp',
-                'FCD': 'FCD', 'mA': 'mA',
+                'FCD': 'FCD', 'FDD': 'FCD', 'FDD (cm)': 'FCD', 'mA': 'mA',
             },
             'linearityOfMaLoading': {
                 'mA Station': 'mA_Station',
                 'Measured mR 1': 'Measured_0', 'Measured mR 2': 'Measured_1', 'Measured mR 3': 'Measured_2', 'Measured mR 4': 'Measured_3', 'Measured mR 5': 'Measured_4',
-                'kV': 'kV', 'Time': 'time', 'FCD': 'FCD',
+                'kV': 'kV', 'Time': 'time', 'FCD': 'FCD', 'FDD': 'FCD', 'FDD (cm)': 'FCD',
+                'Tolerance Operator': 'Tolerance_Operator', 'tolerance operator': 'Tolerance_Operator',
+                'Tol Operator': 'Tolerance_Operator', 'tol operator': 'Tolerance_Operator',
+                'Tolerance Sign': 'Tolerance_Operator', 'tolerance sign': 'Tolerance_Operator',
+                'Tolerance Value (CoL)': 'Tolerance', 'Tolerance Value': 'Tolerance',
+                'tolerance value (col)': 'Tolerance', 'Tol Value': 'Tolerance', 'Tolerance': 'Tolerance',
             },
             'linearityOfMasLoading': {
                 'mAs Range': 'mAs_Range',
                 'Measured mR 1': 'Measured_0', 'Measured mR 2': 'Measured_1', 'Measured mR 3': 'Measured_2', 'Measured mR 4': 'Measured_3', 'Measured mR 5': 'Measured_4',
-                'kV': 'kV', 'FCD': 'FCD',
+                'kV': 'kV', 'FCD': 'FCD', 'FDD': 'FCD', 'FDD (cm)': 'FCD',
+                'Tolerance Operator': 'Tolerance_Operator', 'tolerance operator': 'Tolerance_Operator',
+                'Tol Operator': 'Tolerance_Operator', 'tol operator': 'Tolerance_Operator',
+                'Tolerance Sign': 'Tolerance_Operator', 'tolerance sign': 'Tolerance_Operator',
+                'Tolerance Value (CoL)': 'Tolerance', 'Tolerance Value': 'Tolerance',
+                'tolerance value (col)': 'Tolerance', 'Tol Value': 'Tolerance', 'Tolerance': 'Tolerance',
             },
             'LinearityOfTime': {
-                'FCD': 'FCD', 'kV': 'kV', 'mA': 'mA',
+                'FCD': 'FCD', 'FDD': 'FCD', 'FDD (cm)': 'FCD', 'kV': 'kV', 'mA': 'mA',
                 'Time Station (sec)': 'time',
                 'Measured mR 1': 'Measured_0', 'Measured mR 2': 'Measured_1', 'Measured mR 3': 'Measured_2',
             },
             'consistencyOfRadiationOutput': {
-                'FFD': 'FFD', 'ffd': 'FFD', 'FDD': 'FFD', 'fdd': 'FFD', 'FCD': 'FFD', 'fcd': 'FFD',
+                'FFD': 'FFD', 'ffd': 'FFD', 'FDD': 'FFD', 'fdd': 'FFD', 'FDD (cm)': 'FFD', 'FCD': 'FFD', 'fcd': 'FFD',
                 'Test kV': 'kVp', 'Test kVp': 'kVp', 'Test KV': 'kVp',
                 'kV': 'kVp', 'kv': 'kVp', 'KV': 'kVp',
                 'kVp': 'kVp', 'kvp': 'kVp', 'KVp': 'kVp', 'KVP': 'kVp',
@@ -490,7 +516,7 @@ const GenerateReportForDentalHandHeld: React.FC<DentalProps> = ({ serviceId, qaT
                 'Location': 'Table2_Area', 'Front': 'Table2_Front', 'Back': 'Table2_Back',
                 'Left': 'Table2_Left', 'Right': 'Table2_Right', 'Top': 'Table2_Top',
                 'Max Leakage': 'Table2_Max', 'Unit': 'Table2_Unit', 'Remark': 'Table2_Remark',
-                'Distance': 'distance', 'FCD': 'distance', 'FFD': 'distance', 'FDD': 'distance',
+                'Distance': 'distance', 'FCD': 'distance', 'FFD': 'distance', 'FDD': 'distance', 'FDD (cm)': 'distance',
                 'kV': 'kV', 'kVp': 'kV', 'mA': 'mA', 'Time': 'Time',
                 'Workload': 'Workload', 'Workload Unit': 'WorkloadUnit',
                 'Tolerance Value': 'ToleranceValue', 'Tolerance Operator': 'ToleranceOperator', 'Tolerance Time': 'ToleranceTime'
@@ -525,15 +551,21 @@ const GenerateReportForDentalHandHeld: React.FC<DentalProps> = ({ serviceId, qaT
                 'Tolerance Sign', 'Tolerance Value (kVp)', 'Tolerance Value', 'Tolerance',
             ]),
             linearityOfMaLoading: new Set([
-                'mA Station', 'kV', 'Time', 'FCD',
+                'mA Station', 'kV', 'Time', 'FCD', 'FDD', 'FDD (cm)',
                 'Measured mR 1', 'Measured mR 2', 'Measured mR 3', 'Measured mR 4', 'Measured mR 5',
+                'Tolerance Operator', 'tolerance operator', 'Tol Operator', 'tol operator',
+                'Tolerance Sign', 'tolerance sign',
+                'Tolerance Value (CoL)', 'Tolerance Value', 'tolerance value (col)', 'Tol Value', 'Tolerance',
             ]),
             linearityOfMasLoading: new Set([
-                'mAs Range', 'kV', 'FCD',
+                'mAs Range', 'kV', 'FCD', 'FDD', 'FDD (cm)',
                 'Measured mR 1', 'Measured mR 2', 'Measured mR 3', 'Measured mR 4', 'Measured mR 5',
+                'Tolerance Operator', 'tolerance operator', 'Tol Operator', 'tol operator',
+                'Tolerance Sign', 'tolerance sign',
+                'Tolerance Value (CoL)', 'Tolerance Value', 'tolerance value (col)', 'Tol Value', 'Tolerance',
             ]),
             consistencyOfRadiationOutput: new Set([
-                'FFD', 'ffd', 'FDD', 'fdd', 'FCD', 'fcd',
+                'FFD', 'ffd', 'FDD', 'fdd', 'FDD (cm)', 'FCD', 'fcd',
                 'Test kV', 'Test kVp', 'Test KV',
                 'kV', 'kv', 'KV', 'kVp', 'kvp', 'KVp', 'KVP',
                 'Test mAs', 'Test Mas', 'mAs', 'mas', 'MAS',
@@ -628,12 +660,15 @@ const GenerateReportForDentalHandHeld: React.FC<DentalProps> = ({ serviceId, qaT
 
             if (isReadingTest && headers.length === 0 && currentTestName) {
                 const fieldForKey = (headerMap[currentTestName] || {})[firstCell];
-                if (fieldForKey && row[1] && row.slice(2).every(c => !c)) {
+                if (fieldForKey && row[1] !== undefined && String(row[1]).trim() !== '' && row.slice(2).every(c => !c)) {
                     sectionRowCounter[currentTestName] = (sectionRowCounter[currentTestName] || 0) + 1;
+                    const value = fieldForKey === 'Tolerance_Operator'
+                        ? normalizeCsvComparisonOperator(row[1])
+                        : row[1];
                     data.push({
                         'Field Name': fieldForKey,
-                        'Value': row[1],
-                        'Row Index': sectionRowCounter[currentTestName],
+                        'Value': value,
+                        'Row Index': fieldForKey.startsWith('Tolerance') ? 0 : sectionRowCounter[currentTestName],
                         'Test Name': currentTestName,
                     });
                     continue;
@@ -670,6 +705,20 @@ const GenerateReportForDentalHandHeld: React.FC<DentalProps> = ({ serviceId, qaT
             }
 
             if (isReadingTest && currentTestName && headers.length > 0) {
+                // Allow RF-style key-value rows after table data (e.g. Tolerance Operator / Value)
+                const fieldForKey = (headerMap[currentTestName] || {})[firstCell];
+                if (fieldForKey && row[1] !== undefined && String(row[1]).trim() !== '' && row.slice(2).every(c => !c)) {
+                    const value = fieldForKey === 'Tolerance_Operator'
+                        ? normalizeCsvComparisonOperator(row[1])
+                        : row[1];
+                    data.push({
+                        'Field Name': fieldForKey,
+                        'Value': value,
+                        'Row Index': 0,
+                        'Test Name': currentTestName,
+                    });
+                    continue;
+                }
                 sectionRowCounter[currentTestName]++;
                 const rowIdx = sectionRowCounter[currentTestName];
                 row.forEach((value, cellIdx) => {
@@ -687,7 +736,9 @@ const GenerateReportForDentalHandHeld: React.FC<DentalProps> = ({ serviceId, qaT
                         }
                         data.push({
                             'Field Name': internalField,
-                            'Value': value,
+                            'Value': internalField === 'Tolerance_Operator'
+                                ? normalizeCsvComparisonOperator(value)
+                                : value,
                             'Row Index': rowIdx,
                             'Test Name': currentTestName,
                         });
@@ -738,21 +789,22 @@ const GenerateReportForDentalHandHeld: React.FC<DentalProps> = ({ serviceId, qaT
             );
             const hasMasSection = !!grouped['linearityOfMasLoading']?.length;
 
-            if (savedChoice !== null) {
-                setHasTimer(JSON.parse(savedChoice));
+            // Unambiguous Excel sections always win (avoids sticky wrong localStorage from AOP-only saves)
+            if (hasMasSection && !hasTimerSection) {
+                setHasTimer(false);
                 setShowTimerModal(false);
+                if (serviceId) {
+                    localStorage.setItem(`dental_hand_held_timer_choice_${serviceId}`, JSON.stringify(false));
+                }
             } else if (hasTimerSection && !hasMasSection) {
                 setHasTimer(true);
                 setShowTimerModal(false);
                 if (serviceId) {
                     localStorage.setItem(`dental_hand_held_timer_choice_${serviceId}`, JSON.stringify(true));
                 }
-            } else if (hasMasSection && !hasTimerSection) {
-                setHasTimer(false);
+            } else if (savedChoice !== null) {
+                setHasTimer(JSON.parse(savedChoice));
                 setShowTimerModal(false);
-                if (serviceId) {
-                    localStorage.setItem(`dental_hand_held_timer_choice_${serviceId}`, JSON.stringify(false));
-                }
             } else if (hasTimerSection || applyConfigFromExcel) {
                 setHasTimer(hasTimerSection);
                 setShowTimerModal(false);
@@ -868,54 +920,83 @@ const GenerateReportForDentalHandHeld: React.FC<DentalProps> = ({ serviceId, qaT
             toast.loading("Exporting data to Excel...", { id: "export-excel" });
             setCsvUploading(true);
 
+            const pageData = exportRegistry?.collect() ?? {};
             const exportData: DentalHandHeldExportData = {};
 
             // 1. Accuracy of Operating Potential
-            try {
-                const res = await getAccuracyOfOperatingPotentialByServiceIdForDentalHandHeld(serviceId);
-                if (res?.data) exportData.accuracyOfOperatingPotential = res.data;
-            } catch (err) { console.log("AccuracyOfOperatingPotential data not found"); }
+            if (pageData.accuracyOfOperatingPotential != null) {
+                exportData.accuracyOfOperatingPotential = pageData.accuracyOfOperatingPotential;
+            } else {
+                try {
+                    const res = await getAccuracyOfOperatingPotentialByServiceIdForDentalHandHeld(serviceId);
+                    if (res?.data) exportData.accuracyOfOperatingPotential = res.data;
+                } catch (err) { console.log("AccuracyOfOperatingPotential data not found"); }
+            }
 
             // 2. Accuracy of Irradiation Time
-            try {
-                const res = await getAccuracyOfIrradiationTimeByServiceIdForDentalHandHeld(serviceId);
-                if (res?.data) exportData.accuracyOfIrradiationTime = res.data;
-            } catch (err) { console.log("AccuracyOfIrradiationTime data not found"); }
+            if (pageData.accuracyOfIrradiationTime != null) {
+                exportData.accuracyOfIrradiationTime = pageData.accuracyOfIrradiationTime;
+            } else {
+                try {
+                    const res = await getAccuracyOfIrradiationTimeByServiceIdForDentalHandHeld(serviceId);
+                    if (res?.data) exportData.accuracyOfIrradiationTime = res.data;
+                } catch (err) { console.log("AccuracyOfIrradiationTime data not found"); }
+            }
 
             // 3. Linearity of mA / mAs Loading
             if (hasTimer === true) {
-                try {
-                    const res = await getLinearityOfMaLoadingByServiceIdForDentalHandHeld(serviceId);
-                    if (res?.data) exportData.linearityOfMaLoading = res.data;
-                } catch (err) { console.log("LinearityOfMaLoading data not found"); }
+                if (pageData.linearityOfMaLoading != null) {
+                    exportData.linearityOfMaLoading = pageData.linearityOfMaLoading;
+                } else {
+                    try {
+                        const res = await getLinearityOfMaLoadingByServiceIdForDentalHandHeld(serviceId);
+                        if (res?.data) exportData.linearityOfMaLoading = res.data;
+                    } catch (err) { console.log("LinearityOfMaLoading data not found"); }
+                }
             } else {
-                try {
-                    const res = await getLinearityOfMasLoadingByServiceIdForDentalHandHeld(serviceId);
-                    if (res?.data) exportData.linearityOfMasLoading = res.data;
-                } catch (err) { console.log("LinearityOfMasLoading data not found"); }
+                if (pageData.linearityOfMasLoading != null) {
+                    exportData.linearityOfMasLoading = pageData.linearityOfMasLoading;
+                } else {
+                    try {
+                        const res = await getLinearityOfMasLoadingByServiceIdForDentalHandHeld(serviceId);
+                        if (res?.data) exportData.linearityOfMasLoading = res.data;
+                    } catch (err) { console.log("LinearityOfMasLoading data not found"); }
+                }
             }
 
             // 4. Consistency of Radiation Output
-            try {
-                const res = await getConsistencyOfRadiationOutputByServiceIdForDentalHandHeld(serviceId);
-                if (res?.data) exportData.consistencyOfRadiationOutput = res.data;
-            } catch (err) { console.log("ConsistencyOfRadiationOutput data not found"); }
+            if (pageData.consistencyOfRadiationOutput != null) {
+                exportData.consistencyOfRadiationOutput = pageData.consistencyOfRadiationOutput;
+            } else {
+                try {
+                    const res = await getConsistencyOfRadiationOutputByServiceIdForDentalHandHeld(serviceId);
+                    if (res?.data) exportData.consistencyOfRadiationOutput = res.data;
+                } catch (err) { console.log("ConsistencyOfRadiationOutput data not found"); }
+            }
 
             // 5. Radiation Leakage Level
-            try {
-                const res = await getRadiationLeakageLevelByServiceIdForDentalHandHeld(serviceId);
-                if (res?.data) exportData.radiationLeakageLevel = res.data;
-            } catch (err) { console.log("RadiationLeakageLevel data not found"); }
+            if (pageData.radiationLeakageLevel != null) {
+                exportData.radiationLeakageLevel = pageData.radiationLeakageLevel;
+            } else {
+                try {
+                    const res = await getRadiationLeakageLevelByServiceIdForDentalHandHeld(serviceId);
+                    if (res?.data) exportData.radiationLeakageLevel = res.data;
+                } catch (err) { console.log("RadiationLeakageLevel data not found"); }
+            }
 
             // 6. Details of Radiation Protection Survey
-            try {
-                const res = await getRadiationProtectionSurveyByServiceIdForDentalHandHeld(serviceId);
-                if (res?.data) exportData.radiationProtectionSurvey = res.data;
-            } catch (err) { console.log("RadiationProtectionSurvey data not found"); }
+            if (pageData.radiationProtectionSurvey != null) {
+                exportData.radiationProtectionSurvey = pageData.radiationProtectionSurvey;
+            } else {
+                try {
+                    const res = await getRadiationProtectionSurveyByServiceIdForDentalHandHeld(serviceId);
+                    if (res?.data) exportData.radiationProtectionSurvey = res.data;
+                } catch (err) { console.log("RadiationProtectionSurvey data not found"); }
+            }
 
             const hasData = Object.keys(exportData).length > 0;
             if (!hasData) {
-                toast.error("No data found to export. Please save test data first.", { id: "export-excel" });
+                toast.error("No data found to export. Enter test data on this page or save test data first.", { id: "export-excel" });
                 return;
             }
 
@@ -1337,5 +1418,11 @@ const GenerateReportForDentalHandHeld: React.FC<DentalProps> = ({ serviceId, qaT
         </div >
     );
 };
+
+const GenerateReportForDentalHandHeld: React.FC<DentalProps> = (props) => (
+    <TestExportRegistryProvider>
+        <GenerateReportForDentalHandHeldContent {...props} />
+    </TestExportRegistryProvider>
+);
 
 export default GenerateReportForDentalHandHeld;

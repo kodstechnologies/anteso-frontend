@@ -896,7 +896,7 @@ const ViewServiceReportOArm: React.FC = () => {
                           <tr>
                             <td className="border border-black font-medium" style={{ padding: '0px 4px', fontSize: '11px' }}>Required (Tolerance)</td>
                             <td className="border border-black text-center" style={{ padding: '0px 4px', fontSize: '11px' }}>
-                              {!isNaN(requiredTol) ? `â‰¥ ${requiredTol} mm Al` : "-"}
+                              {!isNaN(requiredTol) ? ` ${requiredTol} mm Al` : "-"}
                             </td>
                           </tr>
                           <tr>
@@ -913,7 +913,7 @@ const ViewServiceReportOArm: React.FC = () => {
                       <div style={{ marginTop: '4px', fontSize: '10px', color: '#555' }}>
                         <span className="font-semibold">Tolerance criteria: </span>
                         {ft.forKvGreaterThan70 ?? "1.5"} mm Al for kV &lt; {ft.kvThreshold1 ?? "70"} |&nbsp;
-                        {ft.forKvBetween70And100 ?? "2.0"} mm Al for {ft.kvThreshold1 ?? "70"} â‰¤ kV â‰¤ {ft.kvThreshold2 ?? "100"} |&nbsp;
+                        {ft.forKvBetween70And100 ?? "2.0"} mm Al for {ft.kvThreshold1 ?? "70"}  kV  {ft.kvThreshold2 ?? "100"} |&nbsp;
                         {ft.forKvGreaterThan100 ?? "2.5"} mm Al for kV &gt; {ft.kvThreshold2 ?? "100"}
                       </div>
                     </div>
@@ -1183,7 +1183,7 @@ const ViewServiceReportOArm: React.FC = () => {
                     </div>
                     <div>
                       <p className="text-xs print:text-[8px]" style={{ fontSize: '10px' }}>
-                        {/* <strong>Tolerance (mGy in 1 hr):</strong> {data.toleranceValue || "1.0"} {data.toleranceOperator === 'greater than or equal to' ? 'â‰¥' : 'â‰¤'} {data.toleranceTime || "1"} hr */}
+                        {/* <strong>Tolerance (mGy in 1 hr):</strong> {data.toleranceValue || "1.0"} {data.toleranceOperator === 'greater than or equal to' ? '' : ''} {data.toleranceTime || "1"} hr */}
                       </p>
                     </div>
                   </div>
@@ -1392,7 +1392,7 @@ const ViewServiceReportOArm: React.FC = () => {
                   {lin.tolerance && (
                     <div className="bg-gray-50 p-4 print:p-1 rounded border">
                       <p className="text-sm print:text-[10px]" style={{ fontSize: '10px' }}>
-                        <strong>Tolerance (CoL):</strong> {lin.toleranceOperator || "â‰¤"} {lin.tolerance || "0.1"}
+                        <strong>Tolerance (CoL):</strong> {lin.toleranceOperator || ""} {lin.tolerance || "0.1"}
                       </p>
                     </div>
                   )}

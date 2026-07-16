@@ -31,12 +31,16 @@ const accuracyOfIrradiationTimeSection = (): any[][] => [
 
 const linearityMaLoadingSection = (): any[][] => [
   ["FCD", "100", "kV", "70", "Timer", "0.1"],
+  ["Tolerance Operator", "<="],
+  ["Tolerance Value (CoL)", "0.1"],
   ["mA Station", "Measured mR 1", "Measured mR 2", "Measured mR 3", "Average", "mR/mAs"],
   ["10", "2.4", "2.45", "2.42", "", ""],
   ["20", "4.8", "4.85", "4.82", "", ""],
 ];
 
 const linearityMasLoadingSection = (): any[][] => [
+  ["Tolerance Operator", "<="],
+  ["Tolerance Value (CoL)", "0.1"],
   ["mAs Range", "Measured mR 1", "Measured mR 2", "Measured mR 3", "Average", "mR/mAs"],
   ["50", "12.2", "12.25", "12.22", "", ""],
   ["100", "24.4", "24.45", "24.42", "", ""],

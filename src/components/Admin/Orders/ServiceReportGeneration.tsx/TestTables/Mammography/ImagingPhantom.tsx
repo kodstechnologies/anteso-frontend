@@ -1,7 +1,8 @@
 // components/TestTables/ImagingPhantom.tsx
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useRegisterTestExport } from '../shared/TestExportRegistry';
 import { Edit3, Save, Loader2, Plus, Trash2, ChevronDown } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
@@ -258,6 +259,35 @@ const ImagingPhantom: React.FC<Props> = ({ serviceId, onRefresh, refreshKey, ini
       r.id === id ? { ...r, [field]: value } : r
     ));
   };
+
+  const getExportData = useCallback(() => {
+    const hasRows = rowsWithRemarks.some(
+      (r) =>
+        String(r.name || '').trim() ||
+        String(r.visibleCount || '').trim() ||
+        String(r.toleranceValue || '').trim()
+    );
+    if (!hasRows) return null;
+    return {
+      rows: rowsWithRemarks.map((r) => ({
+        name: r.name.trim(),
+        visibleCount: r.visibleCount,
+        tolerance: {
+          operator: r.toleranceOperator,
+          value: r.toleranceValue,
+        },
+        remark: r.remark || '',
+      })),
+      // Excel writer looks for testRows / measurements / readings
+      testRows: rowsWithRemarks.map((r) => ({
+        testName: r.name.trim(),
+        result: r.remark || r.visibleCount || '',
+      })),
+      remark: calculatedRemark,
+    };
+  }, [rowsWithRemarks, calculatedRemark]);
+
+  useRegisterTestExport('imagingPhantom', getExportData);
 
   if (isLoading) {
     return (

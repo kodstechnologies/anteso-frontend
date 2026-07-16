@@ -1,7 +1,7 @@
 // components/TestTables/LinearityOfMaLoading.tsx
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Plus, Trash2, Loader2, Edit3, Save } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
@@ -11,6 +11,7 @@ import {
   updateLinearityOfMaLoadingForDentalIntra,
 } from '../../../../../../api';
 import { normalizeCsvComparisonOperator } from '../shared/parseRadiographyStyleTableFormat';
+import { useRegisterTestExport } from '../shared/TestExportRegistry';
 
 interface Table1Row {
   fcd: string;
@@ -234,7 +235,17 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
                 remarks: r.remarks || '',
               }))
             );
-            if (data.table2[0]?.measuredOutputs?.length) {
+            if (Array.isArray(data.measHeaders) && data.measHeaders.length > 0) {
+              const count = Math.max(
+                data.measHeaders.length,
+                data.table2?.[0]?.measuredOutputs?.length || 0,
+              );
+              setMeasHeaders(
+                Array.from({ length: Math.max(count, 1) }, (_, i) =>
+                  String(data.measHeaders[i] ?? "").trim() || `Measured mR ${i + 1}`
+                )
+              );
+            } else if (data.table2[0]?.measuredOutputs?.length) {
               const count = data.table2[0].measuredOutputs.length;
               setMeasHeaders(Array.from({ length: count }, (_, i) => `Measured mR ${i + 1}`));
             }
@@ -368,6 +379,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
         })),
         tolerance,
         toleranceOperator,
+        measHeaders,
         xMax: processedTable2[0]?.xMax || '',
         xMin: processedTable2[0]?.xMin || '',
         col: processedTable2[0]?.col || '',
@@ -417,6 +429,48 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
   const isViewMode = hasSaved && !isEditing;
   const buttonText = isViewMode ? 'Edit' : testId ? 'Update' : 'Save';
   const ButtonIcon = isViewMode ? Edit3 : Save;
+
+  const getExportData = useCallback(() => {
+    const hasRows = processedTable2.some(
+      (r) => String(r.ma || '').trim() || r.measuredOutputs.some((v) => String(v).trim())
+    );
+    const hasConditions =
+      String(table1Row.fcd || '').trim() ||
+      String(table1Row.kv || '').trim() ||
+      String(table1Row.time || '').trim();
+    if (!hasRows && !hasConditions) return null;
+    return {
+      table1: {
+        fcd: table1Row.fcd,
+        kv: table1Row.kv,
+        ma: table1Row.time,
+        time: table1Row.time,
+      },
+      table2: processedTable2.map((r) => ({
+        time: r.ma,
+        ma: r.ma,
+        measuredOutputs: r.measuredOutputs.map((v) => {
+          const val = v.trim();
+          return val === '' ? '' : val;
+        }),
+        average: r.average || '',
+        x: r.x || '',
+        xMax: r.xMax || '',
+        xMin: r.xMin || '',
+        col: r.col || '',
+        remarks: r.remarks || '',
+      })),
+      tolerance,
+      toleranceOperator,
+      measHeaders,
+      xMax: processedTable2[0]?.xMax || '',
+      xMin: processedTable2[0]?.xMin || '',
+      col: processedTable2[0]?.col || '',
+      remarks: processedTable2[0]?.remarks || '',
+    };
+  }, [processedTable2, table1Row, tolerance, toleranceOperator, measHeaders]);
+
+  useRegisterTestExport('linearityOfMaLoading', getExportData);
 
   if (isLoading) {
     return (

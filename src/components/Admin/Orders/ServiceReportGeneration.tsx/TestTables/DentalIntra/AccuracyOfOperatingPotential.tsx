@@ -8,6 +8,7 @@ import {
     getAccuracyOfOperatingPotentialByTestIdForDentalIntra,
     updateAccuracyOfOperatingPotentialForDentalIntra,
 } from "../../../../../../api";
+import { useRegisterTestExport } from "../shared/TestExportRegistry";
 interface RowData {
     id: string;
     appliedKvp: string;
@@ -75,6 +76,35 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
         kvThreshold2: "100"
     });
 
+    const padMeasuredValues = (values: string[], colCount: number): string[] => {
+        const next = Array.isArray(values) ? values.map((v) => String(v ?? "")) : [];
+        while (next.length < colCount) next.push("");
+        return next.slice(0, Math.max(colCount, 1));
+    };
+
+    const extractMeasuredValues = (m: any, colCount: number): string[] => {
+        if (Array.isArray(m?.maStations) && m.maStations.length > 0) {
+            return padMeasuredValues(
+                m.maStations.map((s: any) => String(s?.kvp ?? "")),
+                colCount
+            );
+        }
+        if (Array.isArray(m?.measuredValues) && m.measuredValues.length > 0) {
+            return padMeasuredValues(
+                m.measuredValues.map((v: any) => String(v ?? "")),
+                colCount
+            );
+        }
+        // Legacy fixed two-station shape
+        if (m?.maStation1 != null || m?.maStation2 != null) {
+            return padMeasuredValues(
+                [String(m?.maStation1?.kvp ?? ""), String(m?.maStation2?.kvp ?? "")],
+                colCount
+            );
+        }
+        return padMeasuredValues([], colCount);
+    };
+
     // Load existing test data
     useEffect(() => {
         const loadTest = async () => {
@@ -87,15 +117,29 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
                 if (data) {
                     setTestId(data._id || null);
                     if (!hasCsvImport) {
-                        const maxCols = data.rows?.length ? Math.max(...data.rows.map((m: any) => (m.maStations?.length || m.measuredValues?.length || 0)), 2) : 2;
-                        const defaultHeaders = Array.from({ length: maxCols }, (_, i) => data.mAStations?.[i] || `mA Station ${i + 1}`);
-                        setMAStations(data.mAStations?.length >= maxCols ? data.mAStations : defaultHeaders);
+                        const rowColCounts = (data.rows || []).map((m: any) => {
+                            if (Array.isArray(m.maStations) && m.maStations.length > 0) return m.maStations.length;
+                            if (Array.isArray(m.measuredValues) && m.measuredValues.length > 0) return m.measuredValues.length;
+                            if (m.maStation1 != null || m.maStation2 != null) return 2;
+                            return 0;
+                        });
+                        const maxCols = Math.max(
+                            ...(Array.isArray(data.mAStations) ? [data.mAStations.length] : []),
+                            ...rowColCounts,
+                            2
+                        );
+                        const headers =
+                            Array.isArray(data.mAStations) && data.mAStations.length > 0
+                                ? padMeasuredValues(
+                                    data.mAStations.map((h: any) => String(h ?? "")),
+                                    maxCols
+                                ).map((h, i) => h || `mA Station ${i + 1}`)
+                                : Array.from({ length: maxCols }, (_, i) => `mA Station ${i + 1}`);
+                        setMAStations(headers);
                         setFfd(data.ffd || "");
                         setRows(
                             data.rows?.map((m: any, i: number) => {
-                                const measuredValues = (m.maStations && Array.isArray(m.maStations))
-                                    ? m.maStations.map((s: any) => s?.kvp ?? "")
-                                    : (m.measuredValues || []);
+                                const measuredValues = extractMeasuredValues(m, headers.length);
 
                                 const rowApplied = parseFloat(m.appliedKvp || "0");
                                 const tol = parseFloat(data.kvpToleranceValue || "2.0");
@@ -129,11 +173,11 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
                         });
                         if (data.filtrationTolerance) {
                             setFiltrationTolerance({
-                                forKvGreaterThan70: data.filtrationTolerance.forKvGreaterThan70 || "1.5",
-                                forKvBetween70And100: data.filtrationTolerance.forKvBetween70And100 || "2.0",
-                                forKvGreaterThan100: data.filtrationTolerance.forKvGreaterThan100 || "2.5",
-                                kvThreshold1: data.filtrationTolerance.kvThreshold1 || "70",
-                                kvThreshold2: data.filtrationTolerance.kvThreshold2 || "100",
+                                forKvGreaterThan70: data.filtrationTolerance.forKvGreaterThan70 || data.filtrationTolerance.value1 || "1.5",
+                                forKvBetween70And100: data.filtrationTolerance.forKvBetween70And100 || data.filtrationTolerance.value2 || "2.0",
+                                forKvGreaterThan100: data.filtrationTolerance.forKvGreaterThan100 || data.filtrationTolerance.value3 || "2.5",
+                                kvThreshold1: data.filtrationTolerance.kvThreshold1 || data.filtrationTolerance.kvp1 || "70",
+                                kvThreshold2: data.filtrationTolerance.kvThreshold2 || data.filtrationTolerance.kvp2 || "100",
                             });
                         }
                         setIsSaved(true);
@@ -242,17 +286,21 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
 
                 setRows(newRows);
 
-                const maxMeas = Math.max(...newRows.map(r => r.measuredValues.length));
-                setMAStations(prev => {
-                    const targetCount = Math.max(maxMeas, 2);
+                const maxMeas = Math.max(...newRows.map(r => r.measuredValues.length), 2);
+                const nextHeaders = (() => {
                     const base = (csvMeasLabels
                         ? String(csvMeasLabels).split(',').map((h: string) => h.trim()).filter(Boolean)
-                        : prev).slice(0, targetCount);
-                    while (base.length < targetCount) {
+                        : mAStations).slice(0, maxMeas);
+                    while (base.length < maxMeas) {
                         base.push(`mA ${base.length + 1}`);
                     }
                     return base;
-                });
+                })();
+                setMAStations(nextHeaders);
+                setRows(newRows.map((r) => ({
+                    ...r,
+                    measuredValues: padMeasuredValues(r.measuredValues, nextHeaders.length),
+                })));
 
                 if (!testId) setIsEditing(true);
             } else if (tolSign != null || tolVal != null) {
@@ -268,37 +316,67 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
             return;
         }
 
-        const fullData = (window as any).accuracyOfOperatingPotentialAndTimeFullData || {};
-        const existingRows = fullData.rows || [];
-
-        const payload = {
-            mAStations,
-            ffd,
-            rows: rows.map((r, i) => {
-                const existingRow = existingRows[i] || {};
-                return {
-                    ...existingRow,
-                    appliedKvp: r.appliedKvp,
-                    avgKvp: r.averageKvp,
-                    remark: r.remarks,
-                    maStations: r.measuredValues.map((val, j) => ({
-                        ...(existingRow.maStations?.[j] || {}),
-                        kvp: val
-                    }))
-                };
-            }),
-            kvpToleranceSign: toleranceSign,
-            kvpToleranceValue: toleranceValue,
-            totalFiltration: {
-                atKvp: totalFiltration.atKvp,
-                measured1: totalFiltration.measured,
-                measured2: totalFiltration.required,
-            },
-            filtrationTolerance,
-        };
-
         setIsSaving(true);
         try {
+            // Always merge against latest DB state so shared Time section values stay aligned
+            const existingRes = await getAccuracyOfOperatingPotentialByServiceIdForDentalIntra(serviceId);
+            const fullData = existingRes?.data || (window as any).accuracyOfOperatingPotentialAndTimeFullData || {};
+            const existingRows = Array.isArray(fullData.rows) ? fullData.rows : [];
+            const stationCount = Math.max(mAStations.length, 1);
+            const headers = padMeasuredValues(mAStations, stationCount).map((h, i) => h || `mA Station ${i + 1}`);
+
+            const payload = {
+                mAStations: headers,
+                ffd,
+                rows: rows.map((r, i) => {
+                    const existingRow = existingRows[i] || {};
+                    const existingStations = Array.isArray(existingRow.maStations) ? existingRow.maStations : [];
+                    const measured = padMeasuredValues(r.measuredValues, stationCount);
+                    return {
+                        appliedKvp: r.appliedKvp,
+                        setTime: existingRow.setTime || "",
+                        avgKvp: r.averageKvp,
+                        avgTime: existingRow.avgTime || "",
+                        remark: r.remarks,
+                        maStations: headers.map((_, j) => ({
+                            kvp: measured[j] ?? "",
+                            time:
+                                existingStations[j]?.time ??
+                                (j === 0 ? existingRow.maStation1?.time : undefined) ??
+                                (j === 1 ? existingRow.maStation2?.time : undefined) ??
+                                "",
+                        })),
+                    };
+                }),
+                kvpToleranceSign: toleranceSign,
+                kvpToleranceValue: toleranceValue,
+                totalFiltration: {
+                    atKvp: totalFiltration.atKvp,
+                    measured1: totalFiltration.measured,
+                    measured2: totalFiltration.required,
+                },
+                filtrationTolerance: {
+                    forKvGreaterThan70: filtrationTolerance.forKvGreaterThan70,
+                    forKvBetween70And100: filtrationTolerance.forKvBetween70And100,
+                    forKvGreaterThan100: filtrationTolerance.forKvGreaterThan100,
+                    kvThreshold1: filtrationTolerance.kvThreshold1,
+                    kvThreshold2: filtrationTolerance.kvThreshold2,
+                    value1: filtrationTolerance.forKvGreaterThan70,
+                    operator1: ">=",
+                    kvp1: filtrationTolerance.kvThreshold1,
+                    value2: filtrationTolerance.forKvBetween70And100,
+                    operator2: ">=",
+                    kvp2: filtrationTolerance.kvThreshold2,
+                    value3: filtrationTolerance.forKvGreaterThan100,
+                    operator3: ">=",
+                    kvp3: filtrationTolerance.kvThreshold2,
+                },
+                // Preserve time-section fields when AOP save runs first
+                ...(fullData.testConditions ? { testConditions: fullData.testConditions } : {}),
+                ...(fullData.timeToleranceSign != null ? { timeToleranceSign: fullData.timeToleranceSign } : {}),
+                ...(fullData.timeToleranceValue != null ? { timeToleranceValue: fullData.timeToleranceValue } : {}),
+            };
+
             let result;
             if (testId) {
                 result = await updateAccuracyOfOperatingPotentialForDentalIntra(testId, payload);
@@ -312,6 +390,20 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
                 }
                 toast.success("Saved successfully");
             }
+
+            // Keep local column lengths locked to headers after save
+            setMAStations(headers);
+            setRows((prev) =>
+                prev.map((row) => ({
+                    ...row,
+                    measuredValues: padMeasuredValues(row.measuredValues, headers.length),
+                }))
+            );
+            (window as any).accuracyOfOperatingPotentialAndTimeFullData = {
+                ...fullData,
+                ...payload,
+                _id: testId || result?.data?.testId || result?.data?._id || fullData._id,
+            };
 
             setIsSaved(true);
             setIsEditing(false);
@@ -457,6 +549,56 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
         return m >= requiredTolerance ? "PASS" : "FAIL";
     };
 
+    const getExportData = useCallback(() => {
+        const hasRows = rows.some(
+            (r) =>
+                String(r.appliedKvp || "").trim() ||
+                (r.measuredValues || []).some((v) => String(v || "").trim())
+        );
+        const hasFiltration =
+            String(totalFiltration.atKvp || "").trim() ||
+            String(totalFiltration.measured || "").trim() ||
+            String(totalFiltration.required || "").trim();
+        if (!hasRows && !String(ffd || "").trim() && !hasFiltration) return null;
+        const stationCount = Math.max(mAStations.length, 1);
+        const headers = padMeasuredValues(mAStations, stationCount).map((h, i) => h || `mA Station ${i + 1}`);
+        return {
+            mAStations: headers,
+            ffd,
+            rows: rows.map((r) => {
+                const measured = padMeasuredValues(r.measuredValues, stationCount);
+                return {
+                    appliedKvp: r.appliedKvp,
+                    setTime: "",
+                    avgKvp: r.averageKvp,
+                    avgTime: "",
+                    remark: r.remarks,
+                    measuredValues: measured,
+                    maStations: headers.map((_, j) => ({
+                        kvp: measured[j] ?? "",
+                        time: "",
+                    })),
+                };
+            }),
+            kvpToleranceSign: toleranceSign,
+            kvpToleranceValue: toleranceValue,
+            totalFiltration: {
+                atKvp: totalFiltration.atKvp,
+                measured1: totalFiltration.measured,
+                measured2: totalFiltration.required,
+            },
+            filtrationTolerance: {
+                forKvGreaterThan70: filtrationTolerance.forKvGreaterThan70,
+                forKvBetween70And100: filtrationTolerance.forKvBetween70And100,
+                forKvGreaterThan100: filtrationTolerance.forKvGreaterThan100,
+                kvThreshold1: filtrationTolerance.kvThreshold1,
+                kvThreshold2: filtrationTolerance.kvThreshold2,
+            },
+        };
+    }, [rows, mAStations, ffd, toleranceSign, toleranceValue, totalFiltration, filtrationTolerance]);
+
+    useRegisterTestExport("accuracyOfOperatingPotential", getExportData);
+
     if (isLoading) {
         return (
             <div className="flex items-center justify-center py-20">
@@ -534,7 +676,8 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
                                         placeholder="80"
                                     />
                                 </td>
-                                {row.measuredValues.map((val, idx) => {
+                                {mAStations.map((_, idx) => {
+                                    const val = row.measuredValues[idx] ?? "";
                                     const hasValue = val !== "" && !isNaN(parseFloat(val));
                                     const isValid = row.measuredValuesStatus && row.measuredValuesStatus.length > idx
                                         ? row.measuredValuesStatus[idx]

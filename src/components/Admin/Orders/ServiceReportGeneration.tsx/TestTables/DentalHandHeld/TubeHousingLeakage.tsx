@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Loader2, Edit3, Save, Plus, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
@@ -8,6 +8,7 @@ import {
   getTubeHousingLeakageByServiceIdForDentalHandHeld,
   updateTubeHousingLeakageForDentalHandHeld,
 } from "../../../../../../api";
+import { useRegisterTestExport } from '../shared/TestExportRegistry';
 
 interface SettingsRow {
   fcd: string;
@@ -432,6 +433,72 @@ export default function TubeHousingLeakage({
   const isViewMode = hasSaved && !isEditing;
   const buttonText = isViewMode ? 'Edit' : testId ? 'Update' : 'Save';
   const ButtonIcon = isViewMode ? Edit3 : Save;
+
+  const getExportData = useCallback(() => {
+    const hasSettings =
+      String(settings.fcd || '').trim() ||
+      String(settings.kv || '').trim() ||
+      String(settings.ma || '').trim() ||
+      String(settings.time || '').trim();
+    const hasMeasurements = processedLeakage.some((row) =>
+      [row.left, row.right, row.front, row.back, row.top].some((v) => String(v || '').trim())
+    );
+    if (!hasSettings && !hasMeasurements && !String(workload || '').trim()) return null;
+    return {
+      measurementSettings: {
+        distance: settings.fcd,
+        kv: settings.kv,
+        ma: settings.ma,
+        time: settings.time,
+      },
+      // Excel writer expects settings[0] shape
+      settings: [
+        {
+          ffd: settings.fcd,
+          kvp: settings.kv,
+          ma: settings.ma,
+          time: settings.time,
+        },
+      ],
+      leakageMeasurements: processedLeakage.map((row) => ({
+        location: row.location,
+        left: row.left,
+        right: row.right,
+        front: row.front,
+        back: row.back,
+        top: row.top,
+        max: row.max,
+        unit: row.unit,
+      })),
+      workload,
+      workloadUnit: 'mAmin in one hr',
+      toleranceValue,
+      toleranceOperator,
+      toleranceTime,
+      tolerance: {
+        value: toleranceValue,
+        operator: toleranceOperator,
+        time: toleranceTime,
+      },
+      calculatedResult: {
+        maxLeakageIntermediate: calculatedMaxLeakage !== '—' ? calculatedMaxLeakage : '',
+        finalLeakageRate: globalMaxResultMGy !== '—' ? globalMaxResultMGy : '',
+        remark: finalRemark || '',
+      },
+    };
+  }, [
+    settings,
+    processedLeakage,
+    workload,
+    toleranceValue,
+    toleranceOperator,
+    toleranceTime,
+    calculatedMaxLeakage,
+    globalMaxResultMGy,
+    finalRemark,
+  ]);
+
+  useRegisterTestExport('radiationLeakageLevel', getExportData);
 
   if (isLoading) {
     return (

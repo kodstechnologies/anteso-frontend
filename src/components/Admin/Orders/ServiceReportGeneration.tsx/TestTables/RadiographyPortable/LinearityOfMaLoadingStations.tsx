@@ -52,6 +52,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
   ]);
 
   const [tolerance, setTolerance] = useState<string>('0.1');
+  const [toleranceOperator, setToleranceOperator] = useState<string>('<');
 
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -60,28 +61,46 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
 
   // Apply Excel/CSV-derived initial data (same pattern as Radiography Fixed)
   useEffect(() => {
-    if (!initialData) return;
-    const t1 = initialData.table1;
+    if (!initialData || !csvDataVersion) return;
+    const sanitizeNumeric = (v: unknown, fallback: string) => {
+      const s = String(v ?? '').trim();
+      if (!s || /tolerance|operator|meas|applied/i.test(s) || Number.isNaN(Number(s))) return fallback;
+      return s;
+    };
+    const padOutputs = (outputs: string[], count: number) => {
+      const next = outputs.map((v) => (v != null ? String(v) : ''));
+      while (next.length < count) next.push('');
+      return next.slice(0, count);
+    };
+    const rawT1 = initialData.table1;
+    const t1 = rawT1 && !Array.isArray(rawT1) ? rawT1 : rawT1?.[0];
     if (t1) {
       setTable1Row((prev) => ({
         ...prev,
-        fcd: String(t1.fcd ?? prev.fcd),
-        kv: String(t1.kv ?? prev.kv),
-        time: String(t1.time ?? prev.time),
+        fcd: sanitizeNumeric(t1.fcd ?? t1.fdd ?? t1.ffd, prev.fcd),
+        kv: sanitizeNumeric(t1.kv ?? t1.kV ?? t1.kVp, prev.kv),
+        time: sanitizeNumeric(t1.time ?? t1.Time, prev.time),
       }));
     }
     if (initialData.table2?.length > 0) {
-      const maxOutputs = Math.max(...initialData.table2.map((r: any) => (r.measuredOutputs ?? []).length));
+      const maxOutputs = Math.max(
+        0,
+        ...initialData.table2.map((r: any) => (r.measuredOutputs ?? []).length),
+        Array.isArray(initialData.measHeaders) ? initialData.measHeaders.length : 0,
+      );
       const headerCount = Math.max(maxOutputs, 1);
-      setMeasHeaders(Array.from({ length: headerCount }, (_, i) => `Meas ${i + 1}`));
+      const headers =
+        Array.isArray(initialData.measHeaders) && initialData.measHeaders.length > 0
+          ? padOutputs(initialData.measHeaders.map(String), headerCount).map((h, i) => h || `Meas ${i + 1}`)
+          : Array.from({ length: headerCount }, (_, i) => `Meas ${i + 1}`);
+      setMeasHeaders(headers);
       setTable2Rows(
         initialData.table2.map((r: any, i: number) => {
-          const outputs = (r.measuredOutputs ?? []).map(String);
-          while (outputs.length < headerCount) outputs.push('');
+          const outputs = (r.measuredOutputs ?? []).map((v: any) => (v != null ? String(v) : ''));
           return {
             id: (i + 1).toString(),
-            ma: String(r.mAApplied ?? r.ma ?? ''),
-            measuredOutputs: outputs,
+            ma: String(r.mAApplied ?? r.ma ?? r.mAsApplied ?? ''),
+            measuredOutputs: padOutputs(outputs, headerCount),
             average: '',
             x: '',
             xMax: '',
@@ -91,9 +110,14 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
           };
         })
       );
+    } else if (Array.isArray(initialData.measHeaders) && initialData.measHeaders.length > 0) {
+      setMeasHeaders(initialData.measHeaders.map((h: any, i: number) => String(h || `Meas ${i + 1}`)));
     }
     if (initialData.tolerance !== undefined) setTolerance(String(initialData.tolerance));
-  }, [csvDataVersion, initialData]);
+    if (initialData.toleranceOperator) setToleranceOperator(String(initialData.toleranceOperator));
+    setHasSaved(false);
+    setIsEditing(true);
+  }, [csvDataVersion]);
 
   // Keep each row's measuredOutputs aligned with measHeaders (avoids column shift / hidden mA column)
   useEffect(() => {
@@ -211,17 +235,42 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
     const hasData = xValues.length > 0;
     const xMax = hasData ? Math.max(...xValues).toFixed(4) : '—';
     const xMin = hasData ? Math.min(...xValues).toFixed(4) : '—';
-    const colVal = xMax !== '—' && xMin !== '—' && (parseFloat(xMax) + parseFloat(xMin)) > 0
-      ? ((parseFloat(xMax) - parseFloat(xMin)) / (parseFloat(xMax) + parseFloat(xMin))).toFixed(4)
-      : '—';
-    const pass = colVal !== '—' && parseFloat(colVal) <= tol;
-    const remarks = pass ? 'Pass' : colVal === '—' ? '' : 'Fail';
+    const colNum = xMax !== '—' && xMin !== '—' && (parseFloat(xMax) + parseFloat(xMin)) > 0
+      ? Math.abs(parseFloat(xMax) - parseFloat(xMin)) / (parseFloat(xMax) + parseFloat(xMin))
+      : null;
+    const colVal = colNum !== null ? colNum.toFixed(4) : '—';
+
+    let pass = false;
+    let remarks = '';
+    if (hasData && colVal !== '—' && colNum !== null) {
+      const colParsed = parseFloat(colVal);
+      switch (toleranceOperator) {
+        case '<':
+          pass = colParsed < tol;
+          break;
+        case '>':
+          pass = colParsed > tol;
+          break;
+        case '<=':
+          pass = colParsed <= tol;
+          break;
+        case '>=':
+          pass = colParsed >= tol;
+          break;
+        case '=':
+          pass = Math.abs(colParsed - tol) < 0.0001;
+          break;
+        default:
+          pass = colParsed <= tol;
+      }
+      remarks = pass ? 'Pass' : 'Fail';
+    }
 
     return {
       rows: rowsWithX,
       summary: { xMax, xMin, col: colVal, remarks, rowSpan: rowsWithX.length },
     };
-  }, [table2Rows, tolerance, table1Row.time, measHeaders.length]);
+  }, [table2Rows, tolerance, toleranceOperator, table1Row.time, measHeaders.length]);
 
   const hasValidTime = useMemo(() => {
     const timeSec = parseFloat(table1Row.time);
@@ -241,13 +290,20 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
 
   // === Load Data from backend ===
   useEffect(() => {
+    let cancelled = false;
     const load = async () => {
+      // Prefer Excel/CSV import over stale API data (same as Radiography Fixed)
+      if (csvDataVersion) {
+        setIsLoading(false);
+        return;
+      }
       if (!serviceId) {
         setIsLoading(false);
         return;
       }
       try {
         const res = await getLinearityOfMasLoadingStationsByServiceIdForRadiographyPortable(serviceId);
+        if (cancelled) return;
         const data = res?.data;
         if (data) {
           setTestId(data._id || null);
@@ -281,22 +337,26 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
             );
           }
           setTolerance(data.tolerance || '0.1');
+          setToleranceOperator(data.toleranceOperator || '<=');
           setHasSaved(true);
           setIsEditing(false);
         } else {
           setIsEditing(true);
         }
       } catch (err: any) {
-        if (err.response?.status !== 404) {
+        if (!cancelled && err.response?.status !== 404) {
           toast.error('Failed to load mA linearity data');
         }
-        setIsEditing(true);
+        if (!cancelled) setIsEditing(true);
       } finally {
-        setIsLoading(false);
+        if (!cancelled) setIsLoading(false);
       }
     };
     load();
-  }, [serviceId]);
+    return () => {
+      cancelled = true;
+    };
+  }, [serviceId, csvDataVersion]);
 
   // === Save Handler (connected to Fixed Radio Fluoro API) ===
   const handleSave = async () => {
@@ -339,6 +399,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
         })),
         measHeaders,
         tolerance,
+        toleranceOperator,
         xMax: processedTable2.summary.xMax,
         xMin: processedTable2.summary.xMin,
         col: processedTable2.summary.col,
@@ -404,12 +465,9 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
   const buttonText = isViewMode ? 'Edit' : testId ? 'Update' : 'Save';
   const ButtonIcon = isViewMode ? Edit3 : Save;
   const isTimerSelected = String(table1Row.time || '').trim() !== '';
-  const tableTitle = isTimerSelected
-    ? 'Linearity of mAs Loading'
-    : 'Linearity of mA Loading';
-  const sectionTitle = isTimerSelected
-    ? 'Linearity of mAs Loading and Accuracy of Irradiation Time'
-    : 'Linearity of Radiation Output Across mA Stations';
+  // This component is mA Loading (with timer). Do not show mAs Loading heading.
+  const tableTitle = 'Linearity of mA Loading';
+  const sectionTitle = 'Linearity of Radiation Output Across mA Stations';
   const xUnitLabel = isTimerSelected ? 'mGy/(mA*s)' : 'mGy/mA';
 
   if (isLoading) {
@@ -618,7 +676,19 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
             </button>
           )}
           <div className="flex items-center gap-2 ml-auto">
-            <span className="text-sm font-medium text-gray-700">Tolerance (CoL) less than</span>
+            <span className="text-sm font-medium text-gray-700">Tolerance (CoL)</span>
+            <select
+              value={toleranceOperator}
+              onChange={e => setToleranceOperator(e.target.value)}
+              disabled={isViewMode}
+              className={`px-3 py-2 text-center font-bold border-2 border-blue-400 rounded-lg focus:ring-4 focus:ring-blue-200 text-sm ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`}
+            >
+              <option value="<">&lt;</option>
+              <option value=">">&gt;</option>
+              <option value="<=">&lt;=</option>
+              <option value=">=">&gt;=</option>
+              <option value="=">=</option>
+            </select>
             <input
               type="number"
               step="0.001"

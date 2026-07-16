@@ -1082,6 +1082,24 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
               const isMaLoading = testData.linearityOfMasLoading?.table1?.[0]?.time !== undefined &&
                 testData.linearityOfMasLoading?.table1?.[0]?.time !== null &&
                 String(testData.linearityOfMasLoading?.table1?.[0]?.time).trim() !== "";
+              const table2Rows = testData.linearityOfMasLoading.table2 || [];
+              const maxOutLen = Math.max(
+                0,
+                ...table2Rows.map((r: any) => (r.measuredOutputs ?? r.readings ?? []).length)
+              );
+              const measHeadersRaw = Array.isArray(testData.linearityOfMasLoading.measHeaders)
+                ? testData.linearityOfMasLoading.measHeaders
+                : [];
+              const measHeaders =
+                measHeadersRaw.length > 0
+                  ? [
+                      ...measHeadersRaw.map((h: string, i: number) => h || `Meas ${i + 1}`),
+                      ...Array.from(
+                        { length: Math.max(0, maxOutLen - measHeadersRaw.length) },
+                        (_, i) => `Meas ${measHeadersRaw.length + i + 1}`
+                      ),
+                    ]
+                  : Array.from({ length: Math.max(maxOutLen, 1) }, (_, i) => `Meas ${i + 1}`);
 
               return (
                 <div className="mb-16 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
@@ -1115,7 +1133,7 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
                       </div>
                     </div>
                   )}
-                  {testData.linearityOfMasLoading.table2?.length > 0 && (
+                  {table2Rows.length > 0 && (
                     <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
                       <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
                         <thead className="bg-gray-100">
@@ -1123,7 +1141,7 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
                             <th className="border border-black p-2 print:p-1 text-center font-bold" style={{ width: '12%', padding: '0px 2px', fontSize: '11px' }}>
                               {isMaLoading ? "mA" : "mAs Range"}
                             </th>
-                            <th colSpan={testData.linearityOfMasLoading.measHeaders?.length || 0} className="border border-black p-2 print:p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '11px' }}>
+                            <th colSpan={measHeaders.length} className="border border-black p-2 print:p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '11px' }}>
                               Output (mGy)
                             </th>
                             <th className="border border-black p-2 print:p-1 text-center font-bold" style={{ width: '12%', padding: '0px 2px', fontSize: '11px' }}>Avg Output</th>
@@ -1137,7 +1155,7 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
                           </tr>
                           <tr>
                             <th className="border border-black p-1 print:p-0.5 text-center" style={{ fontSize: '11px' }}></th>
-                            {testData.linearityOfMasLoading.measHeaders?.map((header: string, idx: number) => (
+                            {measHeaders.map((header: string, idx: number) => (
                               <th key={idx} className="border border-black p-1 print:p-0.5 text-xs text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>
                                 {header || `Meas ${idx + 1}`}
                               </th>
@@ -1151,14 +1169,13 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
                           </tr>
                         </thead>
                         <tbody>
-                          {testData.linearityOfMasLoading.table2.map((row: any, i: number) => {
+                          {table2Rows.map((row: any, i: number) => {
                             const xMax = testData.linearityOfMasLoading?.xMax;
                             const xMin = testData.linearityOfMasLoading?.xMin;
                             const col = testData.linearityOfMasLoading?.col;
                             const remarks = testData.linearityOfMasLoading?.remarks;
                             const isFirstRow = i === 0;
-                            const rowSpan = testData.linearityOfMasLoading.table2.length;
-                            const measHeaders = testData.linearityOfMasLoading?.measHeaders || [];
+                            const rowSpan = table2Rows.length;
                             const measuredOutputs = row.measuredOutputs ?? row.readings ?? [];
 
                             const formatValue = (val: any) => {
@@ -1169,7 +1186,7 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
 
                             return (
                               <tr key={i} className="text-center">
-                                <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.mAsApplied || "-"}</td>
+                                <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.mAsApplied || row.ma || "-"}</td>
                                 {measHeaders.map((_: string, idx: number) => (
                                   <td key={idx} className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>
                                     {formatValue(measuredOutputs[idx])}
@@ -1209,7 +1226,7 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
                   {testData.linearityOfMasLoading.tolerance && (
                     <div className="bg-gray-50 p-4 rounded border">
                       <p className="text-sm">
-                        <strong>Tolerance (CoL):</strong> {testData.linearityOfMasLoading.toleranceOperator || "â‰¤"} {testData.linearityOfMasLoading.tolerance || "0.1"}
+                        <strong>Tolerance (CoL):</strong> {testData.linearityOfMasLoading.toleranceOperator || ""} {testData.linearityOfMasLoading.tolerance || "0.1"}
                       </p>
                     </div>
                   )}
@@ -1241,8 +1258,26 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
                 {testData.outputConsistency.outputRows?.length > 0 && (() => {
                   const rows = testData.outputConsistency.outputRows;
                   const measCount = Math.max(...rows.map((r: any) => (r.outputs ?? []).length), 1);
-                  const tolVal = parseFloat(testData.outputConsistency.tolerance?.value ?? '0.05') || 0.05;
+                  const savedMeasHeaders = Array.isArray(testData.outputConsistency.measurementHeaders)
+                    && testData.outputConsistency.measurementHeaders.length > 0
+                    ? testData.outputConsistency.measurementHeaders
+                    : Array.isArray(testData.outputConsistency.measHeaders)
+                      && testData.outputConsistency.measHeaders.length > 0
+                      ? testData.outputConsistency.measHeaders
+                      : Array.from({ length: measCount }, (_, i) => `Meas ${i + 1}`);
+                  const displayHeaders = [...savedMeasHeaders.map(String)];
+                  while (displayHeaders.length < measCount) {
+                    displayHeaders.push(`Meas ${displayHeaders.length + 1}`);
+                  }
+                  const rawTolVal = testData.outputConsistency.tolerance?.value;
+                  const tolVal = (() => {
+                    const n = parseFloat(String(rawTolVal ?? ''));
+                    return Number.isFinite(n) ? n : 0.05;
+                  })();
                   const tolOp = testData.outputConsistency.tolerance?.operator ?? '<=';
+                  const tolValDisplay = Number.isFinite(parseFloat(String(rawTolVal ?? '')))
+                    ? String(rawTolVal)
+                    : '0.05';
 
                   const getVal = (o: any): number => {
                     if (o == null) return NaN;
@@ -1253,14 +1288,15 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
                   };
 
                   return (
+                    <>
                     <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
                       <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '10px', tableLayout: 'auto', borderCollapse: 'collapse', borderSpacing: '0' }}>
                         <thead className="bg-gray-100">
                           <tr>
                             <th className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>kV</th>
                             <th className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>mAs</th>
-                            {Array.from({ length: measCount }, (_, i) => (
-                              <th key={i} className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>Meas {i + 1}</th>
+                            {displayHeaders.slice(0, measCount).map((header: string, i: number) => (
+                              <th key={i} className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{header || `Meas ${i + 1}`}</th>
                             ))}
                             <th className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>Avg (XÌ„)</th>
                             <th className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>CoV</th>
@@ -1309,12 +1345,23 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
                         </tbody>
                       </table>
                     </div>
+                    {testData.outputConsistency.tolerance && (
+                      <div className="bg-gray-50 p-4 print:p-1 rounded border" style={{ padding: '2px 4px', marginTop: '4px' }}>
+                        <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
+                          <strong>Acceptance Criteria:</strong> CoV {tolOp || "<="} {tolValDisplay}
+                        </p>
+                      </div>
+                    )}
+                    </>
                   );
                 })()}
-                {testData.outputConsistency.tolerance && (
+                {!testData.outputConsistency.outputRows?.length && testData.outputConsistency.tolerance && (
                   <div className="bg-gray-50 p-4 print:p-1 rounded border" style={{ padding: '2px 4px', marginTop: '4px' }}>
                     <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
-                      <strong>Acceptance Criteria:</strong> CoV {testData.outputConsistency.tolerance.operator || "<="} {testData.outputConsistency.tolerance.value || "0.05"}
+                      <strong>Acceptance Criteria:</strong> CoV {testData.outputConsistency.tolerance.operator || "<="}{' '}
+                      {Number.isFinite(parseFloat(String(testData.outputConsistency.tolerance.value ?? '')))
+                        ? testData.outputConsistency.tolerance.value
+                        : "0.05"}
                     </p>
                   </div>
                 )}

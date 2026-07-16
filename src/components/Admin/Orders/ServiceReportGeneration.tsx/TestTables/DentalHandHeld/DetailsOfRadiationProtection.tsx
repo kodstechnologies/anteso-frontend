@@ -1,7 +1,7 @@
 // components/TestTables/RadiationProtectionSurvey.tsx
 'use client';
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Plus, Trash2, Loader2, Edit3, Save } from "lucide-react";
 import toast from "react-hot-toast";
 import {
@@ -12,6 +12,7 @@ import {
   getDetails,
   getTools,
 } from "../../../../../../api";
+import { useRegisterTestExport } from "../shared/TestExportRegistry";
 
 interface LocationData {
   id: string;
@@ -390,6 +391,46 @@ const DetailsOfRadiationProtection: React.FC<Props> = ({ serviceId, testId: prop
   };
 
   const isViewMode = isSaved && !isEditing;
+
+  const getExportData = useCallback(() => {
+    const hasSurvey =
+      surveyDate.trim() ||
+      hasValidCalibration.trim() ||
+      appliedCurrent.trim() ||
+      appliedVoltage.trim() ||
+      exposureTime.trim() ||
+      workload.trim();
+    const hasLocations = locations.some(
+      (l) => l.location.trim() || l.mRPerHr.trim() || l.mRPerWeek.trim()
+    );
+    if (!hasSurvey && !hasLocations) return null;
+    return {
+      surveyDate,
+      hasValidCalibration,
+      appliedCurrent,
+      appliedVoltage,
+      exposureTime,
+      workload,
+      locations: locations.map((l) => ({
+        location: l.location,
+        mRPerHr: l.mRPerHr,
+        mRPerWeek: l.mRPerWeek,
+        result: l.result,
+        calculatedResult: l.calculatedResult,
+        category: l.category,
+      })),
+    };
+  }, [
+    surveyDate,
+    hasValidCalibration,
+    appliedCurrent,
+    appliedVoltage,
+    exposureTime,
+    workload,
+    locations,
+  ]);
+
+  useRegisterTestExport("radiationProtectionSurvey", getExportData);
 
   if (isLoading) {
     return (

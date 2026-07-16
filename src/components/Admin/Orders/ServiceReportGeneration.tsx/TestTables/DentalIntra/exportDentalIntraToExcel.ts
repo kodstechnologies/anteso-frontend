@@ -1,5 +1,6 @@
 import * as XLSX from "xlsx";
 import { normalizeCsvComparisonOperator } from "../shared/parseRadiographyStyleTableFormat";
+import { resolveMeasHeaders, getMeasuredOutputs, cellStr } from "../shared/exportMeasHeaders";
 
 export interface DentalIntraExportData {
     accuracyOfOperatingPotential?: any;
@@ -50,9 +51,7 @@ export const createDentalIntraUploadableExcel = (data: DentalIntraExportData, ha
         const maxMeas = measurements.length > 0
             ? Math.max(...measurements.map((r) => getMeasured(r).length), 0)
             : 0;
-        const stations = Array.isArray(aop.mAStations) && aop.mAStations.length > 0
-            ? aop.mAStations.map((s: any) => String(s))
-            : Array.from({ length: Math.max(maxMeas, 2) }, (_, i) => `mA ${i + 1}`);
+        const stations = resolveMeasHeaders(aop.mAStations, maxMeas, 'mA');
 
         allData.push(['TEST: ACCURACY OF OPERATING POTENTIAL']);
         allData.push(['Tolerance Sign', tolSign]);
@@ -82,23 +81,29 @@ export const createDentalIntraUploadableExcel = (data: DentalIntraExportData, ha
         addSection('ACCURACY OF IRRADIATION TIME', ['Set Time (s)', 'Observed Time (s)', '% Error', 'Remarks', 'Tolerance'], rows);
     }
 
-    // 3. LINEARITY OF mA LOADING (if hasTimer) — Radiography Fixed style
+    // 3. LINEARITY OF mA LOADING (if hasTimer) — dynamic measHeaders
     if (hasTimer && data.linearityOfMaLoading) {
         const lm = data.linearityOfMaLoading;
-        const t1 = lm.table1 || {};
+        const t1 = Array.isArray(lm.table1) ? lm.table1[0] || {} : (lm.table1 || {});
         const rows = Array.isArray(lm.table2) ? lm.table2 : (lm.readings || []);
-        const maxMeas = Math.max(3, ...rows.map((r: any) => (r.measuredOutputs || []).length));
-        const measHeaders = Array.from({ length: maxMeas }, (_, i) => `Measured mR ${i + 1}`);
+        const maxMeas = Math.max(0, ...rows.map((r: any) => getMeasuredOutputs(r).length));
+        const measHeaders = resolveMeasHeaders(
+            lm.measHeaders || lm.measurementHeaders,
+            maxMeas,
+            'Measured mR'
+        );
         allData.push(['TEST: LINEARITY OF mA LOADING']);
-        allData.push(['FCD', 'kV', 'Time', 'mA Station', ...measHeaders]);
+        allData.push(['FCD', 'kV', 'Time', 'mA Station', ...measHeaders, 'Average', 'mR/mAs']);
         rows.forEach((row: any) => {
-            const outs = (row.measuredOutputs || []).map((v: any) => String(v ?? ''));
+            const outs = getMeasuredOutputs(row);
             allData.push([
                 t1.fcd || '',
                 t1.kv || '',
-                t1.ma || t1.time || row.time || '',
-                row.time || row.ma || '',
+                t1.time || row.time || '',
+                row.ma || row.mAApplied || row.time || '',
                 ...measHeaders.map((_, i) => outs[i] ?? ''),
+                row.average || '',
+                row.x || row.mRmAs || '',
             ]);
         });
         allData.push(['Tolerance Operator', lm.toleranceOperator || '<=']);
@@ -106,19 +111,34 @@ export const createDentalIntraUploadableExcel = (data: DentalIntraExportData, ha
         allData.push([]);
     }
 
-    // 4. LINEARITY OF mAs LOADING (if !hasTimer)
+    // 4. LINEARITY OF mAs LOADING (if !hasTimer) — dynamic measHeaders
     if (!hasTimer && data.linearityOfMasLoading) {
-        const rows = (data.linearityOfMasLoading.readings || []).map((row: any) => [
-            row.mas || '',
-            row.meas1 || '',
-            row.meas2 || '',
-            row.meas3 || '',
-            row.average || '',
-            row.mRmAs || '',
-            row.col || '',
-            data.linearityOfMasLoading.tolerance || ''
-        ]);
-        addSection('LINEARITY OF mAs LOADING', ['mAs', 'Meas 1', 'Meas 2', 'Meas 3', 'Average', 'mR/mAs', 'CoL', 'Tolerance'], rows);
+        const lm = data.linearityOfMasLoading;
+        const t1 = Array.isArray(lm.table1) ? lm.table1[0] || {} : (lm.table1 || {});
+        const rows = Array.isArray(lm.table2) ? lm.table2 : (lm.readings || []);
+        const maxMeas = Math.max(0, ...rows.map((r: any) => getMeasuredOutputs(r).length));
+        const measHeaders = resolveMeasHeaders(
+            lm.measHeaders || lm.measurementHeaders,
+            maxMeas,
+            'Meas'
+        );
+        allData.push(['TEST: LINEARITY OF mAs LOADING']);
+        allData.push(['FCD', 'kV', 'mAs', ...measHeaders, 'Average', 'mR/mAs', 'CoL']);
+        rows.forEach((row: any) => {
+            const outs = getMeasuredOutputs(row);
+            allData.push([
+                t1.fcd || '',
+                t1.kv || '',
+                row.mas || row.mAsRange || row.mAsApplied || '',
+                ...measHeaders.map((_, i) => outs[i] ?? ''),
+                row.average || '',
+                row.x || row.mRmAs || '',
+                row.col || '',
+            ]);
+        });
+        allData.push(['Tolerance Operator', lm.toleranceOperator || '<=']);
+        allData.push(['Tolerance Value (CoL)', lm.tolerance || '0.1']);
+        allData.push([]);
     }
 
     // 5. CONSISTENCY OF RADIATION OUTPUT
@@ -134,38 +154,31 @@ export const createDentalIntraUploadableExcel = (data: DentalIntraExportData, ha
             Array.isArray(oc.outputRows) ? oc.outputRows :
             Array.isArray(oc.readings) ? oc.readings : [];
 
-        const getOutputs = (row: any): string[] => {
-            if (Array.isArray(row.outputs)) {
-                return row.outputs.map((o: any) =>
-                    o != null && typeof o === 'object' && 'value' in o ? String(o.value ?? '') : String(o ?? '')
-                );
-            }
-            return [row.meas1, row.meas2, row.meas3, row.meas4, row.meas5]
-                .filter((v) => v != null && String(v).trim() !== '')
-                .map((v) => String(v));
-        };
-
         const maxMeas = measurements.length > 0
-            ? Math.max(...measurements.map((r) => getOutputs(r).length), 0)
+            ? Math.max(...measurements.map((r) => getMeasuredOutputs(r).length), 0)
             : 0;
-        const stations = Array.isArray(oc.measurementHeaders) && oc.measurementHeaders.length > 0
-            ? oc.measurementHeaders.map((s: any) => String(s))
-            : Array.from({ length: Math.max(maxMeas, 3) }, (_, i) => `Meas ${i + 1}`);
+        const stations = resolveMeasHeaders(
+            oc.measurementHeaders || oc.measHeaders || oc.outputHeaders,
+            maxMeas,
+            'Meas'
+        );
 
         allData.push(['TEST: CONSISTENCY OF RADIATION OUTPUT']);
         allData.push(['Tolerance Operator', tolOp]);
         allData.push(['Tolerance Value (CoV)', tolVal]);
         if (oc.ffd != null && String(oc.ffd).trim() !== '') {
-            allData.push(['FFD', oc.ffd]);
+            allData.push(['FFD', typeof oc.ffd === 'object' ? cellStr(oc.ffd) : oc.ffd]);
         }
         if (measurements.length > 0) {
-            allData.push(['Test kV', 'Test mAs', ...stations]);
+            allData.push(['Test kV', 'Test mAs', ...stations, 'Mean', 'CoV']);
             measurements.forEach((row) => {
-                const outs = getOutputs(row);
+                const outs = getMeasuredOutputs(row);
                 allData.push([
                     row.kvp || row.kv || '',
                     row.mas || row.mAs || row.ma || '',
                     ...stations.map((_: string, i: number) => outs[i] ?? ''),
+                    row.mean || row.avg || '',
+                    row.cov || row.cv || '',
                 ]);
             });
         }

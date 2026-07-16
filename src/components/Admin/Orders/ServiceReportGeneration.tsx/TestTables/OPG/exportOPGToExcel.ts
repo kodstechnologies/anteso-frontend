@@ -1,4 +1,5 @@
 import * as XLSX from 'xlsx';
+import { resolveMeasHeaders, getMeasuredOutputs, cellStr } from '../shared/exportMeasHeaders';
 
 export const createOPGUploadableExcel = (data: any) => {
     const wb = XLSX.utils.book_new();
@@ -22,13 +23,11 @@ export const createOPGUploadableExcel = (data: any) => {
         const maxMeas = measurements.length > 0
             ? Math.max(...measurements.map((r: any) => (r.measuredValues || []).length), 0)
             : 0;
-        const stations = Array.isArray(aop.mAStations) && aop.mAStations.length > 0
-            ? aop.mAStations
-            : Array.from({ length: Math.max(maxMeas, 2) }, (_, i) => `mA ${i + 1}`);
-        const headers = ['Applied kVp', ...stations.slice(0, Math.max(maxMeas, stations.length)), 'Average kVp', 'Remarks'];
+        const stations = resolveMeasHeaders(aop.mAStations, maxMeas, 'mA');
+        const headers = ['Applied kVp', ...stations, 'Average kVp', 'Remarks'];
         const rows = measurements.map((row: any) => [
             row.appliedKvp || '',
-            ...stations.slice(0, Math.max(maxMeas, stations.length)).map((_: any, i: number) => (row.measuredValues || [])[i] ?? ''),
+            ...stations.map((_: any, i: number) => (row.measuredValues || [])[i] ?? ''),
             row.averageKvp || '',
             row.remarks || ''
         ]);
@@ -88,24 +87,37 @@ export const createOPGUploadableExcel = (data: any) => {
         const table1 = data.linearityOfMaLoading.table1 || {};
         const isMaLoading = table1.time && table1.time.trim() !== '';
 
-        const rows = (data.linearityOfMaLoading.table2 || []).map((row: any) => [
-            row.ma || '',
-            ...(row.measuredOutputs || []),
-            row.average || '',
-            row.x || ''
-        ]);
-
-        if (rows.length > 0 || table1.fcd) {
+        const table2 = data.linearityOfMaLoading.table2 || [];
+        if (table2.length > 0 || table1.fcd) {
             const settingsHeader = ['FCD', table1.fcd || '', 'kV', table1.kv || '', 'Timer', table1.time || ''];
-            const maxMeas = Math.max(...(data.linearityOfMaLoading.table2 || []).map((r: any) => (r.measuredOutputs || []).length));
-            const measHeaders = Array.from({ length: Math.max(0, maxMeas) }, (_, i) => `Measured mR ${i + 1}`);
+            const maxMeas = Math.max(0, ...table2.map((r: any) => getMeasuredOutputs(r).length));
+            const measHeaders = resolveMeasHeaders(
+                data.linearityOfMaLoading.measHeaders || data.linearityOfMaLoading.measurementHeaders,
+                maxMeas,
+                'Measured mR'
+            );
+
+            const alignedRows = table2.map((row: any) => {
+                const outs = getMeasuredOutputs(row);
+                return [
+                    row.ma || row.mAsRange || row.mAsApplied || '',
+                    ...measHeaders.map((_, i) => outs[i] ?? ''),
+                    row.average || '',
+                    row.x || ''
+                ];
+            });
 
             if (isMaLoading) {
                 const headers = ['mA Station', ...measHeaders, 'Average', 'mR/mAs'];
-                addSection('LINEARITY OF mA LOADING', headers, [settingsHeader, ...rows]);
+                addSection('LINEARITY OF mA LOADING', headers, [settingsHeader, ...alignedRows]);
             } else {
                 const headers = ['mAs Range', ...measHeaders, 'Average', 'mR/mAs'];
-                addSection('LINEARITY OF mAs LOADING', headers, [settingsHeader, ...rows]);
+                addSection('LINEARITY OF mAs LOADING', headers, [settingsHeader, ...alignedRows]);
+            }
+            if (data.linearityOfMaLoading.tolerance != null || data.linearityOfMaLoading.toleranceOperator) {
+                allData.push(['Tolerance Operator', data.linearityOfMaLoading.toleranceOperator || '<=']);
+                allData.push(['Tolerance Value (CoL)', data.linearityOfMaLoading.tolerance || '0.1']);
+                allData.push([]);
             }
         }
     }
@@ -123,21 +135,27 @@ export const createOPGUploadableExcel = (data: any) => {
             allData.push(['FFD', oc.ffd]);
         }
 
-        const rows = (oc.outputRows || []).map((row: any) => [
-            row.kvp || '',
-            row.mas || '',
-            ...(row.outputs || []),
-            row.mean || '',
-            row.cov || '',
-            row.remarks || ''
-        ]);
-
-        if (rows.length > 0) {
-            const maxMeas = Math.max(...(oc.outputRows || []).map((r: any) => (r.outputs || []).length));
-            const measHeaders = Array.from({ length: Math.max(0, maxMeas) }, (_, i) => `Meas ${i + 1}`);
+        const outputRows = oc.outputRows || [];
+        if (outputRows.length > 0) {
+            const maxMeas = Math.max(0, ...outputRows.map((r: any) => getMeasuredOutputs(r).length));
+            const measHeaders = resolveMeasHeaders(
+                oc.measurementHeaders || oc.measHeaders || oc.outputHeaders,
+                maxMeas,
+                'Meas'
+            );
             const headers = ['kVp', 'mAs', ...measHeaders, 'Mean', 'CoV', 'Remarks'];
             allData.push(headers);
-            rows.forEach((row: any[]) => allData.push(row));
+            outputRows.forEach((row: any) => {
+                const outs = getMeasuredOutputs(row);
+                allData.push([
+                    row.kvp || row.kv || '',
+                    row.mas || '',
+                    ...measHeaders.map((_, i) => outs[i] ?? ''),
+                    row.mean || row.avg || '',
+                    row.cov || row.cv || '',
+                    row.remarks || row.remark || ''
+                ]);
+            });
         }
         allData.push([]);
     }

@@ -1,7 +1,7 @@
 // components/TestTables/LinearityOfMaLoading.tsx
 'use client';
 
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Plus, Trash2, Loader2, Edit3, Save } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
@@ -9,6 +9,7 @@ import {
   getLinearityOfMaLoadingByServiceIdForOPG,
   updateLinearityOfMaLoadingForOPG,
 } from '../../../../../../api';
+import { useRegisterTestExport } from '../shared/TestExportRegistry';
 
 interface Table1Row {
   fcd: string;
@@ -364,6 +365,18 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
 
         if (String(firstCell || '') === '__MEAS_HEADERS__') return;
 
+        // Tolerance Operator / Value rows
+        if (firstCell && /^(Tolerance Operator|Tol Operator|Tolerance_Operator)$/i.test(firstCell)) {
+          const op = String(row[1] ?? '').trim();
+          if (['<', '>', '<=', '>=', '='].includes(op)) setToleranceOperator(op);
+          return;
+        }
+        if (firstCell && /^(Tolerance Value \(CoL\)|Tolerance Value|Tol Value|Tolerance)$/i.test(firstCell)) {
+          const val = String(row[1] ?? '').trim();
+          if (val) setTolerance(val);
+          return;
+        }
+
         // 1. Parameter Row: FCD, 100, kV, 70, Time, 0.1 — only rows with Time/Timer (mA loading)
         const hasFcd = row.some((c: any) => isFcdLabel(c));
         const hasKv = row.some((c: any) => isKvLabel(c));
@@ -572,6 +585,41 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
   const tableTitle = 'Linearity of mA Loading';
   const sectionTitle = 'Linearity of mA Loading Stations';
   const xUnitLabel = hasValidTime ? 'mGy/(mA*s)' : 'mGy/mA';
+
+  const getExportData = useCallback(() => {
+    const hasRows = processedTable2.rows.some(
+      (r) =>
+        String(r.ma || '').trim() ||
+        r.measuredOutputs.some((v) => String(v).trim())
+    );
+    const hasConditions =
+      String(table1Row.fcd || '').trim() ||
+      String(table1Row.kv || '').trim() ||
+      String(table1Row.time || '').trim();
+    if (!hasRows && !hasConditions) return null;
+    return {
+      table1: {
+        fcd: table1Row.fcd,
+        kv: table1Row.kv,
+        time: table1Row.time,
+      },
+      table2: processedTable2.rows.map((r) => ({
+        ma: r.ma,
+        measuredOutputs: padOutputs(r.measuredOutputs || [], measHeaders.length).map((v) => String(v).trim()),
+        average: r.average || '',
+        x: r.x || '',
+        xMax: processedTable2.summary.xMax,
+        xMin: processedTable2.summary.xMin,
+        col: processedTable2.summary.col,
+        remarks: processedTable2.summary.remarks,
+      })),
+      measHeaders,
+      tolerance,
+      toleranceOperator,
+    };
+  }, [processedTable2, table1Row, measHeaders, tolerance, toleranceOperator]);
+
+  useRegisterTestExport('linearityOfMaLoading', getExportData);
 
   if (isLoading) {
     return (

@@ -8,6 +8,7 @@ import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import { getRadiationProfileWidthByServiceId, saveReportHeaderForOPG, getReportHeaderForOPG, getAccuracyOfOperatingPotentialByServiceIdForOPG, getAccuracyOfIrradiationTimeByServiceIdForOPG, getLinearityOfMaLoadingByServiceIdForOPG, getConsistencyOfRadiationOutputByServiceIdForOPG, getRadiationLeakageLevelByServiceIdForOPG, getRadiationProtectionSurveyByServiceIdForOPG, getDetails, getTools, proxyFile } from "../../../../../../api";
 import * as XLSX from 'xlsx';
 import { createOPGUploadableExcel } from './exportOPGToExcel';
+import { TestExportRegistryProvider, useTestExportRegistry } from "../shared/TestExportRegistry";
 
 import Standards from "../../Standards";
 import Notes from "../../Notes";
@@ -46,8 +47,9 @@ interface DetailsResponse {
     qaTests: Array<{ createdAt: string; qaTestReportNumber: string }>;
 }
 
-const OPG: React.FC<{ serviceId: string; qaTestDate?: string | null; csvFileUrl?: string | null }> = ({ serviceId, qaTestDate, csvFileUrl }) => {
+const OPGContent: React.FC<{ serviceId: string; qaTestDate?: string | null; csvFileUrl?: string | null }> = ({ serviceId, qaTestDate, csvFileUrl }) => {
     const navigate = useNavigate();
+    const exportRegistry = useTestExportRegistry();
 
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -686,32 +688,47 @@ const OPG: React.FC<{ serviceId: string; qaTestDate?: string | null; csvFileUrl?
         if (!serviceId) return;
         setIsExporting(true);
         try {
-            // Fetch all data
-            const [
-                kvpRes,
-                timeRes,
-                linMaRes,
-                // linMasRes, // Assume one linearity test usually
-                consRes,
-                leakRes,
-                protRes
-            ] = await Promise.all([
-                getAccuracyOfOperatingPotentialByServiceIdForOPG(serviceId),
-                getAccuracyOfIrradiationTimeByServiceIdForOPG(serviceId),
-                getLinearityOfMaLoadingByServiceIdForOPG(serviceId),
-                getConsistencyOfRadiationOutputByServiceIdForOPG(serviceId),
-                getRadiationLeakageLevelByServiceIdForOPG(serviceId),
-                getRadiationProtectionSurveyByServiceIdForOPG(serviceId)
-            ]);
+            const pageData = exportRegistry?.collect() ?? {};
 
-            // Construct data object
+            const fetchSaved = async (fn: () => Promise<any>) => {
+                try {
+                    const res = await fn();
+                    return res?.data ?? null;
+                } catch {
+                    return null;
+                }
+            };
+
+            const resolveSection = async (pageValue: unknown, fetchFn: () => Promise<any>) => {
+                if (pageValue != null) return pageValue;
+                return fetchSaved(fetchFn);
+            };
+
             const exportData = {
-                accuracyOfOperatingPotential: kvpRes?.data,
-                accuracyOfIrradiationTime: timeRes?.data,
-                linearityOfMaLoading: linMaRes?.data, // Determine if it's mA or mAs based on data
-                outputConsistency: consRes?.data,
-                radiationLeakage: leakRes?.data,
-                radiationProtectionSurvey: protRes?.data
+                accuracyOfOperatingPotential: await resolveSection(
+                    pageData.accuracyOfOperatingPotential,
+                    () => getAccuracyOfOperatingPotentialByServiceIdForOPG(serviceId)
+                ),
+                accuracyOfIrradiationTime: await resolveSection(
+                    pageData.accuracyOfIrradiationTime,
+                    () => getAccuracyOfIrradiationTimeByServiceIdForOPG(serviceId)
+                ),
+                linearityOfMaLoading: await resolveSection(
+                    pageData.linearityOfMaLoading,
+                    () => getLinearityOfMaLoadingByServiceIdForOPG(serviceId)
+                ),
+                outputConsistency: await resolveSection(
+                    pageData.outputConsistency,
+                    () => getConsistencyOfRadiationOutputByServiceIdForOPG(serviceId)
+                ),
+                radiationLeakage: await resolveSection(
+                    pageData.radiationLeakage,
+                    () => getRadiationLeakageLevelByServiceIdForOPG(serviceId)
+                ),
+                radiationProtectionSurvey: await resolveSection(
+                    pageData.radiationProtectionSurvey,
+                    () => getRadiationProtectionSurveyByServiceIdForOPG(serviceId)
+                ),
             };
 
             const wb = createOPGUploadableExcel(exportData);
@@ -1004,5 +1021,11 @@ const OPG: React.FC<{ serviceId: string; qaTestDate?: string | null; csvFileUrl?
         </div>
     );
 };
+
+const OPG: React.FC<{ serviceId: string; qaTestDate?: string | null; csvFileUrl?: string | null }> = (props) => (
+    <TestExportRegistryProvider>
+        <OPGContent {...props} />
+    </TestExportRegistryProvider>
+);
 
 export default OPG;

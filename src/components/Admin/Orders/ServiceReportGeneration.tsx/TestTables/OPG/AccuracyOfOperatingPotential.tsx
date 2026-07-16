@@ -1,5 +1,5 @@
 // src/components/TestTables/AccuracyOfOperatingPotential.tsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Plus, Trash2, Save, Edit3, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
 import {
@@ -7,6 +7,7 @@ import {
     getAccuracyOfOperatingPotentialByServiceIdForOPG,
     updateAccuracyOfOperatingPotentialForOPG,
 } from "../../../../../../api";
+import { useRegisterTestExport } from "../shared/TestExportRegistry";
 
 interface RowData {
     id: string;
@@ -438,6 +439,34 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
 
         return m >= requiredTolerance ? "PASS" : "FAIL";
     };
+
+    const getExportData = useCallback(() => {
+        const hasMeasurements = rows.some(
+            (r) =>
+                String(r.appliedKvp || "").trim() ||
+                r.measuredValues.some((v) => String(v || "").trim())
+        );
+        const hasFiltration =
+            String(totalFiltration.measured || "").trim() ||
+            String(totalFiltration.required || "").trim() ||
+            String(totalFiltration.atKvp || "").trim();
+        if (!hasMeasurements && !hasFiltration && !String(ffd || "").trim()) return null;
+        return {
+            mAStations,
+            ffd,
+            measurements: rows.map((r) => ({
+                appliedKvp: r.appliedKvp,
+                measuredValues: r.measuredValues,
+                averageKvp: r.averageKvp,
+                remarks: r.remarks,
+            })),
+            tolerance: { sign: toleranceSign, value: toleranceValue },
+            totalFiltration,
+            filtrationTolerance,
+        };
+    }, [mAStations, ffd, rows, toleranceSign, toleranceValue, totalFiltration, filtrationTolerance]);
+
+    useRegisterTestExport("accuracyOfOperatingPotential", getExportData);
 
     if (isLoading) {
         return (

@@ -547,7 +547,8 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null; qaTestDate?
                         pushRow('TestConditions_FDD', r[colIdx(header, 'FDD', 'FCD', 'FFD')] ?? '', 0, 'Linearity of Time');
                         pushRow('TestConditions_kV', r[colIdx(header, 'kV')] ?? '', 0, 'Linearity of Time');
                         pushRow('TestConditions_Time', r[colIdx(header, 'Time')] ?? '', 0, 'Linearity of Time');
-                        pushRow('Tolerance', r[colIdx(header, 'Tolerance', 'Tol Value')] ?? '', 0, 'Linearity of Time');
+                        pushRow('ToleranceOperator', r[colIdx(header, 'Tol Operator', 'Tolerance Operator')] ?? '', 0, 'Linearity of Time');
+                        pushRow('Tolerance', r[colIdx(header, 'Tol Value', 'Tolerance', 'Tolerance Value')] ?? '', 0, 'Linearity of Time');
                         hCols.forEach((_, hi) => {
                             const label = r[colIdx(header, `Header ${hi + 1}`)] ?? '';
                             if (label) pushRow('MeasHeader', label, 0, 'Linearity of Time');
@@ -1131,7 +1132,10 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null; qaTestDate?
                         if (field === 'Table1_kV') table1.kv = value;
                         if (field === 'Table1_Time') table1.time = value;
                         if (field === 'Tolerance') tolerance = value;
-                        if (field === 'ToleranceOperator') toleranceOperator = value;
+                        if (field === 'ToleranceOperator') {
+                            const op = normalizeCsvComparisonOperator(value);
+                            if (['<', '>', '<=', '>=', '='].includes(op)) toleranceOperator = op;
+                        }
                         if (field === 'MeasHeader') {
                             if (!headers.includes(value)) {
                                 headers.push(value);
@@ -1178,6 +1182,7 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null; qaTestDate?
                     const testConditions = { fdd: '', kv: '', time: '' };
                     const headers: string[] = [];
                     let tolerance = '0.1';
+                    let toleranceOperator = '<=';
                     const measurementRows: any[] = [];
 
                     data.forEach((row) => {
@@ -1189,6 +1194,10 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null; qaTestDate?
                         if (field === 'TestConditions_kV') testConditions.kv = value;
                         if (field === 'TestConditions_Time') testConditions.time = value;
                         if (field === 'Tolerance') tolerance = value;
+                        if (field === 'ToleranceOperator') {
+                            const op = normalizeCsvComparisonOperator(value);
+                            if (['<', '>', '<=', '>=', '='].includes(op)) toleranceOperator = op;
+                        }
                         if (field === 'MeasHeader') {
                             if (!headers.includes(value)) {
                                 headers.push(value);
@@ -1220,6 +1229,7 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null; qaTestDate?
                         testConditions,
                         headers: headers.length > 0 ? headers : ['Meas 1', 'Meas 2', 'Meas 3'],
                         tolerance,
+                        toleranceOperator,
                         measurementRows: measurementRows.length > 0 ? measurementRows : [],
                     };
                     console.log('✓ Linearity of Time data prepared for form:', csvData);

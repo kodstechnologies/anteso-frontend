@@ -28,6 +28,7 @@ import DetailsOfRadiationProtection from "./DetailsOfRadiationProtection";
 import { createDentalIntraUploadableExcel, DentalIntraExportData } from "./exportDentalIntraToExcel";
 import { isExcelFileUrl } from "../../../../../../utils/spreadsheetFile";
 import { normalizeCsvComparisonOperator } from "../shared/parseRadiographyStyleTableFormat";
+import { TestExportRegistryProvider, useTestExportRegistry } from "../shared/TestExportRegistry";
 import {
     getAccuracyOfOperatingPotentialByServiceIdForDentalIntra,
     getAccuracyOfIrradiationTimeByServiceIdForDentalIntra,
@@ -93,7 +94,8 @@ interface DentalProps {
     csvFileUrl?: string | null;
 }
 
-const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId, qaTestDate, csvFileUrl }) => {
+const GenerateReportForDentalContent: React.FC<DentalProps> = ({ serviceId, qaTestDate, csvFileUrl }) => {
+    const exportRegistry = useTestExportRegistry();
     const navigate = useNavigate();
 
     const [details, setDetails] = useState<DetailsResponse | null>(null);
@@ -475,12 +477,12 @@ const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId, qaTestDate,
                 'mA Station 2 Time': 'Measured_Time_ignore', // Component handles only one measured time per row currently
                 'Measured Time (mSec)': 'Measured_Time',
                 'kV': 'kV', 'kVp': 'kVp',
-                'FCD': 'FCD', 'mA': 'mA',
+                'FCD': 'FCD', 'FDD': 'FCD', 'FDD (cm)': 'FCD', 'mA': 'mA',
             },
             'linearityOfMaLoading': {
                 'mA Station': 'mA_Station',
                 'Measured mR 1': 'Measured_0', 'Measured mR 2': 'Measured_1', 'Measured mR 3': 'Measured_2', 'Measured mR 4': 'Measured_3', 'Measured mR 5': 'Measured_4',
-                'kV': 'kV', 'Time': 'time', 'FCD': 'FCD',
+                'kV': 'kV', 'Time': 'time', 'FCD': 'FCD', 'FDD': 'FCD', 'FDD (cm)': 'FCD',
                 'Tolerance Operator': 'Tolerance_Operator', 'tolerance operator': 'Tolerance_Operator',
                 'Tol Operator': 'Tolerance_Operator', 'tol operator': 'Tolerance_Operator',
                 'Tolerance Sign': 'Tolerance_Operator', 'tolerance sign': 'Tolerance_Operator',
@@ -490,15 +492,20 @@ const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId, qaTestDate,
             'linearityOfMasLoading': {
                 'mAs Range': 'mAs_Range',
                 'Measured mR 1': 'Measured_0', 'Measured mR 2': 'Measured_1', 'Measured mR 3': 'Measured_2', 'Measured mR 4': 'Measured_3', 'Measured mR 5': 'Measured_4',
-                'kV': 'kV', 'FCD': 'FCD',
+                'kV': 'kV', 'FCD': 'FCD', 'FDD': 'FCD', 'FDD (cm)': 'FCD',
+                'Tolerance Operator': 'Tolerance_Operator', 'tolerance operator': 'Tolerance_Operator',
+                'Tol Operator': 'Tolerance_Operator', 'tol operator': 'Tolerance_Operator',
+                'Tolerance Sign': 'Tolerance_Operator', 'tolerance sign': 'Tolerance_Operator',
+                'Tolerance Value (CoL)': 'Tolerance', 'Tolerance Value': 'Tolerance',
+                'tolerance value (col)': 'Tolerance', 'Tol Value': 'Tolerance', 'Tolerance': 'Tolerance',
             },
             'LinearityOfTime': {
-                'FCD': 'FCD', 'kV': 'kV', 'mA': 'mA',
+                'FCD': 'FCD', 'FDD': 'FCD', 'FDD (cm)': 'FCD', 'kV': 'kV', 'mA': 'mA',
                 'Time Station (sec)': 'time',
                 'Measured mR 1': 'Measured_0', 'Measured mR 2': 'Measured_1', 'Measured mR 3': 'Measured_2',
             },
             'consistencyOfRadiationOutput': {
-                'FFD': 'FFD', 'ffd': 'FFD', 'FDD': 'FFD', 'fdd': 'FFD', 'FCD': 'FFD', 'fcd': 'FFD',
+                'FFD': 'FFD', 'ffd': 'FFD', 'FDD': 'FFD', 'fdd': 'FFD', 'FDD (cm)': 'FFD', 'FCD': 'FFD', 'fcd': 'FFD',
                 'Test kV': 'kVp', 'Test kVp': 'kVp', 'Test KV': 'kVp',
                 'kV': 'kVp', 'kv': 'kVp', 'KV': 'kVp',
                 'kVp': 'kVp', 'kvp': 'kVp', 'KVp': 'kVp', 'KVP': 'kVp',
@@ -552,18 +559,21 @@ const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId, qaTestDate,
                 'Tolerance Sign', 'Tolerance Value (kVp)', 'Tolerance Value', 'Tolerance',
             ]),
             linearityOfMaLoading: new Set([
-                'mA Station', 'kV', 'Time', 'FCD',
+                'mA Station', 'kV', 'Time', 'FCD', 'FDD', 'FDD (cm)',
                 'Measured mR 1', 'Measured mR 2', 'Measured mR 3', 'Measured mR 4', 'Measured mR 5',
                 'Tolerance Operator', 'tolerance operator', 'Tol Operator', 'tol operator',
                 'Tolerance Sign', 'tolerance sign',
                 'Tolerance Value (CoL)', 'Tolerance Value', 'tolerance value (col)', 'Tol Value', 'Tolerance',
             ]),
             linearityOfMasLoading: new Set([
-                'mAs Range', 'kV', 'FCD',
+                'mAs Range', 'kV', 'FCD', 'FDD', 'FDD (cm)',
                 'Measured mR 1', 'Measured mR 2', 'Measured mR 3', 'Measured mR 4', 'Measured mR 5',
+                'Tolerance Operator', 'tolerance operator', 'Tol Operator', 'tol operator',
+                'Tolerance Sign', 'tolerance sign',
+                'Tolerance Value (CoL)', 'Tolerance Value', 'tolerance value (col)', 'Tol Value', 'Tolerance',
             ]),
             consistencyOfRadiationOutput: new Set([
-                'FFD', 'ffd', 'FDD', 'fdd', 'FCD', 'fcd',
+                'FFD', 'ffd', 'FDD', 'fdd', 'FDD (cm)', 'FCD', 'fcd',
                 'Test kV', 'Test kVp', 'Test KV',
                 'kV', 'kv', 'KV', 'kVp', 'kvp', 'KVp', 'KVP',
                 'Test mAs', 'Test Mas', 'mAs', 'mas', 'MAS',
@@ -920,54 +930,83 @@ const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId, qaTestDate,
             toast.loading("Exporting data to Excel...", { id: "export-excel" });
             setCsvUploading(true);
 
+            const pageData = exportRegistry?.collect() ?? {};
             const exportData: DentalIntraExportData = {};
 
             // 1. Accuracy of Operating Potential
-            try {
-                const res = await getAccuracyOfOperatingPotentialByServiceIdForDentalIntra(serviceId);
-                if (res?.data) exportData.accuracyOfOperatingPotential = res.data;
-            } catch (err) { console.log("AccuracyOfOperatingPotential data not found"); }
+            if (pageData.accuracyOfOperatingPotential != null) {
+                exportData.accuracyOfOperatingPotential = pageData.accuracyOfOperatingPotential;
+            } else {
+                try {
+                    const res = await getAccuracyOfOperatingPotentialByServiceIdForDentalIntra(serviceId);
+                    if (res?.data) exportData.accuracyOfOperatingPotential = res.data;
+                } catch (err) { console.log("AccuracyOfOperatingPotential data not found"); }
+            }
 
             // 2. Accuracy of Irradiation Time
-            try {
-                const res = await getAccuracyOfIrradiationTimeByServiceIdForDentalIntra(serviceId);
-                if (res?.data) exportData.accuracyOfIrradiationTime = res.data;
-            } catch (err) { console.log("AccuracyOfIrradiationTime data not found"); }
+            if (pageData.accuracyOfIrradiationTime != null) {
+                exportData.accuracyOfIrradiationTime = pageData.accuracyOfIrradiationTime;
+            } else {
+                try {
+                    const res = await getAccuracyOfIrradiationTimeByServiceIdForDentalIntra(serviceId);
+                    if (res?.data) exportData.accuracyOfIrradiationTime = res.data;
+                } catch (err) { console.log("AccuracyOfIrradiationTime data not found"); }
+            }
 
             // 3. Linearity of mA / mAs Loading (Dependent on timer)
             if (hasTimer === true) {
-                try {
-                    const res = await getLinearityOfMaLoadingByServiceIdForDentalIntra(serviceId);
-                    if (res?.data) exportData.linearityOfMaLoading = res.data;
-                } catch (err) { console.log("LinearityOfMaLoading data not found"); }
+                if (pageData.linearityOfMaLoading != null) {
+                    exportData.linearityOfMaLoading = pageData.linearityOfMaLoading;
+                } else {
+                    try {
+                        const res = await getLinearityOfMaLoadingByServiceIdForDentalIntra(serviceId);
+                        if (res?.data) exportData.linearityOfMaLoading = res.data;
+                    } catch (err) { console.log("LinearityOfMaLoading data not found"); }
+                }
             } else {
-                try {
-                    const res = await getLinearityOfMasLoadingByServiceIdForDentalIntra(serviceId);
-                    if (res?.data) exportData.linearityOfMasLoading = res.data;
-                } catch (err) { console.log("LinearityOfMasLoading data not found"); }
+                if (pageData.linearityOfMasLoading != null) {
+                    exportData.linearityOfMasLoading = pageData.linearityOfMasLoading;
+                } else {
+                    try {
+                        const res = await getLinearityOfMasLoadingByServiceIdForDentalIntra(serviceId);
+                        if (res?.data) exportData.linearityOfMasLoading = res.data;
+                    } catch (err) { console.log("LinearityOfMasLoading data not found"); }
+                }
             }
 
             // 4. Consistency of Radiation Output
-            try {
-                const res = await getConsistencyOfRadiationOutputByServiceIdForDentalIntra(serviceId);
-                if (res?.data) exportData.consistencyOfRadiationOutput = res.data;
-            } catch (err) { console.log("ConsistencyOfRadiationOutput data not found"); }
+            if (pageData.consistencyOfRadiationOutput != null) {
+                exportData.consistencyOfRadiationOutput = pageData.consistencyOfRadiationOutput;
+            } else {
+                try {
+                    const res = await getConsistencyOfRadiationOutputByServiceIdForDentalIntra(serviceId);
+                    if (res?.data) exportData.consistencyOfRadiationOutput = res.data;
+                } catch (err) { console.log("ConsistencyOfRadiationOutput data not found"); }
+            }
 
             // 5. Radiation Leakage Level / Tube Housing Leakage
-            try {
-                const res = await getRadiationLeakageLevelByServiceIdForDentalIntra(serviceId);
-                if (res?.data) exportData.radiationLeakageLevel = res.data;
-            } catch (err) { console.log("RadiationLeakageLevel data not found"); }
+            if (pageData.radiationLeakageLevel != null) {
+                exportData.radiationLeakageLevel = pageData.radiationLeakageLevel;
+            } else {
+                try {
+                    const res = await getRadiationLeakageLevelByServiceIdForDentalIntra(serviceId);
+                    if (res?.data) exportData.radiationLeakageLevel = res.data;
+                } catch (err) { console.log("RadiationLeakageLevel data not found"); }
+            }
 
             // 6. Details of Radiation Protection Survey
-            try {
-                const res = await getRadiationProtectionSurveyByServiceIdForDentalIntra(serviceId);
-                if (res?.data) exportData.radiationProtectionSurvey = res.data;
-            } catch (err) { console.log("RadiationProtectionSurvey data not found"); }
+            if (pageData.radiationProtectionSurvey != null) {
+                exportData.radiationProtectionSurvey = pageData.radiationProtectionSurvey;
+            } else {
+                try {
+                    const res = await getRadiationProtectionSurveyByServiceIdForDentalIntra(serviceId);
+                    if (res?.data) exportData.radiationProtectionSurvey = res.data;
+                } catch (err) { console.log("RadiationProtectionSurvey data not found"); }
+            }
 
             const hasData = Object.keys(exportData).length > 0;
             if (!hasData) {
-                toast.error("No data found to export. Please save test data first.", { id: "export-excel" });
+                toast.error("No data found to export. Enter test data on this page or save test data first.", { id: "export-excel" });
                 return;
             }
 
@@ -1391,5 +1430,11 @@ const GenerateReportForDental: React.FC<DentalProps> = ({ serviceId, qaTestDate,
         </div >
     );
 };
+
+const GenerateReportForDental: React.FC<DentalProps> = (props) => (
+    <TestExportRegistryProvider>
+        <GenerateReportForDentalContent {...props} />
+    </TestExportRegistryProvider>
+);
 
 export default GenerateReportForDental;

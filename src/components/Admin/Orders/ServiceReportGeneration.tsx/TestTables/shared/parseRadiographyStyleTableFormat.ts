@@ -21,14 +21,25 @@ const normalizeCsvToleranceSign = (raw: unknown): string => {
 };
 
 export const normalizeCsvComparisonOperator = (raw: unknown): string => {
-  const v = String(raw ?? "").trim().toLowerCase();
+  const original = String(raw ?? "").trim();
+  // Normalize common Unicode symbols Excel may insert
+  const unicodeNormalized = original
+    .replace(/≤|⩽/g, "<=")
+    .replace(/≥|⩾/g, ">=")
+    .replace(/≠/g, "!=")
+    .replace(/＝/g, "=");
+  const v = unicodeNormalized.toLowerCase().replace(/\s+/g, " ").trim();
   if (!v) return "<=";
-  if (v.includes("less than or equal") || v === "<=" || v === "=<") return "<=";
-  if (v.includes("greater than or equal") || v === ">=" || v === "=>") return ">=";
-  if (v === "<" || v.includes("less than")) return "<";
-  if (v === ">" || v.includes("greater than")) return ">";
-  if (v === "=" || v === "==") return "=";
-  return String(raw ?? "").trim() || "<=";
+  if (v.includes("less than or equal") || v === "<=" || v === "=<" || v === "le") return "<=";
+  if (v.includes("greater than or equal") || v === ">=" || v === "=>" || v === "ge") return ">=";
+  if (v === "<" || v === "lt" || (v.includes("less than") && !v.includes("equal"))) return "<";
+  if (v === ">" || v === "gt" || (v.includes("greater than") && !v.includes("equal"))) return ">";
+  if (v === "=" || v === "==" || v === "eq") return "=";
+  // Already a supported operator after unicode normalize
+  if (["<", ">", "<=", ">=", "="].includes(unicodeNormalized.trim())) {
+    return unicodeNormalized.trim();
+  }
+  return unicodeNormalized.trim() || "<=";
 };
 
 const formatMaStation = (val: string): string => {

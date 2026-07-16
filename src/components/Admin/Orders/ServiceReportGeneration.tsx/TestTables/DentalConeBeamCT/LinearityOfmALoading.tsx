@@ -1,7 +1,7 @@
 // components/TestTables/LinearityOfMaLoading.tsx
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Plus, Trash2, Loader2, Edit3, Save } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
@@ -10,6 +10,7 @@ import {
   getLinearityOfMaLoadingByTestIdForCBCT,
   updateLinearityOfMaLoadingForCBCT,
 } from '../../../../../../api';
+import { useRegisterTestExport } from '../shared/TestExportRegistry';
 
 interface Table1Row {
   fcd: string;
@@ -287,6 +288,16 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
       const fcd = csvData.find(r => ['FCD', 'FDD', 'FFD'].includes(r['Field Name']))?.['Value'];
       const kv = csvData.find(r => r['Field Name'] === 'kV')?.['Value'];
       const time = csvData.find(r => r['Field Name'] === 'time')?.['Value'];
+      const tolOp = csvData.find(r =>
+        r['Field Name'] === 'Tolerance_Operator' ||
+        r['Field Name'] === 'ToleranceOperator' ||
+        r['Field Name'] === 'Tolerance_Sign'
+      )?.['Value'];
+      const tolVal = csvData.find(r =>
+        r['Field Name'] === 'Tolerance' ||
+        r['Field Name'] === 'Tolerance_Value' ||
+        r['Field Name'] === 'Tolerance Value'
+      )?.['Value'];
 
       if (fcd || kv || time) {
         setTable1Row(prev => ({
@@ -295,6 +306,12 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
           time: time || prev.time
         }));
       }
+
+      if (tolOp) {
+        const op = String(tolOp).trim();
+        if (['<', '>', '<=', '>=', '='].includes(op)) setToleranceOperator(op);
+      }
+      if (tolVal) setTolerance(String(tolVal).trim());
 
       // Measurement Rows
       const rowIndices = [...new Set(csvData
@@ -452,6 +469,44 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
   const tableTitle = 'Linearity of mA Loading';
   const sectionTitle = 'Linearity of mA Loading Stations';
   const xUnitLabel = 'mGy/(mA*s)';
+
+  const getExportData = useCallback(() => {
+    const hasRows = processedTable2.rows.some(
+      (r) =>
+        String(r.ma || '').trim() ||
+        r.measuredOutputs.some((v) => String(v).trim())
+    );
+    const hasConditions =
+      String(table1Row.fcd || '').trim() ||
+      String(table1Row.kv || '').trim() ||
+      String(table1Row.time || '').trim();
+    if (!hasRows && !hasConditions) return null;
+    return {
+      table1: {
+        fcd: table1Row.fcd,
+        kv: table1Row.kv,
+        time: table1Row.time,
+      },
+      table2: processedTable2.rows.map((r) => ({
+        ma: r.ma,
+        measuredOutputs: r.measuredOutputs.map((v) => {
+          const val = v.trim();
+          return val === '' ? '' : val;
+        }),
+        average: r.average || '',
+        x: r.x || '',
+        xMax: processedTable2.summary.xMax,
+        xMin: processedTable2.summary.xMin,
+        col: processedTable2.summary.col,
+        remarks: processedTable2.summary.remarks,
+      })),
+      tolerance,
+      toleranceOperator,
+      measHeaders,
+    };
+  }, [processedTable2, table1Row, tolerance, toleranceOperator, measHeaders]);
+
+  useRegisterTestExport('linearityOfMaLoading', getExportData);
 
   if (isLoading) {
     return (

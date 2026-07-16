@@ -1,5 +1,6 @@
 // components/TestTables/TotalFiltrationAndAluminium.tsx
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useRegisterTestExport } from '../shared/TestExportRegistry';
 import { Plus, Trash2, Loader2, Edit3, Save, ChevronDown } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
@@ -390,6 +391,44 @@ const TotalFiltrationAndAluminium: React.FC<{
         : { ...defaultValues, kvp: row.kvp || '' },
     })));
   }, [targetWindow]);
+
+  const getExportData = useCallback(() => {
+    const hasRows = rowsWithRemarks.some(
+      (r) =>
+        String(r.kvp || '').trim() ||
+        String(r.mAs || '').trim() ||
+        String(r.alEquivalence || '').trim() ||
+        String(r.hvt || '').trim()
+    );
+    if (!hasRows && !String(targetWindow || '').trim() && !String(resultHVT || '').trim()) return null;
+    return {
+      targetWindow,
+      addedFilterThickness: addedFilterThickness || null,
+      table: rowsWithRemarks.map((r) => ({
+        kvp: r.kvp,
+        mAs: r.mAs,
+        alEquivalence: r.alEquivalence,
+        hvt: r.hvt,
+        remarks: r.remarks || '',
+        recommendedValue: r.recommendedValue
+          ? {
+              minValue: r.recommendedValue.minValue,
+              maxValue: r.recommendedValue.maxValue,
+              kvp: r.kvp,
+            }
+          : null,
+      })),
+      resultHVT28kVp: resultHVT,
+      // Compat for older Excel writer shape
+      totalFiltration: {
+        measured: rowsWithRemarks[0]?.alEquivalence || '',
+        required: rowsWithRemarks[0]?.recommendedValue?.minValue || '',
+        atKvp: rowsWithRemarks[0]?.kvp || '',
+      },
+    };
+  }, [rowsWithRemarks, targetWindow, addedFilterThickness, resultHVT]);
+
+  useRegisterTestExport('totalFiltration', getExportData);
 
   if (isLoading) {
     return (

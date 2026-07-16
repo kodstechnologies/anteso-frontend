@@ -1,7 +1,7 @@
 // components/TestTables/LinearityOfMasLoading.tsx
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { Plus, Trash2, Save, Edit3, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
@@ -10,6 +10,7 @@ import {
   getLinearityOfMaLoadingByTestIdForCBCT,
   updateLinearityOfMaLoadingForCBCT,
 } from '../../../../../../api';
+import { useRegisterTestExport } from '../shared/TestExportRegistry';
 
 interface ExposureCondition {
   fcd: string;
@@ -219,6 +220,16 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
       // Exposure Conditions
       const fcd = csvData.find(r => r['Field Name'] === 'FCD')?.['Value'];
       const kv = csvData.find(r => r['Field Name'] === 'kV')?.['Value'];
+      const tolOp = csvData.find(r =>
+        r['Field Name'] === 'Tolerance_Operator' ||
+        r['Field Name'] === 'ToleranceOperator' ||
+        r['Field Name'] === 'Tolerance_Sign'
+      )?.['Value'];
+      const tolVal = csvData.find(r =>
+        r['Field Name'] === 'Tolerance' ||
+        r['Field Name'] === 'Tolerance_Value' ||
+        r['Field Name'] === 'Tolerance Value'
+      )?.['Value'];
 
       if (fcd || kv) {
         setExposureCondition(prev => ({
@@ -226,6 +237,12 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
           kv: kv || prev.kv
         }));
       }
+
+      if (tolOp) {
+        const op = String(tolOp).trim();
+        if (['<', '>', '<=', '>=', '='].includes(op)) setToleranceOperator(op);
+      }
+      if (tolVal) setTolerance(String(tolVal).trim());
 
       // Measurement Rows
       const rowIndices = [...new Set(csvData
@@ -433,6 +450,54 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
       remarks: hasData ? (pass ? 'Pass' : 'Fail') : '—',
     }));
   }, [table2Rows, measHeaders.length, tolerance, toleranceOperator]);
+
+  const getExportData = useCallback(() => {
+    const hasRows = processedTable2.some(
+      (r) =>
+        String(r.mAsRange || '').trim() ||
+        r.measuredOutputs.some((v) => String(v).trim())
+    );
+    const hasConditions =
+      String(exposureCondition.fcd || '').trim() ||
+      String(exposureCondition.kv || '').trim();
+    if (!hasRows && !hasConditions) return null;
+    return {
+      table1: {
+        fcd: exposureCondition.fcd,
+        kv: exposureCondition.kv,
+        time: '',
+      },
+      table2: processedTable2.map((r) => {
+        let maValue = '';
+        const match = r.mAsRange.match(/(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)/);
+        if (match) {
+          const mid = (parseFloat(match[1]) + parseFloat(match[2])) / 2;
+          maValue = mid.toString();
+        } else {
+          const singleMatch = r.mAsRange.match(/(\d+(?:\.\d+)?)/);
+          maValue = singleMatch ? singleMatch[1] : r.mAsRange.replace(/[^\d.]/g, '');
+        }
+        return {
+          ma: maValue || r.mAsRange,
+          measuredOutputs: syncOutputsLength(r.measuredOutputs, measHeaders.length).map((v) => {
+            const val = v.trim();
+            return val === '' ? '' : val;
+          }),
+          average: r.average || '',
+          x: r.x || '',
+          xMax: r.xMax || '',
+          xMin: r.xMin || '',
+          col: r.col || '',
+          remarks: r.remarks || '',
+        };
+      }),
+      measHeaders,
+      tolerance,
+      toleranceOperator,
+    };
+  }, [processedTable2, exposureCondition, measHeaders, tolerance, toleranceOperator]);
+
+  useRegisterTestExport('linearityOfMaLoading', getExportData);
 
   if (isLoading) {
     return (

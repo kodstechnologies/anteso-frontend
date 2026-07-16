@@ -53,6 +53,9 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
   const [isEditing, setIsEditing] = useState(false);
   const [ffd, setFFD] = useState<FCDData>({ value: '' });
   const [measurementCount, setMeasurementCount] = useState<number>(5);
+  const [measurementHeaders, setMeasurementHeaders] = useState<string[]>([
+    'Meas 1', 'Meas 2', 'Meas 3', 'Meas 4', 'Meas 5',
+  ]);
 
   const [tolerance, setTolerance] = useState<Tolerance>({
     operator: '<=',
@@ -115,6 +118,19 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
   const updateMeasurementCount = (count: number) => {
     if (count < 3 || count > 10) return;
     setMeasurementCount(count);
+    setMeasurementHeaders(prev => {
+      const diff = count - prev.length;
+      if (diff > 0) {
+        return [
+          ...prev,
+          ...Array.from({ length: diff }, (_, i) => `Meas ${prev.length + i + 1}`),
+        ];
+      }
+      if (diff < 0) {
+        return prev.slice(0, count);
+      }
+      return prev;
+    });
 
     setOutputRows(prev =>
       prev.map(row => {
@@ -141,6 +157,12 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
     }
     const newCount = measurementCount + 1;
     setMeasurementCount(newCount);
+    setMeasurementHeaders(prev => {
+      const next = [...prev];
+      next.splice(afterIndex + 1, 0, `Meas ${afterIndex + 2}`);
+      while (next.length < newCount) next.push(`Meas ${next.length + 1}`);
+      return next.slice(0, newCount);
+    });
     setOutputRows(prev =>
       prev.map(row => {
         const newOutputs = [...row.outputs];
@@ -161,12 +183,22 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
     }
     const newCount = measurementCount - 1;
     setMeasurementCount(newCount);
+    setMeasurementHeaders(prev => prev.filter((_, i) => i !== index));
     setOutputRows(prev =>
       prev.map(row => ({
         ...row,
         outputs: row.outputs.filter((_, i) => i !== index),
       }))
     );
+    setIsSaved(false);
+  };
+
+  const updateMeasurementHeader = (index: number, value: string) => {
+    setMeasurementHeaders(prev => {
+      const next = [...prev];
+      next[index] = value;
+      return next;
+    });
     setIsSaved(false);
   };
 
@@ -221,6 +253,13 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
         setFFD({ value: String(fcdData.Value ?? '') });
       }
 
+      // Dynamic meas headers from Excel
+      const measHeaderValues = csvData
+        .filter((row: any) => row['Field Name'] === 'MeasHeader')
+        .sort((a: any, b: any) => Number(a['Row Index'] || 0) - Number(b['Row Index'] || 0))
+        .map((row: any) => String(row.Value ?? '').trim())
+        .filter(Boolean);
+
       // Measurements: accept Measurement_* (legacy) and Table2_* (Excel parser output)
       const measDataGrouped: any = {};
       csvData.forEach((row: any) => {
@@ -247,7 +286,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
 
       const rowIndices = Object.keys(measDataGrouped).sort((a, b) => Number(a) - Number(b));
 
-      let maxMeas = 5;
+      let maxMeas = measHeaderValues.length > 0 ? measHeaderValues.length : 5;
       rowIndices.forEach(idx => {
         const r = measDataGrouped[idx];
         for (let i = 10; i >= 1; i--) {
@@ -258,6 +297,13 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
         }
       });
       setMeasurementCount(maxMeas);
+      if (measHeaderValues.length > 0) {
+        const headers = [...measHeaderValues];
+        while (headers.length < maxMeas) headers.push(`Meas ${headers.length + 1}`);
+        setMeasurementHeaders(headers.slice(0, maxMeas));
+      } else {
+        setMeasurementHeaders(Array.from({ length: maxMeas }, (_, i) => `Meas ${i + 1}`));
+      }
 
       if (rowIndices.length > 0) {
         const newRows = rowIndices.map((idx, i) => {
@@ -279,11 +325,54 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
         setOutputRows(newRows as OutputRow[]);
       }
 
-      // Tolerance
-      const tolData = csvData.find((row: any) => row['Field Name'] === 'Tolerance_Value');
-      if (tolData) {
-        setTolerance((prev) => ({ ...prev, value: String(tolData.Value ?? '') }));
-      }
+      // Tolerance: operator/sign must not overwrite numeric value
+      const normalizeOp = (raw: string): Tolerance['operator'] | null => {
+        const s = String(raw ?? '').trim().toLowerCase().replace(/\s+/g, '');
+        if (s === '<=' || s === '≤' || s.includes('lessthanorequal')) return '<=';
+        if (s === '<' || s === 'less than' || s === 'lessthan') return '<';
+        if (s === '>=' || s === '≥' || s.includes('greaterthanorequal')) return '>=';
+        if (s === '>' || s === 'greaterthan') return '>';
+        return null;
+      };
+      const isNumericTol = (v: unknown) => {
+        const s = String(v ?? '').trim();
+        return s !== '' && !Number.isNaN(Number(s));
+      };
+
+      const tolOpRow = csvData.find((row: any) =>
+        row['Field Name'] === 'Tolerance_Operator' ||
+        row['Field Name'] === 'Tolerance_operator' ||
+        row['Field Name'] === 'Tolerance_Sign' ||
+        row['Field Name'] === 'ToleranceOperator'
+      );
+      const tolValCandidates = csvData.filter((row: any) =>
+        row['Field Name'] === 'Tolerance_Value' ||
+        row['Field Name'] === 'Tolerance_value' ||
+        row['Field Name'] === 'Tolerance'
+      );
+      const tolValRow = tolValCandidates.find((row: any) => isNumericTol(row.Value)) ||
+        tolValCandidates.find((row: any) => {
+          const s = String(row.Value ?? '').trim();
+          return s !== '' && !normalizeOp(s);
+        });
+
+      setTolerance(prev => {
+        const next = { ...prev };
+        if (tolOpRow) {
+          const op = normalizeOp(String(tolOpRow.Value ?? ''));
+          if (op) next.operator = op;
+        }
+        // If Tolerance_Value accidentally holds an operator (legacy bug), use it as operator only
+        const firstTol = tolValCandidates[0];
+        if (firstTol && !isNumericTol(firstTol.Value)) {
+          const opFromVal = normalizeOp(String(firstTol.Value ?? ''));
+          if (opFromVal && !tolOpRow) next.operator = opFromVal;
+        }
+        if (tolValRow && isNumericTol(tolValRow.Value)) {
+          next.value = String(tolValRow.Value).trim();
+        }
+        return next;
+      });
 
       setIsEditing(true);
       setIsSaved(false);
@@ -315,6 +404,18 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
             const firstRow = testData.outputRows[0];
             const numMeas = firstRow.outputs?.length || 5;
             setMeasurementCount(numMeas);
+            const savedHeaders = Array.isArray(testData.measurementHeaders)
+              ? testData.measurementHeaders
+              : Array.isArray(testData.measHeaders)
+                ? testData.measHeaders
+                : [];
+            if (savedHeaders.length > 0) {
+              const next = [...savedHeaders.map(String)];
+              while (next.length < numMeas) next.push(`Meas ${next.length + 1}`);
+              setMeasurementHeaders(next.slice(0, numMeas));
+            } else {
+              setMeasurementHeaders(Array.from({ length: numMeas }, (_, i) => `Meas ${i + 1}`));
+            }
             setOutputRows(testData.outputRows.map((r: any) => ({
               id: Date.now().toString() + Math.random(),
               kv: r.kv || '',
@@ -327,9 +428,15 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
           }
           if (testData.tolerance) {
             const v = testData.tolerance.value;
+            const opRaw = String(testData.tolerance.operator ?? '<=');
+            const numericValue = v != null && v !== '' && !Number.isNaN(Number(v))
+              ? String(v)
+              : '0.05';
+            // Guard against legacy saves where operator leaked into value
+            const op = (['<=', '<', '>=', '>'].includes(opRaw) ? opRaw : '<=') as Tolerance['operator'];
             setTolerance({
-              operator: testData.tolerance.operator || '<=',
-              value: v != null && v !== '' ? String(v) : '0.05',
+              operator: op,
+              value: numericValue,
             });
           }
           setIsSaved(true);
@@ -356,6 +463,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
     try {
       const payload = {
         ffd,
+        measurementHeaders,
         outputRows: rowsWithCalc.map(r => ({
           kv: r.kv,
           mas: r.mas,
@@ -450,7 +558,13 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
                   >
                     <div className="flex flex-col items-center gap-1">
                       <div className="flex items-center gap-1">
-                        <span>Meas {i + 1}</span>
+                        <input
+                          type="text"
+                          value={measurementHeaders[i] || `Meas ${i + 1}`}
+                          onChange={e => updateMeasurementHeader(i, e.target.value)}
+                          disabled={isViewMode}
+                          className={`w-24 px-1 py-0.5 text-xs border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+                        />
                         {!isViewMode && measurementCount < 10 && (
                           <button
                             onClick={() => addMeasurementColumn(i)}

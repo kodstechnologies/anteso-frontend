@@ -1,4 +1,5 @@
 import * as XLSX from "xlsx";
+import { resolveMeasHeaders, getMeasuredOutputs, cellStr } from "../shared/exportMeasHeaders";
 
 export interface MammographySavedExportData {
   reportHeader?: any;
@@ -32,15 +33,63 @@ export const createMammographySavedExcel = (
     addBlank();
   };
 
+  // Accuracy of Operating Potential — dynamic mA stations
   const aop = unwrap(data.accuracyOfOperatingPotential);
-  if (aop?.table2?.length > 0) {
-    const rows = aop.table2.map((row: any) => [
-      row.setKV ?? "",
-      row.ma10 ?? row.ma1 ?? "",
-      row.ma100 ?? row.ma2 ?? "",
-      row.ma200 ?? row.ma3 ?? "",
-    ]);
-    addSection("ACCURACY OF OPERATING POTENTIAL (kVp)", ["Applied kVp", "mA 1 kVp", "mA 2 kVp", "mA 3 kVp"], rows);
+  const aopMeasurements: any[] =
+    Array.isArray(aop?.measurements) && aop.measurements.length > 0
+      ? aop.measurements
+      : Array.isArray(aop?.table2)
+        ? aop.table2.map((row: any) => {
+            const fromMeas = Object.keys(row || {})
+              .filter((k) => /^meas\d+$/i.test(k))
+              .sort(
+                (a, b) =>
+                  parseInt(a.replace(/\D/g, ""), 10) -
+                  parseInt(b.replace(/\D/g, ""), 10)
+              )
+              .map((k) => row[k]);
+            const fallback = [row.ma10, row.ma100, row.ma200, row.ma1, row.ma2, row.ma3].filter(
+              (v) => v != null && String(v).trim() !== ""
+            );
+            return {
+              appliedKvp: row.setKV ?? row.appliedKvp ?? "",
+              measuredValues:
+                Array.isArray(row.measuredValues) && row.measuredValues.length > 0
+                  ? row.measuredValues
+                  : fromMeas.length > 0
+                    ? fromMeas
+                    : fallback,
+            };
+          })
+        : [];
+
+  if (aopMeasurements.length > 0) {
+    const maxMeas = Math.max(
+      0,
+      ...aopMeasurements.map((m: any) =>
+        Array.isArray(m.measuredValues) ? m.measuredValues.length : 0
+      )
+    );
+    const stations = resolveMeasHeaders(
+      aop?.mAStations || aop?.measHeaders,
+      maxMeas,
+      "mA Station"
+    );
+    const tol = aop?.tolerance || {};
+    allData.push(["TEST: ACCURACY OF OPERATING POTENTIAL (kVp)"]);
+    if (tol.sign || tol.value || aop?.kvpToleranceSign || aop?.kvpToleranceValue) {
+      allData.push(["Tolerance Sign", tol.sign ?? aop?.kvpToleranceSign ?? "±"]);
+      allData.push(["Tolerance Value (kVp)", tol.value ?? aop?.kvpToleranceValue ?? ""]);
+    }
+    allData.push(["Applied kVp", ...stations]);
+    aopMeasurements.forEach((row: any) => {
+      const vals = Array.isArray(row.measuredValues) ? row.measuredValues : [];
+      allData.push([
+        row.appliedKvp ?? row.setKV ?? "",
+        ...stations.map((_, i) => cellStr(vals[i])),
+      ]);
+    });
+    addBlank();
   }
 
   const aoi = unwrap(data.accuracyOfIrradiationTime);
@@ -63,45 +112,93 @@ export const createMammographySavedExcel = (
     ]);
   }
 
+  // Linearity of mA — dynamic measHeaders
   const lma = unwrap(data.linearityOfMaLoading);
   if (lma?.table2?.length > 0) {
-    const t1 = lma.table1 || {};
+    const t1 = Array.isArray(lma.table1) ? lma.table1[0] || {} : lma.table1 || {};
+    const t2 = Array.isArray(lma.table2) ? lma.table2 : [];
+    const maxMeas = Math.max(0, ...t2.map((r: any) => getMeasuredOutputs(r).length));
+    const measHeaders = resolveMeasHeaders(
+      lma.measHeaders || lma.measurementHeaders,
+      maxMeas,
+      "Measured"
+    );
     allData.push(["TEST: LINEARITY OF mA LOADING"]);
     allData.push(["FCD", t1.fcd ?? "", "kV", t1.kv ?? "", "Time", t1.time ?? ""]);
-    allData.push(["mA Station", "Measured 1", "Measured 2", "Measured 3", "Average", "mR/mAs"]);
-    lma.table2.forEach((r: any) => {
-      const outs = r.measuredOutputs || [];
-      allData.push([r.ma ?? r.mAApplied ?? "", outs[0] ?? "", outs[1] ?? "", outs[2] ?? "", r.average ?? "", r.x ?? ""]);
+    allData.push(["mA Station", ...measHeaders, "Average", "mR/mAs"]);
+    t2.forEach((r: any) => {
+      const outs = getMeasuredOutputs(r);
+      allData.push([
+        r.ma ?? r.mAApplied ?? "",
+        ...measHeaders.map((_, i) => outs[i] ?? ""),
+        r.average ?? "",
+        r.x ?? "",
+      ]);
     });
+    if (lma.tolerance != null || lma.toleranceOperator) {
+      allData.push(["Tolerance Operator", lma.toleranceOperator ?? "<="]);
+      allData.push(["Tolerance Value (CoL)", lma.tolerance ?? "0.1"]);
+    }
     addBlank();
   }
 
+  // Linearity of mAs — dynamic measHeaders
   const lmas = unwrap(data.linearityOfMasLoading);
   if (lmas?.table2?.length > 0) {
-    const t1 = lmas.table1?.[0] || lmas.table1 || {};
+    const t1 = Array.isArray(lmas.table1) ? lmas.table1[0] || {} : lmas.table1 || {};
+    const t2 = Array.isArray(lmas.table2) ? lmas.table2 : [];
+    const maxMeas = Math.max(0, ...t2.map((r: any) => getMeasuredOutputs(r).length));
+    const measHeaders = resolveMeasHeaders(
+      lmas.measHeaders || lmas.measurementHeaders,
+      maxMeas,
+      "Measured"
+    );
     allData.push(["TEST: LINEARITY OF mAs LOADING"]);
     allData.push(["FCD", t1.fcd ?? "", "kV", t1.kv ?? ""]);
-    allData.push(["mAs Range", "Measured 1", "Measured 2", "Measured 3"]);
-    lmas.table2.forEach((r: any) => {
-      const outs = r.measuredOutputs || r.outputs || [];
-      allData.push([r.mAsRange ?? r.mAsApplied ?? "", outs[0] ?? "", outs[1] ?? "", outs[2] ?? ""]);
+    allData.push(["mAs Range", ...measHeaders, "Average", "mR/mAs"]);
+    t2.forEach((r: any) => {
+      const outs = getMeasuredOutputs(r);
+      allData.push([
+        r.mAsRange ?? r.mAsApplied ?? r.mas ?? "",
+        ...measHeaders.map((_, i) => outs[i] ?? ""),
+        r.average ?? "",
+        r.x ?? "",
+      ]);
     });
+    if (lmas.tolerance != null || lmas.toleranceOperator) {
+      allData.push(["Tolerance Operator", lmas.toleranceOperator ?? "<="]);
+      allData.push(["Tolerance Value (CoL)", lmas.tolerance ?? "0.1"]);
+    }
     addBlank();
   }
 
+  // Reproducibility — dynamic outputHeaders / measurementHeaders
   const ro = unwrap(data.reproducibilityOfOutput);
   if (ro?.outputRows?.length > 0 || ro?.tolerance != null || ro?.toleranceOperator) {
     const ffdVal = ro.ffd?.value ?? ro.ffd ?? "";
     const tolOp = ro.toleranceOperator ?? ro.tolerance?.operator ?? "<=";
     const tolVal = ro.tolerance?.value ?? (typeof ro.tolerance === "object" ? "" : ro.tolerance) ?? "0.05";
+    const rows = Array.isArray(ro.outputRows) ? ro.outputRows : [];
+    const maxMeas = Math.max(0, ...rows.map((r: any) => getMeasuredOutputs(r).length));
+    const measHeaders = resolveMeasHeaders(
+      ro.outputHeaders || ro.measurementHeaders || ro.measHeaders,
+      maxMeas,
+      "Reading"
+    );
     allData.push(["TEST: REPRODUCIBILITY OF RADIATION OUTPUT"]);
     allData.push(["Tolerance Operator", tolOp]);
     allData.push(["Tolerance Value (CoV)", tolVal]);
     if (ffdVal !== "" && ffdVal != null) allData.push(["FFD", ffdVal]);
-    allData.push(["kVp", "mAs", "Reading 1", "Reading 2", "Reading 3", "Mean", "CoV"]);
-    (ro.outputRows || []).forEach((r: any) => {
-      const outs = (r.outputs || []).map((o: any) => (o?.value !== undefined ? o.value : o));
-      allData.push([r.kv ?? r.kvp ?? "", r.mas ?? "", outs[0] ?? "", outs[1] ?? "", outs[2] ?? "", r.mean ?? "", r.cov ?? ""]);
+    allData.push(["kVp", "mAs", ...measHeaders, "Mean", "CoV"]);
+    rows.forEach((r: any) => {
+      const outs = getMeasuredOutputs(r);
+      allData.push([
+        r.kv ?? r.kvp ?? "",
+        r.mas ?? "",
+        ...measHeaders.map((_, i) => outs[i] ?? ""),
+        r.mean ?? r.avg ?? "",
+        r.cov ?? r.cv ?? "",
+      ]);
     });
     addBlank();
   }
@@ -166,7 +263,7 @@ export const createMammographySavedExcel = (
     addSection("MAXIMUM RADIATION LEVELS AT DIFFERENT LOCATIONS", ["Location", "Level (mR/hr)", "Remarks"], rows);
   }
 
-  const ws = XLSX.utils.aoa_to_sheet(allData);
+  const ws = XLSX.utils.aoa_to_sheet(allData.length > 0 ? allData : [["No data"]]);
   XLSX.utils.book_append_sheet(wb, ws, "Mammography");
   return wb;
 };

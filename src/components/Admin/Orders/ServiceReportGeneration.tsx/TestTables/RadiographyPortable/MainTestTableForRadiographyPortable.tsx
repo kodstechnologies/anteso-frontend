@@ -274,7 +274,7 @@ const MainTestTableForRadiographyPortable: React.FC<MainTestTableProps> = ({ tes
       };
 
       const tolerance = parseFloat(testData.linearityOfMasLoading.tolerance ?? "0.1") || 0.1;
-      const toleranceOperator = testData.linearityOfMasLoading.toleranceOperator || "â‰¤";
+      const toleranceOperator = testData.linearityOfMasLoading.toleranceOperator || "";
 
       // Calculate on-the-fly if col is missing or NaN
       let colValue = testData.linearityOfMasLoading.col || testData.linearityOfMasLoading.coefficient || testData.linearityOfMasLoading.colValue;
@@ -313,7 +313,7 @@ const MainTestTableForRadiographyPortable: React.FC<MainTestTableProps> = ({ tes
       if (!isPass && col !== "-") {
         const c = parseFloat(col);
         const t = parseFloat(String(tolerance));
-        if (toleranceOperator === "â‰¤" || toleranceOperator === "<=") isPass = c <= t;
+        if (toleranceOperator === "" || toleranceOperator === "<=") isPass = c <= t;
         else if (toleranceOperator === "<") isPass = c < t;
         else if (toleranceOperator === ">=") isPass = c >= t;
         else if (toleranceOperator === ">") isPass = c > t;

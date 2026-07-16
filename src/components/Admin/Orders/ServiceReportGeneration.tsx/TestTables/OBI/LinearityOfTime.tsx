@@ -35,6 +35,7 @@ interface Props {
     };
     headers?: string[];
     tolerance?: string;
+    toleranceOperator?: string;
     measurementRows?: Array<{
       maApplied: string;
       radiationOutputs: string[];
@@ -229,6 +230,9 @@ const LinearityOfTime: React.FC<Props> = ({ serviceId, testId: propTestId, onRef
       }
       if (initialData.tolerance) {
         setTolerance(initialData.tolerance);
+      }
+      if (initialData.toleranceOperator) {
+        setToleranceOperator(initialData.toleranceOperator);
       }
       if (initialData.measurementRows && initialData.measurementRows.length > 0) {
         const numCols = initialData.headers?.length || initialData.measurementRows[0]?.radiationOutputs?.length || 3;

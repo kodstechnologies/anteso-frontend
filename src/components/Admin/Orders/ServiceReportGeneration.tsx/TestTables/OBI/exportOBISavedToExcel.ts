@@ -130,14 +130,28 @@ export const createOBISavedExcel = (data: OBISavedExportData): XLSX.WorkBook => 
   }
 
   const lot = unwrap(data.linearityOfTime);
-  if (lot?.table2?.length > 0) {
-    const t1 = lot.table1 || {};
+  if (lot?.measurementRows?.length > 0 || lot?.table2?.length > 0) {
+    const tc = lot.testConditions || lot.table1 || {};
+    const rows = lot.measurementRows || lot.table2 || [];
+    const headers = lot.measHeaders || lot.headers || ["Meas 1", "Meas 2", "Meas 3"];
     allData.push(["TEST: LINEARITY OF TIME"]);
-    allData.push(["FCD", t1.fcd ?? "", "kV", t1.kv ?? "", "Time", t1.time ?? ""]);
-    allData.push(["mA Station", "Measured 1", "Measured 2", "Measured 3"]);
-    lot.table2.forEach((r: any) => {
-      const outs = r.measuredOutputs || [];
-      allData.push([r.ma ?? r.mAApplied ?? "", outs[0] ?? "", outs[1] ?? "", outs[2] ?? ""]);
+    allData.push(["FDD (cm)", "kV", "Time (sec)", "Tolerance Operator", "Tolerance Value", "Header 1", "Header 2", "Header 3", "mA Applied", ...headers.slice(0, 3)]);
+    rows.forEach((r: any, idx: number) => {
+      const outs = r.radiationOutputs || r.measuredOutputs || [];
+      allData.push([
+        idx === 0 ? (tc.fdd ?? tc.fcd ?? "") : "",
+        idx === 0 ? (tc.kv ?? "") : "",
+        idx === 0 ? (tc.time ?? "") : "",
+        idx === 0 ? (lot.toleranceOperator ?? "<=") : "",
+        idx === 0 ? (lot.tolerance ?? "0.1") : "",
+        idx === 0 ? (headers[0] ?? "") : "",
+        idx === 0 ? (headers[1] ?? "") : "",
+        idx === 0 ? (headers[2] ?? "") : "",
+        r.maApplied ?? r.ma ?? "",
+        outs[0] ?? "",
+        outs[1] ?? "",
+        outs[2] ?? "",
+      ]);
     });
     addBlank();
   }

@@ -1,7 +1,8 @@
 // ReproducibilityOfOutput.tsx — FIXED FOR YOUR SCHEMA
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useRegisterTestExport } from '../shared/TestExportRegistry';
 import { Plus, Trash2, Loader2, Edit3, Save } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
@@ -416,6 +417,35 @@ const ReproducibilityOfOutput: React.FC<{
       })
     );
   };
+
+  const getExportData = useCallback(() => {
+    const hasRows = rowsWithCalc.some(
+      (r) =>
+        String(r.kv || '').trim() ||
+        String(r.mas || '').trim() ||
+        r.outputs.some((o) => String(o || '').trim())
+    );
+    if (!hasRows && !String(fdd || '').trim()) return null;
+    return {
+      fdd,
+      outputRows: rowsWithCalc.map((r) => ({
+        kv: r.kv,
+        mas: r.mas,
+        outputs: r.outputs,
+        avg: r.avg,
+        cov: r.cov,
+        remark: r.remark || '',
+        mean: r.avg,
+      })),
+      outputHeaders,
+      measurementHeaders: outputHeaders,
+      measHeaders: outputHeaders,
+      tolerance,
+      toleranceOperator,
+    };
+  }, [rowsWithCalc, fdd, outputHeaders, tolerance, toleranceOperator]);
+
+  useRegisterTestExport('reproducibilityOfOutput', getExportData);
 
   if (isLoading) {
     return (

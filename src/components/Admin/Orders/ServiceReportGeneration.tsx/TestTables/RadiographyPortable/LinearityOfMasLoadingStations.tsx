@@ -107,19 +107,38 @@ const LinearityOfMasLoading: React.FC<Props> = ({
 
   // Apply Excel-derived initial data (Radiography Fixed–style: initialData + csvDataVersion)
   useEffect(() => {
-    if (!initialData) return;
+    if (!initialData || !csvDataVersion) return;
+    const sanitizeNumeric = (v: unknown, fallback: string) => {
+      const s = String(v ?? '').trim();
+      if (!s || /tolerance|operator|meas|applied/i.test(s) || Number.isNaN(Number(s))) return fallback;
+      return s;
+    };
     const rawT1 = initialData.table1;
     const t1 = rawT1 && !Array.isArray(rawT1) ? rawT1 : rawT1?.[0];
     if (t1) {
       setExposureCondition((prev) => ({
-        fcd: String(t1.fcd ?? prev.fcd),
-        kv: String(t1.kv ?? prev.kv),
+        fcd: sanitizeNumeric(t1.fcd ?? t1.fdd ?? t1.ffd, prev.fcd),
+        kv: sanitizeNumeric(t1.kv ?? t1.kV ?? t1.kVp, prev.kv),
       }));
     }
     if (initialData.table2?.length > 0) {
-      const maxOutputs = Math.max(...initialData.table2.map((r: any) => (r.measuredOutputs ?? []).length));
+      const maxOutputs = Math.max(
+        0,
+        ...initialData.table2.map((r: any) => (r.measuredOutputs ?? []).length),
+        Array.isArray(initialData.measHeaders) ? initialData.measHeaders.length : 0,
+      );
       const headerCount = Math.max(maxOutputs, 1);
-      setMeasHeaders(Array.from({ length: headerCount }, (_, i) => `Meas ${i + 1}`));
+      const headers =
+        Array.isArray(initialData.measHeaders) && initialData.measHeaders.length > 0
+          ? [
+              ...initialData.measHeaders.map((h: any, i: number) => String(h || `Meas ${i + 1}`)),
+              ...Array.from(
+                { length: Math.max(0, headerCount - initialData.measHeaders.length) },
+                (_, i) => `Meas ${initialData.measHeaders.length + i + 1}`
+              ),
+            ].slice(0, headerCount)
+          : Array.from({ length: headerCount }, (_, i) => `Meas ${i + 1}`);
+      setMeasHeaders(headers);
       setTable2Rows(
         initialData.table2.map((r: any, i: number) => {
           const outputs = (r.measuredOutputs ?? []).map(String);
@@ -127,7 +146,7 @@ const LinearityOfMasLoading: React.FC<Props> = ({
           return {
             id: (i + 1).toString(),
             mAsRange: String(r.mAsRange ?? r.mAsApplied ?? ''),
-            measuredOutputs: outputs,
+            measuredOutputs: outputs.slice(0, headerCount),
             average: String(r.average ?? ''),
             x: String(r.x ?? ''),
             xMax: '',
@@ -137,12 +156,17 @@ const LinearityOfMasLoading: React.FC<Props> = ({
           };
         })
       );
+    } else if (Array.isArray(initialData.measHeaders) && initialData.measHeaders.length > 0) {
+      setMeasHeaders(initialData.measHeaders.map((h: any, i: number) => String(h || `Meas ${i + 1}`)));
     }
-    if (initialData.tolerance !== undefined) setTolerance(String(initialData.tolerance));
+    if (initialData.tolerance !== undefined) {
+      const tol = String(initialData.tolerance).trim();
+      if (tol && !/tolerance/i.test(tol)) setTolerance(tol);
+    }
     if (initialData.toleranceOperator) setToleranceOperator(String(initialData.toleranceOperator));
     setIsEditing(true);
     setHasSaved(false);
-  }, [csvDataVersion, initialData]);
+  }, [csvDataVersion]);
 
   // Keep each row's measuredOutputs aligned with measHeaders (avoids column shift / hidden mAs column)
   useEffect(() => {
@@ -170,9 +194,14 @@ const LinearityOfMasLoading: React.FC<Props> = ({
       });
 
       if (Object.keys(table1Data).length > 0) {
+        const sanitizeNumeric = (v: unknown, fallback: string) => {
+          const s = String(v ?? '').trim();
+          if (!s || /tolerance|operator|meas|applied/i.test(s) || Number.isNaN(Number(s))) return fallback;
+          return s;
+        };
         setExposureCondition({
-          fcd: table1Data.fcd || '100',
-          kv: table1Data.kv || '80',
+          fcd: sanitizeNumeric(table1Data.fcd, '100'),
+          kv: sanitizeNumeric(table1Data.kv, '80'),
         });
       }
 
@@ -236,13 +265,20 @@ const LinearityOfMasLoading: React.FC<Props> = ({
 
   // Load data from backend
   useEffect(() => {
+    let cancelled = false;
     const load = async () => {
+      // Prefer Excel/CSV import over stale API data (same as Radiography Fixed)
+      if (csvDataVersion) {
+        setIsLoading(false);
+        return;
+      }
       if (!serviceId) {
         setIsLoading(false);
         return;
       }
       try {
         const res = await getLinearityOfMasLoadingStationsByServiceIdForRadiographyPortable(serviceId);
+        if (cancelled) return;
         const data = res?.data;
         if (data) {
           setTestId(data._id || null);
@@ -297,16 +333,19 @@ const LinearityOfMasLoading: React.FC<Props> = ({
           setIsEditing(true);
         }
       } catch (err: any) {
-        if (err?.response?.status !== 404) {
+        if (!cancelled && err?.response?.status !== 404) {
           toast.error('Failed to load mAs linearity data');
         }
-        setIsEditing(true);
+        if (!cancelled) setIsEditing(true);
       } finally {
-        setIsLoading(false);
+        if (!cancelled) setIsLoading(false);
       }
     };
     load();
-  }, [serviceId]);
+    return () => {
+      cancelled = true;
+    };
+  }, [serviceId, csvDataVersion]);
 
   // Save handler
   const handleSave = async () => {

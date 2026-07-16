@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useRegisterTestExport } from '../shared/TestExportRegistry';
 import { Loader2, Edit3, Save, Plus, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
@@ -471,6 +472,57 @@ export default function RadiationLeakageLevel({ serviceId, testId: propTestId, o
   const isViewMode = hasSaved && !isEditing;
   const buttonText = isViewMode ? 'Edit' : testId ? 'Update' : 'Save';
   const ButtonIcon = isViewMode ? Edit3 : Save;
+
+  const getExportData = useCallback(() => {
+    const hasSettings =
+      String(settings.fcd || '').trim() ||
+      String(settings.kv || '').trim() ||
+      String(settings.ma || '').trim() ||
+      String(settings.time || '').trim();
+    const hasMeasurements = processedLeakage.some((row) =>
+      [row.left, row.right, row.front, row.back, row.top].some((v) => String(v || '').trim())
+    );
+    if (!hasSettings && !hasMeasurements && !String(workload || '').trim()) return null;
+    return {
+      fcd: settings.fcd,
+      kv: settings.kv,
+      ma: settings.ma,
+      time: settings.time,
+      settings: {
+        fcd: settings.fcd,
+        kv: settings.kv,
+        ma: settings.ma,
+        time: settings.time,
+      },
+      workload,
+      leakageMeasurements: processedLeakage.map((row) => ({
+        location: row.location,
+        left: row.left,
+        right: row.right,
+        front: row.front,
+        back: row.back,
+        top: row.top,
+        max: row.max,
+        result: row.result,
+        unit: row.unit,
+        mgy: row.mgy,
+      })),
+      toleranceValue,
+      toleranceOperator,
+      toleranceTime,
+      remark: finalRemark,
+    };
+  }, [
+    settings,
+    processedLeakage,
+    workload,
+    toleranceValue,
+    toleranceOperator,
+    toleranceTime,
+    finalRemark,
+  ]);
+
+  useRegisterTestExport('radiationLeakageLevel', getExportData);
 
   if (isLoading) {
     return (

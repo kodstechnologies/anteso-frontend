@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Loader2, Edit3, Save } from 'lucide-react';
 import {
   addRadiationLeakageLevelForCBCT,
@@ -9,6 +9,7 @@ import {
   updateRadiationLeakageLevelForCBCT,
 } from '../../../../../../api';
 import toast from 'react-hot-toast';
+import { useRegisterTestExport } from '../shared/TestExportRegistry';
 
 interface SettingsRow {
   kv: string;
@@ -429,6 +430,61 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
   const isViewMode = hasSaved && !isEditing;
   const buttonText = isViewMode ? 'Edit' : testId ? 'Update' : 'Save';
   const ButtonIcon = isViewMode ? Edit3 : Save;
+
+  const getExportData = useCallback(() => {
+    const hasSettings =
+      String(settings.kv || '').trim() ||
+      String(settings.ma || '').trim() ||
+      String(settings.time || '').trim();
+    const hasLeakage = processedLeakage.some(
+      (r) =>
+        String(r.location || '').trim() ||
+        String(r.front || '').trim() ||
+        String(r.back || '').trim() ||
+        String(r.left || '').trim() ||
+        String(r.right || '').trim()
+    );
+    if (!hasSettings && !hasLeakage) return null;
+    return {
+      settings: [
+        {
+          ffd: '',
+          kvp: settings.kv.trim(),
+          ma: settings.ma.trim(),
+          time: settings.time.trim(),
+        },
+      ],
+      leakageMeasurements: processedLeakage.map((r) => ({
+        location: r.location,
+        front: String(r.front ?? '').trim(),
+        back: String(r.back ?? '').trim(),
+        left: String(r.left ?? '').trim(),
+        right: String(r.right ?? '').trim(),
+        max: String(r.max ?? '').trim(),
+        unit: r.unit,
+        remark: String(r.remark ?? '').trim(),
+      })),
+      workload: workload.trim() || '0',
+      workloadUnit,
+      toleranceValue: toleranceValue.trim(),
+      toleranceOperator,
+      toleranceTime: toleranceTime.trim(),
+      maxRadiationLeakage: globalMaxResultMGy === '—' ? '' : globalMaxResultMGy,
+      maxLeakageResult: calculatedResults[0]?.calculatedMR || '',
+    };
+  }, [
+    settings,
+    processedLeakage,
+    workload,
+    workloadUnit,
+    toleranceValue,
+    toleranceOperator,
+    toleranceTime,
+    globalMaxResultMGy,
+    calculatedResults,
+  ]);
+
+  useRegisterTestExport('radiationLeakage', getExportData);
 
   if (isLoading) {
     return (

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Loader2, Edit3, Save } from 'lucide-react';
 import {
   addRadiationLeakageLevelForDentalIntra,
@@ -10,6 +10,7 @@ import {
 } from '../../../../../../api';
 import toast from 'react-hot-toast';
 import { normalizeCsvComparisonOperator } from '../shared/parseRadiographyStyleTableFormat';
+import { useRegisterTestExport } from '../shared/TestExportRegistry';
 
 type ToleranceOp = '<' | '<=' | '>' | '>=' | '=';
 
@@ -373,6 +374,46 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
   const isViewMode = hasSaved && !isEditing;
   const buttonText = isViewMode ? 'Edit' : testId ? 'Update' : 'Save';
   const ButtonIcon = isViewMode ? Edit3 : Save;
+
+  const getExportData = useCallback(() => {
+    const hasSettings =
+      String(settings.ffd || '').trim() ||
+      String(settings.kvp || '').trim() ||
+      String(settings.ma || '').trim() ||
+      String(settings.time || '').trim();
+    const hasMeasurements = leakageRows.some((r) =>
+      [r.left, r.right, r.top, r.up, r.down].some((v) => String(v || '').trim())
+    );
+    if (!hasSettings && !hasMeasurements && !String(workload || '').trim()) return null;
+    return {
+      settings: [
+        {
+          ffd: settings.ffd,
+          kvp: settings.kvp,
+          ma: settings.ma,
+          time: settings.time,
+        },
+      ],
+      leakageMeasurements: leakageRows.map((r) => ({
+        location: r.location,
+        left: r.left,
+        right: r.right,
+        top: r.top,
+        up: r.up,
+        down: r.down,
+        max: r.max,
+        unit: r.unit,
+        remark: r.remark,
+      })),
+      workload,
+      workloadUnit,
+      toleranceValue: toleranceValue.trim(),
+      toleranceOperator,
+      toleranceTime: toleranceTime.trim(),
+    };
+  }, [settings, leakageRows, workload, workloadUnit, toleranceValue, toleranceOperator, toleranceTime]);
+
+  useRegisterTestExport('radiationLeakageLevel', getExportData);
 
   if (isLoading) {
     return (

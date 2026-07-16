@@ -427,13 +427,17 @@ const RadiographyPortable: React.FC<{ serviceId: string; qaTestDate?: string | n
         'Set kVp': 'Table2_setKV', '@ mA 10': 'Table2_ma10', '@ mA 100': 'Table2_ma100', '@ mA 200': 'Table2_ma200', 'Measured kVp': 'Table2_avgKvp',
         'Tolerance (%)': 'Tolerance_Value', 'Remarks': 'Table2_remarks'
       },
-      // mAs linearity: exposure = FCD + kV only (no time). Table: mAs, X (mGy/mAs).
+      // mAs linearity: exposure = FCD/FDD + kV (optional Time). Table: mAs, X (mGy/mAs).
       'Linearity Of mAs Loading': {
-        'FCD (cm)': 'Table1_fcd', 'kV': 'Table1_kv',
-        'mAs': 'Table2_mAsRange', 'mAs Range': 'Table2_mAsRange',
+        'FCD (cm)': 'Table1_fcd', 'FDD (cm)': 'Table1_fcd', 'FFD (cm)': 'Table1_fcd',
+        'FCD': 'Table1_fcd', 'FDD': 'Table1_fcd', 'FFD': 'Table1_fcd',
+        'kV': 'Table1_kv', 'kVp': 'Table1_kv',
+        'Time (sec)': 'Table1_time', 'Time': 'Table1_time',
+        'mAs': 'Table2_mAsRange', 'mAs Range': 'Table2_mAsRange', 'mAs Applied': 'Table2_mAsRange',
         'Meas 1': 'Table2_meas1', 'Meas 2': 'Table2_meas2', 'Meas 3': 'Table2_meas3',
         'Average': 'Table2_average', 'X (mGy/mAs)': 'Table2_x',
-        'Tolerance (%)': 'Tolerance_Value', 'Tolerance Operator': 'Tolerance_operator', 'Remarks': 'Table2_remarks'
+        'Tolerance (%)': 'Tolerance_Value', 'Tolerance (CoL)': 'Tolerance_Value',
+        'Tolerance Operator': 'Tolerance_operator', 'Remarks': 'Table2_remarks'
       },
       // mA linearity: exposure includes Time (sec). Table: mA, X (mGy/mA*s).
       'Linearity Of mA Loading': {
@@ -443,13 +447,17 @@ const RadiographyPortable: React.FC<{ serviceId: string; qaTestDate?: string | n
         'Meas 1': 'Table2_meas1', 'Meas 2': 'Table2_meas2', 'Meas 3': 'Table2_meas3',
         'Meas 4': 'Table2_meas4', 'Meas 5': 'Table2_meas5',
         'Average': 'Table2_average', 'X (mGy/mA*s)': 'Table2_x', 'X (mGy/mA)': 'Table2_x',
-        'Tolerance (%)': 'Tolerance_Value', 'Tolerance Operator': 'Tolerance_operator', 'Remarks': 'Table2_remarks'
+        'Tolerance (%)': 'Tolerance_Value', 'Tolerance (CoL)': 'Tolerance_Value',
+        'Tolerance Operator': 'Tolerance_operator', 'Remarks': 'Table2_remarks'
       },
       'Consistency of Radiation Output': {
-        'FCD (cm)': 'Table1_value', 'kVp': 'Table2_kv', 'kV': 'Table2_kv', 'mAs': 'Table2_mas',
+        'FCD (cm)': 'Table1_value', 'FFD (cm)': 'Table1_value', 'FDD (cm)': 'Table1_value',
+        'FCD': 'Table1_value', 'FFD': 'Table1_value', 'FDD': 'Table1_value',
+        'kVp': 'Table2_kv', 'kV': 'Table2_kv', 'mAs': 'Table2_mas',
         'Reading 1': 'Table2_reading1', 'Reading 2': 'Table2_reading2', 'Reading 3': 'Table2_reading3', 'Reading 4': 'Table2_reading4', 'Reading 5': 'Table2_reading5',
         'Meas 1': 'Table2_reading1', 'Meas 2': 'Table2_reading2', 'Meas 3': 'Table2_reading3', 'Meas 4': 'Table2_reading4', 'Meas 5': 'Table2_reading5',
-        'Mean': 'Table2_average', 'COV (%)': 'Table2_cv', 'Tolerance (%)': 'Tolerance_Value', 'Remarks': 'Table2_remarks'
+        'Mean': 'Table2_average', 'COV (%)': 'Table2_cv', 'Tolerance (%)': 'Tolerance_Value',
+        'Tolerance (CoV)': 'Tolerance_Value', 'Tolerance Operator': 'Tolerance_operator', 'Remarks': 'Table2_remarks'
       },
       'Radiation Leakage Level': {
         'FCD (cm)': 'Table1_fcd', 'kVp': 'Table1_kv', 'mA': 'Table1_ma', 'Time (s)': 'Table1_time',
@@ -476,8 +484,87 @@ const RadiographyPortable: React.FC<{ serviceId: string; qaTestDate?: string | n
         continue;
       }
 
+      // Vertical exposure row (FDD (cm),100,kV,80) must not become column headers —
+      // otherwise footer "Tolerance (CoL)" is mapped into Table1_fcd.
+      const isVerticalExposureHeaderRow = (r: string[]) => {
+        const c0 = (r[0] || '').trim();
+        const c1 = (r[1] || '').trim();
+        return (
+          /^(FCD|FDD|FFD)(\s*\(cm\))?$/i.test(c0) &&
+          c1 !== '' &&
+          !Number.isNaN(Number(c1))
+        );
+      };
+
       if (isReadingTest && headers.length === 0 && row.some(c => c)) {
+        if (
+          currentTestNameBase &&
+          (currentTestNameBase === 'Linearity Of mAs Loading' ||
+            currentTestNameBase === 'Linearity Of mA Loading') &&
+          isVerticalExposureHeaderRow(row)
+        ) {
+          for (let k = 0; k < row.length - 1; k += 2) {
+            const lc = (row[k] || '').trim().toLowerCase();
+            const val = (row[k + 1] || '').trim();
+            if (!val) continue;
+            let field = '';
+            if (/^(fdd|fcd|ffd)(\s*\(cm\))?$/.test(lc)) field = 'Table1_fcd';
+            else if (lc === 'kv' || lc === 'kvp') field = 'Table1_kv';
+            else if (/^time/.test(lc)) field = 'Table1_time';
+            if (field) {
+              data.push({
+                'Field Name': field,
+                'Value': val,
+                'Row Index': 0,
+                'Test Name': currentTestName,
+              });
+            }
+          }
+          // Keep headers empty so the next row (mAs/mA Applied, Meas 1, ...) becomes the real header
+          continue;
+        }
         headers = row;
+        // Consistency: capture dynamic meas column headers from Excel (after kVp/mAs)
+        if (currentTestNameBase === 'Consistency of Radiation Output' && currentTestName) {
+          const isMeta = (h: string) =>
+            /^(avg|average|mean|cov|cv|remark|remarks|result|kvp|kv|mas|ma)$/i.test(h);
+          let measIdx = 0;
+          row.forEach((cell) => {
+            const h = String(cell ?? '').trim();
+            if (!h || isMeta(h)) return;
+            data.push({
+              'Field Name': 'MeasHeader',
+              'Value': h,
+              'Row Index': measIdx,
+              'Test Name': currentTestName,
+            });
+            measIdx++;
+          });
+        }
+        // Linearity mA/mAs: capture dynamic meas column headers from Excel
+        if (
+          (currentTestNameBase === 'Linearity Of mA Loading' ||
+            currentTestNameBase === 'Linearity Of mAs Loading') &&
+          currentTestName
+        ) {
+          const isMeta = (h: string) =>
+            /^(avg|average|mean|col|coL|remark|remarks|x\s*max|x\s*min|x\s*\(|ma|ma\s*applied|mas|mas\s*range|mas\s*applied)$/i.test(
+              h
+            );
+          let measIdx = 0;
+          row.forEach((cell, cellIdx) => {
+            if (cellIdx === 0) return; // first col is mA / mAs Applied
+            const h = String(cell ?? '').trim();
+            if (!h || isMeta(h)) return;
+            data.push({
+              'Field Name': 'MeasHeader',
+              'Value': h,
+              'Row Index': measIdx,
+              'Test Name': currentTestName,
+            });
+            measIdx++;
+          });
+        }
         continue;
       }
 
@@ -487,6 +574,25 @@ const RadiographyPortable: React.FC<{ serviceId: string; qaTestDate?: string | n
       }
 
       if (isReadingTest && currentTestName && currentTestNameBase && headers.length > 0) {
+        const firstCell = (row[0] || '').trim();
+        // Footer rows: "Tolerance Operator", "Tolerance (CoL)", etc. — key/value, not table data
+        if (/^tolerance\b/i.test(firstCell)) {
+          const valCell = (row[1] || '').trim();
+          if (valCell) {
+            const field =
+              /^tolerance\s*operator$/i.test(firstCell) || /^tolerance\s*sign$/i.test(firstCell)
+                ? 'Tolerance_operator'
+                : 'Tolerance_Value';
+            data.push({
+              'Field Name': field,
+              'Value': valCell,
+              'Row Index': 0,
+              'Test Name': currentTestName,
+            });
+          }
+          continue;
+        }
+
         sectionRowCounter[currentTestName] = (sectionRowCounter[currentTestName] || 0) + 1;
         const rowIdx = sectionRowCounter[currentTestName];
         row.forEach((value, cellIdx) => {
@@ -503,8 +609,52 @@ const RadiographyPortable: React.FC<{ serviceId: string; qaTestDate?: string | n
               internalField = 'Table2_edgeShift';
             }
           }
+          // Consistency: map unmapped measurement columns (custom Excel headers / Meas 6+) by position
+          if (
+            !internalField &&
+            currentTestNameBase === 'Consistency of Radiation Output' &&
+            header &&
+            !/^(avg|average|mean|cov|cv|remark|remarks|result|kvp|kv|mas|ma)$/i.test(header)
+          ) {
+            const measHeadersList = headers
+              .map((h) => String(h || '').trim())
+              .filter((h) => h && !/^(avg|average|mean|cov|cv|remark|remarks|result|kvp|kv|mas|ma)$/i.test(h));
+            const pos = measHeadersList.indexOf(header);
+            if (pos >= 0) internalField = `Table2_reading${pos + 1}`;
+          }
+          // Linearity: map unmapped meas columns (custom Excel headers / Meas 6+) by position
+          if (
+            !internalField &&
+            (currentTestNameBase === 'Linearity Of mA Loading' ||
+              currentTestNameBase === 'Linearity Of mAs Loading') &&
+            header &&
+            !/^(avg|average|mean|col|coL|remark|remarks|x\s*max|x\s*min|x\s*\(|ma|ma\s*applied|mas|mas\s*range|mas\s*applied)$/i.test(
+              header
+            )
+          ) {
+            const measHeadersList = headers
+              .slice(1)
+              .map((h) => String(h || '').trim())
+              .filter(
+                (h) =>
+                  h &&
+                  !/^(avg|average|mean|col|coL|remark|remarks|x\s*max|x\s*min|x\s*\(|ma|ma\s*applied|mas|mas\s*range|mas\s*applied)$/i.test(
+                    h
+                  )
+              );
+            const pos = measHeadersList.indexOf(header);
+            if (pos >= 0) internalField = `Table2_meas${pos + 1}`;
+          }
           const strVal = String(value ?? '').trim();
           const hasValue = strVal !== '';
+          // Never treat label text as FCD/kV/time
+          if (
+            internalField &&
+            (internalField === 'Table1_fcd' || internalField === 'Table1_kv' || internalField === 'Table1_time') &&
+            (/tolerance/i.test(strVal) || Number.isNaN(Number(strVal)))
+          ) {
+            return;
+          }
           if (internalField && hasValue) {
             data.push({
               'Field Name': internalField,
@@ -737,16 +887,20 @@ const RadiographyPortable: React.FC<{ serviceId: string; qaTestDate?: string | n
         };
       }
 
-      // Linearity Of mAs Loading — structured initialData (Radiography Fixed: table1 is FCD + kV only; no time)
+      // Linearity Of mAs Loading — structured initialData (FCD/FDD + kV; optional time)
       const linearityMasRows = groupedData['Linearity Of mAs Loading'];
       if (linearityMasRows && Array.isArray(linearityMasRows) && linearityMasRows.length > 0) {
         let t1Fcd = '';
         let t1Kv = '';
+        let t1Time = '';
+        const isNumericField = (v: string) => v !== '' && !Number.isNaN(Number(v));
+        const isLabelLike = (v: string) => /tolerance|operator|meas|applied|range/i.test(v);
         linearityMasRows.forEach((row: any) => {
           const fn = String(row['Field Name'] || '');
           const val = String(row['Value'] ?? '').trim();
-          if (fn === 'Table1_fcd') t1Fcd = val;
-          if (fn === 'Table1_kv') t1Kv = val;
+          if (fn === 'Table1_fcd' && isNumericField(val) && !isLabelLike(val)) t1Fcd = val;
+          if (fn === 'Table1_kv' && isNumericField(val) && !isLabelLike(val)) t1Kv = val;
+          if (fn === 'Table1_time' && isNumericField(val) && !isLabelLike(val)) t1Time = val;
         });
         const t2Grouped: Record<number, Record<string, string>> = {};
         linearityMasRows
@@ -758,7 +912,12 @@ const RadiographyPortable: React.FC<{ serviceId: string; qaTestDate?: string | n
             t2Grouped[rowIndex][fieldName] = String(row['Value'] ?? '').trim();
           });
         const rowIndices = Object.keys(t2Grouped).sort((a, b) => Number(a) - Number(b));
-        let maxMeas = 3;
+        const measHeadersFromExcel = linearityMasRows
+          .filter((row: any) => String(row['Field Name'] || '') === 'MeasHeader')
+          .sort((a: any, b: any) => Number(a['Row Index'] || 0) - Number(b['Row Index'] || 0))
+          .map((row: any) => String(row['Value'] ?? '').trim())
+          .filter(Boolean);
+        let maxMeas = Math.max(3, measHeadersFromExcel.length);
         rowIndices.forEach((idx) => {
           const r = t2Grouped[Number(idx)];
           for (let j = 1; j <= 10; j++) {
@@ -773,9 +932,20 @@ const RadiographyPortable: React.FC<{ serviceId: string; qaTestDate?: string | n
         });
         const tolVal = linearityMasRows.find((row: any) => row['Field Name'] === 'Tolerance_Value');
         const tolOp = linearityMasRows.find((row: any) => row['Field Name'] === 'Tolerance_operator');
+        const measHeaders =
+          measHeadersFromExcel.length > 0
+            ? [
+                ...measHeadersFromExcel,
+                ...Array.from(
+                  { length: Math.max(0, maxMeas - measHeadersFromExcel.length) },
+                  (_, i) => `Meas ${measHeadersFromExcel.length + i + 1}`
+                ),
+              ].slice(0, maxMeas)
+            : Array.from({ length: maxMeas }, (_, i) => `Meas ${i + 1}`);
         (groupedData as any).linearityOfMasLoading = {
-          table1: { fcd: t1Fcd, kv: t1Kv },
+          table1: { fcd: t1Fcd, kv: t1Kv, ...(t1Time ? { time: t1Time } : {}) },
           table2,
+          measHeaders,
           tolerance: tolVal ? String(tolVal['Value'] ?? '').trim() || '0.1' : '0.1',
           toleranceOperator: tolOp ? String(tolOp['Value'] ?? '').trim() || '<=' : '<=',
         };
@@ -785,12 +955,14 @@ const RadiographyPortable: React.FC<{ serviceId: string; qaTestDate?: string | n
       const linearityMaRows = groupedData['Linearity Of mA Loading'];
       if (linearityMaRows && Array.isArray(linearityMaRows) && linearityMaRows.length > 0) {
         const table1 = { fcd: '', kv: '', time: '' };
+        const isNumericField = (v: string) => v !== '' && !Number.isNaN(Number(v));
+        const isLabelLike = (v: string) => /tolerance|operator|meas|applied|range/i.test(v);
         linearityMaRows.forEach((row: any) => {
           const f = String(row['Field Name'] || '');
           const v = String(row['Value'] ?? '').trim();
-          if (f === 'Table1_fcd') table1.fcd = v;
-          if (f === 'Table1_kv') table1.kv = v;
-          if (f === 'Table1_time') table1.time = v;
+          if (f === 'Table1_fcd' && isNumericField(v) && !isLabelLike(v)) table1.fcd = v;
+          if (f === 'Table1_kv' && isNumericField(v) && !isLabelLike(v)) table1.kv = v;
+          if (f === 'Table1_time' && isNumericField(v) && !isLabelLike(v)) table1.time = v;
         });
         const t2Grouped: Record<number, Record<string, string>> = {};
         linearityMaRows
@@ -802,7 +974,12 @@ const RadiographyPortable: React.FC<{ serviceId: string; qaTestDate?: string | n
             t2Grouped[rowIndex][fieldName] = String(row['Value'] ?? '').trim();
           });
         const rowIndices = Object.keys(t2Grouped).sort((a, b) => Number(a) - Number(b));
-        let maxMeas = 3;
+        const measHeadersFromExcel = linearityMaRows
+          .filter((row: any) => String(row['Field Name'] || '') === 'MeasHeader')
+          .sort((a: any, b: any) => Number(a['Row Index'] || 0) - Number(b['Row Index'] || 0))
+          .map((row: any) => String(row['Value'] ?? '').trim())
+          .filter(Boolean);
+        let maxMeas = Math.max(3, measHeadersFromExcel.length);
         rowIndices.forEach((idx) => {
           const r = t2Grouped[Number(idx)];
           for (let j = 1; j <= 10; j++) {
@@ -817,9 +994,20 @@ const RadiographyPortable: React.FC<{ serviceId: string; qaTestDate?: string | n
         });
         const tolVal = linearityMaRows.find((row: any) => row['Field Name'] === 'Tolerance_Value');
         const tolOp = linearityMaRows.find((row: any) => row['Field Name'] === 'Tolerance_operator');
+        const measHeaders =
+          measHeadersFromExcel.length > 0
+            ? [
+                ...measHeadersFromExcel,
+                ...Array.from(
+                  { length: Math.max(0, maxMeas - measHeadersFromExcel.length) },
+                  (_, i) => `Meas ${measHeadersFromExcel.length + i + 1}`
+                ),
+              ].slice(0, maxMeas)
+            : Array.from({ length: maxMeas }, (_, i) => `Meas ${i + 1}`);
         (groupedData as any).linearityOfMaLoading = {
           table1,
           table2,
+          measHeaders,
           tolerance: tolVal ? String(tolVal['Value'] ?? '').trim() || '0.1' : '0.1',
           toleranceOperator: tolOp ? String(tolOp['Value'] ?? '').trim() || '<=' : '<=',
         };

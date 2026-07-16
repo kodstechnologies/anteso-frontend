@@ -1,7 +1,13 @@
 // src/components/reports/ViewServiceReportDentalIntra.tsx
 import React, { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { getDetails, getReportHeaderForDentalIntra, getAccuracyOfIrradiationTimeByServiceIdForDentalIntra, getTools } from "../../../../../../api";
+import {
+  getDetails,
+  getReportHeaderForDentalIntra,
+  getAccuracyOfIrradiationTimeByServiceIdForDentalIntra,
+  getAccuracyOfOperatingPotentialByServiceIdForDentalIntra,
+  getTools,
+} from "../../../../../../api";
 import { generatePDF } from "../../../../../../utils/generatePDF";
 import MainTestTableForDentalIntra from "./MainTestTableForDentalIntra";
 import { ReportPdfPageHeader } from "../RadiographyFixed/component/Header";
@@ -300,11 +306,26 @@ const ViewServiceReportDentalIntra: React.FC = () => {
               "",
           });
 
-          const accuracyData = data.AccuracyOfOperatingPotentialAndTimeDentalIntra || null;
-          if (accuracyData && accuracyData.rows) {
-            console.log("Accuracy data loaded:", accuracyData);
-            console.log("First row:", accuracyData.rows[0]);
-          }
+          // Prefer dedicated AOP fetch — report-header populate can be missing/null even when saved
+          let aopFromApi: any = null;
+          try {
+            const aopRes = await getAccuracyOfOperatingPotentialByServiceIdForDentalIntra(serviceId);
+            aopFromApi = aopRes?.data?.data || aopRes?.data || null;
+          } catch { /* ignore */ }
+
+          const headerAop = data.AccuracyOfOperatingPotentialAndTimeDentalIntra;
+          const aopFromHeader =
+            headerAop && typeof headerAop === "object" && !Array.isArray(headerAop)
+              ? headerAop
+              : null;
+          const accuracyData =
+            (aopFromApi && typeof aopFromApi === "object" && Array.isArray(aopFromApi.rows) && aopFromApi.rows.length > 0
+              ? aopFromApi
+              : null) ||
+            aopFromApi ||
+            aopFromHeader ||
+            null;
+
           // Normalize Leakage Data
           const leakageData = data.TubeHousingLeakageDentalIntra || data.RadiationLeakageTestDentalIntra || null;
           let normalizedLeakage = null;
@@ -348,8 +369,8 @@ const ViewServiceReportDentalIntra: React.FC = () => {
           );
           // If mAs linearity exists, treat as "No timer" mode and suppress timer-based sections.
           setTestData({
-            accuracyOfOperatingPotentialAndTime: data.AccuracyOfOperatingPotentialAndTimeDentalIntra || null,
-            accuracyOfIrradiationTime: hasMasRows ? null : (data.AccuracyOfIrradiationTimeDentalIntra || null),
+            accuracyOfOperatingPotentialAndTime: accuracyData,
+            accuracyOfIrradiationTime: hasMasRows ? null : (accuracyData || data.AccuracyOfIrradiationTimeDentalIntra || null),
             linearityOfTime: hasMasRows ? null : (data.LinearityOfTimeDentalIntra || null),
             linearityOfMasLoading: masData,
             reproducibilityOfRadiationOutput: data.ReproducibilityOfRadiationOutputDentalIntra || null,
@@ -367,6 +388,9 @@ const ViewServiceReportDentalIntra: React.FC = () => {
                 const tc = irradData.testConditions || {};
                 setTestData((prev: any) => ({
                   ...prev,
+                  // Keep AOP from dedicated fetch; fill irradiation from same combined document
+                  accuracyOfOperatingPotentialAndTime:
+                    prev.accuracyOfOperatingPotentialAndTime || irradData,
                   accuracyOfIrradiationTime: {
                     ...irradData,
                     testConditions: {
@@ -666,6 +690,20 @@ const ViewServiceReportDentalIntra: React.FC = () => {
   {/* 2b. Linearity of mAs Loading */}
             {testData.linearityOfMasLoading?.table2 && Array.isArray(testData.linearityOfMasLoading.table2) && testData.linearityOfMasLoading.table2.length > 0 && (() => {
               const processedRows = testData.linearityOfMasLoading.table2 || [];
+              const measHeadersRaw = Array.isArray(testData.linearityOfMasLoading.measHeaders)
+                ? testData.linearityOfMasLoading.measHeaders
+                : [];
+              const maxOutLen = Math.max(
+                0,
+                ...processedRows.map((r: any) => (r.measuredOutputs || []).length),
+                measHeadersRaw.length,
+              );
+              const measHeaders =
+                measHeadersRaw.length > 0
+                  ? Array.from({ length: Math.max(maxOutLen, measHeadersRaw.length) }, (_, i) =>
+                      String(measHeadersRaw[i] ?? "").trim() || `Measured mR ${i + 1}`
+                    )
+                  : Array.from({ length: Math.max(maxOutLen, 1) }, (_, i) => `Measured mR ${i + 1}`);
               return (
                 <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
                   <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>{nextDetailedSectionNumber()}. Linearity of mAs Loading</h3>
@@ -706,8 +744,8 @@ const ViewServiceReportDentalIntra: React.FC = () => {
                       <thead className="bg-gray-100">
                         <tr>
                           <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>mAs</th>
-                          {(Array.isArray(processedRows[0]?.measuredOutputs) ? processedRows[0].measuredOutputs : []).map((_: any, idx: number) => (
-                            <th key={idx} className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Meas {idx + 1}</th>
+                          {measHeaders.map((header: string, idx: number) => (
+                            <th key={idx} className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{header}</th>
                           ))}
                           <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center', backgroundColor: 'rgba(191, 219, 254, 0.5)' }}>Average</th>
                           <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center', backgroundColor: 'rgba(254, 249, 195, 0.5)' }}>X (mGy/mAs)</th>
@@ -721,8 +759,8 @@ const ViewServiceReportDentalIntra: React.FC = () => {
                         {processedRows.map((row: any, i: number) => (
                           <tr key={i} className="text-center" style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
                             <td className="border border-black p-2 print:p-1 font-semibold text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.ma || "-"}</td>
-                            {(row.measuredOutputs || []).map((val: string, idx: number) => (
-                              <td key={idx} className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{val || "-"}</td>
+                            {measHeaders.map((_: string, idx: number) => (
+                              <td key={idx} className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{(row.measuredOutputs || [])[idx] || "-"}</td>
                             ))}
                             <td className="border border-black p-2 print:p-1 font-bold text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center', backgroundColor: 'rgba(191, 219, 254, 0.3)' }}>{row.average || "-"}</td>
                             <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center', backgroundColor: 'rgba(254, 249, 195, 0.3)' }}>{row.x || "-"}</td>
@@ -887,15 +925,33 @@ const ViewServiceReportDentalIntra: React.FC = () => {
                   </div>
                   )}
             {/* 1. Accuracy of Operating Potential - separate table like RadiographyFixed */}
-            {testData?.accuracyOfOperatingPotentialAndTime?.rows && Array.isArray(testData.accuracyOfOperatingPotentialAndTime.rows) && testData.accuracyOfOperatingPotentialAndTime.rows.length > 0 && (() => {
+            {(() => {
+              const aopData = testData?.accuracyOfOperatingPotentialAndTime;
+              const allRows = Array.isArray(aopData?.rows) ? aopData.rows : [];
+              const aopRows = allRows.filter(
+                (row: any) =>
+                  row?.appliedKvp ||
+                  row?.appliedkVp ||
+                  row?.avgKvp ||
+                  row?.averageKvp ||
+                  (Array.isArray(row?.maStations) && row.maStations.some((s: any) => s?.kvp)) ||
+                  row?.maStation1?.kvp ||
+                  row?.maStation2?.kvp
+              );
+              if (!aopData || aopRows.length === 0) return null;
               const maxStations = Math.max(
-                ...(testData.accuracyOfOperatingPotentialAndTime?.rows || []).map((row: any) => {
+                ...aopRows.map((row: any) => {
                   if (row.maStations && Array.isArray(row.maStations) && row.maStations.length > 0) return row.maStations.length;
                   if (row.maStation1 || row.maStation2) return 2;
                   return 0;
                 }),
+                Array.isArray(aopData?.mAStations) ? aopData.mAStations.length : 0,
                 2
               );
+              const stationLabels = Array.from({ length: maxStations }, (_, idx) => {
+                const saved = Array.isArray(aopData?.mAStations) ? aopData.mAStations[idx] : "";
+                return String(saved ?? "").trim() || `mA Station ${idx + 1}`;
+              });
               return (
                 <>
                   <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
@@ -905,26 +961,26 @@ const ViewServiceReportDentalIntra: React.FC = () => {
                         <thead className="bg-gray-100">
                           <tr>
                             <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Applied kVp</th>
-                            {Array.from({ length: maxStations }).map((_, idx) => (
-                              <th key={idx} className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>mA Station {idx + 1}</th>
+                            {stationLabels.map((label: string, idx: number) => (
+                              <th key={idx} className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{label}</th>
                             ))}
                             <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Avg kVp</th>
                             <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Remarks</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {(testData.accuracyOfOperatingPotentialAndTime?.rows || []).map((row: any, i: number) => {
+                          {aopRows.map((row: any, i: number) => {
                             let stations: any[] = row.maStations && Array.isArray(row.maStations) ? row.maStations : (row.maStation1 || row.maStation2 ? [row.maStation1 || { kvp: "" }, row.maStation2 || { kvp: "" }] : []);
                             while (stations.length < maxStations) stations.push({ kvp: "" });
                             return (
                               <tr key={i} className="text-center" style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
                                 <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.appliedKvp || row.appliedkVp || "-"}</td>
-                                {stations.map((s: any, idx: number) => (
+                                {stations.slice(0, maxStations).map((s: any, idx: number) => (
                                   <td key={idx} className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{typeof s === 'object' ? (s?.kvp ?? "") : ""}</td>
                                 ))}
-                                <td className="border border-black p-2 print:p-1 font-semibold text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.avgKvp || "-"}</td>
+                                <td className="border border-black p-2 print:p-1 font-semibold text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.avgKvp || row.averageKvp || "-"}</td>
                                 <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>
-                                  <span className={row.remark === "PASS" ? "text-green-600" : row.remark === "FAIL" ? "text-red-600" : "text-gray-600"}>{row.remark || "-"}</span>
+                                  <span className={row.remark === "PASS" || row.remarks === "PASS" ? "text-green-600" : row.remark === "FAIL" || row.remarks === "FAIL" ? "text-red-600" : "text-gray-600"}>{row.remark || row.remarks || "-"}</span>
                                 </td>
                               </tr>
                             );
@@ -1004,7 +1060,7 @@ const ViewServiceReportDentalIntra: React.FC = () => {
               );
             })()}
 
-            {/* 2. Linearity of mAs loading */}
+            {/* 2. Linearity of mA Loading */}
             {testData.linearityOfTime?.table2 && Array.isArray(testData.linearityOfTime.table2) && testData.linearityOfTime.table2.length > 0 && (() => {
               const ma = parseFloat(testData.linearityOfTime.table1?.ma || "0");
               const processedRows = (testData.linearityOfTime.table2 || []).map((row: any) => {
@@ -1018,10 +1074,24 @@ const ViewServiceReportDentalIntra: React.FC = () => {
                 }
                 return { ...row, x };
               });
+              const measHeadersRaw = Array.isArray(testData.linearityOfTime.measHeaders)
+                ? testData.linearityOfTime.measHeaders
+                : [];
+              const maxOutLen = Math.max(
+                0,
+                ...processedRows.map((r: any) => (r.measuredOutputs || []).length),
+                measHeadersRaw.length,
+              );
+              const measHeaders =
+                measHeadersRaw.length > 0
+                  ? Array.from({ length: Math.max(maxOutLen, measHeadersRaw.length) }, (_, i) =>
+                      String(measHeadersRaw[i] ?? "").trim() || `Measured mR ${i + 1}`
+                    )
+                  : Array.from({ length: Math.max(maxOutLen, 1) }, (_, i) => `Measured mR ${i + 1}`);
 
               return (
                 <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
-                  <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>{nextDetailedSectionNumber()}. Linearity of mAs loading</h3>
+                  <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>{nextDetailedSectionNumber()}. Linearity of mA Loading</h3>
 
                   {testData.linearityOfTime?.table1 && (
                     <div className="mb-6 print:mb-1 bg-gray-50 p-4 print:p-1 rounded border overflow-x-auto" style={{ marginBottom: '4px', padding: '2px 4px' }}>
@@ -1050,8 +1120,8 @@ const ViewServiceReportDentalIntra: React.FC = () => {
                       <thead className="bg-gray-100">
                         <tr>
                           <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>mA</th>
-                          {(Array.isArray(processedRows[0]?.measuredOutputs) ? processedRows[0].measuredOutputs : []).map((_: any, idx: number) => (
-                            <th key={idx} className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Meas {idx + 1}</th>
+                          {measHeaders.map((header: string, idx: number) => (
+                            <th key={idx} className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{header}</th>
                           ))}
                           <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center', backgroundColor: 'rgba(191, 219, 254, 0.5)' }}>Average</th>
                           <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center', backgroundColor: 'rgba(254, 249, 195, 0.5)' }}>X </th>
@@ -1065,8 +1135,8 @@ const ViewServiceReportDentalIntra: React.FC = () => {
                         {processedRows.map((row: any, i: number) => (
                           <tr key={i} className="text-center" style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
                             <td className="border border-black p-2 print:p-1 font-semibold text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.time || "-"}</td>
-                            {(row.measuredOutputs || []).map((val: string, idx: number) => (
-                              <td key={idx} className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{val || "-"}</td>
+                            {measHeaders.map((_: string, idx: number) => (
+                              <td key={idx} className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{(row.measuredOutputs || [])[idx] || "-"}</td>
                             ))}
                             <td className="border border-black p-2 print:p-1 font-bold text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center', backgroundColor: 'rgba(191, 219, 254, 0.3)' }}>{row.average || "-"}</td>
                             <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center', backgroundColor: 'rgba(254, 249, 195, 0.3)' }}>{row.x || "-"}</td>
@@ -1117,7 +1187,20 @@ const ViewServiceReportDentalIntra: React.FC = () => {
             {/* 3. Consistency of Radiation Output */}
             {testData.reproducibilityOfRadiationOutput?.outputRows && Array.isArray(testData.reproducibilityOfRadiationOutput.outputRows) && testData.reproducibilityOfRadiationOutput.outputRows.length > 0 && (() => {
               const rows = testData.reproducibilityOfRadiationOutput.outputRows;
-              const measHeaders = Array.isArray(rows[0]?.outputs) ? rows[0].outputs.map((_: any, idx: number) => `Meas ${idx + 1}`) : [];
+              const measHeadersRaw = Array.isArray(testData.reproducibilityOfRadiationOutput.measurementHeaders)
+                ? testData.reproducibilityOfRadiationOutput.measurementHeaders
+                : [];
+              const maxOutLen = Math.max(
+                0,
+                ...rows.map((r: any) => (r.outputs || []).length),
+                measHeadersRaw.length,
+              );
+              const measHeaders =
+                measHeadersRaw.length > 0
+                  ? Array.from({ length: Math.max(maxOutLen, measHeadersRaw.length) }, (_, i) =>
+                      String(measHeadersRaw[i] ?? "").trim() || `Meas ${i + 1}`
+                    )
+                  : Array.from({ length: Math.max(maxOutLen, 1) }, (_, i) => `Meas ${i + 1}`);
               const toleranceSource = testData.reproducibilityOfRadiationOutput || {};
               const tolVal = parseFloat(
                 toleranceSource.tolerance?.value ??

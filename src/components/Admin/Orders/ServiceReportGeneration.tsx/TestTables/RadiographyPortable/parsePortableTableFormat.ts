@@ -43,7 +43,7 @@ const resolveTestName = (label: string): string | null => {
   if (u.includes("ACCURACY OF OPERATING")) return "Accuracy of Operating Potential";
   if (u.includes("LINEARITY") && u.includes("MAS")) return "Linearity Of mAs Loading";
   if (u.includes("LINEARITY") && u.includes("MA")) return "Linearity Of mA Loading";
-  if (u.includes("CONSISTENCY") || u.includes("OUTPUT CONSISTENCY")) return "Consistency of Radiation Output";
+  if (u.includes("CONSISTENCY") || u.includes("OUTPUT CONSISTENCY") || u.includes("REPRODUCIBILITY")) return "Consistency of Radiation Output";
   if (u.includes("LEAKAGE") || u.includes("TUBE HOUSING")) return "Radiation Leakage Level";
   return null;
 };
@@ -54,7 +54,8 @@ const isVerticalMetadataRow = (row: any[]): boolean => {
   const c1 = String(row[1] ?? "").trim();
   const c2 = String(row[2] ?? "").trim();
 
-  if (c0 === "Tolerance Sign" || c0.startsWith("Tolerance Value")) return true;
+  if (c0 === "Tolerance Sign" || c0.startsWith("Tolerance Value") || c0.startsWith("Tolerance (CoL)") || c0.startsWith("Tolerance (CoV)")) return true;
+  if (c0 === "Tolerance Operator") return true;
   if (c0.startsWith("Total Filtration")) return true;
   if (c0 === "Dimension") return true;
   if (c0 === "Set Time (s)" || c0 === "Set Time (ms)") return true;
@@ -316,12 +317,78 @@ export const parsePortableTableCSV = (text: string): PortableParsedRow[] => {
 
     // --- Linearity mAs ---
     if (testName === "Linearity Of mAs Loading") {
-      const cond = splitLine(lines[i + 1] || "");
-      if (cond[1]) pushRow(rows, testName, "Table1_fcd", cond[1], 0);
-      if (cond[3]) pushRow(rows, testName, "Table1_kv", cond[3], 0);
+      const nextLine = (lines[i + 1] || "").trim();
+
+      // Vertical exposure row: FCD/FDD (cm),100,kV,80[,Time (sec),1]
+      if (isExposureConditionRow(nextLine)) {
+        const cond = splitLine(nextLine);
+        for (let k = 0; k < cond.length - 1; k += 2) {
+          const lc = (cond[k] || "").toLowerCase();
+          const val = cond[k + 1] || "";
+          if (!val) continue;
+          if (/fdd|fcd|ffd/.test(lc)) pushRow(rows, testName, "Table1_fcd", val, 0);
+          else if (lc === "kv" || lc === "kvp") pushRow(rows, testName, "Table1_kv", val, 0);
+          else if (/time/.test(lc)) pushRow(rows, testName, "Table1_time", val, 0);
+        }
+
+        // Header row: mAs Applied / mAs Range, Meas 1, Meas 2, ...
+        const headerCells = splitLine(lines[i + 2] || "");
+        const isMeta = (h: string) =>
+          /^(avg|average|mean|col|coL|remark|remarks|x\s*max|x\s*min|x\s*\(|mas|mas\s*range|mas\s*applied)$/i.test(h);
+        const measHeaders = headerCells.slice(1).filter((h) => h && !isMeta(h));
+        measHeaders.forEach((h, hi) => pushRow(rows, testName, "MeasHeader", h, hi));
+
+        let rowIdx = 0;
+        let j = i + 3;
+        while (j < lines.length) {
+          const l = lines[j].trim();
+          if (!l || l.startsWith("TEST:")) break;
+          const cells = splitLine(l);
+          const labelCell = cells[0] || "";
+          const valCell = cells[1] || "";
+          if (labelCell === "Tolerance Operator") {
+            pushRow(rows, testName, "Tolerance_operator", valCell, 0);
+          } else if (labelCell.startsWith("Tolerance")) {
+            pushRow(rows, testName, "Tolerance_Value", valCell, 0);
+          } else if (labelCell && !isNaN(Number(labelCell))) {
+            pushRow(rows, testName, "Table2_mAsRange", labelCell, rowIdx);
+            const count = measHeaders.length > 0 ? measHeaders.length : Math.max(0, cells.length - 1);
+            for (let c = 0; c < count; c++) {
+              const v = cells[c + 1] || "";
+              if (v) pushRow(rows, testName, `Table2_meas${c + 1}`, v, rowIdx);
+            }
+            rowIdx++;
+          }
+          j++;
+        }
+        i = j;
+        continue;
+      }
+
+      // Fallback: fixed-index parse (only when next line looks like label/value pairs)
+      const cond = splitLine(nextLine);
+      const c0 = (cond[0] || "").toLowerCase();
+      if (/^(fdd|fcd|ffd)(\s*\(cm\))?$/.test(c0) && cond[1] && !isNaN(Number(cond[1]))) {
+        pushRow(rows, testName, "Table1_fcd", cond[1], 0);
+      }
+      if ((cond[2] || "").toLowerCase() === "kv" || (cond[2] || "").toLowerCase() === "kvp") {
+        if (cond[3] && !isNaN(Number(cond[3]))) pushRow(rows, testName, "Table1_kv", cond[3], 0);
+      }
+      if (cond[5] && /time/i.test(cond[4] || "") && !isNaN(Number(cond[5]))) {
+        pushRow(rows, testName, "Table1_time", cond[5], 0);
+      }
 
       let rowIdx = 0;
       let j = i + 3;
+      // If next line was the real table header (mAs Applied,...), data starts at i+2
+      const headerProbe = (cond[0] || "").toLowerCase();
+      if (headerProbe.includes("applied") || headerProbe === "mas" || headerProbe.includes("mas range")) {
+        const isMeta = (h: string) =>
+          /^(avg|average|mean|col|coL|remark|remarks|x\s*max|x\s*min|x\s*\(|mas|mas\s*range|mas\s*applied)$/i.test(h);
+        const measHeaders = cond.slice(1).filter((h) => h && !isMeta(h));
+        measHeaders.forEach((h, hi) => pushRow(rows, testName, "MeasHeader", h, hi));
+        j = i + 2;
+      }
       while (j < lines.length) {
         const l = lines[j].trim();
         if (!l || l.startsWith("TEST:")) break;
@@ -356,9 +423,16 @@ export const parsePortableTableCSV = (text: string): PortableParsedRow[] => {
           const val = cond[k + 1] || "";
           if (!val) continue;
           if (/fdd|fcd|ffd/.test(lc)) pushRow(rows, testName, "Table1_fcd", val, 0);
-          else if (lc === "kv") pushRow(rows, testName, "Table1_kv", val, 0);
+          else if (lc === "kv" || lc === "kvp") pushRow(rows, testName, "Table1_kv", val, 0);
           else if (/time/.test(lc)) pushRow(rows, testName, "Table1_time", val, 0);
         }
+
+        // Header row: mA Applied, Meas 1, Meas 2, ... (or custom labels)
+        const headerCells = splitLine(lines[i + 2] || "");
+        const isMeta = (h: string) =>
+          /^(avg|average|mean|col|coL|remark|remarks|x\s*max|x\s*min|x\s*\(|ma|ma\s*applied)$/i.test(h);
+        const measHeaders = headerCells.slice(1).filter((h) => h && !isMeta(h));
+        measHeaders.forEach((h, hi) => pushRow(rows, testName, "MeasHeader", h, hi));
 
         let rowIdx = 0;
         let j = i + 3;
@@ -374,9 +448,10 @@ export const parsePortableTableCSV = (text: string): PortableParsedRow[] => {
             pushRow(rows, testName, "Tolerance_Value", valCell, 0);
           } else if (labelCell && !isNaN(Number(labelCell))) {
             pushRow(rows, testName, "Table2_ma", labelCell, rowIdx);
-            for (let c = 1; c < cells.length; c++) {
-              const v = cells[c] || "";
-              if (v) pushRow(rows, testName, `Table2_meas${c}`, v, rowIdx);
+            const count = measHeaders.length > 0 ? measHeaders.length : Math.max(0, cells.length - 1);
+            for (let c = 0; c < count; c++) {
+              const v = cells[c + 1] || "";
+              if (v) pushRow(rows, testName, `Table2_meas${c + 1}`, v, rowIdx);
             }
             rowIdx++;
           }
@@ -400,7 +475,22 @@ export const parsePortableTableCSV = (text: string): PortableParsedRow[] => {
       const idxKv = col("kV");
       const idxTime = col("Time (sec)") >= 0 ? col("Time (sec)") : col("Time");
       const idxMa = col("mA Applied") >= 0 ? col("mA Applied") : col("mAs Applied");
-      const idxMeas = [1, 2, 3].map((n) => col(`Meas ${n}`)).filter((idx) => idx >= 0);
+      const isMeta = (h: string) =>
+        /^(avg|average|mean|col|coL|remark|remarks|x\s*max|x\s*min|x\s*\(|ma|ma\s*applied|mas\s*applied)$/i.test(h);
+      const measHeaders = header
+        .filter((_, idx) => idx !== idxFcd && idx !== idxKv && idx !== idxTime && idx !== idxMa)
+        .filter((h) => h && !isMeta(h));
+      // Prefer columns after mA Applied when present
+      const measFromSlice =
+        idxMa >= 0
+          ? header.slice(idxMa + 1).filter((h) => h && !isMeta(h))
+          : measHeaders;
+      const resolvedMeasHeaders = measFromSlice.length > 0 ? measFromSlice : measHeaders;
+      resolvedMeasHeaders.forEach((h, hi) => pushRow(rows, testName, "MeasHeader", h, hi));
+      const idxMeas =
+        resolvedMeasHeaders.length > 0
+          ? resolvedMeasHeaders.map((h) => header.findIndex((c) => c === h)).filter((idx) => idx >= 0)
+          : [1, 2, 3].map((n) => col(`Meas ${n}`)).filter((idx) => idx >= 0);
 
       let rowIdx = 0;
       for (let j = i + 2; j < lines.length; j++) {
@@ -439,26 +529,77 @@ export const parsePortableTableCSV = (text: string): PortableParsedRow[] => {
         pushRow(rows, testName, "FCD", ffd, 0);
       }
 
-      const dataLine = lines[i + 3] || "";
-      const cells = splitLine(dataLine);
-      const rowIdx = 0;
-      if (cells[0]) pushRow(rows, testName, "Table2_kv", cells[0], rowIdx);
-      if (cells[1]) pushRow(rows, testName, "Table2_mas", cells[1], rowIdx);
-      for (let c = 2; c < cells.length; c++) {
-        const v = cells[c] || "";
-        if (!v) continue;
-        pushRow(rows, testName, `Table2_reading${c - 1}`, v, rowIdx);
-        pushRow(rows, testName, `OutputRow_Meas${c - 1}`, v, rowIdx);
-      }
+      const isMetaHeader = (h: string) =>
+        /^(avg|average|mean|cov|cv|remark|remarks|result)$/i.test(h);
+      const isToleranceLabel = (label: string) =>
+        /^tolerance\s*operator$/i.test(label) ||
+        /^tol\s*operator$/i.test(label) ||
+        /^tolerance\s*sign$/i.test(label) ||
+        /^tolerance\s*value/i.test(label) ||
+        /^tolerance\s*\(cov\)/i.test(label) ||
+        /^tolerance$/i.test(label) ||
+        /^tol\s*value/i.test(label);
 
-      for (let j = i + 4; j < Math.min(lines.length, i + 8); j++) {
+      const headerLine = splitLine(lines[i + 2] || "");
+      const headerCells = headerLine
+        .slice(2)
+        .map((cell) => (cell || "").trim())
+        .filter((h) => h && !isMetaHeader(h));
+      headerCells.forEach((header, headerIdx) => {
+        pushRow(rows, testName, "MeasHeader", header, headerIdx);
+      });
+
+      let rowIdx = 0;
+      let j = i + 3;
+      while (j < lines.length) {
         const l = lines[j].trim();
         if (!l || l.startsWith("TEST:")) break;
-        const parts = splitLine(l);
-        if (parts[0] === "Tolerance Operator") pushRow(rows, testName, "Tolerance_Operator", parts[1], 0);
-        if (parts[0].startsWith("Tolerance")) pushRow(rows, testName, "Tolerance_Value", parts[1], 0);
+        const cells = splitLine(l);
+        const labelCell = cells[0] || "";
+        const valCell = cells[1] || "";
+
+        if (/^tolerance\s*operator$/i.test(labelCell) || /^tol\s*operator$/i.test(labelCell) || /^tolerance\s*sign$/i.test(labelCell)) {
+          if (valCell) {
+            pushRow(rows, testName, "Tolerance_Operator", valCell, 0);
+            pushRow(rows, testName, "Tolerance_operator", valCell, 0);
+          }
+          j++;
+          continue;
+        }
+        if (
+          /^tolerance\s*value/i.test(labelCell) ||
+          /^tolerance\s*\(cov\)/i.test(labelCell) ||
+          /^tolerance$/i.test(labelCell) ||
+          /^tol\s*value/i.test(labelCell)
+        ) {
+          if (valCell) pushRow(rows, testName, "Tolerance_Value", valCell, 0);
+          j++;
+          continue;
+        }
+
+        if (isToleranceLabel(labelCell)) {
+          j++;
+          continue;
+        }
+
+        const kv = labelCell;
+        const mas = valCell;
+        if (kv || mas) {
+          if (kv) pushRow(rows, testName, "Table2_kv", kv, rowIdx);
+          if (mas) pushRow(rows, testName, "Table2_mas", mas, rowIdx);
+          const outputCount =
+            headerCells.length > 0 ? headerCells.length : Math.max(0, cells.length - 2);
+          for (let col = 0; col < outputCount; col++) {
+            const v = cells[col + 2] || "";
+            if (!v) continue;
+            pushRow(rows, testName, `Table2_reading${col + 1}`, v, rowIdx);
+            pushRow(rows, testName, `OutputRow_Meas${col + 1}`, v, rowIdx);
+          }
+          rowIdx++;
+        }
+        j++;
       }
-      i += 6;
+      i = j;
       continue;
     }
 

@@ -2557,7 +2557,9 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                     </button>
 
                                     <div
-                                        className={`overflow-hidden transition-all duration-300 ${expandedItems.includes(workType.id) ? "max-h-[800px] opacity-100" : "max-h-0 opacity-0"
+                                        className={`transition-all duration-300 ${expandedItems.includes(workType.id)
+                                            ? "max-h-[4000px] opacity-100 overflow-visible"
+                                            : "max-h-0 opacity-0 overflow-hidden"
                                             }`}
                                     >
                                         <div className="px-6 pb-4">
@@ -2838,51 +2840,51 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                     )}
                                                                     {workType.backendFields?.viewFile && workType.backendFields.viewFile.length > 0 && (
                                                                         <div className="space-y-2">
-                                                                            <h4 className="text-sm font-medium text-gray-700">Photos:</h4>
-                                                                            <div className="max-h-48 overflow-y-auto">
-                                                                                <div className="grid gap-2">
-                                                                                    {workType.backendFields.viewFile.map((fileUrl, index) => {
-                                                                                        const fileName =
-                                                                                            fileUrl.split("/").pop()?.split("?")[0] || `File ${index + 1}`
-                                                                                        const fileExtension = fileName.split(".").pop()?.toLowerCase()
-                                                                                        const isImage = ["jpg", "jpeg", "png", "gif", "webp"].includes(
-                                                                                            fileExtension || "",
-                                                                                        )
-                                                                                        return (
-                                                                                            <div
-                                                                                                key={index}
-                                                                                                className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border"
-                                                                                            >
-                                                                                                <div className="flex items-center gap-3">
-                                                                                                    {isImage ? (
-                                                                                                        <ImageIcon className="h-5 w-5 text-blue-600" />
-                                                                                                    ) : (
-                                                                                                        <FileText className="h-5 w-5 text-red-600" />
-                                                                                                    )}
-                                                                                                    <span className="text-sm font-medium text-gray-700 truncate max-w-[200px]">
-                                                                                                        {fileName}
-                                                                                                    </span>
-                                                                                                </div>
-                                                                                                <div className="flex gap-2">
-                                                                                                    <button
-                                                                                                        onClick={() => handleDownloadFile(fileUrl, fileName)}
-                                                                                                        className="flex items-center gap-1 px-3 py-1 text-sm bg-green-100 text-green-700 rounded-md hover:bg-green-200 transition-colors"
-                                                                                                    >
-                                                                                                        <Download className="h-3 w-3" />
-                                                                                                        Download
-                                                                                                    </button>
-                                                                                                    <button
-                                                                                                        onClick={() => handleFileEdit(workType.id, "view", index)}
-                                                                                                        className="flex items-center gap-1 px-3 py-1 text-sm bg-orange-100 text-orange-700 rounded-md hover:bg-orange-200 transition-colors"
-                                                                                                    >
-                                                                                                        <Edit className="h-3 w-3" />
-                                                                                                        Edit
-                                                                                                    </button>
-                                                                                                </div>
+                                                                            <h4 className="text-sm font-medium text-gray-700">
+                                                                                Photos: ({workType.backendFields.viewFile.length})
+                                                                            </h4>
+                                                                            <div className="max-h-64 overflow-y-auto overscroll-contain border border-gray-200 rounded-lg bg-white p-2 space-y-2">
+                                                                                {workType.backendFields.viewFile.map((fileUrl, index) => {
+                                                                                    const fileName =
+                                                                                        fileUrl.split("/").pop()?.split("?")[0] || `File ${index + 1}`
+                                                                                    const fileExtension = fileName.split(".").pop()?.toLowerCase()
+                                                                                    const isImage = ["jpg", "jpeg", "png", "gif", "webp"].includes(
+                                                                                        fileExtension || "",
+                                                                                    )
+                                                                                    return (
+                                                                                        <div
+                                                                                            key={index}
+                                                                                            className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border"
+                                                                                        >
+                                                                                            <div className="flex items-center gap-3 min-w-0">
+                                                                                                {isImage ? (
+                                                                                                    <ImageIcon className="h-5 w-5 text-blue-600 flex-shrink-0" />
+                                                                                                ) : (
+                                                                                                    <FileText className="h-5 w-5 text-red-600 flex-shrink-0" />
+                                                                                                )}
+                                                                                                <span className="text-sm font-medium text-gray-700 truncate max-w-[200px]">
+                                                                                                    {fileName}
+                                                                                                </span>
                                                                                             </div>
-                                                                                        )
-                                                                                    })}
-                                                                                </div>
+                                                                                            <div className="flex gap-2 flex-shrink-0">
+                                                                                                <button
+                                                                                                    onClick={() => handleDownloadFile(fileUrl, fileName)}
+                                                                                                    className="flex items-center gap-1 px-3 py-1 text-sm bg-green-100 text-green-700 rounded-md hover:bg-green-200 transition-colors"
+                                                                                                >
+                                                                                                    <Download className="h-3 w-3" />
+                                                                                                    Download
+                                                                                                </button>
+                                                                                                <button
+                                                                                                    onClick={() => handleFileEdit(workType.id, "view", index)}
+                                                                                                    className="flex items-center gap-1 px-3 py-1 text-sm bg-orange-100 text-orange-700 rounded-md hover:bg-orange-200 transition-colors"
+                                                                                                >
+                                                                                                    <Edit className="h-3 w-3" />
+                                                                                                    Edit
+                                                                                                </button>
+                                                                                            </div>
+                                                                                        </div>
+                                                                                    )
+                                                                                })}
                                                                             </div>
                                                                         </div>
                                                                     )}

@@ -1,7 +1,7 @@
 // components/TestTables/LinearityOfMaLoading.tsx
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Plus, Trash2, Loader2, Edit3, Save } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
@@ -9,6 +9,7 @@ import {
   getLinearityOfMaLoadingByServiceIdForBMD,
   updateLinearityOfMaLoadingForBMD,
 } from '../../../../../../api';
+import { useRegisterTestExport } from '../shared/TestExportRegistry';
 
 interface Table1Row {
   fcd: string;
@@ -284,26 +285,34 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
         }
         if (initialData.table2 && initialData.table2.length > 0) {
           const firstRow = initialData.table2[0];
-          const numCols = firstRow.measuredOutputs?.length || 3;
           const importedHeaders = Array.isArray(initialData.measHeaders) ? initialData.measHeaders : [];
+          const numCols = Math.max(
+            firstRow.measuredOutputs?.length || 0,
+            importedHeaders.length,
+            1,
+          );
           if (importedHeaders.length > 0) {
-            const normalized = importedHeaders.slice(0, Math.max(numCols, importedHeaders.length));
+            const normalized = importedHeaders.slice(0, numCols);
             while (normalized.length < numCols) normalized.push(`Meas ${normalized.length + 1}`);
             setMeasHeaders(normalized);
           } else {
             setMeasHeaders(Array.from({ length: numCols }, (_, i) => `Meas ${i + 1}`));
           }
-          setTable2Rows(initialData.table2.map((r: any) => ({
-            id: Date.now().toString() + Math.random(),
-            ma: r.ma || '',
-            measuredOutputs: r.measuredOutputs || Array(numCols).fill(''),
-            average: r.average || '',
-            x: r.x || '',
-            xMax: r.xMax || '',
-            xMin: r.xMin || '',
-            col: r.col || '',
-            remarks: r.remarks || '',
-          })));
+          setTable2Rows(initialData.table2.map((r: any) => {
+            const outputs = Array.isArray(r.measuredOutputs) ? [...r.measuredOutputs] : [];
+            while (outputs.length < numCols) outputs.push('');
+            return {
+              id: Date.now().toString() + Math.random(),
+              ma: r.ma || '',
+              measuredOutputs: outputs.slice(0, numCols),
+              average: r.average || '',
+              x: r.x || '',
+              xMax: r.xMax || '',
+              xMin: r.xMin || '',
+              col: r.col || '',
+              remarks: r.remarks || '',
+            };
+          }));
         }
         if (initialData.tolerance) setTolerance(initialData.tolerance);
         if (initialData.toleranceOperator) setToleranceOperator(initialData.toleranceOperator);
@@ -344,6 +353,8 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
           remarks: processedTable2.summary.remarks || '',
         })),
         tolerance: tolerance || '0.1',
+        toleranceOperator: toleranceOperator,
+        measHeaders: measHeaders,
       };
 
       let result;
@@ -371,6 +382,40 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
   const isViewMode = hasSaved && !isEditing;
   const buttonText = isViewMode ? 'Edit' : testId ? 'Update' : 'Save';
   const ButtonIcon = isViewMode ? Edit3 : Save;
+
+  const getExportData = useCallback(() => {
+    const hasRows = processedTable2.rows.some(
+      (r) =>
+        String(r.ma || '').trim() ||
+        r.measuredOutputs.some((v) => String(v).trim())
+    );
+    const hasConditions =
+      String(table1Row.fcd || '').trim() ||
+      String(table1Row.kv || '').trim() ||
+      String(table1Row.time || '').trim();
+    if (!hasRows && !hasConditions) return null;
+    return {
+      table1: table1Row,
+      table2: processedTable2.rows.map((r) => ({
+        ma: r.ma || '',
+        measuredOutputs: r.measuredOutputs.map((v) => {
+          const val = v.trim();
+          return val === '' ? '' : val;
+        }),
+        average: r.average || '',
+        x: r.x || '',
+        xMax: processedTable2.summary.xMax || '',
+        xMin: processedTable2.summary.xMin || '',
+        col: processedTable2.summary.col || '',
+        remarks: processedTable2.summary.remarks || '',
+      })),
+      tolerance: tolerance || '0.1',
+      toleranceOperator,
+      measHeaders,
+    };
+  }, [processedTable2, table1Row, tolerance, toleranceOperator, measHeaders]);
+
+  useRegisterTestExport('linearityOfMaLoading', getExportData);
 
   if (isLoading) {
     return (

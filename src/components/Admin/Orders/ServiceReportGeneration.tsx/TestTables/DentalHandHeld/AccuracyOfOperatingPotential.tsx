@@ -7,6 +7,7 @@ import {
     getAccuracyOfOperatingPotentialByServiceIdForDentalHandHeld,
     updateAccuracyOfOperatingPotentialForDentalHandHeld,
 } from "../../../../../../api";
+import { useRegisterTestExport } from "../shared/TestExportRegistry";
 
 interface RowData {
     id: string;
@@ -95,13 +96,21 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
                 if (data && !hasCsvImport) {
                     setTestId(data._id || null);
                     
-                    const maxCols = data.rows?.length 
-                        ? Math.max(...data.rows.map((row: any) => (row.maStations?.length || 0)), 2) 
-                        : 2;
-                    
-                    if (data.mAStations && Array.isArray(data.mAStations)) {
-                        setMAStations(data.mAStations);
-                    } else if (maxCols > 0) {
+                    const maxCols = Math.max(
+                        Array.isArray(data.mAStations) ? data.mAStations.length : 0,
+                        ...(data.rows || []).map((row: any) =>
+                            Array.isArray(row.maStations) ? row.maStations.length : (row.maStation1 || row.maStation2 ? 2 : 0)
+                        ),
+                        2
+                    );
+
+                    if (Array.isArray(data.mAStations) && data.mAStations.length > 0) {
+                        setMAStations(
+                            Array.from({ length: maxCols }, (_, i) =>
+                                String(data.mAStations[i] ?? "").trim() || `mA Station ${i + 1}`
+                            )
+                        );
+                    } else {
                         setMAStations(Array.from({ length: maxCols }, (_, i) => `mA Station ${i + 1}`));
                     }
 
@@ -109,9 +118,14 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
                     
                     setRows(
                         data.rows?.map((m: any, i: number) => {
-                            const measuredValues = Array.isArray(m.maStations)
-                                ? m.maStations.map((s: any) => s?.kvp ?? "")
-                                : Array(2).fill("");
+                            const measuredValues = Array.from({ length: maxCols }, (_, j) => {
+                                if (Array.isArray(m.maStations) && m.maStations[j]) {
+                                    return m.maStations[j]?.kvp ?? "";
+                                }
+                                if (j === 0) return m.maStation1?.kvp ?? "";
+                                if (j === 1) return m.maStation2?.kvp ?? "";
+                                return "";
+                            });
                                 
                             const rowApplied = parseFloat(m.appliedKvp || "0");
                             const tol = parseFloat(data.kvpToleranceValue || "2.0");
@@ -128,7 +142,7 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
                             return {
                                 id: String(i + 1),
                                 appliedKvp: m.appliedKvp || "",
-                                measuredValues: measuredValues.length ? measuredValues : Array(2).fill(""),
+                                measuredValues,
                                 measuredValuesStatus: measuredStatus,
                                 averageKvp: m.avgKvp || m.averageKvp || "",
                                 averageKvpStatus: avgStatus,
@@ -472,6 +486,40 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
 
         return m >= requiredTolerance ? "PASS" : "FAIL";
     };
+
+    const getExportData = useCallback(() => {
+        const hasRows = rows.some(
+            (r) =>
+                String(r.appliedKvp || "").trim() ||
+                (r.measuredValues || []).some((v) => String(v || "").trim())
+        );
+        const hasFiltration =
+            String(totalFiltration.atKvp || "").trim() ||
+            String(totalFiltration.measured || "").trim() ||
+            String(totalFiltration.required || "").trim();
+        if (!hasRows && !String(ffd || "").trim() && !hasFiltration) return null;
+        return {
+            mAStations,
+            ffd,
+            rows: rows.map((r) => ({
+                appliedKvp: r.appliedKvp,
+                avgKvp: r.averageKvp,
+                remark: r.remarks,
+                measuredValues: r.measuredValues,
+                maStations: r.measuredValues.map((val) => ({ kvp: val })),
+            })),
+            kvpToleranceSign: toleranceSign,
+            kvpToleranceValue: toleranceValue,
+            totalFiltration: {
+                atKvp: totalFiltration.atKvp,
+                measured1: totalFiltration.measured,
+                measured2: totalFiltration.required,
+            },
+            filtrationTolerance,
+        };
+    }, [rows, mAStations, ffd, toleranceSign, toleranceValue, totalFiltration, filtrationTolerance]);
+
+    useRegisterTestExport("accuracyOfOperatingPotential", getExportData);
 
     if (isLoading) {
         return (

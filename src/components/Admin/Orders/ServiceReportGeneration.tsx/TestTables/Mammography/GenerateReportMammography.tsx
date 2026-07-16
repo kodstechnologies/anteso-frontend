@@ -30,6 +30,7 @@ import {
 import * as XLSX from "xlsx";
 import { createMammographySavedExcel, MammographySavedExportData } from "./exportMammographySavedToExcel";
 import { isExcelFileUrl } from "../../../../../../utils/spreadsheetFile";
+import { TestExportRegistryProvider, useTestExportRegistry } from "../shared/TestExportRegistry";
 
 /** Tests whose CSV columns after fixed fields are dynamic measurement columns (custom headers like "22", "400 mA"). */
 const MAMMOGRAPHY_MEAS_FIELD_PREFIX_BY_TEST: Record<string, string> = {
@@ -146,7 +147,8 @@ interface DetailsResponse {
     qaTests: Array<{ createdAt: string; qaTestReportNumber: string }>;
 }
 
-const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: string | null; qaTestDate?: string | null }> = ({ serviceId, csvFileUrl, qaTestDate }) => {
+const GenerateReportMammographyContent: React.FC<{ serviceId: string; csvFileUrl?: string | null; qaTestDate?: string | null }> = ({ serviceId, csvFileUrl, qaTestDate }) => {
+    const exportRegistry = useTestExportRegistry();
     const firstNonEmptyString = (...values: any[]): string => {
         for (const value of values) {
             if (value === null || value === undefined) continue;
@@ -1840,6 +1842,7 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
         try {
             toast.loading("Exporting data to Excel...", { id: "export-excel" });
             setIsExporting(true);
+            const pageData = exportRegistry?.collect() ?? {};
             const exportData: MammographySavedExportData & { reportHeader?: any } = {};
 
             try {
@@ -1858,21 +1861,33 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
                 }
             };
 
-            exportData.accuracyOfOperatingPotential = await fetchTest(() => getAccuracyOfOperatingPotentialByServiceIdForMammography(serviceId));
-            exportData.accuracyOfIrradiationTime = await fetchTest(() => getAccuracyOfIrradiationTimeByServiceIdForMammography(serviceId));
-            exportData.totalFiltration = await fetchTest(() => getTotalFilterationByServiceIdForMammography(serviceId));
-            exportData.linearityOfMaLoading = await fetchTest(() => getLinearityOfMasLoadingStationsByServiceIdForMammography(serviceId));
-            exportData.linearityOfMasLoading = await fetchTest(() => getLinearityOfMasLLoadingByServiceIdForMammography(serviceId));
-            exportData.reproducibilityOfOutput = await fetchTest(() => getReproducibilityOfOutputByServiceIdForMammography(serviceId));
-            exportData.radiationLeakageLevel = await fetchTest(() => getRadiationLeakageLevelByServiceIdForMammography(serviceId));
-            exportData.imagingPhantom = await fetchTest(() => getImagingPhantomByServiceIdForMammography(serviceId));
-            exportData.radiationProtectionSurvey = await fetchTest(() => getRadiationProtectionSurveyByServiceIdForMammography(serviceId));
-            exportData.equipmentSetting = await fetchTest(() => getEquipmentSettingByServiceIdForMammography(serviceId));
-            exportData.maximumRadiationLevel = await fetchTest(() => getMaximumRadiationLevelByServiceIdForMammography(serviceId));
+            const resolveSection = async (
+                key: keyof MammographySavedExportData,
+                pageValue: unknown,
+                fetchFn: () => Promise<any>
+            ) => {
+                if (pageValue != null) {
+                    exportData[key] = pageValue;
+                    return;
+                }
+                exportData[key] = await fetchTest(fetchFn);
+            };
+
+            await resolveSection("accuracyOfOperatingPotential", pageData.accuracyOfOperatingPotential, () => getAccuracyOfOperatingPotentialByServiceIdForMammography(serviceId));
+            await resolveSection("accuracyOfIrradiationTime", pageData.accuracyOfIrradiationTime, () => getAccuracyOfIrradiationTimeByServiceIdForMammography(serviceId));
+            await resolveSection("totalFiltration", pageData.totalFiltration, () => getTotalFilterationByServiceIdForMammography(serviceId));
+            await resolveSection("linearityOfMaLoading", pageData.linearityOfMaLoading, () => getLinearityOfMasLoadingStationsByServiceIdForMammography(serviceId));
+            await resolveSection("linearityOfMasLoading", pageData.linearityOfMasLoading, () => getLinearityOfMasLLoadingByServiceIdForMammography(serviceId));
+            await resolveSection("reproducibilityOfOutput", pageData.reproducibilityOfOutput, () => getReproducibilityOfOutputByServiceIdForMammography(serviceId));
+            await resolveSection("radiationLeakageLevel", pageData.radiationLeakageLevel, () => getRadiationLeakageLevelByServiceIdForMammography(serviceId));
+            await resolveSection("imagingPhantom", pageData.imagingPhantom, () => getImagingPhantomByServiceIdForMammography(serviceId));
+            await resolveSection("radiationProtectionSurvey", pageData.radiationProtectionSurvey, () => getRadiationProtectionSurveyByServiceIdForMammography(serviceId));
+            await resolveSection("equipmentSetting", pageData.equipmentSetting, () => getEquipmentSettingByServiceIdForMammography(serviceId));
+            await resolveSection("maximumRadiationLevel", pageData.maximumRadiationLevel, () => getMaximumRadiationLevelByServiceIdForMammography(serviceId));
 
             const hasData = Object.keys(exportData).filter((k) => k !== "reportHeader").some((k) => exportData[k] != null);
             if (!hasData) {
-                toast.error("No data found to export. Please save test data first.", { id: "export-excel" });
+                toast.error("No data found to export. Enter test data on this page or save test data first.", { id: "export-excel" });
                 return;
             }
             const wb = createMammographySavedExcel(exportData as MammographySavedExportData);
@@ -2196,5 +2211,11 @@ const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: stri
         </div>
     );
 };
+
+const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: string | null; qaTestDate?: string | null }> = (props) => (
+    <TestExportRegistryProvider>
+        <GenerateReportMammographyContent {...props} />
+    </TestExportRegistryProvider>
+);
 
 export default GenerateReportMammography;

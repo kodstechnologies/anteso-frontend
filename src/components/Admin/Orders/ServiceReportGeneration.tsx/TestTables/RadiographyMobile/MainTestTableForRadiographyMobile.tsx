@@ -260,7 +260,7 @@ const MainTestTableForRadiographyMobile: React.FC<MainTestTableProps> = ({ testD
     addRowsForTest("Total Filtration", [{
       specified: atKvp !== "-" ? `${atKvp} kVp` : "-",
       measured: measuredStr !== "-" ? `${measuredStr} mm Al` : "-",
-      tolerance: !isNaN(requiredTol) ? `â‰¥ ${requiredTol} mm Al` : "-",
+      tolerance: !isNaN(requiredTol) ? `${requiredTol} mm Al` : "-",
       remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
     }]);
   }

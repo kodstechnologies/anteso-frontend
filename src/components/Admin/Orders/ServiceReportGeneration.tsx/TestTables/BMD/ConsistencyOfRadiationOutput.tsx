@@ -1,7 +1,7 @@
 // components/TestTables/ConsistencyOfRadiationOutput.tsx
 'use client';
 
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { Plus, Trash2, Save, Edit3, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
@@ -9,6 +9,7 @@ import {
   getReproducibilityOfRadiationOutputByServiceIdForBmd,
   updateReproducibilityOfRadiationOutputForBMD,
 } from '../../../../../../api';
+import { useRegisterTestExport } from '../shared/TestExportRegistry';
 
 interface FCDData {
   value: string; // e.g. "100" cm
@@ -96,10 +97,26 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
       const covDecimal = avg > 0 ? stdDev / avg : 0; // CoV as decimal
 
       // Compare CoV (decimal) with tolerance (decimal)
-      const passes =
-        tolerance.operator === '<=' || tolerance.operator === '<'
-          ? covDecimal <= tolValueDecimal
-          : covDecimal >= tolValueDecimal;
+      let passes = false;
+      switch (tolerance.operator) {
+        case '<':
+          passes = covDecimal < tolValueDecimal;
+          break;
+        case '<=':
+          passes = covDecimal <= tolValueDecimal;
+          break;
+        case '>':
+          passes = covDecimal > tolValueDecimal;
+          break;
+        case '>=':
+          passes = covDecimal >= tolValueDecimal;
+          break;
+        case '=':
+          passes = Math.abs(covDecimal - tolValueDecimal) < 0.0001;
+          break;
+        default:
+          passes = covDecimal <= tolValueDecimal;
+      }
 
       const remark: 'Pass' | 'Fail' = passes ? 'Pass' : 'Fail';
 
@@ -465,6 +482,31 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
 
   const isViewMode = isSaved && !isEditing;
 
+  const getExportData = useCallback(() => {
+    const hasRows = rowsWithCalc.some(
+      (r) =>
+        String(r.kv || '').trim() ||
+        String(r.mas || '').trim() ||
+        r.outputs.some((o) => String(o.value || '').trim())
+    );
+    if (!hasRows && !String(fcd.value || '').trim()) return null;
+    return {
+      fcd,
+      outputRows: rowsWithCalc.map((r) => ({
+        kv: r.kv,
+        mas: r.mas,
+        outputs: r.outputs,
+        avg: r.avg,
+        cv: r.cv,
+        remark: r.remark,
+      })),
+      tolerance,
+      measurementHeaders,
+    };
+  }, [rowsWithCalc, fcd, tolerance, measurementHeaders]);
+
+  useRegisterTestExport('reproducibilityOfRadiationOutput', getExportData);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -659,6 +701,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
             <option value="<">&lt;</option>
             <option value=">=">≥</option>
             <option value=">">&gt;</option>
+            <option value="=">=</option>
           </select>
           <input
             type="text"
