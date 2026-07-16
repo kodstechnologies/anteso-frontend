@@ -30,7 +30,7 @@ interface OutputRow {
 }
 
 interface Tolerance {
-  operator: '<=' | '<' | '>=' | '>';
+  operator: '<=' | '<' | '>=' | '>'|'=';
   value: string; // e.g. "5.0"
 }
 
