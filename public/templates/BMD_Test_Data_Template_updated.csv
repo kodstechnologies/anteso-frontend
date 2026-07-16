@@ -28,7 +28,7 @@ FDD (cm),Tol Operator,Tol Value,Header 1,Header 2,,Header 3,Header 4,Header 5,He
 ,,,,,,,,,,,,,,,,,
 TEST: RADIATION LEAKAGE LEVEL AT 1M FROM TUBE HOUSING,,,,,,,,,,,,,,,,,
 FDD (cm),kV,mA,Time (sec),Workload (mA·min/week),,Tol Value,Tol Operator,Location,,Front,Back,Left,Right,Top,,,
-100,80,20,1,180,,1,less than or equal to,Tube,,0.06,0.05,0.05,0.04,0.04,,,
+100,80,20,1,180,,1,<=,Tube,,0.06,0.05,0.05,0.04,0.04,,,
 ,,,,,,,,Collimator,,0.02,0.03,0.02,0.03,0.02,,,
 ,,,,,,,,,,,,,,,,,
 TEST: RADIATION PROTECTION SURVEY,,,,,,,,,,,,,,,,,

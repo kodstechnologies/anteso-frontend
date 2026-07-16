@@ -670,7 +670,7 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
                           <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Dimension</th>
                           <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Observed Shift (cm)</th>
                           <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Edge Shift (cm)</th>
-                          <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>% FED</th>
+                          <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>% of FED</th>
                           <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Tolerance (%)</th>
                           <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Remarks</th>
                         </tr>
@@ -827,9 +827,16 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
                         {testData.effectiveFocalSpot.focalSpots.slice(0, 2).map((spot: any, i: number) => {
                           const formatValue = (val: any) => {
                             if (val === undefined || val === null || val === "") return "-";
-                            const numVal = typeof val === "number" ? val : parseFloat(val);
-                            if (isNaN(numVal)) return "-";
-                            return numVal.toFixed(1);
+                            // Keep exact entered/stored value (same as generate page) — do not round
+                            if (typeof val === "string") {
+                              const trimmed = val.trim();
+                              return trimmed === "" ? "-" : trimmed;
+                            }
+                            if (typeof val === "number" && Number.isFinite(val)) {
+                              return String(val);
+                            }
+                            const asStr = String(val).trim();
+                            return asStr === "" || asStr === "NaN" ? "-" : asStr;
                           };
 
                           const statedNominal = formatValue(
@@ -1115,7 +1122,7 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
                         <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', maxWidth: '400px' }}>
                           <thead className="bg-gray-100">
                             <tr>
-                              <th className="border border-black p-2 print:p-1 text-center" style={{ fontSize: '11px' }}>FDD (cm)</th>
+                              <th className="border border-black p-2 print:p-1 text-center" style={{ fontSize: '11px' }}>{isMaLoading ? "FCD (cm)" : "FDD (cm)"}</th>
                               <th className="border border-black p-2 print:p-1 text-center" style={{ fontSize: '11px' }}>kV</th>
                               {isMaLoading && <th className="border border-black p-2 print:p-1 text-center" style={{ fontSize: '11px' }}>Time (sec)</th>}
                             </tr>
@@ -1238,13 +1245,13 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
             {testData.outputConsistency && (
               <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
                 <TestSectionTitle num={8} title="Consistency of Radiation Output" />
-                {/* FDD small table */}
+                {/* FFD small table — same label as generate page */}
                 {testData.outputConsistency.ffd?.value && (
                   <div className="mb-3 print:mb-1" style={{ marginBottom: '4px' }}>
                     <table className="border border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', borderCollapse: 'collapse', borderSpacing: '0' }}>
                       <thead className="bg-gray-100">
                         <tr>
-                          <th className="border border-black px-4 py-1 text-center" style={{ padding: '0px 8px', fontSize: '11px' }}>FDD (cm)</th>
+                          <th className="border border-black px-4 py-1 text-center" style={{ padding: '0px 8px', fontSize: '11px' }}>FFD (cm)</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1377,7 +1384,7 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
                     <table className="border-2 border-black text-sm print:text-[8px] compact-table" style={{ fontSize: "10px", tableLayout: "fixed", borderCollapse: "collapse", borderSpacing: "0", maxWidth: "400px" }}>
                       <thead className="bg-gray-100">
                         <tr className="bg-blue-50">
-                          <th className="border border-black p-1 text-center font-bold" style={{ padding: "0px 2px", fontSize: "10px" }}>FDD (cm)</th>
+                          <th className="border border-black p-1 text-center font-bold" style={{ padding: "0px 2px", fontSize: "10px" }}>FFD (cm)</th>
                           <th className="border border-black p-1 text-center font-bold" style={{ padding: "0px 2px", fontSize: "10px" }}>kV</th>
                           <th className="border border-black p-1 text-center font-bold" style={{ padding: "0px 2px", fontSize: "10px" }}>mA</th>
                           <th className="border border-black p-1 text-center font-bold" style={{ padding: "0px 2px", fontSize: "10px" }}>Time (Sec)</th>

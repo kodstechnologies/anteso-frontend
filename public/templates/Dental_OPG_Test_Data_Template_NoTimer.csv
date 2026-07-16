@@ -12,10 +12,11 @@ TotalFiltration,2.6,2.5,80
 
 TEST: LINEARITY OF mAs LOADING
 FCD,100,kV,80
+Tolerance Operator,<=
+Tolerance Value (CoL),0.1
 mAs Range,Measured mR 1,Measured mR 2,Measured mR 3
 12,1.2,1.25,1.22
 50,2.4,2.45,2.42
-CoL,0.08
 
 TEST: CONSISTENCY OF RADIATION OUTPUT
 Tolerance Operator,<=

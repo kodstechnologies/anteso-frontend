@@ -110,14 +110,18 @@ const MainTestTableForRadiographyPortable: React.FC<MainTestTableProps> = ({ tes
 
   // 5. Effective Focal Spot Size
   if (testData.effectiveFocalSpot?.focalSpots && Array.isArray(testData.effectiveFocalSpot.focalSpots)) {
-    const validRows = testData.effectiveFocalSpot.focalSpots.filter((spot: any) => spot.focusType || spot.measuredWidth);
+    const validRows = testData.effectiveFocalSpot.focalSpots.filter((spot: any) => spot.focusType || spot.measuredWidth || spot.measuredNominal);
     if (validRows.length > 0) {
-      // Format values to always show one decimal place (e.g., 1.0, 2.0)
+      // Keep exact entered/stored value (same as generate page) — do not round
       const formatValue = (val: any) => {
         if (val === undefined || val === null || val === "") return null;
-        const numVal = typeof val === 'number' ? val : parseFloat(val);
-        if (isNaN(numVal)) return null;
-        return numVal.toFixed(1);
+        if (typeof val === "string") {
+          const trimmed = val.trim();
+          return trimmed === "" ? null : trimmed;
+        }
+        if (typeof val === "number" && Number.isFinite(val)) return String(val);
+        const asStr = String(val).trim();
+        return asStr === "" || asStr === "NaN" ? null : asStr;
       };
       
       const toleranceCriteria = testData.effectiveFocalSpot.toleranceCriteria || {};
@@ -135,14 +139,22 @@ const MainTestTableForRadiographyPortable: React.FC<MainTestTableProps> = ({ tes
       const testRows = validRows.map((spot: any) => {
         const isPass = spot.remark === "Pass" || spot.remark === "PASS";
         
-        const statedWidth = formatValue(spot.statedWidth);
-        const statedHeight = formatValue(spot.statedHeight);
-        const measuredWidth = formatValue(spot.measuredWidth);
-        const measuredHeight = formatValue(spot.measuredHeight);
+        const stated = formatValue(
+          spot.statedNominal ??
+          (spot.statedWidth != null && spot.statedHeight != null
+            ? (Number(spot.statedWidth) + Number(spot.statedHeight)) / 2
+            : spot.statedWidth ?? spot.statedHeight)
+        );
+        const measured = formatValue(
+          spot.measuredNominal ??
+          (spot.measuredWidth != null && spot.measuredHeight != null
+            ? (Number(spot.measuredWidth) + Number(spot.measuredHeight)) / 2
+            : spot.measuredWidth ?? spot.measuredHeight)
+        );
         
         return {
-          specified: statedWidth !== null ? `${statedWidth} mm` : "-",
-          measured: measuredWidth !== null ? `${measuredWidth} mm` : "-",
+          specified: stated !== null ? `${stated} mm` : "-",
+          measured: measured !== null ? `${measured} mm` : "-",
           tolerance: toleranceStr,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };

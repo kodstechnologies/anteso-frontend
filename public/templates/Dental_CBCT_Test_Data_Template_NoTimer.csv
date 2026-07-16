@@ -11,6 +11,8 @@ Parameter,Measured (mm Al),Required (mm Al),At kVp
 TotalFiltration,2.6,2.5,80
 
 TEST: LINEARITY OF mAs LOADING
+Tolerance Operator,<=
+Tolerance Value (CoL),0.1
 mAs Range,Measured mR 1,Measured mR 2,Measured mR 3,Average,mR/mAs
 50,12.2,12.25,12.22,,
 100,24.4,24.45,24.42,,
