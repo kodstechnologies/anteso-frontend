@@ -54,7 +54,7 @@ function createCTScanTemplate(hasTimer) {
         addSectionHeader('TIMER ACCURACY');
         addTableTemplate(['kVp', 'Slice Thickness (mm)', 'mA'], 1);
         addTableTemplate(['Applied Time in mSec', 'Measured Time in mSec', '% Error', 'Result'], 3);
-        allData.push(['Tolerance:', '± 10 %']);
+        allData.push(['Tolerance Operator', '<=', 'Tolerance (%)', '10']);
         allData.push([]);
     }
 
@@ -90,7 +90,7 @@ function createCTScanTemplate(hasTimer) {
     allData.push(['Tolerance']);
     allData.push(['Value', '', 'Operator', '', 'Time', '']);
     allData.push([]);
-    addTableTemplate(['Location', 'Front', 'Back', 'Left', 'Right', 'Unit'], 3);
+    addTableTemplate(['Location', 'Front', 'Back', 'Left', 'Right', 'Top', 'Unit'], 3);
 
     // 9. Output Consistency
     addSectionHeader('OUTPUT CONSISTENCY');

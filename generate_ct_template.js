@@ -51,10 +51,10 @@ addSection('MEASUREMENT OF MA LINEARITY',
 
 // 4. TIMER ACCURACY
 addSection('TIMER ACCURACY',
-    ['kVp', 'Slice Thickness (mm)', 'mA', 'Set Time (ms)', 'Observed Time (ms)', 'Tolerance (%)'],
+    ['kVp', 'Slice Thickness (mm)', 'mA', 'Set Time (ms)', 'Observed Time (ms)', 'Tolerance (%)', 'Tolerance Operator'],
     [
-        ['80', '5.0', '100', '100', '98.5', '5'],
-        ['80', '5.0', '100', '200', '199', '']
+        ['80', '5.0', '100', '100', '98.5', '5', '<='],
+        ['80', '5.0', '100', '200', '199', '', '<=']
     ]
 );
 
@@ -96,10 +96,10 @@ addSection('Reproducibility of Radiation Output (Consistency Test)',
 
 // 9. Radiation Leakage Level from X-Ray Tube House
 addSection('Radiation Leakage Level from X-Ray Tube House',
-    ['kV', 'mA', 'Time (sec)', 'Workload', 'Workload Unit', 'Tol Value', 'Tol Operator', 'Tol Time', 'Location', 'Front', 'Back', 'Left', 'Right'],
+    ['kV', 'mA', 'Time (sec)', 'Workload', 'Workload Unit', 'Tol Value', 'Tol Operator', 'Tol Time', 'Location', 'Front', 'Back', 'Left', 'Right', 'Top'],
     [
-        ['120', '100', '1.0', '500', 'mA·min/week', '1.0', '<=', '1', 'Tube', '0.05', '0.03', '0.06', '0.04'],
-        ['', '', '', '', '', '', '', '', 'Collimator', '0.02', '0.02', '0.03', '0.01']
+        ['120', '100', '1.0', '500', 'mA·min/week', '1.0', '<=', '1', 'Tube', '0.05', '0.03', '0.06', '0.04', '0.05'],
+        ['', '', '', '', '', '', '', '', 'Collimator', '0.02', '0.02', '0.03', '0.01', '0.02']
     ]
 );
 

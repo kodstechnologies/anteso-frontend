@@ -193,7 +193,12 @@ export const createCTScanExcelWithTables = (data: CTScanExportData, hasTimer: bo
         }
 
         if (data.measurementOfMaLinearity.tolerance) {
-            allData.push(['Tolerance:', data.measurementOfMaLinearity.tolerance]);
+            allData.push([
+                'Tolerance Operator',
+                normalizeCsvComparisonOperator(data.measurementOfMaLinearity.toleranceOperator || '<'),
+                'Tolerance',
+                data.measurementOfMaLinearity.tolerance,
+            ]);
             allData.push([]);
         }
     }
@@ -240,7 +245,12 @@ export const createCTScanExcelWithTables = (data: CTScanExportData, hasTimer: bo
         }
 
         if (data.timerAccuracy.tolerance) {
-            allData.push(['Tolerance:', `± ${data.timerAccuracy.tolerance}%`]);
+            allData.push([
+                'Tolerance Operator',
+                normalizeCsvComparisonOperator(data.timerAccuracy.toleranceOperator || '<='),
+                'Tolerance (%)',
+                data.timerAccuracy.tolerance,
+            ]);
             allData.push([]);
         }
     }
@@ -396,9 +406,10 @@ export const createCTScanExcelWithTables = (data: CTScanExportData, hasTimer: bo
                 row.back || '',
                 row.left || '',
                 row.right || '',
+                row.top || '',
                 row.unit || ''
             ]);
-            addTable(['Location', 'Front', 'Back', 'Left', 'Right', 'Unit'], leakageRows);
+            addTable(['Location', 'Front', 'Back', 'Left', 'Right', 'Top', 'Unit'], leakageRows);
         }
     }
 
@@ -632,6 +643,7 @@ export const createCTScanUploadableExcel = (data: CTScanExportData, hasTimer: bo
             'kVp',
             'Slice Thickness (mm)',
             'Time (ms)',
+            'Tolerance Operator',
             'Tolerance',
             ...headerCols,
             'mA Applied',
@@ -647,6 +659,7 @@ export const createCTScanUploadableExcel = (data: CTScanExportData, hasTimer: bo
             idx === 0 ? (t1.kvp || '') : '',
             idx === 0 ? (t1.sliceThickness || '') : '',
             idx === 0 ? (t1.time || '') : '',
+            idx === 0 ? normalizeCsvComparisonOperator(data.measurementOfMaLinearity.toleranceOperator || '<') : '',
             idx === 0 ? (data.measurementOfMaLinearity.tolerance || '') : '',
             ...(idx === 0 ? headerLabels : Array(headerLabels.length).fill('')),
             row.mAsApplied || '',
@@ -664,7 +677,7 @@ export const createCTScanUploadableExcel = (data: CTScanExportData, hasTimer: bo
     // 4. TIMER ACCURACY
     if (data.timerAccuracy) {
         const t1 = data.timerAccuracy.table1?.[0] || {};
-        const rows = (data.timerAccuracy.table2 || []).map((row: any) => {
+        const rows = (data.timerAccuracy.table2 || []).map((row: any, idx: number) => {
             let percentError = row.percentError || '';
             if (!percentError && row.setTime && row.observedTime) {
                 const set = parseFloat(row.setTime);
@@ -680,10 +693,11 @@ export const createCTScanUploadableExcel = (data: CTScanExportData, hasTimer: bo
                 row.setTime || '',
                 row.observedTime || '',
                 percentError,
+                idx === 0 ? normalizeCsvComparisonOperator(data.timerAccuracy.toleranceOperator || '<=') : '',
                 data.timerAccuracy.tolerance || ''
             ];
         });
-        addSection('TIMER ACCURACY', ['kVp', 'Slice Thickness (mm)', 'mA', 'Set Time (ms)', 'Observed Time (ms)', '% Error', 'Tolerance (%)'], rows);
+        addSection('TIMER ACCURACY', ['kVp', 'Slice Thickness (mm)', 'mA', 'Set Time (ms)', 'Observed Time (ms)', '% Error', 'Tolerance Operator', 'Tolerance (%)'], rows);
     }
 
     // 5. LINEARITY OF mAs LOADING
@@ -767,11 +781,12 @@ export const createCTScanUploadableExcel = (data: CTScanExportData, hasTimer: bo
             r.front || '',
             r.back || '',
             r.left || '',
-            r.right || ''
+            r.right || '',
+            r.top || ''
         ]);
 
-        const rows = [[...paramRow, '', '', '', '', ''], ...dataRows];
-        addSection('Radiation Leakage Level from X-Ray Tube House', ['kV', 'mA', 'Time (sec)', 'Workload', 'Workload Unit', 'Tol Value', 'Tol Operator', 'Tol Time', 'Location', 'Front', 'Back', 'Left', 'Right'], rows);
+        const rows = [[...paramRow, '', '', '', '', '', ''], ...dataRows];
+        addSection('Radiation Leakage Level from X-Ray Tube House', ['kV', 'mA', 'Time (sec)', 'Workload', 'Workload Unit', 'Tol Value', 'Tol Operator', 'Tol Time', 'Location', 'Front', 'Back', 'Left', 'Right', 'Top'], rows);
     }
 
     // 9. Reproducibility of Radiation Output (Consistency Test)

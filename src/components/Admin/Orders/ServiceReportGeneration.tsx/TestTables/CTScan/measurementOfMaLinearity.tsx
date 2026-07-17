@@ -54,6 +54,7 @@ const MeasurementOfMaLinearity: React.FC<Props> = ({ serviceId, testId: propTest
     ]);
 
     const [tolerance, setTolerance] = useState<string>('0.1');
+    const [toleranceOperator, setToleranceOperator] = useState<string>('<');
 
     const [isSaving, setIsSaving] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
@@ -166,7 +167,17 @@ const MeasurementOfMaLinearity: React.FC<Props> = ({ serviceId, testId: propTest
         const colVal = xMax !== '—' && xMin !== '—' && (parseFloat(xMax) + parseFloat(xMin)) > 0
             ? ((parseFloat(xMax) - parseFloat(xMin)) / (parseFloat(xMax) + parseFloat(xMin))).toFixed(3)
             : '—';
-        const pass = colVal !== '—' && parseFloat(colVal) <= tol;
+        const colNumber = parseFloat(colVal);
+        const pass = colVal !== '—' && (() => {
+            switch (toleranceOperator) {
+                case '<': return colNumber < tol;
+                case '<=': return colNumber <= tol;
+                case '>': return colNumber > tol;
+                case '>=': return colNumber >= tol;
+                case '=': return colNumber === tol;
+                default: return colNumber < tol;
+            }
+        })();
 
         // Second pass: apply Xmax, Xmin, CoL, Remarks
         // Overall pass: CoL must pass AND no individual measurements failed
@@ -182,7 +193,7 @@ const MeasurementOfMaLinearity: React.FC<Props> = ({ serviceId, testId: propTest
                 remarks: overallPass ? 'Pass' : colVal === '—' ? '' : 'Fail',
             };
         });
-    }, [table2Rows, tolerance, table1Row.time]);
+    }, [table2Rows, tolerance, toleranceOperator, table1Row.time]);
 
     const hasValidTime = useMemo(() => {
         const timeVal = parseFloat(table1Row.time);
@@ -267,6 +278,8 @@ const MeasurementOfMaLinearity: React.FC<Props> = ({ serviceId, testId: propTest
 
         const tol = csvData.find(r => r['Field Name'] === 'Tolerance')?.['Value'];
         if (tol) setTolerance(String(tol));
+        const tolOperator = csvData.find(r => r['Field Name'] === 'ToleranceOperator')?.['Value'];
+        if (tolOperator) setToleranceOperator(String(tolOperator));
 
         setIsLoading(false);
         setIsEditing(true);
@@ -345,6 +358,7 @@ const MeasurementOfMaLinearity: React.FC<Props> = ({ serviceId, testId: propTest
                     }
 
                     if (rec.tolerance) setTolerance(rec.tolerance);
+                    if (rec.toleranceOperator) setToleranceOperator(rec.toleranceOperator);
 
                     setHasSaved(true);
                     setIsEditing(false);
@@ -389,6 +403,7 @@ const MeasurementOfMaLinearity: React.FC<Props> = ({ serviceId, testId: propTest
             })),
             measurementHeaders: measHeaders,
             tolerance,
+            toleranceOperator,
             tubeId: tubeId || null,
         };
 
@@ -633,7 +648,19 @@ const MeasurementOfMaLinearity: React.FC<Props> = ({ serviceId, testId: propTest
                         </button>
                     )}
                     <div className="flex items-center gap-2 ml-auto">
-                        <span className="text-sm font-medium text-gray-700">Tolerance (CoL) less than</span>
+                        <span className="text-sm font-medium text-gray-700">Tolerance (CoL)</span>
+                        <select
+                            value={toleranceOperator}
+                            onChange={e => setToleranceOperator(e.target.value)}
+                            disabled={isViewMode}
+                            className={`w-20 px-2 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'}`}
+                        >
+                            <option value="<">&lt;</option>
+                            <option value="<=">&le;</option>
+                            <option value=">">&gt;</option>
+                            <option value=">=">&ge;</option>
+                            <option value="=">=</option>
+                        </select>
                         <input
                             type="number"
                             step="0.001"

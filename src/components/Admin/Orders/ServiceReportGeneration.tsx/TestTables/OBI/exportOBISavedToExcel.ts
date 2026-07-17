@@ -78,9 +78,39 @@ export const createOBISavedExcel = (data: OBISavedExportData): XLSX.WorkBook => 
   }
 
   const aop = unwrap(data.accuracyOfOperatingPotential);
-  if (aop?.table2?.length > 0) {
-    const rows = aop.table2.map((row: any) => [row.setKV ?? "", row.ma10 ?? row.ma1 ?? "", row.ma100 ?? row.ma2 ?? "", row.ma200 ?? row.ma3 ?? ""]);
-    addSection("ACCURACY OF OPERATING POTENTIAL", ["Applied kVp", "mA 1 kVp", "mA 2 kVp", "mA 3 kVp"], rows);
+  const aopRows = aop?.measurements?.length > 0 ? aop.measurements : aop?.table2 || [];
+  if (aopRows.length > 0) {
+    const maxMeasurements = Math.max(
+      1,
+      ...aopRows.map((row: any) =>
+        Array.isArray(row.measuredValues)
+          ? row.measuredValues.length
+          : [row.ma10 ?? row.ma1, row.ma100 ?? row.ma2, row.ma200 ?? row.ma3].filter((v) => v != null).length
+      )
+    );
+    const stations: string[] =
+      Array.isArray(aop.mAStations) && aop.mAStations.length > 0
+        ? Array.from({ length: maxMeasurements }, (_, i) => String(aop.mAStations[i] ?? `mA ${i + 1}`))
+        : Array.from({ length: maxMeasurements }, (_, i) => `mA ${i + 1}`);
+    const headerCols = stations.map((_, i) => `Header ${i + 1}`);
+    const measCols = stations.map((_, i) => `Meas ${i + 1}`);
+
+    allData.push(["TEST: ACCURACY OF KVP AT DIFFERENT MA STATIONS"]);
+    allData.push(["FFD (cm)", "Tolerance Sign", "Tolerance Value", ...headerCols, "Applied kVp", ...measCols]);
+    aopRows.forEach((row: any, idx: number) => {
+      const measuredValues = Array.isArray(row.measuredValues)
+        ? row.measuredValues
+        : [row.ma10 ?? row.ma1, row.ma100 ?? row.ma2, row.ma200 ?? row.ma3];
+      allData.push([
+        idx === 0 ? (aop.ffd ?? "") : "",
+        idx === 0 ? (aop.tolerance?.sign ?? "±") : "",
+        idx === 0 ? (aop.tolerance?.value ?? "2.0") : "",
+        ...(idx === 0 ? stations : Array(stations.length).fill("")),
+        row.appliedKvp ?? row.setKV ?? "",
+        ...stations.map((_, i) => measuredValues[i] ?? ""),
+      ]);
+    });
+    addBlank();
   }
 
   const oc = unwrap(data.outputConsistency);
@@ -133,9 +163,19 @@ export const createOBISavedExcel = (data: OBISavedExportData): XLSX.WorkBook => 
   if (lot?.measurementRows?.length > 0 || lot?.table2?.length > 0) {
     const tc = lot.testConditions || lot.table1 || {};
     const rows = lot.measurementRows || lot.table2 || [];
-    const headers = lot.measHeaders || lot.headers || ["Meas 1", "Meas 2", "Meas 3"];
+    const maxMeasurements = Math.max(
+      1,
+      ...rows.map((r: any) => (r.radiationOutputs || r.measuredOutputs || []).length)
+    );
+    const savedHeaders = lot.measHeaders || lot.headers || [];
+    const headers = Array.from(
+      { length: Math.max(maxMeasurements, savedHeaders.length, 1) },
+      (_, i) => String(savedHeaders[i] ?? `Meas ${i + 1}`)
+    );
+    const headerCols = headers.map((_, i) => `Header ${i + 1}`);
+    const measCols = headers.map((_, i) => `Meas ${i + 1}`);
     allData.push(["TEST: LINEARITY OF TIME"]);
-    allData.push(["FDD (cm)", "kV", "Time (sec)", "Tolerance Operator", "Tolerance Value", "Header 1", "Header 2", "Header 3", "mA Applied", ...headers.slice(0, 3)]);
+    allData.push(["FDD (cm)", "kV", "Time (sec)", "Tolerance Operator", "Tolerance Value", ...headerCols, "mA Applied", ...measCols]);
     rows.forEach((r: any, idx: number) => {
       const outs = r.radiationOutputs || r.measuredOutputs || [];
       allData.push([
@@ -144,13 +184,9 @@ export const createOBISavedExcel = (data: OBISavedExportData): XLSX.WorkBook => 
         idx === 0 ? (tc.time ?? "") : "",
         idx === 0 ? (lot.toleranceOperator ?? "<=") : "",
         idx === 0 ? (lot.tolerance ?? "0.1") : "",
-        idx === 0 ? (headers[0] ?? "") : "",
-        idx === 0 ? (headers[1] ?? "") : "",
-        idx === 0 ? (headers[2] ?? "") : "",
+        ...(idx === 0 ? headers : Array(headers.length).fill("")),
         r.maApplied ?? r.ma ?? "",
-        outs[0] ?? "",
-        outs[1] ?? "",
-        outs[2] ?? "",
+        ...headers.map((_, i) => outs[i] ?? ""),
       ]);
     });
     addBlank();

@@ -39,10 +39,13 @@ interface Props {
 }
 
 const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, refreshKey, initialData, initialSurveyDate }) => {
-    // Get today's date in YYYY-MM-DD format
+    // Get today's local date in YYYY-MM-DD format.
     const getTodayDate = () => {
         const today = new Date();
-        return today.toISOString().split('T')[0];
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, "0");
+        const day = String(today.getDate()).padStart(2, "0");
+        return `${year}-${month}-${day}`;
     };
 
     const [testId, setTestId] = useState<string | null>(null);
@@ -293,6 +296,10 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, refreshKey, ini
             toast.error("Please select a survey date");
             return;
         }
+        if (surveyDate > getTodayDate()) {
+            toast.error("Survey date cannot be later than today's date");
+            return;
+        }
         if (!hasValidCalibration.trim()) {
             toast.error("Please select calibration status");
             return;
@@ -367,7 +374,7 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, refreshKey, ini
                 <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-8">
                     <div>
                         <label className="block text-sm font-semibold text-gray-700 mb-2">Date of Survey</label>
-                        <input type="date" value={surveyDate} onChange={e => setSurveyDate(e.target.value)}
+                        <input type="date" value={surveyDate} max={getTodayDate()} onChange={e => setSurveyDate(e.target.value)}
                             disabled={isDisabled}
                             className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 ${isDisabled ? "bg-gray-100 cursor-not-allowed" : ""}`} />
                     </div>

@@ -30,6 +30,7 @@ import { createCArmUploadableExcel, CArmExportData } from "./exportCArmToExcel";
 import { mergeWithRadiographyVerticalParse } from "../shared/mergeRadiographyVerticalParse";
 import { enrichParsedRowsWithMatrixMeasHeaders } from "../shared/enrichMeasHeadersFromMatrix";
 import { coerceMasRangeLabel, normalizeCsvComparisonOperator } from "../shared/parseRadiographyStyleTableFormat";
+import { TestExportRegistryProvider, useTestExportRegistry } from "../shared/TestExportRegistry";
 
 // Test-table imports (unchanged)
 import AccuracyOfIrradiationTime from "./AccuracyOfIrradiationTime";
@@ -98,7 +99,8 @@ interface CArmProps {
   csvFileUrl?: string | null;
 }
 
-const CArm: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
+const CArmContent: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
+  const exportRegistry = useTestExportRegistry();
   const navigate = useNavigate();
 
   const [details, setDetails] = useState<DetailsResponse | null>(null);
@@ -443,74 +445,91 @@ const CArm: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
     try {
       toast.loading("Exporting data to Excel...", { id: "export-excel-carm" });
       setIsExporting(true);
-      const exportData: Record<string, unknown> = {};
+      const registeredData = exportRegistry?.collect() ?? {};
+      const exportData: Record<string, unknown> = {
+        accuracyOfIrradiationTime: registeredData.accuracyOfIrradiationTime ?? csvDataForComponents['Accuracy of Irradiation Time'],
+        totalFiltration: registeredData.totalFiltration ?? csvDataForComponents['Total Filtration'],
+        outputConsistency: registeredData.outputConsistency ?? csvDataForComponents['Consistency of Radiation Output'],
+        lowContrastResolution: registeredData.lowContrastResolution ?? csvDataForComponents['Low Contrast Resolution'],
+        highContrastResolution: registeredData.highContrastResolution ?? csvDataForComponents['High Contrast Resolution'],
+        exposureRateAtTableTop: registeredData.exposureRateAtTableTop ?? csvDataForComponents['Exposure Rate At Table Top'],
+        tubeHousingLeakage: registeredData.tubeHousingLeakage ?? csvDataForComponents['Tube Housing Leakage'],
+        linearityOfMaLoading: registeredData.linearityOfMaLoading ?? csvDataForComponents['Linearity of mA Loading'],
+        linearityOfMasLoading: registeredData.linearityOfMasLoading ?? csvDataForComponents['Linearity of mAs Loading'],
+      };
       try {
         const headerRes = await getReportHeaderForCArm(serviceId);
-        if (headerRes?.exists && headerRes?.data) exportData.reportHeader = headerRes;
+        exportData.reportHeader = {
+          ...headerRes,
+          data: { ...(headerRes?.data || headerRes || {}), ...formData },
+          exists: true,
+        };
       } catch (err) {
         console.log("C-Arm report header not found or error:", err);
+        exportData.reportHeader = { data: { ...formData }, exists: true };
       }
       if (hasTimer === true) {
         try {
           const res = await getAccuracyOfIrradiationTimeByServiceIdForCArm(serviceId);
-          if (res) exportData.accuracyOfIrradiationTime = res;
+          if (!exportData.accuracyOfIrradiationTime && res) exportData.accuracyOfIrradiationTime = res;
         } catch (err) {
           console.log("Accuracy of Irradiation Time not found or error:", err);
         }
       }
       try {
         const res = await getTotalFilterationByServiceIdForCArm(serviceId);
-        if (res) exportData.totalFiltration = res;
+        if (!exportData.totalFiltration && res) exportData.totalFiltration = res;
       } catch (err) {
         console.log("Total Filtration not found or error:", err);
       }
       try {
         const res = await getOutputConsistencyByServiceIdForCArm(serviceId);
-        if (res) exportData.outputConsistency = res;
+        if (!exportData.outputConsistency && res) exportData.outputConsistency = res;
       } catch (err) {
         console.log("Output Consistency not found or error:", err);
       }
       try {
         const res = await getLowContrastResolutionByServiceIdForCArm(serviceId);
-        if (res) exportData.lowContrastResolution = res;
+        if (!exportData.lowContrastResolution && res) exportData.lowContrastResolution = res;
       } catch (err) {
         console.log("Low Contrast Resolution not found or error:", err);
       }
       try {
         const res = await getHighContrastResolutionByServiceIdForCArm(serviceId);
-        if (res) exportData.highContrastResolution = res;
+        if (!exportData.highContrastResolution && res) exportData.highContrastResolution = res;
       } catch (err) {
         console.log("High Contrast Resolution not found or error:", err);
       }
       try {
         const res = await getExposureRateByServiceIdForCArm(serviceId);
-        if (res) exportData.exposureRateAtTableTop = res;
+        if (!exportData.exposureRateAtTableTop && res) exportData.exposureRateAtTableTop = res;
       } catch (err) {
         console.log("Exposure Rate not found or error:", err);
       }
       try {
         const res = await getTubeHousingLeakageByServiceIdCArm(serviceId);
-        if (res) exportData.tubeHousingLeakage = res;
+        if (!exportData.tubeHousingLeakage && res) exportData.tubeHousingLeakage = res;
       } catch (err) {
         console.log("Tube Housing Leakage not found or error:", err);
       }
       if (hasTimer === true) {
         try {
           const res = await getLinearityOfMaLoadingStationsByServiceIdForCArm(serviceId);
-          if (res) exportData.linearityOfMaLoading = res;
+          if (!exportData.linearityOfMaLoading && res) exportData.linearityOfMaLoading = res;
         } catch (err) {
           console.log("Linearity of mA Loading not found or error:", err);
         }
       } else if (hasTimer === false) {
         try {
           const res = await getLinearityOfMasLoadingStationsByServiceIdForCArm(serviceId);
-          if (res) exportData.linearityOfMasLoading = res;
+          if (!exportData.linearityOfMasLoading && res) exportData.linearityOfMasLoading = res;
         } catch (err) {
           console.log("Linearity of mAs Loading not found or error:", err);
         }
       }
-      if (Object.keys(exportData).length <= 1 && !exportData.reportHeader) {
-        toast.error("No data found to export. Please save test data first.", { id: "export-excel-carm" });
+      const hasData = Object.keys(exportData).filter((key) => key !== "reportHeader").some((key) => exportData[key] != null);
+      if (!hasData) {
+        toast.error("No data found to export. Enter test data on this page or save test data first.", { id: "export-excel-carm" });
         return;
       }
       const wb = createCArmUploadableExcel(exportData as CArmExportData);
@@ -1597,5 +1616,11 @@ const CArm: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
     </div>
   );
 };
+
+const CArm: React.FC<CArmProps> = (props) => (
+  <TestExportRegistryProvider>
+    <CArmContent {...props} />
+  </TestExportRegistryProvider>
+);
 
 export default CArm;

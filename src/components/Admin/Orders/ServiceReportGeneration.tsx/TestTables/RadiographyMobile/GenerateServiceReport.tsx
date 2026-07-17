@@ -22,6 +22,7 @@ import {
   getRadiationLeakageLevelByServiceIdForRadiographyMobile,
 } from "../../../../../../api";
 import { createRadiographyMobileUploadableExcel, RadiographyMobileExportData } from "./exportRadiographyMobileToExcel";
+import { TestExportRegistryProvider, useTestExportRegistry } from "../shared/TestExportRegistry";
 
 import Standards from "../../Standards";
 import Notes from "../../Notes";
@@ -64,7 +65,10 @@ interface DetailsResponse {
   qaTests: Array<{ createdAt: string; qaTestReportNumber: string }>;
 }
 
-const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | null; csvFileUrl?: string | null }> = ({ serviceId, qaTestDate, csvFileUrl }) => {
+type RadiographyMobileProps = { serviceId: string; qaTestDate?: string | null; csvFileUrl?: string | null };
+
+const RadiographyMobileContent: React.FC<RadiographyMobileProps> = ({ serviceId, qaTestDate, csvFileUrl }) => {
+  const exportRegistry = useTestExportRegistry();
   const navigate = useNavigate();
   const pickRpId = (obj: any): string =>
     obj?.rpId || obj?.rpid || obj?.rpID || obj?.RPId || obj?.engineerAssigned?.rpId || "";
@@ -80,6 +84,7 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
   const [showTimerModal, setShowTimerModal] = useState(false);
 
   const [excelUploading, setExcelUploading] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -1653,77 +1658,88 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
 
     try {
       toast.loading("Exporting data to Excel...", { id: "export-excel" });
-      setExcelUploading(true);
+      setIsExporting(true);
 
-      const exportData: Record<string, unknown> = {};
+      const registeredData = exportRegistry?.collect() ?? {};
+      const exportData: Record<string, unknown> = {
+        accuracyOfIrradiationTime: registeredData.accuracyOfIrradiationTime ?? csvDataForComponents.accuracyOfIrradiationTime,
+        accuracyOfOperatingPotential: registeredData.accuracyOfOperatingPotential ?? csvDataForComponents.accuracyOfOperatingPotential,
+        centralBeamAlignment: registeredData.centralBeamAlignment ?? csvDataForComponents.centralBeamAlignment,
+        congruence: registeredData.congruence ?? csvDataForComponents.congruenceOfRadiation,
+        effectiveFocalSpot: registeredData.effectiveFocalSpot ?? csvDataForComponents.effectiveFocalSpot,
+        linearityOfMasLoading: registeredData.linearityOfMasLoading ?? csvDataForComponents.linearityOfMasLoading,
+        outputConsistency: registeredData.outputConsistency ?? csvDataForComponents.outputConsistency,
+        radiationLeakageLevel: registeredData.radiationLeakageLevel ?? csvDataForComponents.radiationLeakageLevel,
+      };
 
       try {
         const headerRes = await getReportHeaderForRadiographyMobile(serviceId);
         if (headerRes?.data || headerRes?.exists) {
-          exportData.reportHeader = headerRes;
+          exportData.reportHeader = { ...headerRes, data: { ...(headerRes?.data || headerRes || {}), ...formData }, exists: true };
         }
       } catch (err) {
         console.log("Radiography Mobile report header not found or error:", err);
+        exportData.reportHeader = { data: { ...formData }, exists: true };
       }
 
       try {
         const res = await getAccuracyOfIrradiationTimeByServiceIdForRadiographyMobile(serviceId);
-        if (res) exportData.accuracyOfIrradiationTime = res;
+        if (!exportData.accuracyOfIrradiationTime && res) exportData.accuracyOfIrradiationTime = res;
       } catch (err) {
         console.log("Accuracy of Irradiation Time not found or error:", err);
       }
 
       try {
         const res = await getAccuracyOfOperatingPotentialByServiceIdForRadiographyMobile(serviceId);
-        if (res) exportData.accuracyOfOperatingPotential = res;
+        if (!exportData.accuracyOfOperatingPotential && res) exportData.accuracyOfOperatingPotential = res;
       } catch (err) {
         console.log("Accuracy of Operating Potential not found or error:", err);
       }
 
       try {
         const res = await getCentralBeamAlignmentByServiceIdForRadiographyMobile(serviceId);
-        if (res) exportData.centralBeamAlignment = res;
+        if (!exportData.centralBeamAlignment && res) exportData.centralBeamAlignment = res;
       } catch (err) {
         console.log("Central Beam Alignment not found or error:", err);
       }
 
       try {
         const res = await getCongruenceByServiceIdForRadiographyMobile(serviceId);
-        if (res) exportData.congruence = res;
+        if (!exportData.congruence && res) exportData.congruence = res;
       } catch (err) {
         console.log("Congruence not found or error:", err);
       }
 
       try {
         const res = await getEffectiveFocalSpotByServiceIdForRadiographyMobile(serviceId);
-        if (res) exportData.effectiveFocalSpot = res;
+        if (!exportData.effectiveFocalSpot && res) exportData.effectiveFocalSpot = res;
       } catch (err) {
         console.log("Effective Focal Spot not found or error:", err);
       }
 
       try {
         const res = await getLinearityOfMasLoadingStationsByServiceIdForRadiographyMobile(serviceId);
-        if (res) exportData.linearityOfMasLoading = res;
+        if (!exportData.linearityOfMasLoading && res) exportData.linearityOfMasLoading = res;
       } catch (err) {
         console.log("Linearity of mAs Loading not found or error:", err);
       }
 
       try {
         const res = await getConsistencyOfRadiationOutputByServiceIdForRadiographyMobile(serviceId);
-        if (res) exportData.outputConsistency = res;
+        if (!exportData.outputConsistency && res) exportData.outputConsistency = res;
       } catch (err) {
         console.log("Output Consistency not found or error:", err);
       }
 
       try {
         const res = await getRadiationLeakageLevelByServiceIdForRadiographyMobile(serviceId);
-        if (res) exportData.radiationLeakageLevel = res;
+        if (!exportData.radiationLeakageLevel && res) exportData.radiationLeakageLevel = res;
       } catch (err) {
         console.log("Radiation Leakage Level not found or error:", err);
       }
 
-      if (Object.keys(exportData).length === 0) {
-        toast.error("No data found to export. Please save test data first.", { id: "export-excel" });
+      if (!Object.keys(exportData).filter((key) => key !== "reportHeader").some((key) => exportData[key] != null)) {
+        toast.error("No data found to export. Enter test data on this page or save test data first.", { id: "export-excel" });
         return;
       }
 
@@ -1737,7 +1753,7 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
       console.error("Error exporting to Excel:", error);
       toast.error("Failed to export data: " + (error?.message || "Unknown error"), { id: "export-excel" });
     } finally {
-      setExcelUploading(false);
+      setIsExporting(false);
     }
   };
 
@@ -1819,10 +1835,10 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
         <button
           type="button"
           onClick={handleExportToExcel}
-          disabled={excelUploading}
-          className={`px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition shadow ${excelUploading ? "opacity-50 cursor-not-allowed" : ""}`}
+          disabled={isExporting || excelUploading}
+          className={`px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition shadow ${(isExporting || excelUploading) ? "opacity-50 cursor-not-allowed" : ""}`}
         >
-          {excelUploading ? "Exporting..." : "Export Excel"}
+          {isExporting ? "Exporting..." : "Export Excel"}
         </button>
       </div>
 
@@ -2089,5 +2105,11 @@ const RadiographyMobile: React.FC<{ serviceId: string; qaTestDate?: string | nul
     </div>
   );
 };
+
+const RadiographyMobile: React.FC<RadiographyMobileProps> = (props) => (
+  <TestExportRegistryProvider>
+    <RadiographyMobileContent {...props} />
+  </TestExportRegistryProvider>
+);
 
 export default RadiographyMobile;

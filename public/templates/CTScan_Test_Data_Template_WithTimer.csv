@@ -18,9 +18,9 @@ kVp,Slice Thickness (mm),Time (ms),Tolerance,Header 1,Header 2,Header 3,mA Appli
 ,,,,,,,100,101.0,100.8,101.2
 
 TEST: TIMER ACCURACY
-kVp,Slice Thickness (mm),mA,Set Time (ms),Observed Time (ms),Tolerance (%)
-80,5.0,100,100,98.5,5
-80,5.0,100,200,199,
+kVp,Slice Thickness (mm),mA,Set Time (ms),Observed Time (ms),Tolerance (%),Tolerance Operator
+80,5.0,100,100,98.5,5,<=
+80,5.0,100,200,199,,<=
 
 TEST: LINEARITY OF MAS LOADING
 mAs Range,Result,FCD,kV,Tolerance
@@ -46,9 +46,9 @@ mAs,Slice Thickness (mm),Time (s),Header 1,Header 2,Header 3,Header 4,Header 5,k
 100,5,1.0,Meas 1,Meas 2,Meas 3,Meas 4,Meas 5,120,100.5,100.3,100.6,100.4,100.5
 
 TEST: Radiation Leakage Level from X-Ray Tube House
-kV,mA,Time (sec),Workload,Workload Unit,Tol Value,Tol Operator,Tol Time,Location,Front,Back,Left,Right
-120,100,1.0,500,mA·min/week,1.0,<=,1,Tube,0.05,0.03,0.06,0.04
-,,,,,,,,Collimator,0.02,0.02,0.03,0.01
+kV,mA,Time (sec),Workload,Workload Unit,Tol Value,Tol Operator,Tol Time,Location,Front,Back,Left,Right,Top
+120,100,1.0,500,mA·min/week,1.0,<=,1,Tube,0.05,0.03,0.06,0.04,0.05
+,,,,,,,,Collimator,0.02,0.02,0.03,0.01,0.02
 
 TEST: LOW CONTRAST RESOLUTION
 Observed Size,Contrast Level,kVp,mA,Slice Thickness,WW

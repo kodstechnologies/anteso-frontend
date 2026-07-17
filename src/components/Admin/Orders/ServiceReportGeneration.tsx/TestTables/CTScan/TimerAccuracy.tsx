@@ -43,6 +43,7 @@ const TimerAccuracy: React.FC<Props> = ({ serviceId, testId: propTestId, tubeId,
   ]);
 
   const [tolerance, setTolerance] = useState<string>('10');
+  const [toleranceOperator, setToleranceOperator] = useState<string>('<=');
 
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -85,13 +86,27 @@ const TimerAccuracy: React.FC<Props> = ({ serviceId, testId: propTestId, tubeId,
       if (!isNaN(set) && !isNaN(obs) && set > 0) {
         const error = ((Math.abs(set - obs) / set) * 100).toFixed(2);
         percentError = `${error}%`;
-        autoRemarks = parseFloat(error) <= tol ? 'Pass' : 'Fail';
+        const errorValue = parseFloat(error);
+        const isPass = (() => {
+          switch (toleranceOperator) {
+            case '<': return errorValue < tol;
+            case '<=': return errorValue <= tol;
+            case '>': return errorValue > tol;
+            case '>=': return errorValue >= tol;
+            case '=': return errorValue === tol;
+            default: return errorValue <= tol;
+          }
+        })();
+        autoRemarks = isPass ? 'Pass' : 'Fail';
       }
 
-      const finalRemarks = row.remarks.trim() === '' ? autoRemarks : row.remarks;
+      const existingRemark = row.remarks.trim();
+      const finalRemarks = !existingRemark || existingRemark === 'Pass' || existingRemark === 'Fail'
+        ? autoRemarks
+        : row.remarks;
       return { ...row, percentError, remarks: finalRemarks };
     });
-  }, [table2Rows, tolerance]);
+  }, [table2Rows, tolerance, toleranceOperator]);
 
   // === CSV Data Injection ===
   useEffect(() => {
@@ -136,6 +151,8 @@ const TimerAccuracy: React.FC<Props> = ({ serviceId, testId: propTestId, tubeId,
       // Tolerance
       const tol = csvData.find(r => r['Field Name'] === 'Tolerance')?.['Value'];
       if (tol) setTolerance(tol);
+      const tolOperator = csvData.find(r => r['Field Name'] === 'ToleranceOperator')?.['Value'];
+      if (tolOperator) setToleranceOperator(String(tolOperator));
 
       if (!testId) {
         setIsEditing(true);
@@ -192,6 +209,7 @@ const TimerAccuracy: React.FC<Props> = ({ serviceId, testId: propTestId, tubeId,
           }
 
           if (rec.tolerance) setTolerance(rec.tolerance);
+          if (rec.toleranceOperator) setToleranceOperator(rec.toleranceOperator);
 
           setHasSaved(true);
           setIsEditing(false);
@@ -226,6 +244,7 @@ const TimerAccuracy: React.FC<Props> = ({ serviceId, testId: propTestId, tubeId,
         remarks: r.remarks,
       })),
       tolerance,
+      toleranceOperator,
       tubeId: tubeId || null,
     };
 
@@ -438,6 +457,18 @@ const TimerAccuracy: React.FC<Props> = ({ serviceId, testId: propTestId, tubeId,
           )}
           <div className="flex items-center gap-2 ml-auto">
             <span className="text-sm font-medium text-gray-700">Tolerance (%):</span>
+            <select
+              value={toleranceOperator}
+              onChange={e => setToleranceOperator(e.target.value)}
+              disabled={isViewMode}
+              className={`w-20 px-2 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'}`}
+            >
+              <option value="<">&lt;</option>
+              <option value="<=">&le;</option>
+              <option value=">">&gt;</option>
+              <option value=">=">&ge;</option>
+              <option value="=">=</option>
+            </select>
             <input
               type="number"
               value={tolerance}

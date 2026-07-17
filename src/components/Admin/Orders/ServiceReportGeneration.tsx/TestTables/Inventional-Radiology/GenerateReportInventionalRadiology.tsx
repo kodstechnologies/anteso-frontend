@@ -48,6 +48,7 @@ import MeasurementOfMaLinearity from "./measurementOfMaLinearity";
 import { handleExportToExcel as exportToExcel } from "../../../../../../utils/exportInventionalRadiologyToExcel";
 import { createInventionalRadiologySavedExcel, InventionalRadiologySavedExportData } from "./exportInventionalRadiologySavedToExcel";
 import { isExcelFileUrl } from "../../../../../../utils/spreadsheetFile";
+import { TestExportRegistryProvider, useTestExportRegistry } from "../shared/TestExportRegistry";
 // import EquipmentSettingForInterventionalRadiology from "./EquipmentSettingForInventionalRadiology";
 // import MaxRadiationLevel from "./MaxRadiationLevel";
 export interface Standard {
@@ -104,7 +105,8 @@ interface InventionalRadiologyProps {
   csvFileUrl?: string | null;
 }
 
-const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, qaTestDate, csvFileUrl: csvFileUrlProp }) => {
+const InventionalRadiologyContent: React.FC<InventionalRadiologyProps> = ({ serviceId, qaTestDate, csvFileUrl: csvFileUrlProp }) => {
+  const exportRegistry = useTestExportRegistry();
   const navigate = useNavigate();
   const location = useLocation();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -815,13 +817,34 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
       toast.loading("Exporting data to Excel...", { id: "export-excel" });
       setIsExporting(true);
       const tubeId = tubeType === "single" ? null : "frontal";
-      const exportData: InventionalRadiologySavedExportData & { reportHeader?: any } = {};
+      const suffix = tubeId ? " - Frontal" : "";
+      const registeredData = exportRegistry?.collect() ?? {};
+      const exportData: InventionalRadiologySavedExportData & { reportHeader?: any } = {
+        accuracyOfIrradiationTime: registeredData.accuracyOfIrradiationTime ?? csvDataForComponents[`Accuracy Of Irradiation Time${suffix}`],
+        centralBeamAlignment: registeredData.centralBeamAlignment ?? csvDataForComponents[`Central Beam Alignment${suffix}`],
+        effectiveFocalSpot: registeredData.effectiveFocalSpot ?? csvDataForComponents[`Effective Focal Spot Size${suffix}`],
+        accuracyOfOperatingPotential: registeredData.accuracyOfOperatingPotential,
+        totalFiltration: registeredData.totalFiltration,
+        consistencyOfRadiationOutput: registeredData.consistencyOfRadiationOutput ?? csvDataForComponents[`Consistency Of Radiation Output${suffix}`],
+        measurementOfMaLinearity: registeredData.measurementOfMaLinearity ?? csvDataForComponents[`Measurement of mA Linearity${suffix}`],
+        linearityOfMasLoading: registeredData.linearityOfMasLoading,
+        lowContrastResolution: registeredData.lowContrastResolution ?? csvDataForComponents[`Low Contrast Resolution${suffix}`],
+        highContrastResolution: registeredData.highContrastResolution ?? csvDataForComponents[`High Contrast Resolution${suffix}`],
+        exposureRateTableTop: registeredData.exposureRateTableTop ?? csvDataForComponents[`Exposure Rate At Table Top${suffix}`],
+        tubeHousingLeakage: registeredData.tubeHousingLeakage ?? csvDataForComponents[`Tube Housing Leakage${suffix}`],
+        radiationProtectionSurvey: registeredData.radiationProtectionSurvey ?? csvDataForComponents['Radiation Protection Survey Report'],
+      };
 
       try {
         const headerRes = await getReportHeaderForInventionalRadiology(serviceId, tubeId);
-        if (headerRes?.data || headerRes?.exists) exportData.reportHeader = headerRes;
+        exportData.reportHeader = {
+          ...headerRes,
+          data: { ...(headerRes?.data || headerRes || {}), ...formData },
+          exists: true,
+        };
       } catch (err) {
         console.log("Report header not found or error:", err);
+        exportData.reportHeader = { data: { ...formData }, exists: true };
       }
 
       const fetchTest = async (fn: () => Promise<any>) => {
@@ -833,23 +856,23 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
         }
       };
 
-      exportData.accuracyOfIrradiationTime = await fetchTest(() => getAccuracyOfIrradiationTimeByServiceId(serviceId, tubeId));
-      exportData.centralBeamAlignment = await fetchTest(() => getCentralBeamAlignmentByServiceIdForInventionalRadiology(serviceId, tubeId));
-      exportData.effectiveFocalSpot = await fetchTest(() => getEffectiveFocalSpotByServiceIdForInventionalRadiology(serviceId, tubeId));
-      exportData.accuracyOfOperatingPotential = await fetchTest(() => getAccuracyOfOperatingPotentialByServiceIdForInventionalRadiology(serviceId, tubeId));
-      exportData.totalFiltration = await fetchTest(() => getTotalFilterationByServiceIdForInventionalRadiology(serviceId, tubeId));
-      exportData.consistencyOfRadiationOutput = await fetchTest(() => getConsistencyOfRadiationOutputByServiceIdForInventionalRadiology(serviceId, tubeId));
-      exportData.measurementOfMaLinearity = await fetchTest(() => getMeasurementOfMaLinearityByServiceIdForInventionalRadiology(serviceId, tubeId));
-      exportData.linearityOfMasLoading = await fetchTest(() => getLinearityOfmAsLoadingByServiceIdForInventionalRadiology(serviceId));
-      exportData.lowContrastResolution = await fetchTest(() => getLowContrastResolutionByServiceIdForInventionalRadiology(serviceId, tubeId));
-      exportData.highContrastResolution = await fetchTest(() => getHighContrastResolutionByServiceIdForInventionalRadiology(serviceId, tubeId));
-      exportData.exposureRateTableTop = await fetchTest(() => getExposureRateTableTopByServiceIdForInventionalRadiology(serviceId, tubeId));
-      exportData.tubeHousingLeakage = await fetchTest(() => getTubeHousingLeakageByServiceIdForInventionalRadiology(serviceId, tubeId));
-      exportData.radiationProtectionSurvey = await fetchTest(() => getRadiationProtectionSurveyByServiceIdForInventionalRadiology(serviceId));
+      exportData.accuracyOfIrradiationTime ??= await fetchTest(() => getAccuracyOfIrradiationTimeByServiceId(serviceId, tubeId));
+      exportData.centralBeamAlignment ??= await fetchTest(() => getCentralBeamAlignmentByServiceIdForInventionalRadiology(serviceId, tubeId));
+      exportData.effectiveFocalSpot ??= await fetchTest(() => getEffectiveFocalSpotByServiceIdForInventionalRadiology(serviceId, tubeId));
+      exportData.accuracyOfOperatingPotential ??= await fetchTest(() => getAccuracyOfOperatingPotentialByServiceIdForInventionalRadiology(serviceId, tubeId));
+      exportData.totalFiltration ??= await fetchTest(() => getTotalFilterationByServiceIdForInventionalRadiology(serviceId, tubeId));
+      exportData.consistencyOfRadiationOutput ??= await fetchTest(() => getConsistencyOfRadiationOutputByServiceIdForInventionalRadiology(serviceId, tubeId));
+      exportData.measurementOfMaLinearity ??= await fetchTest(() => getMeasurementOfMaLinearityByServiceIdForInventionalRadiology(serviceId, tubeId));
+      exportData.linearityOfMasLoading ??= await fetchTest(() => getLinearityOfmAsLoadingByServiceIdForInventionalRadiology(serviceId));
+      exportData.lowContrastResolution ??= await fetchTest(() => getLowContrastResolutionByServiceIdForInventionalRadiology(serviceId, tubeId));
+      exportData.highContrastResolution ??= await fetchTest(() => getHighContrastResolutionByServiceIdForInventionalRadiology(serviceId, tubeId));
+      exportData.exposureRateTableTop ??= await fetchTest(() => getExposureRateTableTopByServiceIdForInventionalRadiology(serviceId, tubeId));
+      exportData.tubeHousingLeakage ??= await fetchTest(() => getTubeHousingLeakageByServiceIdForInventionalRadiology(serviceId, tubeId));
+      exportData.radiationProtectionSurvey ??= await fetchTest(() => getRadiationProtectionSurveyByServiceIdForInventionalRadiology(serviceId));
 
       const hasData = Object.keys(exportData).filter((k) => k !== "reportHeader").some((k) => exportData[k] != null);
       if (!hasData) {
-        toast.error("No data found to export. Please save test data first.", { id: "export-excel" });
+        toast.error("No data found to export. Enter test data on this page or save test data first.", { id: "export-excel" });
         return;
       }
       const wb = createInventionalRadiologySavedExcel(exportData as InventionalRadiologySavedExportData);
@@ -1303,8 +1326,8 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
         <button
           type="button"
           onClick={handleExportSavedData}
-          disabled={isExporting}
-          className={`px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition shadow ${isExporting ? "opacity-50 cursor-not-allowed" : ""}`}
+          disabled={isExporting || csvUploading}
+          className={`px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition shadow ${(isExporting || csvUploading) ? "opacity-50 cursor-not-allowed" : ""}`}
         >
           {isExporting ? "Exporting..." : "Export Excel"}
         </button>
@@ -1734,5 +1757,11 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = ({ serviceId, 
     </div>
   );
 };
+
+const InventionalRadiology: React.FC<InventionalRadiologyProps> = (props) => (
+  <TestExportRegistryProvider>
+    <InventionalRadiologyContent {...props} />
+  </TestExportRegistryProvider>
+);
 
 export default InventionalRadiology;

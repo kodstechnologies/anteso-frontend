@@ -1496,7 +1496,7 @@ const ViewServiceReportCTScan: React.FC = () => {
                                   {getOutputConsistencyMeasHeaders(testDataTubeA.outputConsistency).map((header, idx) => (
                                     <th key={idx} className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{header}</th>
                                   ))}
-                                  <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Mean (XÌ„)</th>
+                                  <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Mean</th>
                                   <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>COV</th>
                                   <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Remarks</th>
                                 </tr>
@@ -1593,7 +1593,7 @@ const ViewServiceReportCTScan: React.FC = () => {
                                   {getOutputConsistencyMeasHeaders(testDataTubeB.outputConsistency).map((header, idx) => (
                                     <th key={idx} className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{header}</th>
                                   ))}
-                                  <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Mean (XÌ„)</th>
+                                  <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Mean</th>
                                   <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>COV</th>
                                   <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Remarks</th>
                                 </tr>
@@ -1690,7 +1690,7 @@ const ViewServiceReportCTScan: React.FC = () => {
                                 {getOutputConsistencyMeasHeaders(testData.outputConsistency).map((header, idx) => (
                                   <th key={idx} className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{header}</th>
                                 ))}
-                                <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Mean (XÌ„)</th>
+                                <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Mean</th>
                                 <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>COV</th>
                                 <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Remarks</th>
                               </tr>
@@ -2140,7 +2140,7 @@ const ViewServiceReportCTScan: React.FC = () => {
                           <div className="bg-gray-50 p-4 print:p-1 rounded border border-gray-200">
                             <p className="text-sm print:text-[10px] font-bold mb-2 print:mb-1">Calculation Formula:</p>
                             <div className="bg-white p-3 print:p-1 border border-dashed border-gray-400 text-center font-mono text-sm print:text-[10px]">
-                              Maximum Leakage (mR in 1 hr) = (Workload Ã— Max Exposure) / (60 Ã— mA)
+                              Maximum Leakage (mR in 1 hr) = (Workload x Max Exposure) / (60 x mA)
                             </div>
                             <p className="text-[10px] print:text-[8px] mt-2 text-gray-600 italic">
                               Where: Workload = {workloadValue} mA-min/week | mA = {maValue} | 1 mGy = 114 mR
@@ -2152,7 +2152,7 @@ const ViewServiceReportCTScan: React.FC = () => {
                                 <p className="font-bold text-xs print:text-[9px] text-blue-800 mb-2">Tube Housing Summary:</p>
                                 <div className="text-[11px] print:text-[8px] space-y-1">
                                   <p>Max Measured: <strong>{tubeSummary.rowMax} mR/hr</strong></p>
-                                  <p>Result: ({workloadValue} Ã— {tubeSummary.rowMax}) / (60 Ã— {maValue}) = <strong>{tubeSummary.resMR.toFixed(3)} mR</strong></p>
+                                  <p>Result: ({workloadValue} x {tubeSummary.rowMax}) / (60 x {maValue}) = <strong>{tubeSummary.resMR.toFixed(3)} mR</strong></p>
                                   <p>In mGy: {tubeSummary.resMR.toFixed(3)} / 114 = <span className="font-bold text-blue-700">{tubeSummary.resMGy.toFixed(4)} mGy</span></p>
                                 </div>
                               </div>
@@ -2162,7 +2162,7 @@ const ViewServiceReportCTScan: React.FC = () => {
                                 <p className="font-bold text-xs print:text-[9px] text-indigo-800 mb-2">Collimator Summary:</p>
                                 <div className="text-[11px] print:text-[8px] space-y-1">
                                   <p>Max Measured: <strong>{collimatorSummary.rowMax} mR/hr</strong></p>
-                                  <p>Result: ({workloadValue} Ã— {collimatorSummary.rowMax}) / (60 Ã— {maValue}) = <strong>{collimatorSummary.resMR.toFixed(3)} mR</strong></p>
+                                  <p>Result: ({workloadValue} x {collimatorSummary.rowMax}) / (60 x {maValue}) = <strong>{collimatorSummary.resMR.toFixed(3)} mR</strong></p>
                                   <p>In mGy: {collimatorSummary.resMR.toFixed(3)} / 114 = <span className="font-bold text-indigo-700">{collimatorSummary.resMGy.toFixed(4)} mGy</span></p>
                                 </div>
                               </div>
@@ -2459,7 +2459,7 @@ const ViewServiceReportCTScan: React.FC = () => {
                             <div className="bg-gray-50 p-4 print:p-1 rounded border" style={{ padding: '2px 4px', marginTop: '4px' }}>
                               <p className="text-sm print:text-[9px] font-semibold mb-2 print:mb-0.5" style={{ fontSize: '11px', margin: '2px 0', fontWeight: 'bold' }}>Calculation for Maximum Radiation Level/week (For Radiation Worker):</p>
                               <p className="text-xs print:text-[8px] mb-1 print:mb-0.5" style={{ fontSize: '10px', margin: '2px 0' }}><strong>Location:</strong> {maxWorkerLocation.location}</p>
-                              <p className="text-xs print:text-[8px]" style={{ fontSize: '10px', margin: '2px 0' }}><strong>Formula:</strong> ({survey.workload || 'â€”'} mAmin/week Ã— {maxWorkerLocation.mRPerHr || 'â€”'} mR/hr) / (60 Ã— {survey.appliedCurrent || 'â€”'} mA)</p>
+                              <p className="text-xs print:text-[8px]" style={{ fontSize: '10px', margin: '2px 0' }}><strong>Formula:</strong> ({survey.workload || '-'} mAmin/week x {maxWorkerLocation.mRPerHr || '-'} mR/hr) / (60 x {survey.appliedCurrent || '-'} mA)</p>
                               <p className="text-xs print:text-[8px] mt-1 print:mt-0.5" style={{ fontSize: '10px', margin: '2px 0' }}><strong>Result:</strong> {maxWorkerWeekly} mR/week</p>
                             </div>
                           )}
@@ -2467,7 +2467,7 @@ const ViewServiceReportCTScan: React.FC = () => {
                             <div className="bg-gray-50 p-4 print:p-1 rounded border" style={{ padding: '2px 4px', marginTop: '4px' }}>
                               <p className="text-sm print:text-[9px] font-semibold mb-2 print:mb-0.5" style={{ fontSize: '11px', margin: '2px 0', fontWeight: 'bold' }}>Calculation for Maximum Radiation Level/week (For Public):</p>
                               <p className="text-xs print:text-[8px] mb-1 print:mb-0.5" style={{ fontSize: '10px', margin: '2px 0' }}><strong>Location:</strong> {maxPublicLocation.location}</p>
-                              <p className="text-xs print:text-[8px]" style={{ fontSize: '10px', margin: '2px 0' }}><strong>Formula:</strong> ({survey.workload || 'â€”'} mAmin/week Ã— {maxPublicLocation.mRPerHr || 'â€”'} mR/hr) / (60 Ã— {survey.appliedCurrent || 'â€”'} mA)</p>
+                              <p className="text-xs print:text-[8px]" style={{ fontSize: '10px', margin: '2px 0' }}><strong>Formula:</strong> ({survey.workload || '-'} mAmin/week x {maxPublicLocation.mRPerHr || '-'} mR/hr) / (60 x {survey.appliedCurrent || '-'} mA)</p>
                               <p className="text-xs print:text-[8px] mt-1 print:mt-0.5" style={{ fontSize: '10px', margin: '2px 0' }}><strong>Result:</strong> {maxPublicWeekly} mR/week</p>
                             </div>
                           )}

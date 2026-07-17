@@ -24,6 +24,7 @@ import {
 } from "../../../../../../api";
 import * as XLSX from "xlsx";
 import { createRadiographyFixedUploadableExcel, RadiographyFixedExportData } from "./exportRadiographyFixedToExcel";
+import { TestExportRegistryProvider, useTestExportRegistry } from "../shared/TestExportRegistry";
 import AuthorizedSignatorySelect from "../../AuthorizedSignatorySelect";
 
 import Standards from "../../Standards";
@@ -70,7 +71,10 @@ interface DetailsResponse {
   qaTests: Array<{ createdAt: string; qaTestReportNumber: string; qatestSubmittedAt?: string; reportULRNumber?: string }>;
 }
 
-const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null; csvFileUrl?: string | null }> = ({ serviceId, qaTestDate, csvFileUrl }) => {
+type RadiographyFixedProps = { serviceId: string; qaTestDate?: string | null; csvFileUrl?: string | null };
+
+const RadiographyFixedContent: React.FC<RadiographyFixedProps> = ({ serviceId, qaTestDate, csvFileUrl }) => {
+  const exportRegistry = useTestExportRegistry();
   const navigate = useNavigate();
   const pickRpId = (obj: any): string =>
     obj?.rpId || obj?.rpid || obj?.rpID || obj?.RPId || obj?.RPID || obj?.engineerAssigned?.rpId || obj?.engineerAssigned?.RPId || "";
@@ -1632,22 +1636,36 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
       toast.loading('Exporting data to Excel...', { id: 'export-excel' });
       setIsExporting(true);
 
-      const exportData: Record<string, unknown> = {};
+      const registeredData = exportRegistry?.collect() ?? {};
+      const exportData: Record<string, unknown> = {
+        accuracyOfIrradiationTime: registeredData.accuracyOfIrradiationTime ?? csvDataForComponents.accuracyOfIrradiationTime,
+        accuracyOfOperatingPotential: registeredData.accuracyOfOperatingPotential,
+        totalFiltration: registeredData.totalFiltration ?? csvDataForComponents.totalFiltration,
+        centralBeamAlignment: registeredData.centralBeamAlignment ?? csvDataForComponents.centralBeamAlignment,
+        congruence: registeredData.congruence ?? csvDataForComponents.congruence,
+        effectiveFocalSpot: registeredData.effectiveFocalSpot ?? csvDataForComponents.effectiveFocalSpot,
+        linearityOfMaLoading: registeredData.linearityOfMaLoading ?? csvDataForComponents.linearityOfMaLoading,
+        linearityOfMasLoading: registeredData.linearityOfMasLoading ?? csvDataForComponents.linearityOfMasLoading,
+        outputConsistency: registeredData.outputConsistency ?? csvDataForComponents.consistencyOfRadiationOutput,
+        radiationLeakageLevel: registeredData.radiationLeakageLevel ?? csvDataForComponents.radiationLeakageLevel,
+        radiationProtectionSurvey: registeredData.radiationProtectionSurvey ?? csvDataForComponents.radiationProtectionSurvey,
+      };
 
       // 0. Report Header
       try {
         const headerRes = await getReportHeaderForRadiographyFixed(serviceId);
         if (headerRes?.data || headerRes?.exists) {
-          exportData.reportHeader = headerRes;
+          exportData.reportHeader = { ...headerRes, data: { ...(headerRes?.data || headerRes || {}), ...formData }, exists: true };
         }
       } catch (err) {
         console.log("Radiography Fixed report header not found or error:", err);
+        exportData.reportHeader = { data: { ...formData }, exists: true };
       }
 
       // 1. Accuracy of Irradiation Time
       try {
         const res = await getAccuracyOfIrradiationTimeByServiceIdForRadiographyFixed(serviceId);
-        if (res) exportData.accuracyOfIrradiationTime = res;
+        if (!exportData.accuracyOfIrradiationTime && res) exportData.accuracyOfIrradiationTime = res;
       } catch (err) {
         console.log("Accuracy of Irradiation Time not found or error:", err);
       }
@@ -1655,7 +1673,7 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
       // 2. Accuracy of Operating Potential
       try {
         const res = await getAccuracyOfOperatingPotentialByServiceIdForRadiographyFixed(serviceId);
-        if (res) exportData.accuracyOfOperatingPotential = res;
+        if (!exportData.accuracyOfOperatingPotential && res) exportData.accuracyOfOperatingPotential = res;
       } catch (err) {
         console.log("Accuracy of Operating Potential not found or error:", err);
       }
@@ -1664,7 +1682,7 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
       try {
         const res = await getTotalFiltrationByServiceIdForRadiographyFixed(serviceId);
         if (res && (res.data || res.totalFiltration || res.measurements)) {
-          exportData.totalFiltration = res;
+          if (!exportData.totalFiltration) exportData.totalFiltration = res;
         }
       } catch (err) {
         console.log("Total Filtration not found or error:", err);
@@ -1673,7 +1691,7 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
       // 4. Central Beam Alignment
       try {
         const res = await getCentralBeamAlignmentByServiceIdForRadiographyFixed(serviceId);
-        if (res) exportData.centralBeamAlignment = res;
+        if (!exportData.centralBeamAlignment && res) exportData.centralBeamAlignment = res;
       } catch (err) {
         console.log("Central Beam Alignment not found or error:", err);
       }
@@ -1681,7 +1699,7 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
       // 5. Congruence of Radiation & Optical Field
       try {
         const res = await getCongruenceByServiceIdForRadiographyFixed(serviceId);
-        if (res) exportData.congruence = res;
+        if (!exportData.congruence && res) exportData.congruence = res;
       } catch (err) {
         console.log("Congruence of Radiation not found or error:", err);
       }
@@ -1689,7 +1707,7 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
       // 6. Effective Focal Spot
       try {
         const res = await getEffectiveFocalSpotByServiceIdForRadiographyFixed(serviceId);
-        if (res) exportData.effectiveFocalSpot = res;
+        if (!exportData.effectiveFocalSpot && res) exportData.effectiveFocalSpot = res;
       } catch (err) {
         console.log("Effective Focal Spot not found or error:", err);
       }
@@ -1697,7 +1715,8 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
       // 7. Linearity of mAs Loading
       try {
         const res = await getLinearityOfMasLoadingStationsByServiceIdForRadiographyFixed(serviceId);
-        if (res) exportData.linearityOfMasLoading = res;
+        const key = hasTimer ? "linearityOfMaLoading" : "linearityOfMasLoading";
+        if (!exportData[key] && res) exportData[key] = res;
       } catch (err) {
         console.log("Linearity of mAs Loading not found or error:", err);
       }
@@ -1705,7 +1724,7 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
       // 8. Output Consistency
       try {
         const res = await getOutputConsistencyByServiceIdForRadiographyFixed(serviceId);
-        if (res) exportData.outputConsistency = res;
+        if (!exportData.outputConsistency && res) exportData.outputConsistency = res;
       } catch (err) {
         console.log("Output Consistency not found or error:", err);
       }
@@ -1713,7 +1732,7 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
       // 9. Radiation Leakage Level
       try {
         const res = await getRadiationLeakageLevelByServiceIdForRadiographyFixed(serviceId);
-        if (res) exportData.radiationLeakageLevel = res;
+        if (!exportData.radiationLeakageLevel && res) exportData.radiationLeakageLevel = res;
       } catch (err) {
         console.log("Radiation Leakage Level not found or error:", err);
       }
@@ -1721,14 +1740,14 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
       // 10. Radiation Protection Survey
       try {
         const res = await getRadiationProtectionSurveyByServiceIdForRadiographyFixed(serviceId);
-        if (res) exportData.radiationProtectionSurvey = res;
+        if (!exportData.radiationProtectionSurvey && res) exportData.radiationProtectionSurvey = res;
       } catch (err) {
         console.log("Radiation Protection Survey not found or error:", err);
       }
 
       // If no data collected, show message
-      if (Object.keys(exportData).length === 0) {
-        toast.error('No data found to export. Please save test data first.', { id: 'export-excel' });
+      if (!Object.keys(exportData).filter((key) => key !== "reportHeader").some((key) => exportData[key] != null)) {
+        toast.error('No data found to export. Enter test data on this page or save test data first.', { id: 'export-excel' });
         return;
       }
       const wb = createRadiographyFixedUploadableExcel(exportData as RadiographyFixedExportData);
@@ -2254,5 +2273,11 @@ const RadiographyFixed: React.FC<{ serviceId: string; qaTestDate?: string | null
     </div>
   );
 };
+
+const RadiographyFixed: React.FC<RadiographyFixedProps> = (props) => (
+  <TestExportRegistryProvider>
+    <RadiographyFixedContent {...props} />
+  </TestExportRegistryProvider>
+);
 
 export default RadiographyFixed;

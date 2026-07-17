@@ -28,6 +28,7 @@ import { getDetails, getTools } from "../../../../../../api";
 import { createOBISavedExcel, OBISavedExportData } from "./exportOBISavedToExcel";
 import { isExcelFileUrl } from "../../../../../../utils/spreadsheetFile";
 import { normalizeCsvComparisonOperator } from "../shared/parseRadiographyStyleTableFormat";
+import { TestExportRegistryProvider, useTestExportRegistry } from "../shared/TestExportRegistry";
 
 import Standards from "../../Standards";
 import Notes from "../../Notes";
@@ -71,7 +72,10 @@ interface DetailsResponse {
     qaTests: Array<{ createdAt: string; qaTestReportNumber: string }>;
 }
 
-const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null; qaTestDate?: string | null }> = ({ serviceId, csvFileUrl, qaTestDate }) => {
+type OBIProps = { serviceId: string; csvFileUrl?: string | null; qaTestDate?: string | null };
+
+const OBIContent: React.FC<OBIProps> = ({ serviceId, csvFileUrl, qaTestDate }) => {
+    const exportRegistry = useTestExportRegistry();
     const navigate = useNavigate();
 
     const [loading, setLoading] = useState(true);
@@ -448,20 +452,41 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null; qaTestDate?
                 i++;
             }
 
-            if (title.includes('ACCURACY OF OPERATING POTENTIAL')) {
+            if (
+                title.includes('ACCURACY OF OPERATING POTENTIAL') ||
+                title.includes('ACCURACY OF KVP AT DIFFERENT MA STATIONS')
+            ) {
                 const hCols = header.filter((h) => /^header\s*\d+$/i.test(String(h || '').trim()));
+                const genericMeasCols = resolveMeasValueColumns(header, ['Applied kVp', 'Applied kV']);
+                const legacyStationCols = header
+                    .map((h, idx) => ({ h: String(h || '').trim(), idx }))
+                    .filter(({ h }) => /^mA\s*\d+.*kVp$/i.test(h));
+                const measurementCols = genericMeasCols.length > 0 ? genericMeasCols : legacyStationCols;
                 sectionRows.forEach((r, idx) => {
                     if (idx === 0) {
                         pushRow('FFD', r[colIdx(header, 'FFD', 'FDD')] ?? '', 0, 'Accuracy of Operating Potential');
                         pushRow('Tolerance_Sign', r[colIdx(header, 'Tolerance Sign')] ?? '', 0, 'Accuracy of Operating Potential');
                         pushRow('Tolerance_Value', r[colIdx(header, 'Tolerance Value')] ?? '', 0, 'Accuracy of Operating Potential');
-                        hCols.forEach((_, hi) => {
-                            const label = r[colIdx(header, `Header ${hi + 1}`)] ?? '';
-                            if (label) pushRow('MeasHeader', label, 0, 'Accuracy of Operating Potential');
-                        });
+                        if (hCols.length > 0) {
+                            hCols.forEach((_, hi) => {
+                                const label = r[colIdx(header, `Header ${hi + 1}`)] ?? '';
+                                if (label) pushRow('MeasHeader', label, 0, 'Accuracy of Operating Potential');
+                            });
+                        } else {
+                            measurementCols.forEach(({ h }, hi) => {
+                                pushRow('MeasHeader', h || `mA ${hi + 1}`, 0, 'Accuracy of Operating Potential');
+                            });
+                        }
                     }
                     pushRow('Measurement_AppliedKvp', r[colIdx(header, 'Applied kVp', 'Applied kV')] ?? '', idx, 'Accuracy of Operating Potential');
-                    pushMeasFields(r, header, idx, 'Accuracy of Operating Potential', 'Measurement_', ['Applied kVp', 'Applied kV']);
+                    measurementCols.forEach(({ idx: columnIndex }, measurementIndex) => {
+                        pushRow(
+                            `Measurement_Meas${measurementIndex + 1}`,
+                            r[columnIndex] ?? '',
+                            idx,
+                            'Accuracy of Operating Potential'
+                        );
+                    });
                 });
             } else if (title.includes('TOTAL FILTRATION')) {
                 if (sectionRows.length > 0) {
@@ -482,7 +507,10 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null; qaTestDate?
                     pushRow('IrradiationTime_SetTime', r[colIdx(header, 'Set Time')] ?? '', idx, 'Accuracy of Irradiation Time');
                     pushRow('IrradiationTime_MeasuredTime', r[colIdx(header, 'Measured Time')] ?? '', idx, 'Accuracy of Irradiation Time');
                 });
-            } else if (title.includes('OUTPUT CONSISTENCY')) {
+            } else if (
+                title.includes('OUTPUT CONSISTENCY') ||
+                title.includes('REPRODUCIBILITY OF RADIATION OUTPUT')
+            ) {
                 const hCols = header.filter((h) => /^header\s*\d+$/i.test(String(h || '').trim()));
                 sectionRows.forEach((r, idx) => {
                     if (idx === 0) {
@@ -620,8 +648,10 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null; qaTestDate?
 
         const sectionToTestName: { [key: string]: string } = {
             '========== ACCURACY OF OPERATING POTENTIAL (kVp) ==========': 'Accuracy of Operating Potential',
+            '========== ACCURACY OF KVP AT DIFFERENT MA STATIONS ==========': 'Accuracy of Operating Potential',
             '========== ACCURACY OF IRRADIATION TIME ==========': 'Accuracy of Irradiation Time',
             '========== OUTPUT CONSISTENCY ==========': 'Output Consistency',
+            '========== REPRODUCIBILITY OF RADIATION OUTPUT (CONSISTENCY TEST) ==========': 'Output Consistency',
             '========== CENTRAL BEAM ALIGNMENT ==========': 'Central Beam Alignment',
             '========== CONGRUENCE OF RADIATION ==========': 'Congruence of Radiation',
             '========== EFFECTIVE FOCAL SPOT ==========': 'Effective Focal Spot',
@@ -723,8 +753,10 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null; qaTestDate?
             const groupedData: { [key: string]: any[] } = {};
             const testNameMap: { [key: string]: string } = {
                 'Accuracy of Operating Potential': 'Accuracy of Operating Potential',
+                'Accuracy of kVp at Different mA Stations': 'Accuracy of Operating Potential',
                 'Accuracy of Irradiation Time': 'Accuracy of Irradiation Time',
                 'Output Consistency': 'Output Consistency',
+                'Reproducibility of Radiation Output (Consistency Test)': 'Output Consistency',
                 'Central Beam Alignment': 'Central Beam Alignment',
                 'Congruence of Radiation': 'Congruence of Radiation',
                 'Effective Focal Spot': 'Effective Focal Spot',
@@ -746,7 +778,7 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null; qaTestDate?
                 );
 
                 if (normalizedName) {
-                    testName = normalizedName;
+                    testName = testNameMap[normalizedName];
                 }
 
                 if (testName) {
@@ -788,11 +820,7 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null; qaTestDate?
                         if (field === 'TotalFiltration_Required') totalFiltration.required = value;
                         if (field === 'TotalFiltration_AtKvp') totalFiltration.atKvp = value;
 
-                        if (field === 'MeasHeader') {
-                            if (!mAStations.includes(value)) {
-                                mAStations.push(value);
-                            }
-                        }
+                        if (field === 'MeasHeader' && value) mAStations.push(value);
 
                         if (field.startsWith('Measurement_')) {
                             while (measurements.length <= rowIndex) {
@@ -924,12 +952,10 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null; qaTestDate?
                                 toleranceOperator = value as '<=' | '<' | '>=' | '>';
                             }
                         }
-                        if (field === 'MeasHeader' && value && !headers.includes(value)) {
-                            headers.push(value);
-                        }
+                        if (field === 'MeasHeader' && value) headers.push(value);
                         if (field === 'MeasColumnLabels') {
                             value.split(',').map((v: string) => v.trim()).filter(Boolean).forEach((label: string) => {
-                                if (!headers.includes(label)) headers.push(label);
+                                headers.push(label);
                             });
                         }
 
@@ -1136,11 +1162,7 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null; qaTestDate?
                             const op = normalizeCsvComparisonOperator(value);
                             if (['<', '>', '<=', '>=', '='].includes(op)) toleranceOperator = op;
                         }
-                        if (field === 'MeasHeader') {
-                            if (!headers.includes(value)) {
-                                headers.push(value);
-                            }
-                        }
+                        if (field === 'MeasHeader' && value) headers.push(value);
 
                         if (field.startsWith('Table2_')) {
                             while (table2Rows.length <= rowIndex) {
@@ -1198,11 +1220,7 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null; qaTestDate?
                             const op = normalizeCsvComparisonOperator(value);
                             if (['<', '>', '<=', '>=', '='].includes(op)) toleranceOperator = op;
                         }
-                        if (field === 'MeasHeader') {
-                            if (!headers.includes(value)) {
-                                headers.push(value);
-                            }
-                        }
+                        if (field === 'MeasHeader' && value) headers.push(value);
 
                         if (field.startsWith('MeasurementRow_')) {
                             while (measurementRows.length <= rowIndex) {
@@ -1530,8 +1548,10 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null; qaTestDate?
 
         const sectionToTestName: { [key: string]: string } = {
             '========== ACCURACY OF OPERATING POTENTIAL (kVp) ==========': 'Accuracy of Operating Potential',
+            '========== ACCURACY OF KVP AT DIFFERENT MA STATIONS ==========': 'Accuracy of Operating Potential',
             '========== ACCURACY OF IRRADIATION TIME ==========': 'Accuracy of Irradiation Time',
             '========== OUTPUT CONSISTENCY ==========': 'Output Consistency',
+            '========== REPRODUCIBILITY OF RADIATION OUTPUT (CONSISTENCY TEST) ==========': 'Output Consistency',
             '========== CENTRAL BEAM ALIGNMENT ==========': 'Central Beam Alignment',
             '========== CONGRUENCE OF RADIATION ==========': 'Congruence of Radiation',
             '========== EFFECTIVE FOCAL SPOT ==========': 'Effective Focal Spot',
@@ -1897,13 +1917,35 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null; qaTestDate?
         try {
             toast.loading("Exporting data to Excel...", { id: "export-excel" });
             setIsExporting(true);
+            const registeredPageData = exportRegistry?.collect() ?? {};
+            const pageData: Record<string, unknown> = {
+                accuracyOfOperatingPotential: csvDataForComponents.accuracyOfOperatingPotential,
+                timerTest: csvDataForComponents.timerTest,
+                outputConsistency: csvDataForComponents.outputConsistency,
+                centralBeamAlignment: csvDataForComponents.centralBeamAlignment,
+                congruenceOfRadiation: csvDataForComponents.congruenceOfRadiation,
+                effectiveFocalSpot: csvDataForComponents.effectiveFocalSpot,
+                linearityOfMasLoadingStations: csvDataForComponents.linearityOfMasLoading,
+                linearityOfTime: csvDataForComponents.linearityOfTime,
+                tubeHousingLeakage: csvDataForComponents.tubeHousingLeakage,
+                radiationProtectionSurvey: csvDataForComponents.radiationProtection,
+                highContrastSensitivity: csvDataForComponents.highContrastSensitivity,
+                lowContrastSensitivity: csvDataForComponents.lowContrastSensitivity,
+                alignmentTest: csvDataForComponents.alignmentTest,
+                ...registeredPageData,
+            };
             const exportData: OBISavedExportData & { reportHeader?: any } = {};
 
             try {
                 const headerRes = await getReportHeaderForOBI(serviceId);
-                if (headerRes?.data || headerRes?.exists) exportData.reportHeader = headerRes;
+                exportData.reportHeader = {
+                    ...headerRes,
+                    data: { ...(headerRes?.data || headerRes || {}), ...formData },
+                    exists: true,
+                };
             } catch (err) {
                 console.log("Report header not found or error:", err);
+                exportData.reportHeader = { data: { ...formData }, exists: true };
             }
 
             const fetchTest = async (fn: () => Promise<any>) => {
@@ -1915,23 +1957,31 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null; qaTestDate?
                 }
             };
 
-            exportData.congruenceOfRadiation = await fetchTest(() => getCongruenceOfRadiationByServiceIdForOBI(serviceId));
-            exportData.centralBeamAlignment = await fetchTest(() => getCentralBeamAlignmentByServiceIdForOBI(serviceId));
-            exportData.effectiveFocalSpot = await fetchTest(() => getEffectiveFocalSpotByServiceIdForOBI(serviceId));
-            exportData.timerTest = await fetchTest(() => getTimerTestByServiceIdForOBI(serviceId));
-            exportData.accuracyOfOperatingPotential = await fetchTest(() => getAccuracyOfOperatingPotentialByServiceIdForOBI(serviceId));
-            exportData.outputConsistency = await fetchTest(() => getOutputConsistencyByServiceIdForOBI(serviceId));
-            exportData.highContrastSensitivity = await fetchTest(() => getHighContrastSensitivityByServiceIdForOBI(serviceId));
-            exportData.lowContrastSensitivity = await fetchTest(() => getLowContrastSensitivityByServiceIdForOBI(serviceId));
-            exportData.linearityOfTime = await fetchTest(() => getLinearityOfTimeByServiceIdForOBI(serviceId));
-            exportData.linearityOfMasLoadingStations = await fetchTest(() => getLinearityOfMasLoadingStationsByServiceIdForOBI(serviceId));
-            exportData.tubeHousingLeakage = await fetchTest(() => getTubeHousingLeakageByServiceIdForOBI(serviceId));
-            exportData.radiationProtectionSurvey = await fetchTest(() => getRadiationProtectionSurveyByServiceIdForOBI(serviceId));
-            exportData.alignmentTest = await fetchTest(() => getAlignmentTestByServiceIdForOBI(serviceId));
+            const resolveSection = async (
+                key: keyof OBISavedExportData,
+                fetchFn: () => Promise<any>
+            ) => {
+                const pageValue = pageData[key as string];
+                exportData[key] = pageValue != null ? pageValue : await fetchTest(fetchFn);
+            };
+
+            await resolveSection("congruenceOfRadiation", () => getCongruenceOfRadiationByServiceIdForOBI(serviceId));
+            await resolveSection("centralBeamAlignment", () => getCentralBeamAlignmentByServiceIdForOBI(serviceId));
+            await resolveSection("effectiveFocalSpot", () => getEffectiveFocalSpotByServiceIdForOBI(serviceId));
+            await resolveSection("timerTest", () => getTimerTestByServiceIdForOBI(serviceId));
+            await resolveSection("accuracyOfOperatingPotential", () => getAccuracyOfOperatingPotentialByServiceIdForOBI(serviceId));
+            await resolveSection("outputConsistency", () => getOutputConsistencyByServiceIdForOBI(serviceId));
+            await resolveSection("highContrastSensitivity", () => getHighContrastSensitivityByServiceIdForOBI(serviceId));
+            await resolveSection("lowContrastSensitivity", () => getLowContrastSensitivityByServiceIdForOBI(serviceId));
+            await resolveSection("linearityOfTime", () => getLinearityOfTimeByServiceIdForOBI(serviceId));
+            await resolveSection("linearityOfMasLoadingStations", () => getLinearityOfMasLoadingStationsByServiceIdForOBI(serviceId));
+            await resolveSection("tubeHousingLeakage", () => getTubeHousingLeakageByServiceIdForOBI(serviceId));
+            await resolveSection("radiationProtectionSurvey", () => getRadiationProtectionSurveyByServiceIdForOBI(serviceId));
+            await resolveSection("alignmentTest", () => getAlignmentTestByServiceIdForOBI(serviceId));
 
             const hasData = Object.keys(exportData).filter((k) => k !== "reportHeader").some((k) => exportData[k] != null);
             if (!hasData) {
-                toast.error("No data found to export. Please save test data first.", { id: "export-excel" });
+                toast.error("No data found to export. Enter test data on this page or save test data first.", { id: "export-excel" });
                 return;
             }
             const wb = createOBISavedExcel(exportData as OBISavedExportData);
@@ -2060,8 +2110,8 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null; qaTestDate?
                 <button
                     type="button"
                     onClick={handleExportSavedData}
-                    disabled={isExporting}
-                    className={`px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition shadow ${isExporting ? "opacity-50 cursor-not-allowed" : ""}`}
+                    disabled={isExporting || csvUploading}
+                    className={`px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition shadow ${(isExporting || csvUploading) ? "opacity-50 cursor-not-allowed" : ""}`}
                 >
                     {isExporting ? "Exporting..." : "Export Excel"}
                 </button>
@@ -2383,5 +2433,11 @@ const OBI: React.FC<{ serviceId: string; csvFileUrl?: string | null; qaTestDate?
         </div>
     );
 };
+
+const OBI: React.FC<OBIProps> = (props) => (
+    <TestExportRegistryProvider>
+        <OBIContent {...props} />
+    </TestExportRegistryProvider>
+);
 
 export default OBI;

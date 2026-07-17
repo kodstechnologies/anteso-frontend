@@ -73,11 +73,39 @@ const ConsisitencyOfRadiationOutput: React.FC<Props> = ({ serviceId, tubeId, csv
       // Table 2: Radiation Output
       // Shared KV and mAs from Table 1 of standard export
       const kv = csvData.find(r => r['Field Name'] === 'Table1_kvp')?.['Value'] || '';
-      const mas = csvData.find(r => r['Field Name'] === 'Table1_ma')?.['Value'] || '';
+      const mas = csvData.find(r =>
+        r['Field Name'] === 'Table1_ma' ||
+        r['Field Name'] === 'mAs' ||
+        r['Field Name'] === 'TestConditions_mAs'
+      )?.['Value'] || '';
 
-      // Find Table2_Result rows
+      const importedHeaders = csvData
+        .filter(r => r['Field Name'] === 'MeasHeader')
+        .map(r => String(r['Value'] ?? '').trim())
+        .filter(Boolean);
+      const maxResultIndex = csvData.reduce((max, row) => {
+        const match = String(row['Field Name'] || '').match(/^Result_(\d+)$/);
+        return match ? Math.max(max, Number(match[1])) : max;
+      }, -1);
+      const importedColumnCount = Math.max(
+        1,
+        importedHeaders.length,
+        maxResultIndex + 1,
+        outputColumnsCount
+      );
+      const resolvedHeaders = Array.from(
+        { length: importedColumnCount },
+        (_, index) => importedHeaders[index] || `Meas ${index + 1}`
+      );
+      setOutputHeaders(resolvedHeaders);
+
+      // Output consistency uses OutputRow_kvp/Result_N field names rather than Table2_N.
       const t2Indices = [...new Set(csvData
-        .filter(r => r['Field Name'].startsWith('Table2_'))
+        .filter(r =>
+          String(r['Field Name'] || '').startsWith('Table2_') ||
+          r['Field Name'] === 'OutputRow_kvp' ||
+          /^Result_\d+$/.test(String(r['Field Name'] || ''))
+        )
         .map(r => parseInt(r['Row Index']))
         .filter(i => !isNaN(i) && i > 0)
       )];
@@ -88,8 +116,8 @@ const ConsisitencyOfRadiationOutput: React.FC<Props> = ({ serviceId, tubeId, csv
           const kvp = rowData.find(r => r['Field Name'] === 'Table1_kvp' || r['Field Name'] === 'OutputRow_kvp')?.['Value'] || kv;
           const mAs = rowData.find(r => r['Field Name'] === 'Table1_ma' || r['Field Name'] === 'mAs' || r['Field Name'] === 'TestConditions_mAs')?.['Value'] || mas;
 
-          const outputs = Array(outputColumnsCount).fill('');
-          for (let i = 0; i < outputColumnsCount; i++) {
+          const outputs = Array(importedColumnCount).fill('');
+          for (let i = 0; i < importedColumnCount; i++) {
             const val = rowData.find(r => r['Field Name'] === `Result_${i}`)?.['Value'] ||
               (i === 0 ? rowData.find(r => r['Field Name'] === 'Table2_Result')?.['Value'] : '');
             if (val) outputs[i] = val;

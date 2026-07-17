@@ -18,9 +18,9 @@ kVp,Slice Thickness (mm),Time (ms),Tolerance,Header 1,Header 2,Header 3,mA Appli
 ,,,,,,,100,101,100.8,101.2,,,,,
 ,,,,,,,,,,,,
 TEST: TIMER ACCURACY - TUBE A,,,,,,,,,,,,
-kVp,Slice Thickness (mm),mA,Set Time (ms),Observed Time (ms),Tolerance (%),,,,,,,
-80,5,100,100,98.5,5,,,,,,,
-80,5,100,200,199,,,,,,,,
+kVp,Slice Thickness (mm),mA,Set Time (ms),Observed Time (ms),Tolerance (%),Tolerance Operator,,,,,,
+80,5,100,100,98.5,5,<=,,,,,,
+80,5,100,200,199,,<=,,,,,,
 ,,,,,,,,,,,,
 TEST: MEASUREMENT OF CTDI - TUBE A,,,,,,,,,,,,
 kVp,mAs,Slice Thickness (mm),CTDIw (Rated) Head,CTDIw (Rated) Body,Tol Value,Tol Sign,Type,Label,Head,Body,,
@@ -41,9 +41,9 @@ mAs,Slice Thickness (mm),Time (s),Header 1,Header 2,Header 3,Header 4,Header 5,k
 100,5,1,Run 1,Run 2,Run 3,Run 4,Run 5,120,100.5,100.3,100.6,100.4,100.5,,
 ,,,,,,,,,,,,
 TEST: RADIATION LEAKAGE LEVEL - TUBE A,,,,,,,,,,,,
-kV,mA,Time (sec),Workload,Workload Unit,Tol Value,Tol Operator,Tol Time,Location,Front,Back,Left,Right
-120,100,1,500,mA·min/week,1,<=,1,Tube,0.05,0.03,0.06,0.04
-,,,,,,,,Collimator,0.02,0.02,0.03,0.01
+kV,mA,Time (sec),Workload,Workload Unit,Tol Value,Tol Operator,Tol Time,Location,Front,Back,Left,Right,Top
+120,100,1,500,mA·min/week,1,<=,1,Tube,0.05,0.03,0.06,0.04,0.05
+,,,,,,,,Collimator,0.02,0.02,0.03,0.01,0.02
 ,,,,,,,,,,,,
 TEST: LOW CONTRAST RESOLUTION - TUBE A,,,,,,,,,,,,
 Observed Size,Contrast Level,kVp,mA,Slice Thickness,WW,,,,,,,
@@ -73,9 +73,9 @@ kVp,Slice Thickness (mm),Time (ms),Tolerance,Header 1,Header 2,Header 3,mA Appli
 ,,,,,,,100,100.9,101.1,101,,,,,
 ,,,,,,,,,,,,
 TEST: TIMER ACCURACY - TUBE B,,,,,,,,,,,,
-kVp,Slice Thickness (mm),mA,Set Time (ms),Observed Time (ms),Tolerance (%),,,,,,,
-80,5,100,100,99,5,,,,,,,
-80,5,100,200,201,,,,,,,,
+kVp,Slice Thickness (mm),mA,Set Time (ms),Observed Time (ms),Tolerance (%),Tolerance Operator,,,,,,
+80,5,100,100,99,5,<=,,,,,,
+80,5,100,200,201,,<=,,,,,,
 ,,,,,,,,,,,,
 TEST: MEASUREMENT OF CTDI - TUBE B,,,,,,,,,,,,
 kVp,mAs,Slice Thickness (mm),CTDIw (Rated) Head,CTDIw (Rated) Body,Tol Value,Tol Sign,Type,Label,Head,Body,,
@@ -96,9 +96,9 @@ mAs,Slice Thickness (mm),Time (s),Header 1,Header 2,Header 3,Header 4,Header 5,k
 100,5,1,Run 1,Run 2,Run 3,Run 4,Run 5,120,100.3,100.2,100.4,100.1,100.3,,
 ,,,,,,,,,,,,
 TEST: RADIATION LEAKAGE LEVEL - TUBE B,,,,,,,,,,,,
-kV,mA,Time (sec),Workload,Workload Unit,Tol Value,Tol Operator,Tol Time,Location,Front,Back,Left,Right
-120,100,1,500,mA·min/week,1,<=,1,Tube,0.04,0.03,0.05,0.04
-,,,,,,,,Collimator,0.02,0.02,0.03,0.01
+kV,mA,Time (sec),Workload,Workload Unit,Tol Value,Tol Operator,Tol Time,Location,Front,Back,Left,Right,Top
+120,100,1,500,mA·min/week,1,<=,1,Tube,0.04,0.03,0.05,0.04,0.05
+,,,,,,,,Collimator,0.02,0.02,0.03,0.01,0.02
 ,,,,,,,,,,,,
 TEST: LOW CONTRAST RESOLUTION - TUBE B,,,,,,,,,,,,
 Observed Size,Contrast Level,kVp,mA,Slice Thickness,WW,,,,,,,

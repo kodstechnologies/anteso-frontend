@@ -27,6 +27,7 @@ import {
 } from "../../../../../../api";
 import { getDetails, getTools } from "../../../../../../api";
 import { createFixedRadioFluroUploadableExcel, FixedRadioFluroExportData } from "./exportFixedRadioFluroToExcel";
+import { TestExportRegistryProvider, useTestExportRegistry } from "../shared/TestExportRegistry";
 import {
   isFixedRadioFluroTableFormat,
   parseFixedRadioFluroTableCSV,
@@ -85,7 +86,8 @@ interface RadioFluroProps {
     createdAt?: string | null;
 }
 
-const RadioFluro: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, qaTestDate, createdAt }) => {
+const RadioFluroContent: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, qaTestDate, createdAt }) => {
+    const exportRegistry = useTestExportRegistry();
     const navigate = useNavigate();
 
     const [loading, setLoading] = useState(true);
@@ -1646,13 +1648,29 @@ const RadioFluro: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, qaTestDa
             toast.loading("Exporting data to Excel...", { id: "export-excel" });
             setIsExporting(true);
 
-            const exportData: Record<string, unknown> = {};
+            const registeredData = exportRegistry?.collect() ?? {};
+            const exportData: Record<string, unknown> = {
+                congruence: registeredData.congruence ?? csvDataForComponents.congruenceOfRadiation,
+                centralBeamAlignment: registeredData.centralBeamAlignment ?? csvDataForComponents.centralBeamAlignment,
+                effectiveFocalSpot: registeredData.effectiveFocalSpot ?? csvDataForComponents.effectiveFocalSpot,
+                accuracyOfIrradiationTime: registeredData.accuracyOfIrradiationTime ?? csvDataForComponents.accuracyOfIrradiationTime,
+                totalFiltration: registeredData.totalFiltration ?? csvDataForComponents.totalFiltration,
+                linearityOfMaLoading: registeredData.linearityOfMaLoading ?? csvDataForComponents.linearityOfMALoading,
+                linearityOfMasLoading: registeredData.linearityOfMasLoading ?? csvDataForComponents.linearityOfMAsLoading,
+                outputConsistency: registeredData.outputConsistency ?? csvDataForComponents.outputConsistency,
+                lowContrastResolution: registeredData.lowContrastResolution ?? csvDataForComponents.lowContrastResolution,
+                highContrastResolution: registeredData.highContrastResolution ?? csvDataForComponents.highContrastResolution,
+                exposureRateTableTop: registeredData.exposureRateTableTop ?? csvDataForComponents.exposureRateTableTop,
+                radiationLeakageLevel: registeredData.radiationLeakageLevel ?? csvDataForComponents.tubeHousingLeakage,
+                radiationProtectionSurvey: registeredData.radiationProtectionSurvey ?? csvDataForComponents.radiationProtectionSurvey,
+            };
 
             try {
                 const headerRes = await getReportHeader(serviceId);
-                if (headerRes) exportData.reportHeader = headerRes;
+                exportData.reportHeader = { ...headerRes, data: { ...(headerRes?.data || headerRes || {}), ...formData }, exists: true };
             } catch (err) {
                 console.log("Report header not found or error:", err);
+                exportData.reportHeader = { data: { ...formData }, exists: true };
             }
 
             const fetchTest = async (name: string, fn: () => Promise<any>) => {
@@ -1665,21 +1683,22 @@ const RadioFluro: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, qaTestDa
                 return null;
             };
 
-            exportData.congruence = await fetchTest("Congruence", () => getCongruenceByServiceIdForFixedRadioFluro(serviceId));
-            exportData.centralBeamAlignment = await fetchTest("Central Beam Alignment", () => getCentralBeamAlignmentByServiceIdForFixedRadioFluro(serviceId));
-            exportData.effectiveFocalSpot = await fetchTest("Effective Focal Spot", () => getEffectiveFocalSpotByServiceIdForFixedRadioFluro(serviceId));
-            exportData.accuracyOfIrradiationTime = await fetchTest("Accuracy Of Irradiation Time", () => getAccuracyOfIrradiationTimeByServiceIdForFixedRadioFluro(serviceId));
-            exportData.totalFiltration = await fetchTest("Total Filtration", () => getTotalFiltrationByServiceIdForFixedRadioFluro(serviceId));
-            exportData.linearityOfMaLoading = await fetchTest("Linearity mA", () => getLinearityOfMasLoadingStationsByServiceIdForFixedRadioFluro(serviceId));
-            exportData.linearityOfMasLoading = await fetchTest("Linearity mAs", () => getLinearityOfMasLoadingByServiceIdForFixedRadioFluro(serviceId));
-            exportData.outputConsistency = await fetchTest("Output Consistency", () => getOutputConsistencyByServiceIdForFixedRadioFluro(serviceId));
-            exportData.lowContrastResolution = await fetchTest("Low Contrast Resolution", () => getLowContrastResolutionByServiceIdForFixedRadioFluro(serviceId));
-            exportData.highContrastResolution = await fetchTest("High Contrast Resolution", () => getHighContrastResolutionByServiceIdForFixedRadioFluro(serviceId));
-            exportData.radiationLeakageLevel = await fetchTest("Tube Housing Leakage", () => getTubeHousingLeakageByServiceIdForFixedRadioFluro(serviceId));
-            exportData.radiationProtectionSurvey = await fetchTest("Radiation Protection Survey", () => getRadiationProtectionSurveyByServiceIdForFixedRadioFluro(serviceId));
+            exportData.congruence ??= await fetchTest("Congruence", () => getCongruenceByServiceIdForFixedRadioFluro(serviceId));
+            exportData.centralBeamAlignment ??= await fetchTest("Central Beam Alignment", () => getCentralBeamAlignmentByServiceIdForFixedRadioFluro(serviceId));
+            exportData.effectiveFocalSpot ??= await fetchTest("Effective Focal Spot", () => getEffectiveFocalSpotByServiceIdForFixedRadioFluro(serviceId));
+            exportData.accuracyOfIrradiationTime ??= await fetchTest("Accuracy Of Irradiation Time", () => getAccuracyOfIrradiationTimeByServiceIdForFixedRadioFluro(serviceId));
+            exportData.totalFiltration ??= await fetchTest("Total Filtration", () => getTotalFiltrationByServiceIdForFixedRadioFluro(serviceId));
+            exportData.linearityOfMaLoading ??= await fetchTest("Linearity mA", () => getLinearityOfMasLoadingStationsByServiceIdForFixedRadioFluro(serviceId));
+            exportData.linearityOfMasLoading ??= await fetchTest("Linearity mAs", () => getLinearityOfMasLoadingByServiceIdForFixedRadioFluro(serviceId));
+            exportData.outputConsistency ??= await fetchTest("Output Consistency", () => getOutputConsistencyByServiceIdForFixedRadioFluro(serviceId));
+            exportData.lowContrastResolution ??= await fetchTest("Low Contrast Resolution", () => getLowContrastResolutionByServiceIdForFixedRadioFluro(serviceId));
+            exportData.highContrastResolution ??= await fetchTest("High Contrast Resolution", () => getHighContrastResolutionByServiceIdForFixedRadioFluro(serviceId));
+            exportData.exposureRateTableTop ??= await fetchTest("Exposure Rate at Table Top", () => getExposureRateByServiceIdForFixedRadioFluro(serviceId));
+            exportData.radiationLeakageLevel ??= await fetchTest("Tube Housing Leakage", () => getTubeHousingLeakageByServiceIdForFixedRadioFluro(serviceId));
+            exportData.radiationProtectionSurvey ??= await fetchTest("Radiation Protection Survey", () => getRadiationProtectionSurveyByServiceIdForFixedRadioFluro(serviceId));
 
-            if (Object.keys(exportData).length <= 1 && !exportData.congruence && !exportData.centralBeamAlignment) {
-                toast.error("No data found to export. Please save test data first.", { id: "export-excel" });
+            if (!Object.keys(exportData).filter((key) => key !== "reportHeader").some((key) => exportData[key] != null)) {
+                toast.error("No data found to export. Enter test data on this page or save test data first.", { id: "export-excel" });
                 return;
             }
             const wb = createFixedRadioFluroUploadableExcel(exportData as FixedRadioFluroExportData);
@@ -1780,8 +1799,8 @@ const RadioFluro: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, qaTestDa
                 <button
                     type="button"
                     onClick={handleExportToExcel}
-                    disabled={isExporting}
-                    className={`px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition shadow ${isExporting ? "opacity-50 cursor-not-allowed" : ""}`}
+                    disabled={isExporting || csvUploading}
+                    className={`px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition shadow ${(isExporting || csvUploading) ? "opacity-50 cursor-not-allowed" : ""}`}
                 >
                     {isExporting ? "Exporting..." : "Export Excel"}
                 </button>
@@ -2141,5 +2160,11 @@ const RadioFluro: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, qaTestDa
         </div>
     );
 };
+
+const RadioFluro: React.FC<RadioFluroProps> = (props) => (
+    <TestExportRegistryProvider>
+        <RadioFluroContent {...props} />
+    </TestExportRegistryProvider>
+);
 
 export default RadioFluro;

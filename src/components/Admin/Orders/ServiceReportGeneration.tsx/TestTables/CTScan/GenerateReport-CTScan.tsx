@@ -29,6 +29,7 @@ import { getDetails, getTools } from "../../../../../../api";
 import { createCTScanUploadableExcel, CTScanExportData } from "./exportCTScanToExcel";
 import { isExcelFileUrl } from "../../../../../../utils/spreadsheetFile";
 import { normalizeCsvComparisonOperator } from "../shared/parseRadiographyStyleTableFormat";
+import { TestExportRegistryProvider, useTestExportRegistry } from "../shared/TestExportRegistry";
 
 import Standards from "../../Standards";
 import Notes from "../../Notes";
@@ -74,7 +75,10 @@ interface DetailsResponse {
     qaTests: Array<{ createdAt: string; qaTestReportNumber: string }>;
 }
 
-const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; createdAt?: string | null; csvFileUrl?: string | null }> = ({ serviceId, qaTestDate, createdAt, csvFileUrl }) => {
+type CTScanReportProps = { serviceId: string; qaTestDate?: string | null; createdAt?: string | null; csvFileUrl?: string | null };
+
+const CTScanReportContent: React.FC<CTScanReportProps> = ({ serviceId, qaTestDate, createdAt, csvFileUrl }) => {
+    const exportRegistry = useTestExportRegistry();
     const navigate = useNavigate();
 
     const [loading, setLoading] = useState(true);
@@ -404,7 +408,9 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
             },
             'Timer Accuracy': {
                 'kVp': 'Table1_kvp', 'Slice Thickness (mm)': 'Table1_SliceThickness', 'mA': 'Table1_ma',
-                'Set Time (ms)': 'Table2_SetTime', 'Observed Time (ms)': 'Table2_Result', 'Tolerance (%)': 'Tolerance'
+                'Set Time (ms)': 'Table2_SetTime', 'Observed Time (ms)': 'Table2_Result',
+                'Tolerance (%)': 'Tolerance', 'Tolerance Operator': 'ToleranceOperator',
+                'Tol Operator': 'ToleranceOperator', 'Tolerance Sign': 'ToleranceOperator'
             },
             'Linearity of mAs Loading': {
                 'mAs Range': 'Table2_mAsRange', 'Result': 'Table2_Result', 'FCD': 'ExposureCondition_FCD', 'kV': 'ExposureCondition_kV', 'Tolerance': 'Tolerance'
@@ -418,7 +424,7 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
                 'kV': 'Table1_kvp', 'mA': 'Table1_ma', 'Time (sec)': 'Table1_Time',
                 'Workload': 'Workload', 'Workload Unit': 'WorkloadUnit', 'Tol Value': 'Tolerance',
                 'Tol Operator': 'ToleranceOperator', 'Tol Time': 'ToleranceTime',
-                'Location': 'Table2_Area', 'Front': 'Table2_Front', 'Back': 'Table2_Back', 'Left': 'Table2_Left', 'Right': 'Table2_Right'
+                'Location': 'Table2_Area', 'Front': 'Table2_Front', 'Back': 'Table2_Back', 'Left': 'Table2_Left', 'Right': 'Table2_Right', 'Top': 'Table2_Top'
             },
             'Output Consistency': {
                 'mAs': 'TestConditions_mAs', 'Slice Thickness (mm)': 'TestConditions_SliceThickness', 'Time (s)': 'TestConditions_Time',
@@ -586,6 +592,9 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
             }
 
             if (isReadingTest && row.every(c => !c)) {
+                // Some upload templates leave a spacer row immediately after TEST:
+                // keep scanning until the actual table header is found.
+                if (headers.length === 0) continue;
                 isReadingTest = false;
                 continue;
             }
@@ -695,10 +704,12 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
                             const slice = row[colIdx(headers, 'Slice Thickness (mm)', 'Slice Thickness')] ?? '';
                             const time = row[colIdx(headers, 'Time (ms)', 'Time')] ?? '';
                             const tol = row[colIdx(headers, 'Tolerance', 'Tol Value')] ?? '';
+                            const tolOperator = row[colIdx(headers, 'Tolerance Operator', 'Tol Operator', 'Tolerance Sign')] ?? '';
                             if (kvp) pushField('Table1_kvp', kvp, 0, currentTestName);
                             if (slice) pushField('Table1_SliceThickness', slice, 0, currentTestName);
                             if (time) pushField('Table1_Time', time, 0, currentTestName);
                             if (tol) pushField('Tolerance', tol, 0, currentTestName);
+                            if (tolOperator) pushField('ToleranceOperator', tolOperator, 0, currentTestName);
                             headers.forEach((h, hi) => {
                                 if (isHeaderLabelCol(h)) {
                                     const label = String(row[hi] ?? '').trim();
@@ -719,10 +730,12 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
                             const slice = row[colIdx(headers, 'Slice Thickness (mm)', 'Slice Thickness')] ?? '';
                             const time = row[colIdx(headers, 'Time (ms)', 'Time')] ?? '';
                             const tol = row[colIdx(headers, 'Tolerance', 'Tol Value')] ?? '';
+                            const tolOperator = row[colIdx(headers, 'Tolerance Operator', 'Tol Operator', 'Tolerance Sign')] ?? '';
                             if (kvp) pushField('Table1_kvp', kvp, 0, currentTestName);
                             if (slice) pushField('Table1_SliceThickness', slice, 0, currentTestName);
                             if (time) pushField('Table1_Time', time, 0, currentTestName);
                             if (tol) pushField('Tolerance', tol, 0, currentTestName);
+                            if (tolOperator) pushField('ToleranceOperator', tolOperator, 0, currentTestName);
                             headers.forEach((h) => {
                                 if (isMeasCol(h)) pushField('MeasHeader', String(h).trim(), 0, currentTestName);
                             });
@@ -922,22 +935,43 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
             setIsExporting(true);
 
             const tubeId = tubeType === 'single' ? null : 'A'; // For single tube, use null
+            const suffix = tubeId ? ` - Tube ${tubeId}` : '';
+            const registeredData = exportRegistry?.collect() ?? {};
 
             // Collect all test data in proper structure
-            const exportData: CTScanExportData & { reportHeader?: any } = {};
+            const exportData: CTScanExportData & { reportHeader?: any } = {
+                radiationProfileWidth: registeredData.radiationProfileWidth ?? csvDataForComponents[`Radiation Profile Width${suffix}`],
+                measurementOfOperatingPotential: registeredData.measurementOfOperatingPotential ?? csvDataForComponents[`Measurement of Operating Potential${suffix}`],
+                measurementOfMaLinearity: registeredData.measurementOfMaLinearity ?? csvDataForComponents[`Measurement of mA Linearity${suffix}`],
+                timerAccuracy: registeredData.timerAccuracy ?? csvDataForComponents[`Timer Accuracy${suffix}`],
+                measurementOfCTDI: registeredData.measurementOfCTDI ?? csvDataForComponents[`Measurement of CTDI${suffix}`],
+                totalFiltration: registeredData.totalFiltration ?? csvDataForComponents[`Total Filtration${suffix}`],
+                radiationLeakage: registeredData.radiationLeakage ?? csvDataForComponents[`Radiation Leakage Level${suffix}`],
+                outputConsistency: registeredData.outputConsistency ?? csvDataForComponents[`Output Consistency${suffix}`],
+                lowContrastResolution: registeredData.lowContrastResolution ?? csvDataForComponents[`Low Contrast Resolution${suffix}`],
+                highContrastResolution: registeredData.highContrastResolution ?? csvDataForComponents[`High Contrast Resolution${suffix}`],
+                radiationProtectionSurvey: registeredData.radiationProtectionSurvey ?? csvDataForComponents['Maximum Radiation Level'],
+                tablePosition: registeredData.tablePosition ?? csvDataForComponents['Table Position'],
+                gantryTilt: registeredData.gantryTilt ?? csvDataForComponents['Gantry Tilt'],
+            };
 
             // 0. Report Header
             try {
                 const headerRes = await getReportHeaderForCTScan(serviceId);
-                if (headerRes?.data || headerRes?.exists) exportData.reportHeader = headerRes;
+                exportData.reportHeader = {
+                    ...headerRes,
+                    data: { ...(headerRes?.data || headerRes || {}), ...formData },
+                    exists: true,
+                };
             } catch (err) {
                 console.log('Report header not found or error:', err);
+                exportData.reportHeader = { data: { ...formData }, exists: true };
             }
 
             // 1. Radiation Profile Width
             try {
                 const rpwData = await getRadiationProfileWidthByServiceIdForCTScan(serviceId, tubeId);
-                if (rpwData) {
+                if (!exportData.radiationProfileWidth && rpwData) {
                     exportData.radiationProfileWidth = rpwData;
                 }
             } catch (err) {
@@ -947,7 +981,7 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
             // 2. Measurement of Operating Potential
             try {
                 const mopData = await getMeasurementOfOperatingPotentialByServiceId(serviceId, tubeId);
-                if (mopData) {
+                if (!exportData.measurementOfOperatingPotential && mopData) {
                     exportData.measurementOfOperatingPotential = mopData;
                 }
             } catch (err) {
@@ -957,7 +991,7 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
             // 3. Measurement of mA Linearity (Timer tables only)
             try {
                 const malData = await getMeasurementOfMaLinearityByServiceId(serviceId, tubeId);
-                if (malData) {
+                if (!exportData.measurementOfMaLinearity && malData) {
                     exportData.measurementOfMaLinearity = malData;
                 }
             } catch (err) {
@@ -967,7 +1001,7 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
             // 4. Timer Accuracy (Timer tables only)
             try {
                 const taData = await getTimerAccuracyByServiceId(serviceId, tubeId);
-                if (taData) {
+                if (!exportData.timerAccuracy && taData) {
                     exportData.timerAccuracy = taData;
                 }
             } catch (err) {
@@ -977,7 +1011,7 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
             // 6. Measurement of CTDI
             try {
                 const ctdiData = await getMeasurementOfCTDIByServiceId(serviceId, tubeId);
-                if (ctdiData) {
+                if (!exportData.measurementOfCTDI && ctdiData) {
                     exportData.measurementOfCTDI = ctdiData;
                 }
             } catch (err) {
@@ -987,7 +1021,7 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
             // 7. Total Filtration
             try {
                 const tfData = await getTotalFilterationByServiceId(serviceId, tubeId);
-                if (tfData && tfData.rows?.[0]) {
+                if (!exportData.totalFiltration && tfData && tfData.rows?.[0]) {
                     exportData.totalFiltration = tfData;
                 }
             } catch (err) {
@@ -997,7 +1031,7 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
             // 8. Radiation Leakage Level
             try {
                 const rlData = await getRadiationLeakageByServiceId(serviceId, tubeId);
-                if (rlData) {
+                if (!exportData.radiationLeakage && rlData) {
                     exportData.radiationLeakage = rlData;
                 }
             } catch (err) {
@@ -1007,7 +1041,7 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
             // 9. Output Consistency
             try {
                 const ocData = await getOutputConsistencyByServiceId(serviceId, tubeId);
-                if (ocData) {
+                if (!exportData.outputConsistency && ocData) {
                     exportData.outputConsistency = ocData;
                 }
             } catch (err) {
@@ -1017,7 +1051,7 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
             // 10. Low Contrast Resolution
             try {
                 const lcrData = await getLowContrastResolutionByServiceIdForCTScan(serviceId, tubeId);
-                if (lcrData) {
+                if (!exportData.lowContrastResolution && lcrData) {
                     exportData.lowContrastResolution = lcrData;
                 }
             } catch (err) {
@@ -1027,7 +1061,7 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
             // 11. High Contrast Resolution
             try {
                 const hcrData = await getHighContrastResolutionByServiceIdForCTScan(serviceId, tubeId);
-                if (hcrData) {
+                if (!exportData.highContrastResolution && hcrData) {
                     exportData.highContrastResolution = hcrData;
                 }
             } catch (err) {
@@ -1038,7 +1072,7 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
             try {
                 const rpsRes = await getRadiationProtectionSurveyByServiceIdForCTScan(serviceId, tubeId);
                 const rpsData = rpsRes?.data || rpsRes; // Handle both response object and direct data
-                if (rpsData) {
+                if (!exportData.radiationProtectionSurvey && rpsData) {
                     exportData.radiationProtectionSurvey = rpsData;
                 }
             } catch (err) {
@@ -1049,7 +1083,7 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
             try {
                 const tablePosRes = await getTablePositionByServiceIdForCTScan(serviceId);
                 const tablePosData = tablePosRes?.data || tablePosRes;
-                if (tablePosData) {
+                if (!exportData.tablePosition && tablePosData) {
                     exportData.tablePosition = tablePosData;
                 }
             } catch (err) {
@@ -1061,7 +1095,7 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
                 try {
                     const gantryTiltRes = await getGantryTiltByServiceIdForCTScan(serviceId);
                     const gantryTiltData = gantryTiltRes?.data || gantryTiltRes;
-                    if (gantryTiltData) {
+                    if (!exportData.gantryTilt && gantryTiltData) {
                         exportData.gantryTilt = gantryTiltData;
                     }
                 } catch (err) {
@@ -1070,9 +1104,9 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
             }
 
             // Check if we have any data
-            const hasData = Object.keys(exportData).length > 0;
+            const hasData = Object.entries(exportData).some(([key, value]) => key !== 'reportHeader' && value != null);
             if (!hasData) {
-                toast.error('No data found to export. Please save test data first.', { id: 'export-excel' });
+                toast.error('No data found to export. Enter test data on this page or save test data first.', { id: 'export-excel' });
                 return;
             }
 
@@ -1609,5 +1643,11 @@ const CTScanReport: React.FC<{ serviceId: string; qaTestDate?: string | null; cr
         </div>
     );
 };
+
+const CTScanReport: React.FC<CTScanReportProps> = (props) => (
+    <TestExportRegistryProvider>
+        <CTScanReportContent {...props} />
+    </TestExportRegistryProvider>
+);
 
 export default CTScanReport;
