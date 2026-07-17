@@ -115,9 +115,11 @@ export default function EmployeeDetailsLeaveManagement() {
             try {
                 const start = startOfMonth(viewMonth)
                 const end = endOfMonth(viewMonth)
+                const today = format(new Date(), "yyyy-MM-dd")
                 const allDays: string[] = []
                 for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-                    allDays.push(format(d, "yyyy-MM-dd"))
+                    const date = format(d, "yyyy-MM-dd")
+                    if (date <= today) allDays.push(date)
                 }
 
                 const attendanceData: Record<string, string> = {}
@@ -242,6 +244,7 @@ export default function EmployeeDetailsLeaveManagement() {
     // Calendar Helpers
     const getStatusForDate = (date: Date) => {
         const formatted = format(date, "yyyy-MM-dd")
+        if (formatted > format(new Date(), "yyyy-MM-dd")) return "Unknown"
         const status = attendanceMap[formatted]
         if (status) return status
         if (isSunday(date)) return "Holiday"

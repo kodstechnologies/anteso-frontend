@@ -2039,6 +2039,14 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
     }
 
     const handleFileUpload = (workTypeId: string, file: File) => {
+        const isPdf = file.name.toLowerCase().endsWith(".pdf") &&
+            (!file.type || file.type === "application/pdf")
+
+        if (!isPdf) {
+            showModal("Warning", "Only PDF files are allowed!")
+            return
+        }
+
         setUploadedFiles((prev) => {
             const newFiles = { ...prev, [workTypeId]: file }
             const fileNames = Object.entries(newFiles).reduce(
@@ -3063,10 +3071,17 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                         </label>
                                                                         <input
                                                                             type="file"
+                                                                            accept=".pdf,application/pdf"
                                                                             required
                                                                             onChange={(e) => {
                                                                                 const file = e.target.files?.[0]
-                                                                                if (file) handleFileUpload(workType.id, file)
+                                                                                if (file) {
+                                                                                    handleFileUpload(workType.id, file)
+                                                                                    if (!file.name.toLowerCase().endsWith(".pdf") ||
+                                                                                        (file.type && file.type !== "application/pdf")) {
+                                                                                        e.target.value = ""
+                                                                                    }
+                                                                                }
                                                                             }}
                                                                             className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-green-600 file:text-white hover:file:bg-green-700"
                                                                         />
@@ -3399,10 +3414,17 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                             </label>
                                                                             <input
                                                                                 type="file"
+                                                                                accept=".pdf,application/pdf"
                                                                                 required
                                                                                 onChange={(e) => {
                                                                                     const file = e.target.files?.[0]
-                                                                                    if (file) handleFileUpload(workType.id, file)
+                                                                                    if (file) {
+                                                                                        handleFileUpload(workType.id, file)
+                                                                                        if (!file.name.toLowerCase().endsWith(".pdf") ||
+                                                                                            (file.type && file.type !== "application/pdf")) {
+                                                                                            e.target.value = ""
+                                                                                        }
+                                                                                    }
                                                                                 }}
                                                                                 className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-blue-600 file:text-white hover:file:bg-blue-700"
                                                                             />
