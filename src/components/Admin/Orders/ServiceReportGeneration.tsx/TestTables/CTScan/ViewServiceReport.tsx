@@ -567,12 +567,19 @@ const ViewServiceReportCTScan: React.FC = () => {
 
   const downloadPDF = async () => {
     try {
+      const pageCount = estimateReportPages("report-content");
+      setReport((prev) => (prev ? { ...prev, pages: String(pageCount) } : null));
+
+      // Wait for the updated page count to be painted before capturing the report.
+      await new Promise<void>((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+      });
+
       await generatePDF({
         elementId: "report-content",
         filename: `CTScan-Report-${report?.testReportNumber || "report"}.pdf`,
         buttonSelector: ".download-pdf-btn",
       });
-      const pageCount = estimateReportPages("report-content");
       const response = await getReportHeaderForCTScan(serviceId!, null);
       if (response?.exists && response?.data && report) {
         const d = response.data as any;
@@ -602,7 +609,6 @@ const ViewServiceReportCTScan: React.FC = () => {
         };
         const { saveReportHeaderForCTScan } = await import("../../../../../../api");
         await saveReportHeaderForCTScan(serviceId!, payload, null);
-        setReport((prev) => (prev ? { ...prev, pages: String(pageCount) } : null));
       }
     } catch (error) {
       console.error("PDF Error:", error);

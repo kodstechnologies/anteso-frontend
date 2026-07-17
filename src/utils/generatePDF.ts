@@ -277,7 +277,6 @@ export const generatePDF = async ({
       const tables = clonedElement.querySelectorAll('table');
       tables.forEach((table) => {
         const tableEl = table as HTMLElement;
-        tableEl.style.width = '100%';
         tableEl.style.borderCollapse = 'collapse';
         const cells = tableEl.querySelectorAll('th, td');
         cells.forEach((cell) => {
@@ -310,6 +309,7 @@ export const generatePDF = async ({
 
       updateButton('Preparing images...', true);
       const imageDataUrlMap = await buildImageDataUrlMap(element);
+      let generatedPageCount = 0;
 
       for (let i = 0; i < shells.length; i++) {
         const shell = shells[i] as HTMLElement;
@@ -332,43 +332,62 @@ export const generatePDF = async ({
             const clonedShells = clonedDoc.querySelectorAll('.report-pdf-page-shell, .report-pdf-last-page-shell');
             const clonedShell = clonedShells[i] as HTMLElement;
             if (clonedShell) {
-              const isLastPage = clonedShell.classList.contains('report-pdf-last-page-shell');
-
               clonedShell.classList.add('is-generating-pdf');
               clonedShell.style.margin = '0';
               clonedShell.style.boxShadow = 'none';
               clonedShell.style.width = '210mm';
-
-              if (isLastPage) {
-                clonedShell.style.height = 'auto';
-                clonedShell.style.minHeight = '297mm';
-                clonedShell.style.maxHeight = 'none';
-                clonedShell.style.overflow = 'visible';
-              } else {
-                clonedShell.style.height = '297mm';
-                clonedShell.style.minHeight = '297mm';
-                clonedShell.style.maxHeight = '297mm';
-                clonedShell.style.overflow = 'hidden';
-              }
+              clonedShell.style.height = 'auto';
+              clonedShell.style.minHeight = '297mm';
+              clonedShell.style.maxHeight = 'none';
+              clonedShell.style.overflow = 'visible';
 
               prepareClonedElement(clonedShell);
             }
           }
         });
 
-        const imgData = canvas.toDataURL('image/png');
-        let renderWidth = imgWidth;
-        let renderHeight = (canvas.height * imgWidth) / canvas.width;
+        const pageHeightInCanvasPixels = Math.floor((canvas.width * pageHeight) / imgWidth);
+        const shellPageCount = Math.max(1, Math.ceil(canvas.height / pageHeightInCanvasPixels));
 
-        if (renderHeight > pageHeight) {
-          const scale = pageHeight / renderHeight;
-          renderWidth = imgWidth * scale;
-          renderHeight = pageHeight;
+        for (let pageIndex = 0; pageIndex < shellPageCount; pageIndex++) {
+          const sourceY = pageIndex * pageHeightInCanvasPixels;
+          const sliceHeight = Math.min(pageHeightInCanvasPixels, canvas.height - sourceY);
+          const pageCanvas = document.createElement('canvas');
+          pageCanvas.width = canvas.width;
+          pageCanvas.height = sliceHeight;
+
+          const context = pageCanvas.getContext('2d');
+          if (!context) throw new Error('Unable to create PDF page canvas');
+
+          context.fillStyle = '#ffffff';
+          context.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
+          context.drawImage(
+            canvas,
+            0,
+            sourceY,
+            canvas.width,
+            sliceHeight,
+            0,
+            0,
+            canvas.width,
+            sliceHeight,
+          );
+
+          if (generatedPageCount > 0) pdf.addPage();
+
+          const renderHeight = (sliceHeight * imgWidth) / canvas.width;
+          pdf.addImage(
+            pageCanvas.toDataURL('image/png'),
+            'PNG',
+            0,
+            0,
+            imgWidth,
+            renderHeight,
+            undefined,
+            'FAST',
+          );
+          generatedPageCount += 1;
         }
-
-        if (i > 0) pdf.addPage();
-
-        pdf.addImage(imgData, 'PNG', 0, 0, renderWidth, renderHeight, undefined, 'FAST');
         } finally {
           restoreFns.forEach((restore) => restore());
         }
