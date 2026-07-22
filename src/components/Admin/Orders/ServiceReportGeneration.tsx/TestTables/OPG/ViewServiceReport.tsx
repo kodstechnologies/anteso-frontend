@@ -1121,7 +1121,7 @@ const ViewServiceReportOPG: React.FC = () => {
                       {/* Filtration Tolerance Reference */}
                       <div style={{ marginTop: '4px', fontSize: '10px', color: '#555' }}>
                         <span className="font-semibold">Tolerance criteria: </span>
-                        {ft.forKvGreaterThan70 ?? "1.5"} mm Al for kV &lt; {ft.kvThreshold1 ?? "70"} |&nbsp;
+                        {ft.forKvGreaterThan70 ?? "1.5"} mm Al for kV ≤ {ft.kvThreshold1 ?? "70"} |&nbsp;
                         {ft.forKvBetween70And100 ?? "2.0"} mm Al for {ft.kvThreshold1 ?? "70"} ≤ kV ≤ {ft.kvThreshold2 ?? "100"} |&nbsp;
                         {ft.forKvGreaterThan100 ?? "2.5"} mm Al for kV &gt; {ft.kvThreshold2 ?? "100"}
                       </div>
@@ -1156,10 +1156,13 @@ const ViewServiceReportOPG: React.FC = () => {
               const timeStr = hasTime ? String(table1?.time).trim() : '';
               const timeVal = parseFloat(timeStr);
               const hasValidTime = timeStr !== '' && !isNaN(timeVal) && timeVal > 0;
-              const xUnitLabel = hasTime ? 'mGy/(mA*s)' : 'mGy/mA';
-              const linearityHeading = hasValidTime
+              // With valid timer → mA Loading; without → mAs Loading
+              const isMaLoading = hasValidTime;
+              const xUnitLabel = isMaLoading ? 'mGy/(mA*s)' : 'mGy/mAs';
+              const linearityHeading = isMaLoading
                 ? "Linearity of mA Loading (Coefficient of Linearity)"
                 : "Linearity of mAs Loading (Coefficient of Linearity)";
+              const stationColumnLabel = isMaLoading ? 'mA' : 'mAs Range';
 
               const xResults = rows.map((row: any) => {
                 const outputsArr = Array.isArray(row.measuredOutputs) ? row.measuredOutputs : [];
@@ -1196,7 +1199,7 @@ const ViewServiceReportOPG: React.FC = () => {
               return (
               <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
                 <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>{nextDetailedSectionNumber()}. {linearityHeading}</h3>
-                {(testData.linearityOfMaLoading.table1?.fcd != null || testData.linearityOfMaLoading.table1?.kv != null || testData.linearityOfMaLoading.table1?.time != null) && (
+                {(table1?.fcd != null || table1?.kv != null || (isMaLoading && table1?.time != null)) && (
                   <div className="mb-6 print:mb-1 bg-gray-50 p-4 print:p-1 rounded border overflow-x-auto" style={{ marginBottom: '4px', padding: '2px 4px' }}>
                     <p className="font-semibold mb-2 print:mb-0.5 print:text-xs" style={{ marginBottom: '2px', fontSize: '8px' }}>Test Conditions:</p>
                     <table className="w-full border border-black text-sm print:text-[9px]" style={{ fontSize: '11px', borderCollapse: 'collapse', borderSpacing: 0 }}>
@@ -1204,14 +1207,18 @@ const ViewServiceReportOPG: React.FC = () => {
                         <tr>
                           <th className="border border-black px-2 py-1 text-center" style={{ padding: '0px 1px' }}>FDD (cm)</th>
                           <th className="border border-black px-2 py-1 text-center" style={{ padding: '0px 1px' }}>kV</th>
-                          <th className="border border-black px-2 py-1 text-center" style={{ padding: '0px 1px' }}>Time (s)</th>
+                          {isMaLoading && (
+                            <th className="border border-black px-2 py-1 text-center" style={{ padding: '0px 1px' }}>Time (s)</th>
+                          )}
                         </tr>
                       </thead>
                       <tbody>
                         <tr>
-                          <td className="border border-black px-2 py-1 text-center" style={{ padding: '0px 1px' }}>{testData.linearityOfMaLoading.table1?.fcd || "-"}</td>
-                          <td className="border border-black px-2 py-1 text-center" style={{ padding: '0px 1px' }}>{testData.linearityOfMaLoading.table1?.kv || "-"}</td>
-                          <td className="border border-black px-2 py-1 text-center" style={{ padding: '0px 1px' }}>{testData.linearityOfMaLoading.table1?.time || "-"}</td>
+                          <td className="border border-black px-2 py-1 text-center" style={{ padding: '0px 1px' }}>{table1?.fcd || "-"}</td>
+                          <td className="border border-black px-2 py-1 text-center" style={{ padding: '0px 1px' }}>{table1?.kv || "-"}</td>
+                          {isMaLoading && (
+                            <td className="border border-black px-2 py-1 text-center" style={{ padding: '0px 1px' }}>{table1?.time || "-"}</td>
+                          )}
                         </tr>
                       </tbody>
                     </table>
@@ -1221,7 +1228,7 @@ const ViewServiceReportOPG: React.FC = () => {
                   <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
                     <thead className="bg-gray-100">
                       <tr>
-                        <th rowSpan={2} className="border border-black p-2 print:p-1 text-center align-middle" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center', verticalAlign: 'middle' }}>mA</th>
+                        <th rowSpan={2} className="border border-black p-2 print:p-1 text-center align-middle" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center', verticalAlign: 'middle' }}>{stationColumnLabel}</th>
                         <th colSpan={measCount} className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Output (mGy)</th>
                         <th rowSpan={2} className="border border-black p-2 print:p-1 text-center align-middle" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center', verticalAlign: 'middle' }}>Average</th>
                         <th rowSpan={2} className="border border-black p-2 print:p-1 text-center align-middle font-bold bg-blue-50" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center', verticalAlign: 'middle' }}>X ({xUnitLabel})</th>

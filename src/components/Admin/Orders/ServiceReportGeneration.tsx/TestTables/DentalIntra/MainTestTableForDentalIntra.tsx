@@ -1,4 +1,4 @@
-﻿// src/components/reports/TestTables/DentalIntra/MainTestTableForDentalIntra.tsx
+// src/components/reports/TestTables/DentalIntra/MainTestTableForDentalIntra.tsx
 import React from "react";
 
 interface MainTestTableProps {
@@ -49,7 +49,7 @@ const MainTestTableForDentalIntra: React.FC<MainTestTableProps> = ({ testData })
     });
   };
 
-  // 1. Accuracy of Irradiation Time — same pattern as RadiographyFixed (irradiationTimes + tolerance.operator/value)
+  // 1. Accuracy of Irradiation Time � same pattern as RadiographyFixed (irradiationTimes + tolerance.operator/value)
   const irradStandalone = testData.accuracyOfIrradiationTime;
   const mapIrradRow = (r: any) => ({
     setTime: r.setTime,
@@ -127,9 +127,9 @@ const MainTestTableForDentalIntra: React.FC<MainTestTableProps> = ({ testData })
   if (testData.accuracyOfOperatingPotentialAndTime?.rows && Array.isArray(testData.accuracyOfOperatingPotentialAndTime.rows)) {
     const validRows = testData.accuracyOfOperatingPotentialAndTime.rows.filter((row: any) => row.appliedKvp || row.avgKvp || row.setTime || row.avgTime);
     if (validRows.length > 0) {
-      const kvpToleranceSign = testData.accuracyOfOperatingPotentialAndTime.kvpToleranceSign || "±";
+      const kvpToleranceSign = testData.accuracyOfOperatingPotentialAndTime.kvpToleranceSign || "�";
       const kvpToleranceValue = testData.accuracyOfOperatingPotentialAndTime.kvpToleranceValue || "5";
-      const timeToleranceSign = testData.accuracyOfOperatingPotentialAndTime.timeToleranceSign || "±";
+      const timeToleranceSign = testData.accuracyOfOperatingPotentialAndTime.timeToleranceSign || "�";
       const timeToleranceValue = testData.accuracyOfOperatingPotentialAndTime.timeToleranceValue || "10";
 
       const kvpRows = validRows.map((row: any) => {
@@ -155,7 +155,7 @@ const MainTestTableForDentalIntra: React.FC<MainTestTableProps> = ({ testData })
   }
 
  
-  // Total Filtration — same summary shape as RadiographyFixed (specified = kVp, measured = mm Al, band tolerance string)
+  // Total Filtration � same summary shape as RadiographyFixed (specified = kVp, measured = mm Al, band tolerance string)
   if (
     testData.accuracyOfOperatingPotentialAndTime?.totalFiltration &&
     (testData.accuracyOfOperatingPotentialAndTime.totalFiltration.measured1 != null ||
@@ -186,7 +186,7 @@ const MainTestTableForDentalIntra: React.FC<MainTestTableProps> = ({ testData })
       if (!isNaN(requiredTolerance)) isPass = measuredVal >= requiredTolerance;
     }
 
-    const toleranceStr = "1.5 mm Al for kV ≤ 70; 2.0 mm Al for 70 ≤ kV ≤ 100; 2.5 mm Al for kV > 100";
+    const toleranceStr = "1.5 mm Al for kV <= 70; 2.0 mm Al for 70 ? kV ? 100; 2.5 mm Al for kV > 100";
 
     addRowsForTest("Total Filtration", [
       {
@@ -199,7 +199,7 @@ const MainTestTableForDentalIntra: React.FC<MainTestTableProps> = ({ testData })
     ]);
   }
 
-  // Linearity of Time (separate test — not mAs loading)
+  // Linearity of Time (separate test � not mAs loading)
   if (testData.linearityOfTime?.table2 && Array.isArray(testData.linearityOfTime.table2)) {
     const validRows = testData.linearityOfTime.table2.filter((row: any) => row.time);
     if (validRows.length > 0) {
@@ -228,7 +228,7 @@ const MainTestTableForDentalIntra: React.FC<MainTestTableProps> = ({ testData })
     }
   }
 
-  // Linearity of mAs loading (Coefficient of Linearity) — RadiographyFixed pattern (table2 + CoL + kV in specified)
+  // Linearity of mAs loading (Coefficient of Linearity) � RadiographyFixed pattern (table2 + CoL + kV in specified)
   if (testData.linearityOfMasLoading?.table2 && Array.isArray(testData.linearityOfMasLoading.table2)) {
     const linearityLabel = "Linearity of mAs loading (Coefficient of Linearity)";
     const validRows = testData.linearityOfMasLoading.table2.filter((row: any) => row.mAsApplied || row.mAsRange || row.ma);
@@ -317,7 +317,7 @@ const MainTestTableForDentalIntra: React.FC<MainTestTableProps> = ({ testData })
     }
   }
 
-  // Output Consistency (CoV) — RadiographyFixed pattern (uses outputConsistency shape; Dental Intra stores as reproducibilityOfRadiationOutput)
+  // Output Consistency (CoV) � RadiographyFixed pattern (uses outputConsistency shape; Dental Intra stores as reproducibilityOfRadiationOutput)
   const outputConsistency =
     testData.outputConsistency || testData.reproducibilityOfRadiationOutput;
   if (outputConsistency?.outputRows && Array.isArray(outputConsistency.outputRows)) {
@@ -403,7 +403,7 @@ const MainTestTableForDentalIntra: React.FC<MainTestTableProps> = ({ testData })
     }
   }
 
-  // 4. Tube Housing Leakage — measured = mGy in one hour (same formula as generate)
+  // 4. Tube Housing Leakage � measured = mGy in one hour (same formula as generate)
   {
     const rll = testData.radiationLeakageLevel || testData.tubeHousingLeakage;
     const sourceRows = rll?.leakageMeasurements || rll?.leakageRows;
@@ -487,7 +487,7 @@ const MainTestTableForDentalIntra: React.FC<MainTestTableProps> = ({ testData })
     }
   }
 
-  // Radiation Protection Survey — RadiographyFixed summary rows
+  // Radiation Protection Survey � RadiographyFixed summary rows
   if (testData.radiationProtectionSurvey?.locations && Array.isArray(testData.radiationProtectionSurvey.locations)) {
     const validRows = testData.radiationProtectionSurvey.locations.filter((loc: any) => loc.location || loc.mRPerWeek);
     if (validRows.length > 0) {
@@ -501,7 +501,7 @@ const MainTestTableForDentalIntra: React.FC<MainTestTableProps> = ({ testData })
         return {
           specified: loc.location || "-",
           measured: mRPerWeek !== "-" ? `${mRPerWeek} mR/week` : "-",
-          tolerance: loc.category === "worker" ? "≤ 40 mR/week" : "≤ 2 mR/week",
+          tolerance: loc.category === "worker" ? "= 40 mR/week" : "= 2 mR/week",
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });

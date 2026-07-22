@@ -71,7 +71,7 @@ const AccuracyOfOperatingPotentialAndTime: React.FC<Props> = ({
 
   const [filtrationTolerance, setFiltrationTolerance] = useState({
     value1: "1.5",
-    operator1: "≤",
+    operator1: "<=",
     kvp1: "70",
     value2: "2.0",
     operator2: "70 < kV ≤",

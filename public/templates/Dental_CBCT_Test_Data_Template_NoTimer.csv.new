@@ -10,17 +10,12 @@ TEST: TOTAL FILTRATION
 Parameter,Measured (mm Al),Required (mm Al),At kVp
 TotalFiltration,2.6,2.5,80
 
-TEST: ACCURACY OF IRRADIATION TIME
-FDD (cm),100,kV,80,mA,100
-Set Time (ms),Measured Time 1 (ms),Tolerance Operator,Tolerance Value (%)
-100,98.5,<=,20
-200,198
-
-TEST: LINEARITY OF mA LOADING
-FDD (cm),100,kV,80,Time (s),0.1
-mA Applied,Measured Output 1,Measured Output 2
-50,0.5,0.51
-100,0.98
+TEST: LINEARITY OF mAs LOADING
+FDD (cm),100,kV,80
+mAs Range,Measured Output 1,Measured Output 2,Measured Output 3
+5,0.5,0.51,0.49
+10,1,1.01,0.99
+20,2.5,2.51,2.49
 Tolerance Operator,<=
 Tolerance Value (CoL),0.1
 

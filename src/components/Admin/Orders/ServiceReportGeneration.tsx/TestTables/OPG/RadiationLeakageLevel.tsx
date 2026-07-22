@@ -10,6 +10,7 @@ import {
 } from '../../../../../../api';
 import toast from 'react-hot-toast';
 import { useRegisterTestExport } from '../shared/TestExportRegistry';
+import { isDistanceFieldLabel } from '../shared/exportMeasHeaders';
 
 interface SettingsRow {
   ffd: string;
@@ -291,7 +292,7 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
 
   const cellStr = (c: unknown) => c?.toString()?.trim() ?? '';
   const cellLower = (c: unknown) => cellStr(c).toLowerCase();
-  const isFfdLabel = (c: unknown) => ['ffd', 'fcd', 'fdd'].includes(cellLower(c));
+  const isFfdLabel = (c: unknown) => isDistanceFieldLabel(c);
   const isKvLabel = (c: unknown) => cellLower(c).includes('kv');
   const isMaLabel = (c: unknown) => cellLower(c) === 'ma';
   const isTimeLabel = (c: unknown) => {
@@ -410,7 +411,7 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
     const getField = (...names: string[]) =>
       csvData.find((r: any) => names.includes(String(r['Field Name'] || '')))?.['Value'];
 
-    const ffd = getField('FFD', 'ffd', 'FDD', 'fdd', 'FCD', 'fcd');
+    const ffd = getField('FFD', 'ffd', 'FDD', 'fdd', 'FDD (cm)', 'FCD', 'fcd', 'FCD (cm)');
     const kv = getField('kV', 'kVp', 'kv', 'kvp');
     const ma = getField('mA', 'ma');
     const time = getField('Time', 'time');

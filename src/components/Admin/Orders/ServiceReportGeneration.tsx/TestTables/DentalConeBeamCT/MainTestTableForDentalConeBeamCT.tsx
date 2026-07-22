@@ -1,4 +1,4 @@
-﻿// src/components/reports/TestTables/DentalConeBeamCT/MainTestTableForDentalConeBeamCT.tsx
+// src/components/reports/TestTables/DentalConeBeamCT/MainTestTableForDentalConeBeamCT.tsx
 import React from "react";
 
 interface MainTestTableProps {
@@ -93,7 +93,7 @@ const MainTestTableForDentalConeBeamCT: React.FC<MainTestTableProps> = ({ testDa
       const toleranceSign =
         testData.operatingPotential.tolerance?.sign ||
         testData.operatingPotential.toleranceSign ||
-        "±";
+        "�";
       const toleranceValue = testData.operatingPotential.toleranceValue || "2.0";
       const testRows = validRows.map((row: any) => {
         let isPass = false;
@@ -335,7 +335,7 @@ const MainTestTableForDentalConeBeamCT: React.FC<MainTestTableProps> = ({ testDa
   // 4. Linearity of mAs Loading
 
 
-  // 5. Tube Housing Leakage — measured = mGy in one hour (same formula as generate page)
+  // 5. Tube Housing Leakage � measured = mGy in one hour (same formula as generate page)
   {
     const rll = testData.radiationLeakage;
     const sourceRows = rll?.leakageRows || rll?.leakageMeasurements;
@@ -343,10 +343,13 @@ const MainTestTableForDentalConeBeamCT: React.FC<MainTestTableProps> = ({ testDa
       const validRows = sourceRows.filter(
         (row: any) =>
           row.location ||
-          row.front ||
-          row.back ||
           row.left ||
           row.right ||
+          row.top ||
+          row.up ||
+          row.down ||
+          row.front ||
+          row.back ||
           row.max ||
           row.result
       );
@@ -376,7 +379,7 @@ const MainTestTableForDentalConeBeamCT: React.FC<MainTestTableProps> = ({ testDa
 
         const testRows = validRows.map((row: any) => {
           const unit = row.unit || "mGy/h";
-          const directionalValues = [row.front, row.back, row.left, row.right]
+          const directionalValues = [row.left, row.right, row.top, row.up, row.down, row.front, row.back]
             .map((v: any) => parseFloat(v) || 0)
             .filter((n: number) => n > 0);
           const parsedMax = parseFloat(String(row.max ?? ""));

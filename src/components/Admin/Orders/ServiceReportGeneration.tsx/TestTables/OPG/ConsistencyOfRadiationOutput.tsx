@@ -9,6 +9,7 @@ import {
   updateConsistencyOfRadiationOutputForOPG,
 } from "../../../../../../api";
 import { useRegisterTestExport } from '../shared/TestExportRegistry';
+import { isDistanceFieldLabel, toUiMeasHeaderLabel } from '../shared/exportMeasHeaders';
 
 interface OutputRow {
   id: string;
@@ -55,7 +56,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
   ]);
 
   const [headers, setHeaders] = useState<string[]>([
-    'Measured mR 1', 'Measured mR 2', 'Measured mR 3',
+    'Meas 1', 'Meas 2', 'Meas 3',
   ]);
 
   const [tolerance, setTolerance] = useState<string>('0.05');
@@ -205,7 +206,11 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
               };
             }) || outputRows
           );
-          setHeaders(data.measurementHeaders || headers);
+          setHeaders(
+            Array.isArray(data.measurementHeaders)
+              ? data.measurementHeaders.map((h: string, i: number) => toUiMeasHeaderLabel(String(h), i))
+              : headers
+          );
           setIsSaved(true);
           } else {
             setIsSaved(false);
@@ -233,7 +238,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
   const readMeasHeadersFromCsv = (rows: any[]): string[] => {
     const meta = rows.find((r) => String(r?.[0] ?? '').trim() === '__MEAS_HEADERS__');
     if (meta) {
-      return meta.slice(1).map((c:any) => preserveExcelHeaderCell(c)).filter(Boolean);
+      return meta.slice(1).map((c: any, i: number) => toUiMeasHeaderLabel(preserveExcelHeaderCell(c), i)).filter(Boolean);
     }
     const consistencyHeaderRow = rows.find(
       (r) => String(r?.[0] || '').trim().toLowerCase() === 'kvp'
@@ -247,7 +252,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
       const s = preserveExcelHeaderCell(headerRow[i]);
       if (!s) continue;
       if (/^mean$/i.test(s) || /^cov$/i.test(s) || /^remarks$/i.test(s)) break;
-      headers.push(s);
+      headers.push(toUiMeasHeaderLabel(s, headers.length));
     }
     return headers;
   };
@@ -290,9 +295,9 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
 
       // Filter valid rows (must have kVp and be numeric)
       // Check for FFD row
-      const ffdRow = csvData.find(r => r.some((c: any) => ['ffd', 'fcd', 'fdd'].includes(c?.toString().toLowerCase())));
+      const ffdRow = csvData.find((r) => r.some((c: any) => isDistanceFieldLabel(c)));
       if (ffdRow) {
-        const fIdx = ffdRow.findIndex((c: any) => ['ffd', 'fcd', 'fdd'].includes(c?.toString().toLowerCase()));
+        const fIdx = ffdRow.findIndex((c: any) => isDistanceFieldLabel(c));
         if (fIdx !== -1 && ffdRow[fIdx + 1]) setFfd(ffdRow[fIdx + 1].toString());
       }
 
@@ -307,9 +312,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
           firstLower === 'tolerance value' ||
           firstLower === 'tol value' ||
           firstLower === 'tolerance' ||
-          firstLower === 'ffd' ||
-          firstLower === 'fcd' ||
-          firstLower === 'fdd'
+          isDistanceFieldLabel(first)
         ) return false;
         return !isNaN(parseFloat(first));
       });

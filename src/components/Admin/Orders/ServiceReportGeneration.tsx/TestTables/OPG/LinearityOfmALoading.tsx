@@ -10,6 +10,7 @@ import {
   updateLinearityOfMaLoadingForOPG,
 } from '../../../../../../api';
 import { useRegisterTestExport } from '../shared/TestExportRegistry';
+import { isDistanceFieldLabel, toUiMeasHeaderLabel } from '../shared/exportMeasHeaders';
 
 interface Table1Row {
   fcd: string;
@@ -43,7 +44,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
   const [table1Row, setTable1Row] = useState<Table1Row>({ fcd: '', kv: '', time: '' });
 
   // Table 2: mA values + dynamic measurement columns
-  const [measHeaders, setMeasHeaders] = useState<string[]>(['Measured mR 1', 'Measured mR 2', 'Measured mR 3']);
+  const [measHeaders, setMeasHeaders] = useState<string[]>(['Meas 1', 'Meas 2', 'Meas 3']);
   const [table2Rows, setTable2Rows] = useState<Table2Row[]>([
     { id: '1', ma: '50', measuredOutputs: ['', '', ''], average: '', x: '', xMax: '', xMin: '', col: '', remarks: '' },
     { id: '2', ma: '100', measuredOutputs: ['', '', ''], average: '', x: '', xMax: '', xMin: '', col: '', remarks: '' },
@@ -70,7 +71,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
   // === Column Handling ===
   const addMeasColumn = () => {
     const nextCount = measHeaders.length + 1;
-    setMeasHeaders(prev => [...prev, `Measured mR ${prev.length + 1}`]);
+    setMeasHeaders(prev => [...prev, `Meas ${prev.length + 1}`]);
     setTable2Rows(rows =>
       rows.map(row => ({
         ...row,
@@ -93,7 +94,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
   const updateMeasHeader = (idx: number, value: string) => {
     setMeasHeaders(prev => {
       const copy = [...prev];
-      copy[idx] = value || `Measured mR ${idx + 1}`;
+      copy[idx] = value || `Meas ${idx + 1}`;
       return copy;
     });
   };
@@ -265,8 +266,8 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
               const headerCount = Math.max(maxOutputs, 3);
               const headers =
                 Array.isArray(data.measHeaders) && data.measHeaders.length > 0
-                  ? padOutputs(data.measHeaders.map(String), headerCount).map((h, i) => h || `Measured mR ${i + 1}`)
-                  : Array.from({ length: headerCount }, (_, i) => `Measured mR ${i + 1}`);
+                  ? padOutputs(data.measHeaders.map(String), headerCount).map((h, i) => toUiMeasHeaderLabel(h, i))
+                  : Array.from({ length: headerCount }, (_, i) => `Meas ${i + 1}`);
               setMeasHeaders(headers);
               setTable2Rows(
                 data.table2.map((r: any, i: number) => ({
@@ -285,7 +286,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
                 }))
               );
             } else if (Array.isArray(data.measHeaders) && data.measHeaders.length > 0) {
-              setMeasHeaders(data.measHeaders);
+              setMeasHeaders(data.measHeaders.map((h: string, i: number) => toUiMeasHeaderLabel(String(h), i)));
             }
             setTolerance(data.tolerance || '0.1');
             setToleranceOperator(data.toleranceOperator || '<');
@@ -312,10 +313,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [serviceId]);
 
-  const isFcdLabel = (c: unknown) => {
-    const s = c?.toString()?.trim().toLowerCase() || '';
-    return s === 'fcd' || s === 'fdd' || s === 'ffd';
-  };
+  const isFcdLabel = (c: unknown) => isDistanceFieldLabel(c);
   const isKvLabel = (c: unknown) => (c?.toString()?.trim().toLowerCase() || '').includes('kv');
   const isTimeLabel = (c: unknown) => {
     const s = c?.toString()?.trim().toLowerCase() || '';
@@ -336,13 +334,13 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
   const readMeasHeadersFromCsv = (rows: any[]): string[] => {
     const meta = rows.find((r) => String(r?.[0] ?? '').trim() === '__MEAS_HEADERS__');
     if (meta) {
-      return meta.slice(1).map((c:any) => preserveExcelHeaderCell(c)).filter(Boolean);
+      return meta.slice(1).map((c: any, i: number) => toUiMeasHeaderLabel(preserveExcelHeaderCell(c), i)).filter(Boolean);
     }
     const headerRow = rows.find((row) => isMaStationHeaderRow(row));
     if (!headerRow) return [];
     return headerRow
       .slice(1)
-      .map((c: any) => preserveExcelHeaderCell(c))
+      .map((c: any, i: number) => toUiMeasHeaderLabel(preserveExcelHeaderCell(c), i))
       .filter((s: string) => s && !/^mr\/mas$/i.test(s));
   };
 
@@ -444,10 +442,10 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
         setMeasHeaders(() => {
           const base = (customMeasHeaders.length > 0
             ? customMeasHeaders
-            : Array.from({ length: finalHeaderCount }, (_, i) => `Measured mR ${i + 1}`)
+            : Array.from({ length: finalHeaderCount }, (_, i) => `Meas ${i + 1}`)
           ).slice(0, finalHeaderCount);
           while (base.length < finalHeaderCount) {
-            base.push(`Measured mR ${base.length + 1}`);
+            base.push(`Meas ${base.length + 1}`);
           }
           return base;
         });

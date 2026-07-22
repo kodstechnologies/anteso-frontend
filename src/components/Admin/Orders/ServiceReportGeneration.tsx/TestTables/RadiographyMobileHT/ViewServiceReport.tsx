@@ -932,7 +932,7 @@ const ViewServiceReportRadiographyMobileHT: React.FC = () => {
                       {/* Filtration Tolerance Reference */}
                       <div style={{ marginTop: '4px', fontSize: '10px', color: '#555' }}>
                         <span className="font-semibold">Tolerance criteria: </span>
-                        1.5 mm Al for kV &lt; 70 |&nbsp;
+                        1.5 mm Al for kV ≤ 70 |&nbsp;
                         2.0 mm Al for 70 ≤ kV ≤ 100 |&nbsp;
                         2.5 mm Al for kV &gt; 100
                       </div>

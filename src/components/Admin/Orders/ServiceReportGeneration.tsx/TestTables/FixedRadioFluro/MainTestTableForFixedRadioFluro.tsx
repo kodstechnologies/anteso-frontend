@@ -307,7 +307,7 @@ export const generateFixedRadioFluroSummaryRows = (testData: any, hasTimer: bool
       }
     }
 
-    const toleranceStr = "1.5 mm Al for kV ≤ 70; 2.0 mm Al for 70 ≤ kV ≤ 100; 2.5 mm Al for kV > 100";
+    const toleranceStr = "1.5 mm Al for kV <= 70; 2.0 mm Al for 70 ≤ kV ≤ 100; 2.5 mm Al for kV > 100";
 
     addRowsForTest("Total Filtration", [{
       specified: atKvp !== "-" ? `${atKvp} kVp` : "-",

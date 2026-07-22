@@ -23,26 +23,26 @@ const totalFiltrationSection = (): any[][] => [
 ];
 
 const accuracyOfIrradiationTimeSection = (): any[][] => [
-  ["FCD", "100", "kV", "70", "mA", "10"],
+  ["FDD (cm)", "100", "kV", "70", "mA", "10"],
   ["Set Time (mSec)", "Measured Time (mSec)"],
   ["100", "102"],
   ["200", "198"],
 ];
 
 const linearityMaLoadingSection = (): any[][] => [
-  ["FCD", "100", "kV", "70", "Time", "0.1"],
+  ["FDD (cm)", "100", "kV", "70", "Time", "0.1"],
   ["Tolerance Operator", "<="],
   ["Tolerance Value (CoL)", "0.1"],
-  ["mA Station", "Measured mR 1", "Measured mR 2", "Measured mR 3"],
+  ["mA Station", "Measured Output 1", "Measured Output 2", "Measured Output 3"],
   ["5", "1.2", "1.25", "1.22"],
   ["10", "2.4", "2.45", "2.42"],
 ];
 
 const linearityMasLoadingSection = (): any[][] => [
-  ["FCD", "100", "kV", "80"],
+  ["FDD (cm)", "100", "kV", "80"],
   ["Tolerance Operator", "<="],
   ["Tolerance Value (CoL)", "0.1"],
-  ["mAs Range", "Measured mR 1", "Measured mR 2", "Measured mR 3"],
+  ["mAs Range", "Measured Output 1", "Measured Output 2", "Measured Output 3"],
   ["12", "1.2", "1.25", "1.22"],
   ["50", "2.4", "2.45", "2.42"],
 ];
@@ -50,13 +50,13 @@ const linearityMasLoadingSection = (): any[][] => [
 const consistencySection = (): any[][] => [
   ["Tolerance Operator", "<="],
   ["Tolerance Value (CoV)", "0.05"],
-  ["FFD", "100"],
-  ["kVp", "mAs", "Meas 1", "Meas 2", "Meas 3"],
+  ["FDD (cm)", "100"],
+  ["kVp", "mAs", "Output 1", "Output 2", "Output 3"],
   ["80", "100", "10.2", "10.1", "10.3"],
 ];
 
 const radiationLeakageSection = (): any[][] => [
-  ["FFD", "100", "kVp", "120", "mA", "10", "Time", "1", "Tolerance", "1"],
+  ["FDD (cm)", "100", "kV", "120", "mA", "10", "Time", "1", "Tolerance", "1"],
   ["Workload", "100"],
   ["Location", "Front", "Back", "Left", "Right", "Max", "Unit", "Remark"],
   ["Tube", "0.01", "0.012", "0.015", "0.011", "", "mGy/h", ""],

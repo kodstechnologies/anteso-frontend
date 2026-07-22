@@ -11,6 +11,7 @@ import {
   updateLinearityOfMaLoadingForCBCT,
 } from '../../../../../../api';
 import { useRegisterTestExport } from '../shared/TestExportRegistry';
+import { coerceMasRangeLabel } from '../shared/parseRadiographyStyleTableFormat';
 
 interface ExposureCondition {
   fcd: string;
@@ -47,7 +48,7 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
   // Exposure Conditions
   const [exposureCondition, setExposureCondition] = useState<ExposureCondition>({ fcd: '100', kv: '80' });
 
-  const [measHeaders, setMeasHeaders] = useState<string[]>(['Measured mR 1', 'Measured mR 2', 'Measured mR 3']);
+  const [measHeaders, setMeasHeaders] = useState<string[]>(['Meas 1', 'Meas 2', 'Meas 3']);
   const [table2Rows, setTable2Rows] = useState<Table2Row[]>([
     { id: '1', mAsRange: '5', measuredOutputs: ['', '', ''], average: '', x: '', xMax: '', xMin: '', col: '', remarks: '' },
     { id: '2', mAsRange: '10', measuredOutputs: ['', '', ''], average: '', x: '', xMax: '', xMin: '', col: '', remarks: '' },
@@ -67,7 +68,7 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
 
   const addMeasColumn = () => {
     const nextLen = measHeaders.length + 1;
-    setMeasHeaders((p) => [...p, `Measured mR ${p.length + 1}`]);
+    setMeasHeaders((p) => [...p, `Meas ${p.length + 1}`]);
     setTable2Rows((p) =>
       p.map((r) => ({
         ...r,
@@ -158,9 +159,9 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
             const headers =
               maxMeas > 0 || savedHeaders.length > 0
                 ? Array.from({ length: Math.max(maxMeas, savedHeaders.length) }, (_, i) =>
-                    savedHeaders[i] || `Measured mR ${i + 1}`
+                    savedHeaders[i] || `Meas ${i + 1}`
                   )
-                : ['Measured mR 1', 'Measured mR 2', 'Measured mR 3'];
+                : ['Meas 1', 'Meas 2', 'Meas 3'];
             setMeasHeaders(headers);
 
             setTable2Rows(
@@ -218,7 +219,7 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
       }
 
       // Exposure Conditions
-      const fcd = csvData.find(r => r['Field Name'] === 'FCD')?.['Value'];
+      const fcd = csvData.find(r => ['FCD', 'FDD', 'FFD'].includes(r['Field Name']))?.['Value'];
       const kv = csvData.find(r => r['Field Name'] === 'kV')?.['Value'];
       const tolOp = csvData.find(r =>
         r['Field Name'] === 'Tolerance_Operator' ||
@@ -254,7 +255,8 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
       if (rowIndices.length > 0) {
         const newRows = rowIndices.map(idx => {
           const rowData = csvData.filter(r => parseInt(r['Row Index']) === idx);
-          const mAsRange = rowData.find(r => r['Field Name'] === 'mAs_Range')?.['Value'] || '';
+          const rawRange = rowData.find(r => r['Field Name'] === 'mAs_Range')?.['Value'] || '';
+          const mAsRange = coerceMasRangeLabel(String(rawRange)) ?? String(rawRange).trim();
 
           const measured: string[] = [];
           for (let i = 0; i < 10; i++) {
@@ -279,9 +281,9 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
         const base =
           labelsFromMeta.length > 0
             ? labelsFromMeta
-            : Array.from({ length: Math.max(maxMeas, 1) }, (_, i) => `Measured mR ${i + 1}`);
+            : Array.from({ length: Math.max(maxMeas, 1) }, (_, i) => `Meas ${i + 1}`);
         const headers = Array.from({ length: Math.max(maxMeas, base.length) }, (_, i) =>
-          base[i] || `Measured mR ${i + 1}`
+          base[i] || `Meas ${i + 1}`
         );
         setMeasHeaders(headers);
         setTable2Rows(
@@ -313,18 +315,8 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
           time: '', // mAs loading doesn't use time field
         },
         table2: processedTable2.map(r => {
-          // Extract numeric value from mAsRange (e.g., "5 - 10" -> "7.5" or "10" -> "10")
-          let maValue = '';
-          const match = r.mAsRange.match(/(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)/);
-          if (match) {
-            // If it's a range, use midpoint
-            const mid = (parseFloat(match[1]) + parseFloat(match[2])) / 2;
-            maValue = mid.toString();
-          } else {
-            // If it's a single value, extract it
-            const singleMatch = r.mAsRange.match(/(\d+(?:\.\d+)?)/);
-            maValue = singleMatch ? singleMatch[1] : r.mAsRange.replace(/[^\d.]/g, '');
-          }
+          const singleMatch = String(r.mAsRange).trim().match(/^(\d+(?:\.\d+)?)/);
+          const maValue = singleMatch ? singleMatch[1] : String(r.mAsRange).replace(/[^\d.]/g, '');
 
           return {
             ma: maValue || r.mAsRange,
@@ -604,7 +596,7 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
                           if (!e.target.value.trim()) {
                             setMeasHeaders(p => {
                               const c = [...p];
-                              c[i] = `Measured mR ${i + 1}`;
+                              c[i] = `Meas ${i + 1}`;
                               return c;
                             });
                           }
@@ -634,7 +626,7 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
                       disabled={isViewMode}
                       className={`w-full min-w-[5rem] px-3 py-2 text-center text-sm border rounded font-medium focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''
                         }`}
-                      placeholder="10"
+                      placeholder="5"
                     />
                   </td>
                   {measHeaders.map((_, idx) => (

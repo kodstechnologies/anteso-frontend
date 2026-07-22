@@ -1,4 +1,4 @@
-﻿// src/components/reports/TestTables/DentalHandHeld/MainTestTableForDentalHandHeld.tsx
+// src/components/reports/TestTables/DentalHandHeld/MainTestTableForDentalHandHeld.tsx
 import React from "react";
 
 interface MainTestTableProps {
@@ -70,7 +70,7 @@ const MainTestTableForDentalHandHeld: React.FC<MainTestTableProps> = ({ testData
     return "<=";
   };
 
-  // Accuracy of Irradiation Time — same summary shape as RadiographyFixed (per-row remarks, tolerance text)
+  // Accuracy of Irradiation Time � same summary shape as RadiographyFixed (per-row remarks, tolerance text)
   // Skip in no-timer / mAs-only reports
   const irrBlocks = hasTimer ? testData.accuracyOfIrradiationTime : null;
   const irrList =
@@ -132,7 +132,7 @@ const MainTestTableForDentalHandHeld: React.FC<MainTestTableProps> = ({ testData
       const toleranceType =
         testData.accuracyOfOperatingPotential.kvpToleranceSign ||
         testData.accuracyOfOperatingPotential.tolerance?.type ||
-        "±";
+        "�";
 
       const kvpRows = validRows.map((row: any) => ({
         specified: row.appliedKvp || "-",
@@ -144,7 +144,7 @@ const MainTestTableForDentalHandHeld: React.FC<MainTestTableProps> = ({ testData
     }
   }
 
-  // Total Filtration — RadiographyFixed: measurements -> "Accuracy of Operating Potential"; result -> "Total Filtration"
+  // Total Filtration � RadiographyFixed: measurements -> "Accuracy of Operating Potential"; result -> "Total Filtration"
   if (testData.totalFilteration?.measurements && Array.isArray(testData.totalFilteration.measurements)) {
     const validRows = testData.totalFilteration.measurements.filter(
       (row: any) => row.appliedKvp || row.averageKvp || row.measuredValues
@@ -241,7 +241,7 @@ const MainTestTableForDentalHandHeld: React.FC<MainTestTableProps> = ({ testData
           }
         }
 
-        const toleranceStr = "1.5 mm Al for kV ≤ 70; 2.0 mm Al for 70 ≤ kV ≤ 100; 2.5 mm Al for kV > 100";
+        const toleranceStr = "1.5 mm Al for kV <= 70; 2.0 mm Al for 70 ? kV ? 100; 2.5 mm Al for kV > 100";
 
         addRowsForTest("Total Filtration", [{
           specified: atKvp !== "-" ? `${atKvp} kVp` : "-",
@@ -253,7 +253,7 @@ const MainTestTableForDentalHandHeld: React.FC<MainTestTableProps> = ({ testData
     }
   }
 
-  // 3. Linearity of Time — timer mode only
+  // 3. Linearity of Time � timer mode only
   if (hasTimer && testData.linearityOfTime?.table2 && Array.isArray(testData.linearityOfTime.table2)) {
     const validRows = testData.linearityOfTime.table2.filter((row: any) => row.time);
     if (validRows.length > 0) {
@@ -372,7 +372,7 @@ const MainTestTableForDentalHandHeld: React.FC<MainTestTableProps> = ({ testData
     ]);
   };
 
-  // Linearity of mA Loading — RadiographyFixed (dedicated linearityOfmALoading + ma rows)
+  // Linearity of mA Loading � RadiographyFixed (dedicated linearityOfmALoading + ma rows)
   let addedMaLinearityFromMaLoading = false;
   if (hasTimer && testData.linearityOfmALoading?.table2 && Array.isArray(testData.linearityOfmALoading.table2)) {
     const lob = testData.linearityOfmALoading;
@@ -398,7 +398,7 @@ const MainTestTableForDentalHandHeld: React.FC<MainTestTableProps> = ({ testData
     }
   }
 
-  // Linearity of mA/mAs loading — RadiographyFixed (single block: mAsApplied only; label from hasTimer)
+  // Linearity of mA/mAs loading � RadiographyFixed (single block: mAsApplied only; label from hasTimer)
   if (testData.linearityOfMasLoading?.table2 && Array.isArray(testData.linearityOfMasLoading.table2)) {
     const linearityLabel = hasTimer
       ? "Linearity of mA Loading (Coefficient of Linearity)"
@@ -486,7 +486,7 @@ const MainTestTableForDentalHandHeld: React.FC<MainTestTableProps> = ({ testData
     }
   }
 
-  // Consistency of Radiation Output (CoV) — RadiographyFixed (tolerance row-span)
+  // Consistency of Radiation Output (CoV) � RadiographyFixed (tolerance row-span)
   const outBlock = testData.outputConsistency || testData.consistencyOfRadiationOutput;
   if (outBlock?.outputRows && Array.isArray(outBlock.outputRows)) {
     const validRows = outBlock.outputRows.filter(
@@ -574,7 +574,7 @@ const MainTestTableForDentalHandHeld: React.FC<MainTestTableProps> = ({ testData
     }
   }
 
-  // Tube Housing Leakage — measured = mGy in one hour (same as generate TubeHousingLeakage: exposures in mR/hr)
+  // Tube Housing Leakage � measured = mGy in one hour (same as generate TubeHousingLeakage: exposures in mR/hr)
   {
     const leakageBlock = testData.radiationLeakageLevel || testData.tubeHousingLeakage;
     if (leakageBlock?.leakageMeasurements && Array.isArray(leakageBlock.leakageMeasurements)) {
@@ -622,11 +622,11 @@ const MainTestTableForDentalHandHeld: React.FC<MainTestTableProps> = ({ testData
           toleranceOp === ">" || toleranceOp === "greater than" || toleranceOp === "gt"
             ? ">"
             : toleranceOp === ">=" || toleranceOp === "greater than or equal to"
-              ? "≥"
+              ? "="
               : toleranceOp === "=" || toleranceOp === "==" || toleranceOp === "equals" || toleranceOp === "equal to"
                 ? "="
                 : toleranceOp === "<=" || toleranceOp === "less than or equal to"
-                  ? "≤"
+                  ? "="
                   : "<";
 
         const testRows = validRows.map((row: any) => {
@@ -672,7 +672,7 @@ const MainTestTableForDentalHandHeld: React.FC<MainTestTableProps> = ({ testData
     }
   }
 
-  // Radiation Protection Survey — RadiographyFixed (one row per location)
+  // Radiation Protection Survey � RadiographyFixed (one row per location)
   if (testData.radiationProtectionSurvey?.locations && Array.isArray(testData.radiationProtectionSurvey.locations)) {
     const validRows = testData.radiationProtectionSurvey.locations.filter(
       (loc: any) => loc.location || loc.mRPerWeek
@@ -686,7 +686,7 @@ const MainTestTableForDentalHandHeld: React.FC<MainTestTableProps> = ({ testData
         return {
           specified: loc.location || "-",
           measured: mRPerWeek !== "-" ? `${mRPerWeek} mR/week` : "-",
-          tolerance: loc.category === "worker" ? "≤ 40 mR/week" : "≤ 2 mR/week",
+          tolerance: loc.category === "worker" ? "= 40 mR/week" : "= 2 mR/week",
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });

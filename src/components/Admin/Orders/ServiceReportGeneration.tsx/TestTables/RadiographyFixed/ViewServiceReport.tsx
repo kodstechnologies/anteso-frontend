@@ -1151,7 +1151,7 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
                         </table>
                         <p style={{ fontSize: "10px", marginTop: "3px", color: "#444" }}>
                           <strong>Tolerance criteria: </strong>
-                          {ft.forKvGreaterThan70 ?? "1.5"} mm Al for kV &lt; {ft.kvThreshold1 ?? "70"} |{" "}
+                          {ft.forKvGreaterThan70 ?? "1.5"} mm Al for kV ≤ {ft.kvThreshold1 ?? "70"} |{" "}
                           {ft.forKvBetween70And100 ?? "2.0"} mm Al for {ft.kvThreshold1 ?? "70"} ≤ kV ≤{" "}
                           {ft.kvThreshold2 ?? "100"} | {ft.forKvGreaterThan100 ?? "2.5"} mm Al for kV &gt;{" "}
                           {ft.kvThreshold2 ?? "100"}
@@ -1162,20 +1162,25 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
               </div>
             )}
 
-            {/* 7. Linearity of mAs Loading */}
-            {testData.linearityOfMasLoading && (
+            {/* 7. Linearity of mA / mAs Loading */}
+            {testData.linearityOfMasLoading && (() => {
+              const t1 = Array.isArray(testData.linearityOfMasLoading.table1)
+                ? testData.linearityOfMasLoading.table1[0]
+                : testData.linearityOfMasLoading.table1;
+              const timeStr = t1?.time !== undefined && t1?.time !== null ? String(t1.time).trim() : "";
+              const timeVal = parseFloat(timeStr);
+              const isMaLoading = timeStr !== "" && !isNaN(timeVal) && timeVal > 0;
+              const linearityTitle = isMaLoading ? "Linearity of mA Loading" : "Linearity of mAs Loading";
+              const stationColumnLabel = isMaLoading ? "mA" : "mAs Range";
+              const xUnitLabel = isMaLoading ? "X (mGy/(mA*s))" : "X (mGy/mAs)";
+
+              return (
               <div className="mb-4 test-section">
                 <TestSectionTitle
                   num={detailedSeq(7)}
-                  title={hasTimer ? "Linearity of mA Loading" : "Linearity of mAs Loading"}
+                  title={linearityTitle}
                 />
-                {testData.linearityOfMasLoading.table1 &&
-                  (() => {
-                    const t1 = Array.isArray(testData.linearityOfMasLoading.table1)
-                      ? testData.linearityOfMasLoading.table1[0]
-                      : testData.linearityOfMasLoading.table1;
-                    if (!t1) return null;
-                    return (
+                {t1 && (
                       <div style={{ marginBottom: "20px" }}>
                         <p style={{ fontSize: "11px", fontWeight: "bold", marginBottom: "10px" }}>Test Conditions:</p>
                         <table style={{ ...tableStyle, width: "100%" }}>
@@ -1187,7 +1192,7 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
                               <th style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", padding: "1px 12px" })}>
                                 kV
                               </th>
-                              {hasTimer && (
+                              {isMaLoading && (
                                 <th
                                   style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", padding: "1px 12px" })}
                                 >
@@ -1204,7 +1209,7 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
                               <td style={cellStyle({ border: "0.1px solid #666", padding: "1px 12px" })}>
                                 {t1?.kv || "-"}
                               </td>
-                              {hasTimer && (
+                              {isMaLoading && (
                                 <td style={cellStyle({ border: "0.1px solid #666", padding: "1px 12px" })}>
                                   {t1?.time || "-"}
                                 </td>
@@ -1213,8 +1218,7 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
                           </tbody>
                         </table>
                       </div>
-                    );
-                  })()}
+                )}
                 {testData.linearityOfMasLoading.table2?.length > 0 &&
                   (() => {
                     const rows = testData.linearityOfMasLoading.table2;
@@ -1233,10 +1237,11 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
                       const avg =
                         outputs.length > 0 ? outputs.reduce((a: number, b: number) => a + b, 0) / outputs.length : null;
                       const avgDisplay = avg !== null ? parseFloat(avg.toFixed(4)).toFixed(4) : "—";
-                      const mAsLabel = String(row.mAsApplied ?? row.mAsRange ?? "");
+                      const mAsLabel = String(row.mAsApplied ?? row.mAsRange ?? row.ma ?? row.mA ?? "");
                       const match = mAsLabel.match(/(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)/);
-                      const midMas = match ? (parseFloat(match[1]) + parseFloat(match[2])) / 2 : parseFloat(mAsLabel) || 0;
-                      const x = avg !== null && midMas > 0 ? avg / midMas : null;
+                      const stationVal = match ? (parseFloat(match[1]) + parseFloat(match[2])) / 2 : parseFloat(mAsLabel) || 0;
+                      const denom = isMaLoading ? stationVal * timeVal : stationVal;
+                      const x = avg !== null && denom > 0 ? avg / denom : null;
                       const xDisplay = x !== null ? parseFloat(x.toFixed(4)).toFixed(4) : "—";
                       if (x !== null) xValues.push(parseFloat(x.toFixed(4)));
                       return { ...row, _avgDisplay: avgDisplay, _xDisplay: xDisplay };
@@ -1292,7 +1297,7 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
                           <thead>
                             <tr>
                               <th style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px" })}>
-                                mA
+                                {stationColumnLabel}
                               </th>
                               <th
                                 colSpan={measHeaders.length}
@@ -1304,7 +1309,7 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
                                 Avg Output
                               </th>
                               <th style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px" })}>
-                                X
+                                {xUnitLabel}
                               </th>
                               <th style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px" })}>
                                 X MAX
@@ -1410,7 +1415,8 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
                     );
                   })()}
               </div>
-            )}
+              );
+            })()}
 
           </div>
         </ReportPage>

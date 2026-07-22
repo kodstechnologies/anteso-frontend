@@ -1,4 +1,4 @@
-﻿// src/components/reports/TestTables/OBI/MainTestTableForOBI.tsx
+// src/components/reports/TestTables/OBI/MainTestTableForOBI.tsx
 import React from "react";
 
 interface MainTestTableProps {
@@ -67,7 +67,7 @@ export const generateOBISummaryRows = (testData: any, hasTimer: boolean = false)
         return {
           specified: row.dimension || "-",
           measured: percentFED !== "-" ? `${percentFED}%` : "-",
-          tolerance: `≤ ${tolerance}%`,
+          tolerance: `= ${tolerance}%`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });
@@ -104,13 +104,13 @@ export const generateOBISummaryRows = (testData: any, hasTimer: boolean = false)
       }
     }
 
-    const specifiedValue = `${toleranceOperator} ${toleranceValue}°`;
-    const toleranceDisplay = `${toleranceOperator} ${toleranceValue}°`;
+    const specifiedValue = `${toleranceOperator} ${toleranceValue}�`;
+    const toleranceDisplay = `${toleranceOperator} ${toleranceValue}�`;
 
     addRowsForTest("Central Beam Alignment", [
       {
         specified: specifiedValue,
-        measured: tiltValue !== "-" ? `${tiltValue}°` : "-",
+        measured: tiltValue !== "-" ? `${tiltValue}�` : "-",
         tolerance: toleranceDisplay,
         remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
       },
@@ -146,7 +146,7 @@ export const generateOBISummaryRows = (testData: any, hasTimer: boolean = false)
       const mediumUpper = parseFloat(toleranceCriteria.medium?.upperLimit || "1.5");
       const largeMultiplier = parseFloat(toleranceCriteria.large?.multiplier || "0.3");
 
-      const toleranceStr = `+${smallMultiplier} F FOR F < ${smallLimit} mm; +${mediumMultiplier} F FOR ${mediumLower} ≤ F ≤ ${mediumUpper} mm; +${largeMultiplier} F FOR F > ${mediumUpper} mm`;
+      const toleranceStr = `+${smallMultiplier} F FOR F < ${smallLimit} mm; +${mediumMultiplier} F FOR ${mediumLower} = F = ${mediumUpper} mm; +${largeMultiplier} F FOR F > ${mediumUpper} mm`;
 
       const testRows = validRows.map((spot: any) => {
         const isPass = spot.remark === "Pass" || spot.remark === "PASS";
@@ -163,7 +163,7 @@ export const generateOBISummaryRows = (testData: any, hasTimer: boolean = false)
     }
   }
 
-  // Accuracy of Irradiation Time — OBI uses timerTest; align with RadiographyFixed (accuracyOfIrradiationTime)
+  // Accuracy of Irradiation Time � OBI uses timerTest; align with RadiographyFixed (accuracyOfIrradiationTime)
   const irrBlock = testData.accuracyOfIrradiationTime || testData.timerTest;
   if (irrBlock?.irradiationTimes && Array.isArray(irrBlock.irradiationTimes)) {
     const validRows = irrBlock.irradiationTimes.filter((row: any) => row.setTime || row.measuredTime);
@@ -196,7 +196,7 @@ export const generateOBISummaryRows = (testData: any, hasTimer: boolean = false)
     }
   }
 
-  // Accuracy of Operating Potential (kVp Accuracy) — OBI operatingPotential
+  // Accuracy of Operating Potential (kVp Accuracy) � OBI operatingPotential
   const opData = testData.operatingPotential;
   if (opData && (opData.rows || opData.table2)) {
     const rowsToProcess = opData.rows || opData.table2;
@@ -204,7 +204,7 @@ export const generateOBISummaryRows = (testData: any, hasTimer: boolean = false)
       const validRows = rowsToProcess.filter((row: any) => row.appliedKvp || row.averageKvp || row.setKV || row.avgKvp);
       if (validRows.length > 0) {
         const toleranceSign =
-          opData.tolerance?.sign || opData.toleranceSign || testData.accuracyOfOperatingPotential?.tolerance?.sign || "±";
+          opData.tolerance?.sign || opData.toleranceSign || testData.accuracyOfOperatingPotential?.tolerance?.sign || "�";
         const toleranceValue =
           opData.tolerance?.value || opData.toleranceValue || testData.accuracyOfOperatingPotential?.tolerance?.value || "2.0";
         const testRows = validRows.map((row: any) => {
@@ -232,7 +232,7 @@ export const generateOBISummaryRows = (testData: any, hasTimer: boolean = false)
     }
   }
 
-  // Total Filtration — RadiographyFixed (nested under operatingPotential for OBI)
+  // Total Filtration � RadiographyFixed (nested under operatingPotential for OBI)
   if (opData?.totalFiltration) {
     const tf = opData.totalFiltration;
     const measuredStr = tf.required ?? tf.measured ?? "-";
@@ -262,7 +262,7 @@ export const generateOBISummaryRows = (testData: any, hasTimer: boolean = false)
       if (!isNaN(requiredTolerance)) isPass = measuredVal >= requiredTolerance;
     }
 
-    const toleranceStr = "1.5 mm Al for kV ≤ 70; 2.0 mm Al for 70 ≤ kV ≤ 100; 2.5 mm Al for kV > 100";
+    const toleranceStr = "1.5 mm Al for kV <= 70; 2.0 mm Al for 70 ? kV ? 100; 2.5 mm Al for kV > 100";
 
     addRowsForTest("Total Filtration", [
       {
@@ -435,7 +435,7 @@ export const generateOBISummaryRows = (testData: any, hasTimer: boolean = false)
     }
   }
 
-  // Radiation leakage level — RadiographyFixed pattern; OBI uses tubeHousingLeakage (result = mR in one hour → use mGy/h path)
+  // Radiation leakage level � RadiographyFixed pattern; OBI uses tubeHousingLeakage (result = mR in one hour ? use mGy/h path)
   const leakageBlock = testData.radiationLeakageLevel || testData.tubeHousingLeakage;
   if (leakageBlock?.leakageMeasurements && Array.isArray(leakageBlock.leakageMeasurements)) {
     const validRows = leakageBlock.leakageMeasurements.filter(
@@ -504,7 +504,7 @@ export const generateOBISummaryRows = (testData: any, hasTimer: boolean = false)
         return {
           specified: row.location || "-",
           measured: measuredValue,
-          tolerance: `≤ ${toleranceValue} ${toleranceUnit === "mGy/h" ? "mGy in one hour" : toleranceUnit}`,
+          tolerance: `= ${toleranceValue} ${toleranceUnit === "mGy/h" ? "mGy in one hour" : toleranceUnit}`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });
@@ -527,7 +527,7 @@ export const generateOBISummaryRows = (testData: any, hasTimer: boolean = false)
         return {
           specified: loc.location || "-",
           measured: mRPerWeek !== "-" ? `${mRPerWeek} mR/week` : "-",
-          tolerance: loc.category === "worker" ? "≤ 40 mR/week" : "≤ 2 mR/week",
+          tolerance: loc.category === "worker" ? "= 40 mR/week" : "= 2 mR/week",
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });
@@ -585,7 +585,7 @@ export const generateOBISummaryRows = (testData: any, hasTimer: boolean = false)
         {
           specified: "Coefficient of Linearity",
           measured: col,
-          tolerance: `≤ ${tolerance}`,
+          tolerance: `= ${tolerance}`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         },
       ]);

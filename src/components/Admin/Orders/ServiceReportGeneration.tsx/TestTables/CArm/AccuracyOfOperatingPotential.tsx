@@ -448,7 +448,7 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
       <div className="bg-amber-50 border-2 border-amber-400 rounded-lg p-6">
         <p className="text-lg font-bold text-amber-900 mb-3">Tolerance for Total Filtration:</p>
         <ul className="space-y-2 text-amber-800">
-          <li>• <strong>1.5 mm Al</strong> for kV {">"} 70</li>
+          <li>• <strong>1.5 mm Al</strong> for kV {"≤"} 70</li>
           <li>• <strong>2.0 mm Al</strong> for 70 ≤ kV ≤ 100</li>
           <li>• <strong>2.5 mm Al</strong> for kV {">"} 100</li>
         </ul>

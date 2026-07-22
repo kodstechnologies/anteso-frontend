@@ -447,9 +447,9 @@ const ViewServiceReportCBCT: React.FC = () => {
             const measurementHeaders =
               maxMeas > 0 || cleanedNamed.length > 0
                 ? Array.from({ length: Math.max(maxMeas, savedHeaders.length, cleanedNamed.length) }, (_, i) =>
-                    savedHeaders[i] || cleanedNamed[i] || `Measured mR ${i + 1}`
+                    savedHeaders[i] || cleanedNamed[i] || `Meas ${i + 1}`
                   )
-                : ["Measured mR 1", "Measured mR 2", "Measured mR 3"];
+                : ["Meas 1", "Meas 2", "Meas 3"];
 
             const table1Raw = Array.isArray(linearityData.table1)
               ? linearityData.table1[0]
@@ -773,7 +773,7 @@ const ViewServiceReportCBCT: React.FC = () => {
                     <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', borderCollapse: 'collapse', borderSpacing: '0' }}>
                       <thead className="bg-gray-100">
                         <tr>
-                          <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>FFD (cm)</th>
+                          <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>FDD (cm)</th>
                           <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>kV</th>
                           <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>mA</th>
                         </tr>
@@ -1029,9 +1029,9 @@ const ViewServiceReportCBCT: React.FC = () => {
               const measHeaders =
                 maxMeas > 0 || cleanedHeaders.length > 0
                   ? Array.from({ length: Math.max(maxMeas, savedHeaders.length, cleanedHeaders.length) }, (_, i) =>
-                      savedHeaders[i] || cleanedHeaders[i] || `Measured mR ${i + 1}`
-                    )
-                  : ["Measured mR 1", "Measured mR 2", "Measured mR 3"];
+                      savedHeaders[i] || cleanedHeaders[i] || `Meas ${i + 1}`
+                  )
+                  : ["Meas 1", "Meas 2", "Meas 3"];
               const measCount = measHeaders.length;
               const tolerance = testData.linearityOfMaLoading.tolerance || "0.1";
               const table1 = Array.isArray(testData.linearityOfMaLoading.table1)
@@ -1109,7 +1109,7 @@ const ViewServiceReportCBCT: React.FC = () => {
                       <thead className="bg-gray-100">
                         <tr>
                           <th rowSpan={2} className="border border-black p-2 print:p-1 text-center align-middle" style={{ padding: '0px 4px', fontSize: '11px', borderColor: '#000000', textAlign: 'center', verticalAlign: 'middle' }}>
-                            {isMasLinearity ? "mAs" : "mA Station"}
+                            {isMasLinearity ? "mAs Range" : "mA Applied"}
                           </th>
                           <th colSpan={Math.max(measCount, 1)} className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 4px', fontSize: '11px', borderColor: '#000000', textAlign: 'center' }}>
                             Output (mGy)
@@ -1122,7 +1122,7 @@ const ViewServiceReportCBCT: React.FC = () => {
                         <tr>
                           {measHeaders.map((h: string, idx: number) => (
                             <th key={idx} className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 4px', fontSize: '11px', borderColor: '#000000', textAlign: 'center' }}>
-                              {h || `Measured mR ${idx + 1}`}
+                              {h || `Meas ${idx + 1}`}
                             </th>
                           ))}
                         </tr>
@@ -1320,17 +1320,18 @@ const ViewServiceReportCBCT: React.FC = () => {
                     <thead className="bg-gray-100">
                       <tr className="bg-blue-50">
                         <th rowSpan={2} className="border border-black p-1 text-center font-bold" style={{ width: '15%', padding: '0px 2px', fontSize: '10px' }}>Location</th>
-                        <th colSpan={4} className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>Exposure Level (mGy)</th>
+                        <th colSpan={5} className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>Exposure Level (mGy)</th>
                         <th rowSpan={2} className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>Max</th>
                         <th rowSpan={2} className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>Result (mR in one hour)</th>
                         <th rowSpan={2} className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>Result (mGy in one hour)</th>
                         <th rowSpan={2} className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>Remarks</th>
                       </tr>
                       <tr className="bg-gray-50">
-                        <th className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>Front</th>
-                        <th className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>Back</th>
                         <th className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>Left</th>
                         <th className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>Right</th>
+                        <th className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>Top</th>
+                        <th className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>Up</th>
+                        <th className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>Down</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1361,7 +1362,7 @@ const ViewServiceReportCBCT: React.FC = () => {
                         );
                         const workloadValue = pickNum(testData.radiationLeakage.workload, 0);
                         const unit = row.unit || "mGy/h";
-                        const values = [row.front, row.back, row.left, row.right]
+                        const values = [row.left, row.right, row.top, row.up, row.down, row.front, row.back]
                           .map((v: any) => parseFloat(v) || 0)
                           .filter((v: number) => v > 0);
                         const parsedMax = parseFloat(String(row.max ?? ""));
@@ -1395,10 +1396,11 @@ const ViewServiceReportCBCT: React.FC = () => {
                         return (
                           <tr key={i} className="text-center" style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
                             <td className="border border-black p-1 text-center font-medium" style={{ padding: '0px 2px', fontSize: '10px' }}>{row.location || "-"}</td>
-                            <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{row.front || "-"}</td>
-                            <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{row.back || "-"}</td>
                             <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{row.left || "-"}</td>
                             <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{row.right || "-"}</td>
+                            <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{row.top || "-"}</td>
+                            <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{row.up || "-"}</td>
+                            <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{row.down || "-"}</td>
                             <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{rowMax > 0 ? rowMax.toFixed(3) : row.max || "-"}</td>
                             <td className="border border-black p-1 text-center font-semibold" style={{ padding: '0px 2px', fontSize: '10px' }}>{calculatedMR}</td>
                             <td className="border border-black p-1 text-center font-semibold" style={{ padding: '0px 2px', fontSize: '10px' }}>{calculatedMGy}</td>
@@ -1448,10 +1450,13 @@ const ViewServiceReportCBCT: React.FC = () => {
                     const unit = row.unit || "mGy/h";
                     const l = parseFloat(row.left || "0");
                     const r = parseFloat(row.right || "0");
+                    const t = parseFloat(row.top || "0");
+                    const u = parseFloat(row.up || "0");
+                    const d = parseFloat(row.down || "0");
                     const f = parseFloat(row.front || "0");
                     const b = parseFloat(row.back || "0");
 
-                    const values = [l, r, f, b].filter(v => v > 0);
+                    const values = [l, r, t, u, d, f, b].filter(v => v > 0);
                     const parsedMax = parseFloat(String(row.max ?? ""));
                     const rowMax = !isNaN(parsedMax) && parsedMax > 0
                       ? parsedMax

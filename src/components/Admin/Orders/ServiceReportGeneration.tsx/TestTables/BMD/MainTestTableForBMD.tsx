@@ -1,4 +1,4 @@
-﻿// src/components/reports/TestTables/BMD/MainTestTableForBMD.tsx
+// src/components/reports/TestTables/BMD/MainTestTableForBMD.tsx
 import React from "react";
 
 interface MainTestTableProps {
@@ -110,7 +110,7 @@ const MainTestTableForBMD: React.FC<MainTestTableProps> = ({ testData, hasTimer 
     }
   }
 
-  // 1. Accuracy of Operating Potential (kVp Accuracy) — BMD payload
+  // 1. Accuracy of Operating Potential (kVp Accuracy) � BMD payload
   if (testData.accuracyOfOperatingPotential && !isEmpty(testData.accuracyOfOperatingPotential)) {
     const test = testData.accuracyOfOperatingPotential;
     if (test.rows && Array.isArray(test.rows) && test.rows.length > 0) {
@@ -166,7 +166,7 @@ const MainTestTableForBMD: React.FC<MainTestTableProps> = ({ testData, hasTimer 
     }
   }
 
-  // Total Filtration — RadiographyFixed (BMD uses totalFiltration)
+  // Total Filtration � RadiographyFixed (BMD uses totalFiltration)
   const tfRoot = testData.totalFiltration;
   if (tfRoot?.measurements && Array.isArray(tfRoot.measurements)) {
     const validRows = tfRoot.measurements.filter(
@@ -265,7 +265,7 @@ const MainTestTableForBMD: React.FC<MainTestTableProps> = ({ testData, hasTimer 
           }
         }
 
-        const toleranceStr = "1.5 mm Al for kV ≤ 70; 2.0 mm Al for 70 ≤ kV ≤ 100; 2.5 mm Al for kV > 100";
+        const toleranceStr = "1.5 mm Al for kV <= 70; 2.0 mm Al for 70 ? kV ? 100; 2.5 mm Al for kV > 100";
 
         addRowsForTest("Total Filtration", [
           {
@@ -294,7 +294,7 @@ const MainTestTableForBMD: React.FC<MainTestTableProps> = ({ testData, hasTimer 
     return fallback;
   };
 
-  // Linearity of mAs loading — RadiographyFixed (linearityOfMasLoading.table2 + mAsApplied)
+  // Linearity of mAs loading � RadiographyFixed (linearityOfMasLoading.table2 + mAsApplied)
   if (testData.linearityOfMasLoading?.table2 && Array.isArray(testData.linearityOfMasLoading.table2)) {
     const lob = testData.linearityOfMasLoading;
     const linearityLabel = hasTimer
@@ -464,7 +464,7 @@ const MainTestTableForBMD: React.FC<MainTestTableProps> = ({ testData, hasTimer 
     }
   }
 
-  // Output consistency (CoV) — RadiographyFixed (outputConsistency or BMD reproducibilityOfRadiationOutput)
+  // Output consistency (CoV) � RadiographyFixed (outputConsistency or BMD reproducibilityOfRadiationOutput)
   const outBlock = testData.outputConsistency || testData.reproducibilityOfRadiationOutput;
   if (outBlock?.outputRows && Array.isArray(outBlock.outputRows)) {
     const validRows = outBlock.outputRows.filter(
@@ -576,7 +576,7 @@ const MainTestTableForBMD: React.FC<MainTestTableProps> = ({ testData, hasTimer 
     ]);
   }
 
-  // Radiation leakage level at 1m from tube housing — same measured-value logic as RadiographyFixed
+  // Radiation leakage level at 1m from tube housing � same measured-value logic as RadiographyFixed
   const leakParent = testData.radiationLeakageLevel || testData.tubeHousingLeakage;
   const leakMeasurements =
     leakParent &&
@@ -661,7 +661,7 @@ const MainTestTableForBMD: React.FC<MainTestTableProps> = ({ testData, hasTimer 
         return {
           specified: row.location || "-",
           measured: measuredValue !== "-" ? `${measuredValue} mGy in one hour` : "-",
-          tolerance: `≤ ${toleranceValue} mGy in one hour`,
+          tolerance: `= ${toleranceValue} mGy in one hour`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });
@@ -669,7 +669,7 @@ const MainTestTableForBMD: React.FC<MainTestTableProps> = ({ testData, hasTimer 
     }
   }
 
-  // Radiation Protection Survey — RadiographyFixed
+  // Radiation Protection Survey � RadiographyFixed
   if (testData.radiationProtectionSurvey?.locations && Array.isArray(testData.radiationProtectionSurvey.locations)) {
     const validRows = testData.radiationProtectionSurvey.locations.filter(
       (loc: any) => loc.location || loc.mRPerWeek
@@ -685,7 +685,7 @@ const MainTestTableForBMD: React.FC<MainTestTableProps> = ({ testData, hasTimer 
         return {
           specified: loc.location || "-",
           measured: mRPerWeek !== "-" ? `${mRPerWeek} mR/week` : "-",
-          tolerance: loc.category === "worker" ? "≤ 40 mR/week" : "≤ 2 mR/week",
+          tolerance: loc.category === "worker" ? "= 40 mR/week" : "= 2 mR/week",
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });

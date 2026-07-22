@@ -526,7 +526,7 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
                     <p className="text-lg font-bold text-amber-900 mb-3">Tolerance for Total Filtration:</p>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-amber-800">
                         <div className="flex flex-col gap-1">
-                            <label className="text-sm font-semibold">For kV &lt; <input type="number" value={filtrationTolerance.kvThreshold1} onChange={e => setFiltrationTolerance(p => ({ ...p, kvThreshold1: e.target.value }))} disabled={isSaved} className="w-16 px-2 py-1 border border-amber-400 rounded text-center font-bold bg-white mx-1" /></label>
+                            <label className="text-sm font-semibold">For kV ≤ <input type="number" value={filtrationTolerance.kvThreshold1} onChange={e => setFiltrationTolerance(p => ({ ...p, kvThreshold1: e.target.value }))} disabled={isSaved} className="w-16 px-2 py-1 border border-amber-400 rounded text-center font-bold bg-white mx-1" /></label>
                             <div className="flex items-center gap-2">
                                 <input type="number" step="0.1" value={filtrationTolerance.forKvLessThan70} onChange={e => setFiltrationTolerance(p => ({ ...p, forKvLessThan70: e.target.value }))} disabled={isSaved} className="w-20 px-2 py-1 border border-amber-400 rounded text-center font-bold bg-white" />
                                 <span className="font-medium">mm Al</span>

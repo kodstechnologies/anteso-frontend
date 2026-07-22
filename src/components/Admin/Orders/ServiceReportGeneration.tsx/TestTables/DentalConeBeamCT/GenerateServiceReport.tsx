@@ -11,6 +11,7 @@ import * as XLSX from 'xlsx';
 import { createCBCTUploadableExcel } from './exportCBCTToExcel';
 import { isExcelFileUrl } from '../../../../../../utils/spreadsheetFile';
 import { TestExportRegistryProvider, useTestExportRegistry } from "../shared/TestExportRegistry";
+import { coerceMasRangeLabel, sheetRowsFromWorksheet } from "../shared/parseRadiographyStyleTableFormat";
 
 import Standards from "../../Standards";
 import Notes from "../../Notes";
@@ -149,26 +150,33 @@ const DentalConeBeamCTContent: React.FC<{ serviceId: string; qaTestDate?: string
             },
             'accuracyOfIrradiationTime': {
                 'Set Time (mSec)': 'Set_Time', 'set time (msec)': 'Set_Time',
+                'Set Time (ms)': 'Set_Time', 'set time (ms)': 'Set_Time',
                 'Measured Time (mSec)': 'Measured_Time', 'measured time (msec)': 'Measured_Time',
+                'Measured Time 1 (ms)': 'Measured_Time', 'measured time 1 (ms)': 'Measured_Time',
                 '% Error': 'Error', '% error': 'Error',
-                'Tolerance': 'Tolerance_Value', 'Tolerance Value': 'Tolerance_Value', 'Tolerance_Value': 'Tolerance_Value',
+                'Tolerance': 'Tolerance_Value', 'Tolerance Value': 'Tolerance_Value', 'Tolerance Value (%)': 'Tolerance_Value', 'Tolerance_Value': 'Tolerance_Value',
                 'Tolerance Operator': 'Tolerance_Operator', 'Tolerance_Operator': 'Tolerance_Operator',
                 'kV': 'kV', 'kv': 'kV', 'KV': 'kV',
                 'kVp': 'kV', 'kvp': 'kV', 'KVp': 'kV', 'KVP': 'kV',
                 'mA': 'mA', 'ma': 'mA', 'MA': 'mA',
-                'FCD': 'FCD', 'fcd': 'FCD', 'FDD': 'FCD', 'fdd': 'FCD', 'FFD': 'FFD', 'ffd': 'FFD'
+                'FCD': 'FCD', 'fcd': 'FCD', 'FDD': 'FCD', 'fdd': 'FCD', 'FDD (cm)': 'FCD', 'fdd (cm)': 'FCD', 'FFD': 'FCD', 'ffd': 'FCD'
             },
             'linearityOfMaLoading': {
                 'mA Station': 'mA_Station', 'ma station': 'mA_Station', 'MA Station': 'mA_Station',
+                'mA Applied': 'mA_Station', 'ma applied': 'mA_Station', 'MA Applied': 'mA_Station',
                 'Average': 'Average', 'average': 'Average',
                 'mR/mAs': 'mR_mAs', 'mr/mas': 'mR_mAs', 'mR/mAs ': 'mR_mAs',
                 'Measured mR 1': 'Measured_0', 'Measured mR 2': 'Measured_1', 'Measured mR 3': 'Measured_2', 'Measured mR 4': 'Measured_3', 'Measured mR 5': 'Measured_4',
                 'measured mr 1': 'Measured_0', 'measured mr 2': 'Measured_1', 'measured mr 3': 'Measured_2', 'measured mr 4': 'Measured_3', 'measured mr 5': 'Measured_4',
+                'Measured Output 1': 'Measured_0', 'Measured Output 2': 'Measured_1', 'Measured Output 3': 'Measured_2', 'Measured Output 4': 'Measured_3', 'Measured Output 5': 'Measured_4',
+                'measured output 1': 'Measured_0', 'measured output 2': 'Measured_1', 'measured output 3': 'Measured_2', 'measured output 4': 'Measured_3', 'measured output 5': 'Measured_4',
+                'Meas 1': 'Measured_0', 'Meas 2': 'Measured_1', 'Meas 3': 'Measured_2', 'Meas 4': 'Measured_3', 'Meas 5': 'Measured_4',
+                'meas 1': 'Measured_0', 'meas 2': 'Measured_1', 'meas 3': 'Measured_2', 'meas 4': 'Measured_3', 'meas 5': 'Measured_4',
                 'kV': 'kV', 'kv': 'kV', 'KV': 'kV',
                 'kVp': 'kV', 'kvp': 'kV', 'KVp': 'kV', 'KVP': 'kV',
                 'mA': 'mA', 'ma': 'mA', 'MA': 'mA',
-                'time': 'time', 'Time': 'time', 'Timer': 'time', 'timer': 'time',
-                'FCD': 'FCD', 'fcd': 'FCD', 'FDD': 'FCD', 'fdd': 'FCD', 'FFD': 'FFD', 'ffd': 'FFD',
+                'time': 'time', 'Time': 'time', 'Time (s)': 'time', 'time (s)': 'time', 'Timer': 'time', 'timer': 'time',
+                'FCD': 'FCD', 'fcd': 'FCD', 'FDD': 'FCD', 'fdd': 'FCD', 'FDD (cm)': 'FCD', 'fdd (cm)': 'FCD', 'FFD': 'FCD', 'ffd': 'FCD',
                 'Tolerance Operator': 'Tolerance_Operator', 'tolerance operator': 'Tolerance_Operator',
                 'Tol Operator': 'Tolerance_Operator', 'tol operator': 'Tolerance_Operator',
                 'Tolerance Sign': 'Tolerance_Operator', 'tolerance sign': 'Tolerance_Operator',
@@ -181,10 +189,14 @@ const DentalConeBeamCTContent: React.FC<{ serviceId: string; qaTestDate?: string
                 'mR/mAs': 'mR_mAs', 'mr/mas': 'mR_mAs',
                 'Measured mR 1': 'Measured_0', 'Measured mR 2': 'Measured_1', 'Measured mR 3': 'Measured_2', 'Measured mR 4': 'Measured_3', 'Measured mR 5': 'Measured_4',
                 'measured mr 1': 'Measured_0', 'measured mr 2': 'Measured_1', 'measured mr 3': 'Measured_2', 'measured mr 4': 'Measured_3', 'measured mr 5': 'Measured_4',
+                'Measured Output 1': 'Measured_0', 'Measured Output 2': 'Measured_1', 'Measured Output 3': 'Measured_2', 'Measured Output 4': 'Measured_3', 'Measured Output 5': 'Measured_4',
+                'measured output 1': 'Measured_0', 'measured output 2': 'Measured_1', 'measured output 3': 'Measured_2', 'measured output 4': 'Measured_3', 'measured output 5': 'Measured_4',
+                'Meas 1': 'Measured_0', 'Meas 2': 'Measured_1', 'Meas 3': 'Measured_2', 'Meas 4': 'Measured_3', 'Meas 5': 'Measured_4',
+                'meas 1': 'Measured_0', 'meas 2': 'Measured_1', 'meas 3': 'Measured_2', 'meas 4': 'Measured_3', 'meas 5': 'Measured_4',
                 'kV': 'kV', 'kv': 'kV', 'KV': 'kV',
                 'kVp': 'kV', 'kvp': 'kV', 'KVp': 'kV', 'KVP': 'kV',
                 'mA': 'mA', 'ma': 'mA', 'MA': 'mA',
-                'FCD': 'FCD', 'fcd': 'FCD', 'FDD': 'FCD', 'fdd': 'FCD', 'FFD': 'FFD', 'ffd': 'FFD',
+                'FCD': 'FCD', 'fcd': 'FCD', 'FDD': 'FCD', 'fdd': 'FCD', 'FDD (cm)': 'FCD', 'fdd (cm)': 'FCD', 'FFD': 'FCD', 'ffd': 'FCD',
                 'Tolerance Operator': 'Tolerance_Operator', 'tolerance operator': 'Tolerance_Operator',
                 'Tol Operator': 'Tolerance_Operator', 'tol operator': 'Tolerance_Operator',
                 'Tolerance Sign': 'Tolerance_Operator', 'tolerance sign': 'Tolerance_Operator',
@@ -194,12 +206,14 @@ const DentalConeBeamCTContent: React.FC<{ serviceId: string; qaTestDate?: string
             'consistencyOfRadiationOutput': {
                 'kVp': 'kVp', 'kvp': 'kVp', 'Kvp': 'kVp',
                 'mAs': 'mAs', 'mas': 'mAs',
-                'Mean': 'Mean', 'mean': 'Mean',
+                'Mean': 'Mean', 'mean': 'Mean', 'Average': 'Mean', 'average': 'Mean',
                 'CoV': 'CoV', 'cov': 'CoV', 'COV': 'CoV',
-                'Remarks': 'Remarks', 'remarks': 'Remarks',
+                'Remarks': 'Remarks', 'remarks': 'Remarks', 'Remark': 'Remarks', 'remark': 'Remarks',
                 'Meas 1': 'Measured_0', 'Meas 2': 'Measured_1', 'Meas 3': 'Measured_2', 'Meas 4': 'Measured_3', 'Meas 5': 'Measured_4',
                 'meas 1': 'Measured_0', 'meas 2': 'Measured_1', 'meas 3': 'Measured_2', 'meas 4': 'Measured_3', 'meas 5': 'Measured_4',
-                'FFD': 'FFD', 'ffd': 'FFD',
+                'Output 1': 'Measured_0', 'Output 2': 'Measured_1', 'Output 3': 'Measured_2', 'Output 4': 'Measured_3', 'Output 5': 'Measured_4',
+                'output 1': 'Measured_0', 'output 2': 'Measured_1', 'output 3': 'Measured_2', 'output 4': 'Measured_3', 'output 5': 'Measured_4',
+                'FFD': 'FFD', 'ffd': 'FFD', 'FDD (cm)': 'FFD', 'fdd (cm)': 'FFD',
                 'FCD': 'FFD', 'fcd': 'FFD', 'FDD': 'FFD', 'fdd': 'FFD',
                 'Tolerance Operator': 'Tolerance_Operator', 'tolerance operator': 'Tolerance_Operator',
                 'Tol Operator': 'Tolerance_Operator', 'tol operator': 'Tolerance_Operator',
@@ -210,10 +224,13 @@ const DentalConeBeamCTContent: React.FC<{ serviceId: string; qaTestDate?: string
             },
             'radiationLeakageLevel': {
                 'Location': 'Table2_Area', 'location': 'Table2_Area',
-                'Front': 'Table2_Front', 'front': 'Table2_Front',
-                'Back': 'Table2_Back', 'back': 'Table2_Back',
                 'Left': 'Table2_Left', 'left': 'Table2_Left',
                 'Right': 'Table2_Right', 'right': 'Table2_Right',
+                'Top': 'Table2_Top', 'top': 'Table2_Top',
+                'Up': 'Table2_Up', 'up': 'Table2_Up',
+                'Down': 'Table2_Down', 'down': 'Table2_Down',
+                'Front': 'Table2_Front', 'front': 'Table2_Front',
+                'Back': 'Table2_Back', 'back': 'Table2_Back',
                 'Max Leakage': 'Table2_Max', 'max leakage': 'Table2_Max', 'Max': 'Table2_Max', 'max': 'Table2_Max',
                 'Unit': 'Table2_Unit', 'unit': 'Table2_Unit',
                 'Remark': 'Table2_Remark', 'remark': 'Table2_Remark', 'Remarks': 'Table2_Remark', 'remarks': 'Table2_Remark',
@@ -283,14 +300,19 @@ const DentalConeBeamCTContent: React.FC<{ serviceId: string; qaTestDate?: string
             ]),
             linearityOfMaLoading: new Set([
                 'mA Station', 'ma station', 'MA Station',
+                'mA Applied', 'ma applied', 'MA Applied',
                 'Average', 'average',
                 'mR/mAs', 'mr/mas', 'mR/mAs ',
                 'Measured mR 1', 'Measured mR 2', 'Measured mR 3', 'Measured mR 4', 'Measured mR 5',
                 'measured mr 1', 'measured mr 2', 'measured mr 3', 'measured mr 4', 'measured mr 5',
+                'Measured Output 1', 'Measured Output 2', 'Measured Output 3', 'Measured Output 4', 'Measured Output 5',
+                'measured output 1', 'measured output 2', 'measured output 3', 'measured output 4', 'measured output 5',
+                'Meas 1', 'Meas 2', 'Meas 3', 'Meas 4', 'Meas 5',
+                'meas 1', 'meas 2', 'meas 3', 'meas 4', 'meas 5',
                 'kV', 'kv', 'KV', 'kVp', 'kvp', 'KVp', 'KVP',
                 'mA', 'ma', 'MA',
-                'time', 'Time', 'Timer', 'timer',
-                'FCD', 'fcd', 'FDD', 'fdd', 'FFD', 'ffd',
+                'time', 'Time', 'Time (s)', 'time (s)', 'Timer', 'timer',
+                'FCD', 'fcd', 'FDD', 'fdd', 'FDD (cm)', 'fdd (cm)', 'FFD', 'ffd',
                 'Tolerance Operator', 'tolerance operator', 'Tol Operator', 'tol operator',
                 'Tolerance Sign', 'tolerance sign',
                 'Tolerance Value (CoL)', 'Tolerance Value', 'tolerance value (col)', 'Tol Value', 'Tolerance',
@@ -301,9 +323,13 @@ const DentalConeBeamCTContent: React.FC<{ serviceId: string; qaTestDate?: string
                 'mR/mAs', 'mr/mas',
                 'Measured mR 1', 'Measured mR 2', 'Measured mR 3', 'Measured mR 4', 'Measured mR 5',
                 'measured mr 1', 'measured mr 2', 'measured mr 3', 'measured mr 4', 'measured mr 5',
+                'Measured Output 1', 'Measured Output 2', 'Measured Output 3', 'Measured Output 4', 'Measured Output 5',
+                'measured output 1', 'measured output 2', 'measured output 3', 'measured output 4', 'measured output 5',
+                'Meas 1', 'Meas 2', 'Meas 3', 'Meas 4', 'Meas 5',
+                'meas 1', 'meas 2', 'meas 3', 'meas 4', 'meas 5',
                 'kV', 'kv', 'KV', 'kVp', 'kvp', 'KVp', 'KVP',
                 'mA', 'ma', 'MA',
-                'FCD', 'fcd', 'FDD', 'fdd', 'FFD', 'ffd',
+                'FCD', 'fcd', 'FDD', 'fdd', 'FDD (cm)', 'fdd (cm)', 'FFD', 'ffd',
                 'Tolerance Operator', 'tolerance operator', 'Tol Operator', 'tol operator',
                 'Tolerance Sign', 'tolerance sign',
                 'Tolerance Value (CoL)', 'Tolerance Value', 'tolerance value (col)', 'Tol Value', 'Tolerance',
@@ -311,12 +337,14 @@ const DentalConeBeamCTContent: React.FC<{ serviceId: string; qaTestDate?: string
             consistencyOfRadiationOutput: new Set([
                 'kVp', 'kvp', 'Kvp',
                 'mAs', 'mas',
-                'Mean', 'mean',
+                'Mean', 'mean', 'Average', 'average',
                 'CoV', 'cov', 'COV',
-                'Remarks', 'remarks',
+                'Remarks', 'remarks', 'Remark', 'remark',
                 'Meas 1', 'Meas 2', 'Meas 3', 'Meas 4', 'Meas 5',
                 'meas 1', 'meas 2', 'meas 3', 'meas 4', 'meas 5',
-                'FFD', 'ffd',
+                'Output 1', 'Output 2', 'Output 3', 'Output 4', 'Output 5',
+                'output 1', 'output 2', 'output 3', 'output 4', 'output 5',
+                'FFD', 'ffd', 'FDD (cm)', 'fdd (cm)',
                 'FCD', 'fcd', 'FDD', 'fdd',
                 'Tolerance Operator', 'tolerance operator', 'Tol Operator', 'tol operator',
                 'Tolerance Value (CoV)', 'Tolerance Value', 'tolerance value (cov)', 'tolerance value',
@@ -337,7 +365,7 @@ const DentalConeBeamCTContent: React.FC<{ serviceId: string; qaTestDate?: string
             accuracyOfIrradiationTime: new Set(['Error']),
             linearityOfMaLoading: new Set(['Average', 'mR_mAs']),
             linearityOfMasLoading: new Set(['Average', 'mR_mAs']),
-            consistencyOfRadiationOutput: new Set(['Mean', 'CoV', 'Remarks']),
+            consistencyOfRadiationOutput: new Set(['Mean', 'CoV', 'Remarks', 'Average', 'Remark']),
             radiationLeakageLevel: new Set(['Table2_Max', 'Table2_Remark']),
             radiationProtectionSurvey: new Set(['mR_week', 'Status']),
         };
@@ -387,7 +415,8 @@ const DentalConeBeamCTContent: React.FC<{ serviceId: string; qaTestDate?: string
                     // not key-value settings rows.
                     const hasMaLoadingHeaderSignature =
                         currentTestName === 'linearityOfMaLoading' &&
-                        row.some((c) => String(c || '').trim() === 'mA Station');
+                        (row.some((c) => String(c || '').trim() === 'mA Station') ||
+                            row.some((c) => String(c || '').trim() === 'mA Applied'));
                     if (hasMaLoadingHeaderSignature) {
                         // Let the header-detection logic below handle this row.
                     } else {
@@ -479,6 +508,29 @@ const DentalConeBeamCTContent: React.FC<{ serviceId: string; qaTestDate?: string
                 if (/^col$/i.test(firstVal) && row.slice(1).filter(c => c).length <= 1) {
                     continue;
                 }
+                if (/^Tolerance Operator$/i.test(firstVal)) {
+                    sectionRowCounter[currentTestName] = (sectionRowCounter[currentTestName] || 0) + 1;
+                    data.push({
+                        'Field Name': 'Tolerance_Operator',
+                        'Value': row[1] || '',
+                        'Row Index': sectionRowCounter[currentTestName],
+                        'Test Name': currentTestName,
+                    });
+                    continue;
+                }
+                if (/^Tolerance Value/i.test(firstVal)) {
+                    sectionRowCounter[currentTestName] = (sectionRowCounter[currentTestName] || 0) + 1;
+                    data.push({
+                        'Field Name': 'Tolerance',
+                        'Value': row[1] || '',
+                        'Row Index': sectionRowCounter[currentTestName],
+                        'Test Name': currentTestName,
+                    });
+                    continue;
+                }
+                if (/^Remark$/i.test(firstVal)) {
+                    continue;
+                }
 
                 sectionRowCounter[currentTestName]++;
                 const rowIdx = sectionRowCounter[currentTestName];
@@ -491,6 +543,12 @@ const DentalConeBeamCTContent: React.FC<{ serviceId: string; qaTestDate?: string
                             internalField = `Measured_${parseInt(measMatch[1], 10) - 1}`;
                         }
                     }
+                    if (!internalField && currentTestName === 'consistencyOfRadiationOutput') {
+                        const outputMatch = String(header || '').trim().match(/^Output\s+(\d+)$/i);
+                        if (outputMatch) {
+                            internalField = `Measured_${parseInt(outputMatch[1], 10) - 1}`;
+                        }
+                    }
                     if (!internalField && dynamicMeasFieldPrefixByTest[currentTestName]) {
                         const dynIdx = sectionDynamicMeasCols.indexOf(cellIdx);
                         if (dynIdx >= 0) {
@@ -499,9 +557,17 @@ const DentalConeBeamCTContent: React.FC<{ serviceId: string; qaTestDate?: string
                     }
                     if (!internalField || !value) return;
                     if (computedFields[currentTestName]?.has(internalField)) return;
+
+                    let cellValue = String(value).trim();
+                    if (internalField === 'mAs_Range') {
+                        const coerced = coerceMasRangeLabel(cellValue);
+                        if (!coerced) return;
+                        cellValue = coerced;
+                    }
+
                     data.push({
                         'Field Name': internalField,
-                        'Value': value,
+                        'Value': cellValue,
                         'Row Index': rowIdx,
                         'Test Name': currentTestName,
                     });
@@ -839,7 +905,7 @@ const DentalConeBeamCTContent: React.FC<{ serviceId: string; qaTestDate?: string
 
                     const wsname = workbook.SheetNames[0];
                     const worksheet = workbook.Sheets[wsname];
-                    const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
+                    const jsonData = sheetRowsFromWorksheet(worksheet);
 
                     const parsed = parseHorizontalData(jsonData as any[]);
                     const grouped = processCSVData(parsed);
@@ -948,7 +1014,7 @@ const DentalConeBeamCTContent: React.FC<{ serviceId: string; qaTestDate?: string
             const wb = XLSX.read(bstr, { type: 'binary' });
             const wsname = wb.SheetNames[0];
             const ws = wb.Sheets[wsname];
-            const jsonData = XLSX.utils.sheet_to_json(ws, { header: 1 }); // Array of arrays
+            const jsonData = sheetRowsFromWorksheet(ws);
 
             const rawParsed = parseHorizontalData(jsonData as any[]);
             const grouped = processCSVData(rawParsed);

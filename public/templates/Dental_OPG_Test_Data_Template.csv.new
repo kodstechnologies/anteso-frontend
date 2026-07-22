@@ -34,7 +34,7 @@ kVp,mAs,Meas 1,Meas 2,Meas 3,,,,,
 80,100,10.2,10.1,10.3,,,,,
 ,,,,,,,,,
 TEST: RADIATION LEAKAGE LEVEL FROM X-RAY TUBE HOUSE,,,,,,,,,
-FFD,100,kVp,120,mA,10,Time,1,Tolerance,1
+FDD (cm),100,kV,120,mA,10,Time,1,Tolerance,1
 Workload,100,,,,,,,,
 Location,Left,Right,Top,Up,Down,,,,
 Front,0.01,0.02,0.015,0.012,0.011,,,,

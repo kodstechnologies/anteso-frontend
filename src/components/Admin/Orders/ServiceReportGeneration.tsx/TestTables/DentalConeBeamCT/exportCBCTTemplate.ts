@@ -23,42 +23,44 @@ const totalFiltrationSection = (): any[][] => [
 ];
 
 const accuracyOfIrradiationTimeSection = (): any[][] => [
-  ["FCD", "100", "kV", "70", "mA", "10"],
-  ["Set Time (mSec)", "Measured Time (mSec)", "% Error"],
-  ["100", "102", ""],
-  ["200", "198", ""],
+  ["FDD (cm)", "100", "kV", "80", "mA", "100"],
+  ["Set Time (ms)", "Measured Time 1 (ms)", "Tolerance Operator", "Tolerance Value (%)"],
+  ["100", "98.5", "<=", "20"],
+  ["200", "198"],
 ];
 
 const linearityMaLoadingSection = (): any[][] => [
-  ["FCD", "100", "kV", "70", "Timer", "0.1"],
+  ["FDD (cm)", "100", "kV", "80", "Time (s)", "0.1"],
+  ["mA Applied", "Measured Output 1", "Measured Output 2"],
+  ["50", "0.5", "0.51"],
+  ["100", "0.98"],
   ["Tolerance Operator", "<="],
   ["Tolerance Value (CoL)", "0.1"],
-  ["mA Station", "Measured mR 1", "Measured mR 2", "Measured mR 3", "Average", "mR/mAs"],
-  ["10", "2.4", "2.45", "2.42", "", ""],
-  ["20", "4.8", "4.85", "4.82", "", ""],
 ];
 
 const linearityMasLoadingSection = (): any[][] => [
+  ["FDD (cm)", "100", "kV", "80"],
+  ["mAs Range", "Measured Output 1", "Measured Output 2", "Measured Output 3"],
+  ["5", "0.5", "0.51", "0.49"],
+  ["10", "1", "1.01", "0.99"],
+  ["20", "2.5", "2.51", "2.49"],
   ["Tolerance Operator", "<="],
   ["Tolerance Value (CoL)", "0.1"],
-  ["mAs Range", "Measured mR 1", "Measured mR 2", "Measured mR 3", "Average", "mR/mAs"],
-  ["50", "12.2", "12.25", "12.22", "", ""],
-  ["100", "24.4", "24.45", "24.42", "", ""],
 ];
 
 const consistencySection = (): any[][] => [
+  ["FDD (cm)", "100"],
+  ["kVp", "mAs", "Output 1", "Output 2"],
+  ["80", "10", "0.5", "0.51"],
   ["Tolerance Operator", "<="],
   ["Tolerance Value (CoV)", "0.05"],
-  ["FFD", "100"],
-  ["kVp", "mAs", "Meas 1", "Meas 2", "Meas 3", "Mean", "CoV", "Remarks"],
-  ["80", "100", "10.2", "10.1", "10.3", "", "", ""],
 ];
 
 const radiationLeakageSection = (): any[][] => [
   ["kV", "120", "mA", "10", "Time", "1.0", "Workload", "100", "Tolerance", "1.0", "Tolerance Operator", "<"],
-  ["Location", "Front", "Back", "Left", "Right", "Max Leakage", "Unit", "Remark"],
-  ["Tube", "0.01", "0.015", "0.012", "0.011", "", "mGy/h", ""],
-  ["Collimator", "0.012", "0.011", "0.014", "0.013", "", "mGy/h", ""],
+  ["Location", "Left", "Right", "Top", "Up", "Down", "Max Leakage", "Unit", "Remark"],
+  ["Tube", "0.01", "0.015", "0.012", "0.011", "0.010", "", "mGy/h", ""],
+  ["Collimator", "0.012", "0.011", "0.014", "0.013", "0.012", "", "mGy/h", ""],
 ];
 
 const radiationProtectionSurveySection = (): any[][] => [
@@ -106,8 +108,12 @@ const applyTextFormatGuards = (ws: XLSX.WorkSheet, rows: any[][]) => {
     if (inLinearityMas) {
       if (/^mAs Range$/i.test(first)) {
         seenMasHeader = true;
+        return;
       }
-      if (seenMasHeader && /^\d+(\.\d+)?$/.test(first)) {
+      if (/^Tolerance/i.test(first) || /^CoL$/i.test(first) || /^Remark$/i.test(first)) {
+        return;
+      }
+      if (seenMasHeader && first) {
         markText(r, 0);
       }
     }

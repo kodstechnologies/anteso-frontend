@@ -57,7 +57,7 @@ const TotalFilterationForFicedRadioFluoro: React.FC<TotalFilterationForFixedRadi
         forKvGreaterThan70: "1.5",
         forKvBetween70And100: "2.0",
         forKvGreaterThan100: "2.5",
-        kvThreshold1: "70",  // Threshold for "kV > 70" and lower bound for "70 ≤ kV ≤ 100"
+        kvThreshold1: "70",  // Threshold for "kV ≤ 70" and lower bound for "70 ≤ kV ≤ 100"
         kvThreshold2: "100"  // Upper bound for "70 ≤ kV ≤ 100" and threshold for "kV > 100"
     });
 
@@ -757,7 +757,7 @@ const TotalFilterationForFicedRadioFluoro: React.FC<TotalFilterationForFixedRadi
                             disabled={isSaved}
                             className={`w-20 px-2 py-1 text-center border rounded font-bold ${isSaved ? 'border-gray-300 bg-gray-50 text-gray-500 cursor-not-allowed' : 'border-amber-600 text-amber-900 bg-white'}`}
                         />
-                        <span>mm Al for kV {"<"}</span>
+                        <span>mm Al for kV {"≤"}</span>
                         <input
                             type="number"
                             step="1"

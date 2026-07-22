@@ -83,120 +83,121 @@ export const createCBCTUploadableExcel = (data: any) => {
   // 2. ACCURACY OF IRRADIATION TIME
   const it = unwrap(data.accuracyOfIrradiationTime);
   if (it) {
-    if (it.testConditions) {
-      const tc = it.testConditions;
-      addSection('ACCURACY OF IRRADIATION TIME - CONDITIONS', ['kV', 'mA', 'FCD'], [
-        [tc.kv || '', tc.ma || '', tc.fcd || ''],
-      ]);
-    }
-
+    const tc = it.testConditions || {};
+    allData.push(['TEST: ACCURACY OF IRRADIATION TIME']);
+    allData.push([
+      'FDD (cm)',
+      tc.fcd ?? tc.ffd ?? '',
+      'kV',
+      tc.kv ?? '',
+      'mA',
+      tc.ma ?? '',
+    ]);
     const times = Array.isArray(it.irradiationTimes) ? it.irradiationTimes : [];
     if (times.length > 0) {
-      const rows = times.map((row: any) => {
-        const set = parseFloat(row.setTime);
-        const meas = parseFloat(row.measuredTime);
-        let error = '';
-        if (!isNaN(set) && !isNaN(meas) && set !== 0) {
-          error = Math.abs(((meas - set) / set) * 100).toFixed(2);
-        }
-        return [row.setTime || '', row.measuredTime || '', error, row.remarks || row.remark || ''];
+      allData.push(['Set Time (ms)', 'Measured Time 1 (ms)', 'Tolerance Operator', 'Tolerance Value (%)']);
+      times.forEach((row: any, i: number) => {
+        allData.push([
+          row.setTime ?? '',
+          row.measuredTime ?? row.measuredTime1 ?? '',
+          i === 0 ? (it.toleranceOperator ?? it.tolerance?.operator ?? '') : '',
+          i === 0 ? (it.toleranceValue ?? it.tolerance?.value ?? it.tolerance ?? '') : '',
+        ]);
       });
-      addSection(
-        'ACCURACY OF IRRADIATION TIME',
-        ['Set Time (mSec)', 'Measured Time (mSec)', '% Error', 'Remarks'],
-        rows
-      );
     }
+    allData.push([]);
   }
 
   // 3. LINEARITY OF mA / mAs LOADING
   const lma = unwrap(data.linearityOfMaLoading);
   if (lma) {
     const t1 = Array.isArray(lma.table1) ? lma.table1[0] || {} : lma.table1 || {};
-    if (t1 && (t1.kv || t1.time || t1.fcd)) {
-      addSection('LINEARITY OF mA/mAs LOADING - CONDITIONS', ['kV', 'time', 'FCD'], [
-        [t1.kv || '', t1.time || '', t1.fcd || ''],
-      ]);
-    }
-
     const table2 = Array.isArray(lma.table2) ? lma.table2 : [];
-    if (table2.length > 0) {
-      const isMaLoading = t1?.time != null && String(t1.time).trim() !== '';
-      const maxMeas = Math.max(
-        0,
-        ...table2.map((r: any) => (Array.isArray(r.measuredOutputs) ? r.measuredOutputs.length : 0))
-      );
-      const measHeaders = resolveMeasHeaders(
-        lma.measHeaders || lma.measurementHeaders,
-        maxMeas,
-        'Measured mR'
-      );
+    const timeStr = t1.time != null ? String(t1.time).trim() : '';
+    const hasTime = timeStr !== '';
+    const title = hasTime ? 'LINEARITY OF mA LOADING' : 'LINEARITY OF mAs LOADING';
+    const maxMeas = Math.max(
+      0,
+      ...table2.map((r: any) => (Array.isArray(r.measuredOutputs) ? r.measuredOutputs.length : 0))
+    );
+    const measHeaders = resolveMeasHeaders(
+      lma.measHeaders || lma.measurementHeaders,
+      maxMeas,
+      'Measured Output'
+    );
 
-      const rows = table2.map((row: any) => {
+    allData.push([`TEST: ${title}`]);
+    if (hasTime) {
+      allData.push([
+        'FDD (cm)',
+        t1.fcd ?? '',
+        'kV',
+        t1.kv ?? '',
+        'Time (s)',
+        timeStr,
+      ]);
+      allData.push(['mA Applied', ...measHeaders]);
+      table2.forEach((row: any) => {
         const outs = Array.isArray(row.measuredOutputs) ? row.measuredOutputs : [];
-        return [
-          row.ma || row.mAApplied || row.mAsApplied || row.mAsRange || '',
+        allData.push([
+          row.mAApplied ?? row.mAsApplied ?? row.ma ?? '',
           ...measHeaders.map((_: string, i: number) => cellStr(outs[i])),
-          row.average || '',
-          row.x || '',
-        ];
+        ]);
       });
-
-      if (isMaLoading) {
-        addSection('LINEARITY OF mA LOADING', ['mA Station', ...measHeaders, 'Average', 'mR/mAs'], rows);
-      } else {
-        addSection('LINEARITY OF mAs LOADING', ['mAs Range', ...measHeaders, 'Average', 'mR/mAs'], rows);
-      }
-
-      if (lma.col != null && String(lma.col).trim() !== '') {
-        allData.push(['CoL', lma.col]);
-      }
-      if (lma.remarks != null && String(lma.remarks).trim() !== '') {
-        allData.push(['Remark', lma.remarks]);
-      }
-      allData.push([]);
+    } else {
+      allData.push(['FDD (cm)', t1.fcd ?? '', 'kV', t1.kv ?? '']);
+      allData.push(['mAs Range', ...measHeaders]);
+      table2.forEach((row: any) => {
+        const outs = Array.isArray(row.measuredOutputs) ? row.measuredOutputs : [];
+        allData.push([
+          row.mAsRange ?? row.mAsApplied ?? row.ma ?? '',
+          ...measHeaders.map((_: string, i: number) => cellStr(outs[i])),
+        ]);
+      });
     }
+    allData.push(['Tolerance Operator', lma.toleranceOperator ?? '<=']);
+    allData.push(['Tolerance Value (CoL)', lma.tolerance ?? '0.1']);
+    if (lma.col != null && String(lma.col).trim() !== '') {
+      allData.push(['CoL', lma.col]);
+    }
+    if (lma.remarks != null && String(lma.remarks).trim() !== '') {
+      allData.push(['Remark', lma.remarks]);
+    }
+    allData.push([]);
   }
 
   // 4. OUTPUT CONSISTENCY
   const oc = unwrap(data.outputConsistency) || unwrap(data.consistencyOfRadiationOutput);
   if (oc) {
+    const ffdVal = oc.ffd?.value ?? oc.ffd ?? '';
+    const outputRows = Array.isArray(oc.outputRows) ? oc.outputRows : [];
+    const maxMeas = Math.max(
+      0,
+      ...outputRows.map((r: any) => (Array.isArray(r.outputs) ? r.outputs.length : 0))
+    );
+    const headerLabels = resolveMeasHeaders(
+      oc.measurementHeaders || oc.measHeaders || oc.outputHeaders,
+      maxMeas,
+      'Output'
+    );
+    allData.push(['TEST: CONSISTENCY OF RADIATION OUTPUT']);
+    allData.push(['FDD (cm)', ffdVal]);
+    allData.push(['kVp', 'mAs', ...headerLabels, 'Average', 'CoV', 'Remark']);
+    outputRows.forEach((row: any) => {
+      const outs = Array.isArray(row.outputs) ? row.outputs : [];
+      allData.push([
+        row.kv ?? row.kvp ?? '',
+        row.mas ?? row.mAs ?? '',
+        ...headerLabels.map((_: string, i: number) => cellStr(outs[i])),
+        row.avg ?? row.average ?? row.mean ?? '',
+        row.cv ?? row.cov ?? '',
+        row.remark ?? row.remarks ?? '',
+      ]);
+    });
     const tolOp = oc.tolerance?.operator ?? oc.toleranceOperator ?? '<=';
     const tolVal = oc.tolerance?.value ?? oc.toleranceValue ?? (typeof oc.tolerance === 'object' ? '' : oc.tolerance) ?? '0.05';
-
-    allData.push(['TEST: CONSISTENCY OF RADIATION OUTPUT']);
     allData.push(['Tolerance Operator', tolOp]);
-    allData.push(['Tolerance Value (CoV)', tolVal]);
-
-    if (oc.ffd != null && String(oc.ffd).trim() !== '') {
-      allData.push(['FFD', oc.ffd]);
-    }
-
-    const outputRows = Array.isArray(oc.outputRows) ? oc.outputRows : [];
-    if (outputRows.length > 0) {
-      const maxMeas = Math.max(
-        0,
-        ...outputRows.map((r: any) => (Array.isArray(r.outputs) ? r.outputs.length : 0))
-      );
-      const measHeaders = resolveMeasHeaders(
-        oc.measurementHeaders || oc.measHeaders || oc.outputHeaders,
-        maxMeas,
-        'Meas'
-      );
-
-      allData.push(['kVp', 'mAs', ...measHeaders, 'Mean', 'CoV', 'Remarks']);
-      outputRows.forEach((row: any) => {
-        const outs = Array.isArray(row.outputs) ? row.outputs : [];
-        allData.push([
-          row.kvp || row.kv || '',
-          row.mas || row.mAs || '',
-          ...measHeaders.map((_: string, i: number) => cellStr(outs[i])),
-          row.mean || row.avg || '',
-          row.cov || row.cv || '',
-          row.remarks || row.remark || '',
-        ]);
-      });
-    }
+    allData.push(['Tolerance Value (CoV)', typeof tolVal === 'object' ? '' : tolVal]);
     allData.push([]);
   }
 
@@ -214,17 +215,18 @@ export const createCBCTUploadableExcel = (data: any) => {
     if (leaks.length > 0) {
       const rows = leaks.map((row: any) => [
         row.location || '',
-        row.front || '',
-        row.back || '',
         row.left || '',
         row.right || '',
+        row.top || '',
+        row.up || '',
+        row.down || '',
         row.max || row.maxLeakage || '',
         row.unit || '',
         row.remark || row.remarks || '',
       ]);
       addSection(
         'RADIATION LEAKAGE LEVEL FROM X-RAY TUBE HOUSE',
-        ['Location', 'Front', 'Back', 'Left', 'Right', 'Max Leakage', 'Unit', 'Remark'],
+        ['Location', 'Left', 'Right', 'Top', 'Up', 'Down', 'Max Leakage', 'Unit', 'Remark'],
         rows
       );
     }

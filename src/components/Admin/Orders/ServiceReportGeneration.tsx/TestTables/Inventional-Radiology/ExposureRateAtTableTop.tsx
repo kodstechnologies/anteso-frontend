@@ -76,139 +76,164 @@ const ExposureRateAtTableTop: React.FC<Props> = ({
         }, {});
     }, [rows, hasValidMinFocus, minFocus, minFocusDistance]);
 
+    const computeRowResult = (row: Row, aecLimit: number, manualLimit: number): string => {
+        const exposure = parseFloat(row.exposure);
+        if (isNaN(exposure) || !row.remark) return "";
+        const isPass =
+            (row.remark === "AEC Mode" && exposure <= aecLimit) ||
+            (row.remark === "Manual Mode" && exposure <= manualLimit);
+        return isPass ? "PASS" : "FAIL";
+    };
+
     // Compute PASS/FAIL for each row
     const rowsWithResult = useMemo(() => {
-        return rows.map(row => {
-            const exposure = parseFloat(row.exposure);
-            const aecLimit = parseFloat(aecTolerance) || 0;
-            const manualLimit = parseFloat(nonAecTolerance) || 0;
-
-            if (isNaN(exposure) || !row.remark) {
-                return { ...row, result: "" };
-            }
-
-            const isPass =
-                (row.remark === "AEC Mode" && exposure <= aecLimit) ||
-                (row.remark === "Manual Mode" && exposure <= manualLimit);
-
-            return { ...row, result: isPass ? "PASS" : "FAIL" };
-        });
+        const aecLimit = parseFloat(aecTolerance) || 0;
+        const manualLimit = parseFloat(nonAecTolerance) || 0;
+        return rows.map(row => ({
+            ...row,
+            result: computeRowResult(row, aecLimit, manualLimit),
+        }));
     }, [rows, aecTolerance, nonAecTolerance]);
+
+    const applySavedData = (testData: any) => {
+        const savedRows = Array.isArray(testData?.rows) ? testData.rows : [];
+        setTestId(testData?._id || propTestId || null);
+        setRows(
+            savedRows.length > 0
+                ? savedRows.map((r: any, i: number) => ({
+                    id: `${testData?._id || "row"}-${i}`,
+                    distance: r.distance || "",
+                    appliedKv: r.appliedKv || "",
+                    appliedMa: r.appliedMa || "",
+                    exposure: r.exposure || "",
+                    remark: r.remark || "",
+                }))
+                : [{ id: "1", distance: "100", appliedKv: "80", appliedMa: "100", exposure: "", remark: "" }]
+        );
+        setAecTolerance(testData?.aecTolerance || "10");
+        setNonAecTolerance(testData?.nonAecTolerance || "5");
+        setMinFocusDistance(testData?.minFocusDistance || "30");
+        setIsSaved(true);
+        setIsEditing(false);
+    };
+
+    const applyCsvData = (source: any[]) => {
+        const tableRows = source.filter(
+            (r) =>
+                r['Field Name'] === 'Table1_kv' ||
+                r['Field Name'] === 'Table1_ma' ||
+                r['Field Name'] === 'Table2_Mode' ||
+                r['Field Name'] === 'Table2_MeasuredRate' ||
+                r['Field Name'] === 'Table2_Distance'
+        );
+
+        if (tableRows.length > 0) {
+            const rowIndices = Array.from(new Set(tableRows.map((r) => parseInt(r['Row Index'], 10)))).sort((a, b) => a - b);
+            const newRows = rowIndices.map((idx, i): Row => {
+                const kv = source.find((r) => r['Field Name'] === 'Table1_kv' && parseInt(r['Row Index'], 10) === idx)?.['Value'] || '';
+                const ma = source.find((r) => r['Field Name'] === 'Table1_ma' && parseInt(r['Row Index'], 10) === idx)?.['Value'] || '';
+                const exposure =
+                    source.find((r) => r['Field Name'] === 'Table2_MeasuredRate' && parseInt(r['Row Index'], 10) === idx)?.['Value'] || '';
+                const mode = source.find((r) => r['Field Name'] === 'Table2_Mode' && parseInt(r['Row Index'], 10) === idx)?.['Value'] || '';
+                const distance =
+                    source.find((r) => r['Field Name'] === 'Table2_Distance' && parseInt(r['Row Index'], 10) === idx)?.['Value'] || '';
+
+                const remark: Row['remark'] =
+                    mode === 'AEC' || mode === 'AEC Mode'
+                        ? 'AEC Mode'
+                        : mode === 'Manual' || mode === 'Manual Mode'
+                          ? 'Manual Mode'
+                          : '';
+
+                return {
+                    id: Date.now().toString() + i,
+                    distance: String(distance),
+                    appliedKv: String(kv),
+                    appliedMa: String(ma),
+                    exposure: String(exposure),
+                    remark,
+                };
+            });
+            if (newRows.length > 0) setRows(newRows);
+        }
+
+        const aecTolVal = source.find(r => r['Field Name'] === 'Table1_aecTolerance')?.['Value'];
+        if (aecTolVal) setAecTolerance(String(aecTolVal));
+
+        const manualTolVal = source.find(r => r['Field Name'] === 'Table1_nonAecTolerance')?.['Value'];
+        if (manualTolVal) setNonAecTolerance(String(manualTolVal));
+
+        const minFocusVal = source.find(r => r['Field Name'] === 'Table1_minFocusDistance')?.['Value'];
+        if (minFocusVal) setMinFocusDistance(String(minFocusVal));
+
+        setIsSaved(false);
+        setIsEditing(true);
+    };
+
+    const reloadSavedData = async (savedTestId?: string | null) => {
+        if (savedTestId) {
+            const byId = await getExposureRateTableTopByTestId(savedTestId);
+            const testData = byId?.data || byId;
+            if (testData?._id) {
+                applySavedData(testData);
+                return;
+            }
+        }
+        const byService = await getExposureRateTableTopByServiceIdForInventionalRadiology(serviceId, tubeId);
+        if (byService?._id) {
+            applySavedData(byService);
+        }
+    };
 
     useEffect(() => {
         const loadTest = async () => {
-            if (csvData && csvData.length > 0) {
+            if (!serviceId) {
                 setIsLoading(false);
                 return;
             }
             setIsLoading(true);
             try {
-                let data;
+                let data = null;
                 if (propTestId) {
                     data = await getExposureRateTableTopByTestId(propTestId);
                 } else {
                     data = await getExposureRateTableTopByServiceIdForInventionalRadiology(serviceId, tubeId);
                 }
 
-                const testData = propTestId ? (data?.data || data) : (data || null);
-                if (testData) {
-                    setTestId(testData._id || propTestId);
-                    setRows(
-                        testData.rows?.map((r: any, i: number) => ({
-                            id: Date.now().toString() + i,
-                            distance: r.distance || "",
-                            appliedKv: r.appliedKv || "",
-                            appliedMa: r.appliedMa || "",
-                            exposure: r.exposure || "",
-                            remark: r.remark || "",
-                        })) || []
-                    );
-                    setAecTolerance(testData.aecTolerance || "10");
-                    setNonAecTolerance(testData.nonAecTolerance || "5");
-                    setMinFocusDistance(testData.minFocusDistance || "30");
-                    setIsSaved(true);
-                    setIsEditing(false);
+                const testData = data ? (data?.data || data) : null;
+                const hasSavedRows = Array.isArray(testData?.rows) && testData.rows.length > 0;
+
+                if (testData?._id && hasSavedRows) {
+                    applySavedData(testData);
+                    return;
+                }
+
+                if (csvData && csvData.length > 0) {
+                    applyCsvData(csvData);
+                    return;
+                }
+
+                if (testData?._id) {
+                    applySavedData(testData);
+                    return;
+                }
+
+                setIsSaved(false);
+                setIsEditing(true);
+            } catch (err) {
+                console.error("Load failed:", err);
+                if (csvData && csvData.length > 0) {
+                    applyCsvData(csvData);
                 } else {
                     setIsSaved(false);
                     setIsEditing(true);
                 }
-            } catch (err) {
-                console.error("Load failed:", err);
-                setIsSaved(false);
-                setIsEditing(true);
             } finally {
                 setIsLoading(false);
             }
         };
         loadTest();
     }, [propTestId, serviceId, tubeId, csvData]);
-
-    // CSV Data Injection
-    useEffect(() => {
-        if (csvData && csvData.length > 0) {
-            const tableRows = csvData.filter(
-                (r) =>
-                    r['Field Name'] === 'Table1_kv' ||
-                    r['Field Name'] === 'Table1_ma' ||
-                    r['Field Name'] === 'Table2_Mode' ||
-                    r['Field Name'] === 'Table2_MeasuredRate' ||
-                    r['Field Name'] === 'Table2_Distance'
-            );
-
-            if (tableRows.length > 0) {
-                const rowIndices = Array.from(new Set(tableRows.map((r) => parseInt(r['Row Index'], 10)))).sort((a, b) => a - b);
-                const newRows = rowIndices.map((idx, i): Row => {
-                    const kv = csvData.find((r) => r['Field Name'] === 'Table1_kv' && parseInt(r['Row Index'], 10) === idx)?.['Value'] || '';
-                    const ma = csvData.find((r) => r['Field Name'] === 'Table1_ma' && parseInt(r['Row Index'], 10) === idx)?.['Value'] || '';
-                    const exposure =
-                        csvData.find((r) => r['Field Name'] === 'Table2_MeasuredRate' && parseInt(r['Row Index'], 10) === idx)?.['Value'] || '';
-                    const mode = csvData.find((r) => r['Field Name'] === 'Table2_Mode' && parseInt(r['Row Index'], 10) === idx)?.['Value'] || '';
-                    const distance =
-                        csvData.find((r) => r['Field Name'] === 'Table2_Distance' && parseInt(r['Row Index'], 10) === idx)?.['Value'] || '';
-                    const criteria =
-                        csvData.find((r) => r['Field Name'] === 'Criteria' && parseInt(r['Row Index'], 10) === idx)?.['Value'] || '';
-
-                    const remark: Row['remark'] =
-                        mode === 'AEC' || mode === 'AEC Mode'
-                            ? 'AEC Mode'
-                            : mode === 'Manual' || mode === 'Manual Mode'
-                              ? 'Manual Mode'
-                              : '';
-
-                    if (criteria) {
-                        if (remark === 'AEC Mode') setAecTolerance(criteria);
-                        else if (remark === 'Manual Mode') setNonAecTolerance(criteria);
-                        else setNonAecTolerance(criteria);
-                    }
-
-                    return {
-                        id: Date.now().toString() + i,
-                        distance: String(distance),
-                        appliedKv: String(kv),
-                        appliedMa: String(ma),
-                        exposure: String(exposure),
-                        remark,
-                    };
-                });
-                if (newRows.length > 0) setRows(newRows);
-            }
-
-            // Summary data
-            const aecTolVal = csvData.find(r => r['Field Name'] === 'Table1_aecTolerance')?.['Value'];
-            if (aecTolVal) setAecTolerance(aecTolVal);
-
-            const manualTolVal = csvData.find(r => r['Field Name'] === 'Table1_nonAecTolerance')?.['Value'];
-            if (manualTolVal) setNonAecTolerance(manualTolVal);
-
-            const minFocusVal = csvData.find(r => r['Field Name'] === 'Table1_minFocusDistance')?.['Value'];
-            if (minFocusVal) setMinFocusDistance(minFocusVal);
-
-            if (!isSaved) {
-                setIsEditing(true);
-            }
-            setIsSaved(false);
-        }
-    }, [csvData, isSaved]);
 
     // Save handler
     const handleSave = async () => {
@@ -231,6 +256,8 @@ const ExposureRateAtTableTop: React.FC<Props> = ({
             return;
         }
 
+        const aecLimit = parseFloat(aecTolerance) || 0;
+        const manualLimit = parseFloat(nonAecTolerance) || 0;
         const payload = {
             rows: rows.map(r => ({
                 distance: r.distance.trim(),
@@ -238,6 +265,7 @@ const ExposureRateAtTableTop: React.FC<Props> = ({
                 appliedMa: r.appliedMa.trim(),
                 exposure: r.exposure.trim(),
                 remark: r.remark,
+                result: computeRowResult(r, aecLimit, manualLimit),
             })),
             aecTolerance: aecTolerance.trim(),
             nonAecTolerance: nonAecTolerance.trim(),
@@ -247,18 +275,18 @@ const ExposureRateAtTableTop: React.FC<Props> = ({
 
         setIsSaving(true);
         try {
+            let savedTestId = testId;
             if (testId) {
                 await updateExposureRateTableTop(testId, payload);
                 toast.success("Updated successfully!");
             } else {
                 const res = await addExposureRateTableTop(serviceId, payload);
-                const newId = res.data?._id || res.data?.testId;
-                setTestId(newId);
-                onTestSaved?.(newId);
+                savedTestId = res?.data?.testId || res?.data?._id || res?.testId || null;
+                setTestId(savedTestId);
+                onTestSaved?.(savedTestId || "");
                 toast.success("Saved successfully!");
             }
-            setIsSaved(true);
-            setIsEditing(false);
+            await reloadSavedData(savedTestId);
         } catch (err: any) {
             toast.error(err?.response?.data?.message || "Save failed");
         } finally {

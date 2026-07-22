@@ -1057,7 +1057,7 @@ const ViewServiceReportDentalHandHeld: React.FC = () => {
                       </table>
                       <div style={{ marginTop: '4px', fontSize: '10px', color: '#555' }}>
                         <span className="font-semibold">Tolerance criteria: </span>
-                        {displayValue(ft.value1 ?? ft.forKvGreaterThan70)} mm Al for kV &lt; {displayValue(ft.kvp1 ?? ft.kvThreshold1)} |&nbsp;
+                        {displayValue(ft.value1 ?? ft.forKvGreaterThan70)} mm Al for kV ≤ {displayValue(ft.kvp1 ?? ft.kvThreshold1)} |&nbsp;
                         {displayValue(ft.value2 ?? ft.forKvBetween70And100)} mm Al for {displayValue(ft.kvp1 ?? ft.kvThreshold1)} ≤ kV ≤ {displayValue(ft.kvp2 ?? ft.kvThreshold2)} |&nbsp;
                         {displayValue(ft.value3 ?? ft.forKvGreaterThan100)} mm Al for kV &gt; {displayValue(ft.kvp2 ?? ft.kvThreshold2)}
                       </div>

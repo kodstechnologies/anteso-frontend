@@ -354,17 +354,38 @@ const ViewServiceReport: React.FC = () => {
   }, [serviceId]);
 
   const formatDate = (dateStr: string) => (!dateStr ? "-" : new Date(dateStr).toLocaleDateString("en-GB"));
-  const getExposureMode = (row: any) => row.mode || row.remark || row.remarks || "-";
-  const getExposureResult = (row: any) => row.result || row.finalResult || row.remark || row.remarks || "-";
-  const getExposureResultClass = (row: any) => {
-    const result = String(getExposureResult(row)).toUpperCase();
-    if (result.includes("PASS")) return "text-green-600";
-    if (result.includes("FAIL")) return "text-red-600";
+  const getExposureMode = (row: any) => row.remark || row.mode || "-";
+  const getExposureRowResult = (row: any, tableData: any) => {
+    const stored = String(row.result || row.finalResult || "").trim();
+    if (stored && stored !== "-") return stored.toUpperCase();
+    const aecTol = parseFloat(tableData?.aecTolerance || "10") || 0;
+    const nonAecTol = parseFloat(tableData?.nonAecTolerance || "5") || 0;
+    const exposure = parseFloat(row.exposure);
+    const mode = row.remark || row.mode || "";
+    if (isNaN(exposure) || !mode) return "-";
+    const isPass =
+      ((mode === "AEC Mode" || mode === "AEC") && exposure <= aecTol) ||
+      ((mode === "Manual Mode" || mode === "Manual") && exposure <= nonAecTol);
+    return isPass ? "PASS" : "FAIL";
+  };
+  const getExposureResultClass = (result: string) => {
+    const normalized = String(result || "").toUpperCase();
+    if (normalized === "PASS") return "text-green-600 font-semibold";
+    if (normalized === "FAIL") return "text-red-600 font-semibold";
     return "";
   };
   const hasMaLinearityRows = (data: any) => {
     const rows = data?.table2 || data?.Table2 || data?.rows || data?.Rows;
     return Array.isArray(rows) && rows.length > 0;
+  };
+
+  /** Time present in table1 → mA loading; otherwise mAs loading (align with RadiographyFixed). */
+  const getLinearityLoadingTitle = (mol: any) => {
+    const t1 = mol?.table1?.[0] || mol?.Table1?.[0];
+    const timeStr = t1?.time !== undefined && t1?.time !== null ? String(t1.time).trim() : "";
+    const timeVal = parseFloat(timeStr);
+    const isMaLoading = timeStr !== "" && timeStr !== "-" && !isNaN(timeVal) && timeVal > 0;
+    return isMaLoading ? "Linearity of mA Loading" : "Linearity of mAs Loading";
   };
 
   /** Match RadiographyFixed ViewServiceReport — thin borders, compact QA tables */
@@ -902,7 +923,7 @@ const ViewServiceReport: React.FC = () => {
         {/* Filtration Tolerance Reference */}
         <div style={{ marginTop: '4px', fontSize: '10px', color: '#555' }}>
           <span className="font-semibold">Tolerance criteria: </span>
-          {ft.forKvGreaterThan70 ?? "1.5"} mm Al for kV &lt; {ft.kvThreshold1 ?? "70"} |&nbsp;
+          {ft.forKvGreaterThan70 ?? "1.5"} mm Al for kV ≤ {ft.kvThreshold1 ?? "70"} |&nbsp;
           {ft.forKvBetween70And100 ?? "2.0"} mm Al for {ft.kvThreshold1 ?? "70"} ≤ kV ≤ {ft.kvThreshold2 ?? "100"} |&nbsp;
           {ft.forKvGreaterThan100 ?? "2.5"} mm Al for kV &gt; {ft.kvThreshold2 ?? "100"}
         </div>
@@ -1095,7 +1116,7 @@ const ViewServiceReport: React.FC = () => {
     );
   };
 
-  /** Measurement of mA Linearity — same table structure as RadiographyFixed §6 Linearity of mAs Loading (two-row header, CoL rowSpan, recalculated X / Xmax / Xmin). */
+  /** Linearity of mA / mAs Loading — same table structure as RadiographyFixed §7 (two-row header, CoL rowSpan, recalculated X / Xmax / Xmin). */
   const renderMeasurementOfMaLinearityLikeRadiographyFixed = (mol: any) => {
     const table1 = mol?.table1 || mol?.Table1 || [];
     const table2 = mol?.table2 || mol?.Table2 || [];
@@ -1116,9 +1137,12 @@ const ViewServiceReport: React.FC = () => {
     const tolOp = toleranceOperator ?? "<=";
 
     const t1First = Array.isArray(table1) && table1.length > 0 ? table1[0] : null;
-    const hasMas = t1First?.time && String(t1First.time).trim() !== "" && String(t1First.time).trim() !== "-";
-    const mAsColLabel = "mA";
-    const xColLabel = hasMas ? "X (mGy/(mA*s))" : "X (mGy/mA)";
+    const timeStr =
+      t1First?.time !== undefined && t1First?.time !== null ? String(t1First.time).trim() : "";
+    const timeVal = parseFloat(timeStr);
+    const isMaLoading = timeStr !== "" && timeStr !== "-" && !isNaN(timeVal) && timeVal > 0;
+    const stationColumnLabel = isMaLoading ? "mA" : "mAs Range";
+    const xColLabel = isMaLoading ? "X (mGy/(mA*s))" : "X (mGy/mAs)";
 
     return (
       <>
@@ -1148,7 +1172,7 @@ const ViewServiceReport: React.FC = () => {
           <table className="w-full border-2 border-black compact-table force-small-text" style={{ fontSize: "10px", tableLayout: "fixed", width: "100%" }}>
             <thead className="bg-gray-100">
               <tr>
-                <th className="border border-black border-b-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: "10px", padding: "5px" }}>{mAsColLabel}</th>
+                <th className="border border-black border-b-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: "10px", padding: "5px" }}>{stationColumnLabel}</th>
                 <th colSpan={measHeaders.length} className="border border-black p-1.5 print:p-[3px] text-center" style={{ fontSize: "10px", padding: "5px" }}>
                   Output (mGy)
                 </th>
@@ -2113,18 +2137,24 @@ const ViewServiceReport: React.FC = () => {
               </div>
             )}
 
-            {/* 2.1 Measurement of mA/mAs Linearity (RadiographyFixed-style linearity table) */}
+            {/* 6. Linearity of mA / mAs Loading (RadiographyFixed-style linearity table) */}
             {((isDoubleTube && (hasMaLinearityRows(testDataFrontal.measurementOfMaLinearity) || hasMaLinearityRows(testDataLateral.measurementOfMaLinearity))) || (!isDoubleTube && hasMaLinearityRows(testData.measurementOfMaLinearity))) && (
               <div className="mb-16 print:mb-12 test-section" style={{ marginBottom: "8px" }}>
                 {(() => {
-                  const mol = isDoubleTube
-                    ? (testDataFrontal.measurementOfMaLinearity || testDataLateral.measurementOfMaLinearity)
-                    : testData.measurementOfMaLinearity;
-                  const t1 = mol?.table1?.[0] || mol?.Table1?.[0];
-                  const hasMas = t1?.time && String(t1.time).trim() !== "" && String(t1.time).trim() !== "-";
+                  const frontalTitle = hasMaLinearityRows(testDataFrontal.measurementOfMaLinearity)
+                    ? getLinearityLoadingTitle(testDataFrontal.measurementOfMaLinearity)
+                    : null;
+                  const lateralTitle = hasMaLinearityRows(testDataLateral.measurementOfMaLinearity)
+                    ? getLinearityLoadingTitle(testDataLateral.measurementOfMaLinearity)
+                    : null;
+                  const sectionTitle = isDoubleTube
+                    ? frontalTitle && lateralTitle && frontalTitle !== lateralTitle
+                      ? "Linearity of mA / mAs Loading"
+                      : frontalTitle || lateralTitle || "Linearity of mA / mAs Loading"
+                    : getLinearityLoadingTitle(testData.measurementOfMaLinearity);
                   return (
                     <h3 className="text-lg font-bold mb-4 print:mb-1 print:text-sm" style={{ fontSize: "14px", marginBottom: "4px" }}>
-                      6. {hasMas ? "Measurement of mA Linearity" : "Measurement of mA Linearity"}
+                      6. {sectionTitle}
                     </h3>
                   );
                 })()}
@@ -2336,7 +2366,9 @@ const ViewServiceReport: React.FC = () => {
                               </tr>
                             </thead>
                             <tbody>
-                              {testDataFrontal.exposureRateTableTop.rows.map((row: any, i: number) => (
+                              {testDataFrontal.exposureRateTableTop.rows.map((row: any, i: number) => {
+                                const result = getExposureRowResult(row, testDataFrontal.exposureRateTableTop);
+                                return (
                                 <tr key={i} className="text-center" style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
                                   <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.distance || "-"}</td>
                                   <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.appliedKv || "-"}</td>
@@ -2344,12 +2376,12 @@ const ViewServiceReport: React.FC = () => {
                                   <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.exposure || "-"}</td>
                                   <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{getExposureMode(row)}</td>
                                   <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center', backgroundColor: 'rgba(220, 252, 231, 0.3)' }}>
-                                    <span className={getExposureResultClass(row)}>
-                                      {getExposureResult(row)}
+                                    <span className={getExposureResultClass(result)}>
+                                      {result}
                                     </span>
                                   </td>
                                 </tr>
-                              ))}
+                              );})}
                             </tbody>
                           </table>
                         </div>
@@ -2371,7 +2403,9 @@ const ViewServiceReport: React.FC = () => {
                               </tr>
                             </thead>
                             <tbody>
-                              {testDataLateral.exposureRateTableTop.rows.map((row: any, i: number) => (
+                              {testDataLateral.exposureRateTableTop.rows.map((row: any, i: number) => {
+                                const result = getExposureRowResult(row, testDataLateral.exposureRateTableTop);
+                                return (
                                 <tr key={i} className="text-center" style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
                                   <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.distance || "-"}</td>
                                   <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.appliedKv || "-"}</td>
@@ -2379,12 +2413,12 @@ const ViewServiceReport: React.FC = () => {
                                   <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.exposure || "-"}</td>
                                   <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{getExposureMode(row)}</td>
                                   <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center', backgroundColor: 'rgba(220, 252, 231, 0.3)' }}>
-                                    <span className={getExposureResultClass(row)}>
-                                      {getExposureResult(row)}
+                                    <span className={getExposureResultClass(result)}>
+                                      {result}
                                     </span>
                                   </td>
                                 </tr>
-                              ))}
+                              );})}
                             </tbody>
                           </table>
                         </div>
@@ -2406,7 +2440,9 @@ const ViewServiceReport: React.FC = () => {
                           </tr>
                         </thead>
                         <tbody>
-                          {testData.exposureRateTableTop.rows.map((row: any, i: number) => (
+                          {testData.exposureRateTableTop.rows.map((row: any, i: number) => {
+                            const result = getExposureRowResult(row, testData.exposureRateTableTop);
+                            return (
                             <tr key={i} className="text-center" style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
                               <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.distance || "-"}</td>
                               <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.appliedKv || "-"}</td>
@@ -2414,12 +2450,12 @@ const ViewServiceReport: React.FC = () => {
                               <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.exposure || "-"}</td>
                               <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{getExposureMode(row)}</td>
                               <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center', backgroundColor: 'rgba(220, 252, 231, 0.3)' }}>
-                                <span className={getExposureResultClass(row)}>
-                                  {getExposureResult(row)}
+                                <span className={getExposureResultClass(result)}>
+                                  {result}
                                 </span>
                               </td>
                             </tr>
-                          ))}
+                          );})}
                         </tbody>
                       </table>
                     </div>

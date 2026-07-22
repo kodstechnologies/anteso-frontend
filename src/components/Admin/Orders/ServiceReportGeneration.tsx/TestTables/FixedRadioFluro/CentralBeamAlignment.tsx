@@ -49,18 +49,19 @@ const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, 
   // Observed Tilt — only the measured value
   const [observedTilt, setObservedTilt] = useState<string>('1.5');
 
-  // Tolerance (Acceptance Criteria)
-  const [toleranceOperator, setToleranceOperator] = useState<'<' | '>' | '=' | '<=' | '>='>('<=');
+  // Tolerance (Acceptance Criteria) — only <, >, =
+  const [toleranceOperator, setToleranceOperator] = useState<'<' | '>' | '='>('<');
   const [toleranceValue, setToleranceValue] = useState<string>('2');
 
-  const operators = ['<=', '>=', '=', '<', '>'] as const;
+  const operators = ['<', '>', '='] as const;
 
-  const normalizeOperator = (raw: unknown): '<' | '>' | '=' | '<=' | '>=' => {
+  const normalizeOperator = (raw: unknown): '<' | '>' | '=' => {
     const s = String(raw ?? '').trim().replace(/\s+/g, '');
-    if (s === '≤' || s.toLowerCase() === 'lte' || s.toLowerCase() === 'le') return '<=';
-    if (s === '≥' || s.toLowerCase() === 'gte' || s.toLowerCase() === 'ge') return '>=';
-    if (s === '<=' || s === '>=' || s === '<' || s === '>' || s === '=') return s;
-    return '<=';
+    if (s === '<' || s === '>' || s === '=') return s;
+    // Map legacy ≤ / ≥ operators to the closest allowed symbol
+    if (s === '≤' || s === '<=' || s.toLowerCase() === 'lte' || s.toLowerCase() === 'le') return '<';
+    if (s === '≥' || s === '>=' || s.toLowerCase() === 'gte' || s.toLowerCase() === 'ge') return '>';
+    return '<';
   };
 
   // Auto-calculate Pass/Fail based on TOLERANCE
@@ -79,12 +80,6 @@ const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, 
         break;
       case '>':
         pass = observed > tolerance;
-        break;
-      case '<=':
-        pass = observed <= tolerance;
-        break;
-      case '>=':
-        pass = observed >= tolerance;
         break;
       case '=':
       default:

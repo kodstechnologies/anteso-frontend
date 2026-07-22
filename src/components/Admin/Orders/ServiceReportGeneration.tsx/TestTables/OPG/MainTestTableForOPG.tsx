@@ -1,4 +1,4 @@
-﻿// src/components/reports/TestTables/OPG/MainTestTableForOPG.tsx
+// src/components/reports/TestTables/OPG/MainTestTableForOPG.tsx
 import React from "react";
 
 interface MainTestTableProps {
@@ -96,7 +96,7 @@ const MainTestTableForOPG: React.FC<MainTestTableProps> = ({ testData }) => {
       const toleranceSign =
         testData.operatingPotential.tolerance?.sign ||
         testData.operatingPotential.toleranceSign ||
-        "±";
+        "�";
       const toleranceValue = testData.operatingPotential.toleranceValue || "2.0";
       const testRows = validRows.map((row: any) => {
         let isPass = false;
@@ -193,7 +193,10 @@ const MainTestTableForOPG: React.FC<MainTestTableProps> = ({ testData }) => {
       const hasTime = table1?.time !== undefined && table1?.time !== null && String(table1?.time).trim() !== "";
       const timeVal = parseFloat(String(table1?.time ?? ""));
       const hasValidTime = hasTime && !isNaN(timeVal) && timeVal > 0;
-      const linearityHeading = "Linearity of mA Loading (Coefficient of Linearity)";
+      // With valid timer → mA Loading; without → mAs Loading
+      const linearityHeading = hasValidTime
+        ? "Linearity of mA Loading (Coefficient of Linearity)"
+        : "Linearity of mAs Loading (Coefficient of Linearity)";
 
       const tolerance = testData.linearityOfMaLoading.tolerance || "0.1";
       const toleranceOperator = testData.linearityOfMaLoading.toleranceOperator || "<";
@@ -343,7 +346,7 @@ const MainTestTableForOPG: React.FC<MainTestTableProps> = ({ testData }) => {
 
 
 
-  // 5. Tube Housing Leakage — measured = mGy in one hour (same formula as generate page)
+  // 5. Tube Housing Leakage � measured = mGy in one hour (same formula as generate page)
   {
     const rll = testData.radiationLeakage;
     const sourceRows = rll?.leakageMeasurements || rll?.leakageRows;
@@ -397,7 +400,7 @@ const MainTestTableForOPG: React.FC<MainTestTableProps> = ({ testData }) => {
 
           let measuredMGy = NaN;
           if (rowMax > 0 && maValue > 0 && workloadValue > 0) {
-            // Same as generate: mGy/h → mR/hr ×114, then (W × mR/hr) / (60 × mA) / 114
+            // Same as generate: mGy/h ? mR/hr �114, then (W � mR/hr) / (60 � mA) / 114
             const exposureLevelMR = unit === "mGy/h" || !unit ? rowMax * 114 : rowMax;
             measuredMGy = (workloadValue * exposureLevelMR) / (60 * maValue) / 114;
           } else if (row.result !== undefined && row.result !== null && row.result !== "" && row.result !== "-") {

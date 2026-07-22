@@ -44,7 +44,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
   const [table1Row, setTable1Row] = useState<Table1Row>({ fcd: '', kv: '', time: '' });
 
   // Table 2: mA values + dynamic measurement columns
-  const [measHeaders, setMeasHeaders] = useState<string[]>(['Measured mR 1', 'Measured mR 2', 'Measured mR 3']);
+  const [measHeaders, setMeasHeaders] = useState<string[]>(['Meas 1', 'Meas 2', 'Meas 3']);
   const [table2Rows, setTable2Rows] = useState<Table2Row[]>([
     { id: '1', ma: '50', measuredOutputs: ['', '', ''], average: '', x: '', xMax: '', xMin: '', col: '', remarks: '' },
     { id: '2', ma: '100', measuredOutputs: ['', '', ''], average: '', x: '', xMax: '', xMin: '', col: '', remarks: '' },
@@ -232,7 +232,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
             setMeasHeaders(data.measHeaders);
           } else if (data.table2?.[0]?.measuredOutputs?.length) {
             const count = data.table2[0].measuredOutputs.length;
-            setMeasHeaders(Array.from({ length: count }, (_, i) => `Measured mR ${i + 1}`));
+            setMeasHeaders(Array.from({ length: count }, (_, i) => `Meas ${i + 1}`));
           }
           if (Array.isArray(data.table2) && data.table2.length > 0) {
             setTable2Rows(
@@ -350,7 +350,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
             ? String(csvMeasLabels).split(',').map((h: string) => h.trim()).filter(Boolean)
             : prev).slice(0, maxMeas);
           while (baseHeaders.length < maxMeas) {
-            baseHeaders.push(`Measured mR ${baseHeaders.length + 1}`);
+            baseHeaders.push(`Meas ${baseHeaders.length + 1}`);
           }
           return baseHeaders;
         });
@@ -534,7 +534,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500  tracking-wider border-r">FCD (cm)</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500  tracking-wider border-r">FDD (cm)</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500  tracking-wider border-r">kV</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500  tracking-wider">Time (sec)</th>
             </tr>

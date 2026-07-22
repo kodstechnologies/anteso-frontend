@@ -11,6 +11,7 @@ import {
   updateLinearityOfMaLoadingForOPG,
 } from '../../../../../../api';
 import { useRegisterTestExport } from '../shared/TestExportRegistry';
+import { isDistanceFieldLabel, toUiMeasHeaderLabel } from '../shared/exportMeasHeaders';
 
 interface ExposureCondition {
   fcd: string;
@@ -81,10 +82,12 @@ const extractMeasHeadersFromMasRow = (row: any[]): string[] => {
 const readMeasHeadersFromCsv = (csvData: any[]): string[] => {
   const meta = csvData.find((r) => String(r?.[0] ?? '').trim() === '__MEAS_HEADERS__');
   if (meta) {
-    return meta.slice(1).map((c:any) => preserveExcelHeaderCell(c)).filter(Boolean);
+    return meta.slice(1).map((c: any, i: number) => toUiMeasHeaderLabel(preserveExcelHeaderCell(c), i)).filter(Boolean);
   }
   const masHeaderRow = csvData.find((row) => isMasRangeHeaderRow(row));
-  return masHeaderRow ? extractMeasHeadersFromMasRow(masHeaderRow) : [];
+  return masHeaderRow
+    ? extractMeasHeadersFromMasRow(masHeaderRow).map((h, i) => toUiMeasHeaderLabel(h, i))
+    : [];
 };
 
 const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId = null, onTestSaved, onRefresh, csvData }) => {
@@ -97,7 +100,7 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
   // Exposure Conditions
   const [exposureCondition, setExposureCondition] = useState<ExposureCondition>({ fcd: '100', kv: '80' });
 
-  const [measHeaders, setMeasHeaders] = useState<string[]>(['Measured mR 1', 'Measured mR 2', 'Measured mR 3']);
+  const [measHeaders, setMeasHeaders] = useState<string[]>(['Meas 1', 'Meas 2', 'Meas 3']);
   const [table2Rows, setTable2Rows] = useState<Table2Row[]>([
     { id: '1', mAsRange: '5', measuredOutputs: ['', '', ''], average: '', x: '', xMax: '', xMin: '', col: '', remarks: '' },
     { id: '2', mAsRange: '10', measuredOutputs: ['', '', ''], average: '', x: '', xMax: '', xMin: '', col: '', remarks: '' },
@@ -110,7 +113,7 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
 
   // Handlers
   const addMeasColumn = () => {
-    setMeasHeaders(p => [...p, `Measured mR ${p.length + 1}`]);
+    setMeasHeaders(p => [...p, `Meas ${p.length + 1}`]);
     setTable2Rows(p => p.map(r => ({ ...r, measuredOutputs: [...r.measuredOutputs, ''] })));
   };
 
@@ -192,11 +195,11 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
               if (data.table2[0]?.measuredOutputs?.length) {
                 const count = data.table2[0].measuredOutputs.length;
                 const savedHeaders = Array.isArray(data.measHeaders) && data.measHeaders.length > 0
-                  ? data.measHeaders
-                  : Array.from({ length: count }, (_, i) => `Measured mR ${i + 1}`);
+                  ? data.measHeaders.map((h: string, i: number) => toUiMeasHeaderLabel(String(h), i))
+                  : Array.from({ length: count }, (_, i) => `Meas ${i + 1}`);
                 setMeasHeaders(savedHeaders);
               } else if (Array.isArray(data.measHeaders) && data.measHeaders.length > 0) {
-                setMeasHeaders(data.measHeaders);
+                setMeasHeaders(data.measHeaders.map((h: string, i: number) => toUiMeasHeaderLabel(String(h), i)));
               }
             }
             setTolerance(data.tolerance || '0.1');
@@ -252,9 +255,9 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId 
 
         // 1. Parameter Row: FCD, 100, kV, 70... (not the mAs Range header row)
         if (!isMasRangeHeaderRow(row) &&
-          (normalizedRow.includes('fcd') || normalizedRow.includes('fdd') || normalizedRow.includes('ffd')) &&
+          row.some((c: any) => isDistanceFieldLabel(c)) &&
           (normalizedRow.includes('kv') || normalizedRow.includes('kvp'))) {
-          const fIndex = row.findIndex((c: any) => ['fcd', 'fdd', 'ffd'].includes(c?.toString().trim().toLowerCase()));
+          const fIndex = row.findIndex((c: any) => isDistanceFieldLabel(c));
           const kIndex = row.findIndex((c: any) => c?.toString().toLowerCase().includes('kv'));
 
           setExposureCondition({

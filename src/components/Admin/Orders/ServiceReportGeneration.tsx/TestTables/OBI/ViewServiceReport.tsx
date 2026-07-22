@@ -1,4 +1,4 @@
-﻿// src/components/reports/ViewServiceReportOBI.tsx
+// src/components/reports/ViewServiceReportOBI.tsx
 import React, { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { getReportHeaderForOBI, getDetails, getTools } from "../../../../../../api";
@@ -88,7 +88,7 @@ const defaultNotes: Note[] = [
   { slNo: "5.7", text: "Name, Address & Contact detail is provided by Customer." },
 ];
 
-/** Matches LinearityOfTime.tsx â€” DB rows often omit summary fields; derive them for the PDF view. */
+/** Matches LinearityOfTime.tsx — DB rows often omit summary fields; derive them for the PDF view. */
 function computeOBILinearityOfMaLoadingSummaryFromRows(lotData: any) {
   const testConditions = lotData.testConditions || {};
   const time = parseFloat(testConditions.time) || 0;
@@ -127,10 +127,10 @@ function computeOBILinearityOfMaLoadingSummaryFromRows(lotData: any) {
       ? Math.abs(parseFloat(xMax) - parseFloat(xMin)) / (parseFloat(xMax) + parseFloat(xMin))
       : null;
   const coefficientOfLinearity =
-    colNum !== null && colNum >= 0 ? parseFloat(colNum.toFixed(4)).toFixed(4) : "â€”";
+    colNum !== null && colNum >= 0 ? parseFloat(colNum.toFixed(4)).toFixed(4) : "—";
 
-  let remarks = "â€”";
-  if (coefficientOfLinearity !== "â€”" && colNum !== null) {
+  let remarks = "—";
+  if (coefficientOfLinearity !== "—" && colNum !== null) {
     const colVal = parseFloat(coefficientOfLinearity);
     let pass = false;
     switch (op) {
@@ -156,8 +156,8 @@ function computeOBILinearityOfMaLoadingSummaryFromRows(lotData: any) {
   }
 
   return {
-    xMax: xMax || "â€”",
-    xMin: xMin || "â€”",
+    xMax: xMax || "—",
+    xMin: xMin || "—",
     coefficientOfLinearity,
     remarks,
   };
@@ -166,7 +166,7 @@ function computeOBILinearityOfMaLoadingSummaryFromRows(lotData: any) {
 function hasOBILinearitySummaryValue(v: any): boolean {
   if (v == null) return false;
   const s = String(v).trim();
-  return s !== "" && s !== "â€”";
+  return s !== "" && s !== "—";
 }
 
 const ViewServiceReportOBI: React.FC = () => {
@@ -349,7 +349,7 @@ const ViewServiceReportOBI: React.FC = () => {
                 mAStations: opData.mAStations || [],
                 totalFiltration: opData.totalFiltration || { measured: "", required: "" },
                 ffd: opData.ffd || "",
-                toleranceSign: opData.tolerance?.sign || "Â±",
+                toleranceSign: opData.tolerance?.sign || "±",
                 toleranceValue: opData.tolerance?.value || "2.0",
               };
             }
@@ -360,7 +360,7 @@ const ViewServiceReportOBI: React.FC = () => {
             return {
               ...opData,
               table2,
-              toleranceSign: opData.tolerance?.sign || opData.toleranceSign || "Â±",
+              toleranceSign: opData.tolerance?.sign || opData.toleranceSign || "±",
               toleranceValue: opData.tolerance?.value || opData.toleranceValue || "2.0",
             };
           };
@@ -892,7 +892,7 @@ const ViewServiceReportOBI: React.FC = () => {
                 ["QA Test Date", formatDate(report.testDate)],
                 ["QA Test Due Date", formatDate(report.testDueDate || "")],
                 ["Testing done at Location", report.location],
-                ["Temperature (°C)", report.temperature || "-"],
+                ["Temperature (�C)", report.temperature || "-"],
                 ["Humidity in RH (%)", report.humidity || "-"],
               ].map(([label, value], index) => (
                 <div key={label} className="flex">
@@ -1126,8 +1126,8 @@ const ViewServiceReportOBI: React.FC = () => {
                     </thead>
                     <tbody>
                       <tr style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
-                        <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{testData.centralBeamAlignment.observedTilt?.value ? `${testData.centralBeamAlignment.observedTilt.value}°` : "-"}</td>
-                        <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{testData.centralBeamAlignment.tolerance?.operator } {testData.centralBeamAlignment.tolerance?.value || "-"}°</td>
+                        <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{testData.centralBeamAlignment.observedTilt?.value ? `${testData.centralBeamAlignment.observedTilt.value}�` : "-"}</td>
+                        <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{testData.centralBeamAlignment.tolerance?.operator } {testData.centralBeamAlignment.tolerance?.value || "-"}�</td>
                         <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>
                           <span className={testData.centralBeamAlignment.finalResult === "Pass" || testData.centralBeamAlignment.observedTilt?.remark === "Pass" ? "text-green-600 font-semibold" : testData.centralBeamAlignment.finalResult === "Fail" || testData.centralBeamAlignment.observedTilt?.remark === "Fail" ? "text-red-600 font-semibold" : ""}>
                             {testData.centralBeamAlignment.finalResult || testData.centralBeamAlignment.observedTilt?.remark || "-"}
@@ -1404,7 +1404,7 @@ const ViewServiceReportOBI: React.FC = () => {
                           {Object.keys(ft).length > 0 && (
                             <div style={{ marginTop: '4px', fontSize: '10px', color: '#555' }}>
                               <span className="font-semibold">Tolerance criteria: </span>
-                              {ft.forKvGreaterThan70 ?? "1.5"} mm Al for kV &lt; {ft.kvThreshold1 ?? "70"} |&nbsp;
+                              {ft.forKvGreaterThan70 ?? "1.5"} mm Al for kV ≤ {ft.kvThreshold1 ?? "70"} |&nbsp;
                               {ft.forKvBetween70And100 ?? "2.0"} mm Al for {ft.kvThreshold1 ?? "70"} kV  {ft.kvThreshold2 ?? "100"} |&nbsp;
                               {ft.forKvGreaterThan100 ?? "2.5"} mm Al for kV &gt; {ft.kvThreshold2 ?? "100"}
                             </div>
@@ -1657,7 +1657,7 @@ const ViewServiceReportOBI: React.FC = () => {
                     const formatCell = (val: any) => {
                       if (val === undefined || val === null) return "-";
                       const str = String(val).trim();
-                      return str === "" || str === "â€”" || str === "undefined" || str === "null" ? "-" : str;
+                      return str === "" || str === "—" || str === "undefined" || str === "null" ? "-" : str;
                     };
 
                     const getOutputs = (row: any): string[] => {
@@ -1972,17 +1972,17 @@ const ViewServiceReportOBI: React.FC = () => {
                   <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
                     <strong>Tolerance (CoL):</strong>{" "}
                     {testData.linearityOfMasLoading.toleranceOperator === "<="
-                      ? "≤"
+                      ? "="
                       : testData.linearityOfMasLoading.toleranceOperator === ">="
-                        ? "≥"
-                        : testData.linearityOfMasLoading.toleranceOperator || "≤"}{" "}
+                        ? "="
+                        : testData.linearityOfMasLoading.toleranceOperator || "="}{" "}
                     {testData.linearityOfMasLoading.tolerance || "0.1"}
                   </p>
                 </div>
               </div>
             )}
 
-            {/* 11. Tube Housing Leakage — structure aligned with RadiographyFixed (radiationLeakageLevel); OBI uses tubeHousingLeakage */}
+            {/* 11. Tube Housing Leakage � structure aligned with RadiographyFixed (radiationLeakageLevel); OBI uses tubeHousingLeakage */}
             {(() => {
               const leakageData = testData.radiationLeakageLevel || testData.tubeHousingLeakage;
               if (!leakageData || (!leakageData.leakageMeasurements?.length && !leakageData.fcd)) return null;
@@ -2022,7 +2022,7 @@ const ViewServiceReportOBI: React.FC = () => {
                   </div>
                   <p style={{ fontSize: "10px", marginBottom: "4px" }}>
                     <strong>Workload:</strong> {leakageData.workload || "-"}{" "}
-                    {leakageData.workloadUnit || "mA·min/week"}
+                    {leakageData.workloadUnit || "mA�min/week"}
                   </p>
                   {leakageData.leakageMeasurements?.length > 0 && (
                     <table style={{ ...tableStyle, fontSize: "10px" }}>
@@ -2163,10 +2163,10 @@ const ViewServiceReportOBI: React.FC = () => {
                               padding: "2px",
                             }}
                           >
-                            Maximum Leakage (mR in 1 hr) = (Workload × Max Exposure) / (60 × mA)
+                            Maximum Leakage (mR in 1 hr) = (Workload � Max Exposure) / (60 � mA)
                           </p>
                           <p style={{ fontSize: "9px", marginTop: "2px", color: "#555", fontStyle: "italic" }}>
-                            Where: Workload = {workloadValue} mA·min/week | mA = {maValue} | 1 mGy = 114 mR
+                            Where: Workload = {workloadValue} mA�min/week | mA = {maValue} | 1 mGy = 114 mR
                           </p>
                         </div>
                         <div style={{ display: "flex", gap: "8px" }}>
@@ -2177,7 +2177,7 @@ const ViewServiceReportOBI: React.FC = () => {
                                 Max Measured: <strong>{tubeSummary.rowMax} mR/hr</strong>
                               </p>
                               <p>
-                                Result: ({workloadValue} × {tubeSummary.rowMax}) / (60 × {maValue}) ={" "}
+                                Result: ({workloadValue} � {tubeSummary.rowMax}) / (60 � {maValue}) ={" "}
                                 <strong>{tubeSummary.resMR.toFixed(3)} mR</strong>
                               </p>
                               <p>
@@ -2193,7 +2193,7 @@ const ViewServiceReportOBI: React.FC = () => {
                                 Max Measured: <strong>{collimatorSummary.rowMax} mR/hr</strong>
                               </p>
                               <p>
-                                Result: ({workloadValue} × {collimatorSummary.rowMax}) / (60 × {maValue}) ={" "}
+                                Result: ({workloadValue} � {collimatorSummary.rowMax}) / (60 � {maValue}) ={" "}
                                 <strong>{collimatorSummary.resMR.toFixed(3)} mR</strong>
                               </p>
                               <p>
@@ -2361,7 +2361,7 @@ const ViewServiceReportOBI: React.FC = () => {
                           <div className="bg-gray-50 p-3 print:p-1 rounded border" style={{ padding: '2px 4px', marginTop: '4px' }}>
                             <p className="text-sm print:text-[9px] font-semibold mb-1" style={{ fontSize: '11px', margin: '2px 0' }}>Calculation for Maximum Radiation Level/week (For Radiation Worker):</p>
                             <p className="text-xs print:text-[8px]" style={{ fontSize: '10px', margin: '2px 0' }}><strong>Location:</strong> {maxWorkerLocation.location}</p>
-                            <p className="text-xs print:text-[8px]" style={{ fontSize: '10px', margin: '2px 0' }}><strong>Formula:</strong> ({testData.radiationProtection.workload || 'â€”'} mAmin/week Ã— {maxWorkerLocation.mRPerHr || 'â€”'} mR/hr) / (60 Ã— {testData.radiationProtection.appliedCurrent || 'â€”'} mA)</p>
+                            <p className="text-xs print:text-[8px]" style={{ fontSize: '10px', margin: '2px 0' }}><strong>Formula:</strong> ({testData.radiationProtection.workload || '—'} mAmin/week × {maxWorkerLocation.mRPerHr || '—'} mR/hr) / (60 × {testData.radiationProtection.appliedCurrent || '—'} mA)</p>
                             <p className="text-xs print:text-[8px] mt-1" style={{ fontSize: '10px', margin: '2px 0' }}><strong>Result:</strong> {maxWorkerWeekly} mR/week</p>
                           </div>
                         )}
@@ -2369,7 +2369,7 @@ const ViewServiceReportOBI: React.FC = () => {
                           <div className="bg-gray-50 p-3 print:p-1 rounded border" style={{ padding: '2px 4px', marginTop: '4px' }}>
                             <p className="text-sm print:text-[9px] font-semibold mb-1" style={{ fontSize: '11px', margin: '2px 0' }}>Calculation for Maximum Radiation Level/week (For Public):</p>
                             <p className="text-xs print:text-[8px]" style={{ fontSize: '10px', margin: '2px 0' }}><strong>Location:</strong> {maxPublicLocation.location}</p>
-                            <p className="text-xs print:text-[8px]" style={{ fontSize: '10px', margin: '2px 0' }}><strong>Formula:</strong> ({testData.radiationProtection.workload || 'â€”'} mAmin/week Ã— {maxPublicLocation.mRPerHr || 'â€”'} mR/hr) / (60 Ã— {testData.radiationProtection.appliedCurrent || 'â€”'} mA)</p>
+                            <p className="text-xs print:text-[8px]" style={{ fontSize: '10px', margin: '2px 0' }}><strong>Formula:</strong> ({testData.radiationProtection.workload || '—'} mAmin/week × {maxPublicLocation.mRPerHr || '—'} mR/hr) / (60 × {testData.radiationProtection.appliedCurrent || '—'} mA)</p>
                             <p className="text-xs print:text-[8px] mt-1" style={{ fontSize: '10px', margin: '2px 0' }}><strong>Result:</strong> {maxPublicWeekly} mR/week</p>
                           </div>
                         )}

@@ -472,9 +472,9 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-gray-800">Output Consistency</h2>
 
-        {/* FFD (cm) - top right, similar to AccuracyOfOperatingPotential */}
+        {/* FDD (cm) - top right, similar to AccuracyOfOperatingPotential */}
         <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold text-gray-700">FFD (cm)</span>
+          <span className="text-sm font-semibold text-gray-700">FDD (cm)</span>
           <input
             type="number"
             value={ffd}

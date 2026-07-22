@@ -1,5 +1,7 @@
 /** Parse Radiography-Fixed-style vertical TEST: table CSV/Excel for C-Arm and O-Arm. */
 
+import * as XLSX from "xlsx";
+
 export type RadiographyStyleDevice = "carm" | "oarm";
 
 export type StyleParsedRow = {
@@ -414,3 +416,34 @@ export const matrixToCsvText = (matrix: any[][]): string =>
         .join(",")
     )
     .join("\n");
+
+/** Read worksheet rows using Excel formatted text (cell.w) when available — avoids date corruption on mAs Range. */
+export const sheetRowsFromWorksheet = (ws: XLSX.WorkSheet): any[][] => {
+  const ref = ws["!ref"];
+  if (!ref) return XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" }) as any[][];
+
+  const range = XLSX.utils.decode_range(ref);
+  const rows: any[][] = [];
+  for (let r = range.s.r; r <= range.e.r; r++) {
+    const row: any[] = [];
+    for (let c = range.s.c; c <= range.e.c; c++) {
+      const addr = XLSX.utils.encode_cell({ r, c });
+      const cell = ws[addr];
+      if (!cell) {
+        row.push("");
+        continue;
+      }
+      if (cell.w != null && String(cell.w).trim() !== "") {
+        row.push(String(cell.w).trim());
+      } else if (cell.t === "s") {
+        row.push(String(cell.v ?? ""));
+      } else if (cell.t === "n") {
+        row.push(String(cell.v ?? ""));
+      } else {
+        row.push(cell.v ?? "");
+      }
+    }
+    rows.push(row);
+  }
+  return rows;
+};

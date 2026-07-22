@@ -931,7 +931,7 @@ const ViewServiceReportCArm: React.FC = () => {
                       </table>
                       <div style={{ marginTop: "4px", fontSize: "10px", color: "#555" }}>
                         <span className="font-semibold">Tolerance criteria: </span>
-                        {ft.forKvGreaterThan70 ?? "1.5"} mm Al for kV &lt; {ft.kvThreshold1 ?? "70"} |&nbsp;
+                        {ft.forKvGreaterThan70 ?? "1.5"} mm Al for kV ≤ {ft.kvThreshold1 ?? "70"} |&nbsp;
                         {ft.forKvBetween70And100 ?? "2.0"} mm Al for {ft.kvThreshold1 ?? "70"} ≤ kV ≤ {ft.kvThreshold2 ?? "100"} |&nbsp;
                         {ft.forKvGreaterThan100 ?? "2.5"} mm Al for kV &gt; {ft.kvThreshold2 ?? "100"}
                       </div>

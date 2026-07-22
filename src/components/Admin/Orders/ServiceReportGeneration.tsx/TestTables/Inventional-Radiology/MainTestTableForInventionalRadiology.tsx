@@ -1,4 +1,4 @@
-﻿// src/components/reports/TestTables/InventionalRadiology/MainTestTableForInventionalRadiology.tsx
+// src/components/reports/TestTables/InventionalRadiology/MainTestTableForInventionalRadiology.tsx
 import React from "react";
 
 interface MainTestTableProps {
@@ -32,16 +32,16 @@ function getLinearityDoc(testData: any): any | null {
   };
 }
 
-/** Inventional legacy: table1 time filled → mAs linearity title; align with Fixed `hasTimer` (true → mA label). */
-function inferHasTimerFromLinearityDoc(doc: any): boolean {
+/** Time present in table1 ? mA loading; otherwise mAs loading (align with RadiographyFixed). */
+function inferIsMaLoadingFromLinearityDoc(doc: any): boolean {
   const t1 = doc?.table1;
   const first = Array.isArray(t1) ? t1[0] : t1;
-  const timePresent =
-    first?.time != null && String(first.time).trim() !== "" && String(first.time).trim() !== "-";
-  return !timePresent;
+  const timeStr = first?.time !== undefined && first?.time !== null ? String(first.time).trim() : "";
+  const timeVal = parseFloat(timeStr);
+  return timeStr !== "" && timeStr !== "-" && !isNaN(timeVal) && timeVal > 0;
 }
 
-/** kV from table1 — MeasurementOfMaLinearity uses `kvp`; LinearityOfmAsLoading uses `kv`. */
+/** kV from table1 � MeasurementOfMaLinearity uses `kvp`; LinearityOfmAsLoading uses `kv`. */
 function getLinearityKvFromTable1(doc: any): any {
   const t1 = doc?.table1;
   const first = Array.isArray(t1) ? t1[0] : t1;
@@ -95,7 +95,7 @@ const MainTestTableForInventionalRadiology: React.FC<MainTestTableProps> = ({ te
 
   const outputConsistencyRoot = testData.outputConsistency || testData.consistencyOfRadiationOutput;
 
-  // Congruence of Radiation & Optical Field — RadiographyFixed
+  // Congruence of Radiation & Optical Field � RadiographyFixed
   if (testData.congruence?.congruenceMeasurements && Array.isArray(testData.congruence.congruenceMeasurements)) {
     const validRows = testData.congruence.congruenceMeasurements.filter((row: any) => row.dimension || row.percentFED);
     if (validRows.length > 0) {
@@ -106,7 +106,7 @@ const MainTestTableForInventionalRadiology: React.FC<MainTestTableProps> = ({ te
         return {
           specified: row.dimension || "-",
           measured: percentFED !== "-" ? `${percentFED}%` : "-",
-          tolerance: `≤ ${tolerance}%`,
+          tolerance: `= ${tolerance}%`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });
@@ -114,7 +114,7 @@ const MainTestTableForInventionalRadiology: React.FC<MainTestTableProps> = ({ te
     }
   }
 
-  // Central Beam Alignment — RadiographyFixed
+  // Central Beam Alignment � RadiographyFixed
   if (testData.centralBeamAlignment?.observedTilt) {
     const tiltValue = testData.centralBeamAlignment.observedTilt.value || "-";
     const toleranceOperator = testData.centralBeamAlignment.tolerance?.operator || "=";
@@ -156,7 +156,7 @@ const MainTestTableForInventionalRadiology: React.FC<MainTestTableProps> = ({ te
     ]);
   }
 
-  // Effective Focal Spot Size — RadiographyFixed
+  // Effective Focal Spot Size � RadiographyFixed
   if (testData.effectiveFocalSpot?.focalSpots && Array.isArray(testData.effectiveFocalSpot.focalSpots)) {
     const validRows = testData.effectiveFocalSpot.focalSpots.filter(
       (spot: any) => spot.focusType || spot.measuredWidth || spot.measuredNominal
@@ -177,7 +177,7 @@ const MainTestTableForInventionalRadiology: React.FC<MainTestTableProps> = ({ te
       const mediumUpper = parseFloat(toleranceCriteria.medium?.upperLimit || "1.5");
       const largeMultiplier = parseFloat(toleranceCriteria.large?.multiplier || "0.3");
 
-      const toleranceStr = `+${smallMultiplier} F FOR F < ${smallLimit} mm; +${mediumMultiplier} F FOR ${mediumLower} ≤ F ≤ ${mediumUpper} mm; +${largeMultiplier} F FOR F > ${mediumUpper} mm`;
+      const toleranceStr = `+${smallMultiplier} F FOR F < ${smallLimit} mm; +${mediumMultiplier} F FOR ${mediumLower} = F = ${mediumUpper} mm; +${largeMultiplier} F FOR F > ${mediumUpper} mm`;
 
       const testRows = validRows.map((spot: any) => {
         const isPass = spot.remark === "Pass" || spot.remark === "PASS";
@@ -194,7 +194,7 @@ const MainTestTableForInventionalRadiology: React.FC<MainTestTableProps> = ({ te
     }
   }
 
-  // Accuracy of Irradiation Time(sec) — RadiographyFixed
+  // Accuracy of Irradiation Time(sec) � RadiographyFixed
   if (testData.accuracyOfIrradiationTime?.irradiationTimes && Array.isArray(testData.accuracyOfIrradiationTime.irradiationTimes)) {
     const validRows = testData.accuracyOfIrradiationTime.irradiationTimes.filter((row: any) => row.setTime || row.measuredTime);
     if (validRows.length > 0) {
@@ -224,14 +224,13 @@ const MainTestTableForInventionalRadiology: React.FC<MainTestTableProps> = ({ te
     }
   }
 
-  // Accuracy of Operating Potential (kVp Accuracy) — RadiographyFixed
+  // Accuracy of Operating Potential (kVp Accuracy) � RadiographyFixed
   if (testData.accuracyOfOperatingPotential?.table2 && Array.isArray(testData.accuracyOfOperatingPotential.table2)) {
     const validRows = testData.accuracyOfOperatingPotential.table2.filter((row: any) => row.setKV || row.avgKvp);
     if (validRows.length > 0) {
       const toleranceSign =
         testData.accuracyOfOperatingPotential.tolerance?.sign ||
-        testData.accuracyOfOperatingPotential.toleranceSign ||
-        "±";
+        testData.accuracyOfOperatingPotential.toleranceSign ;
       const toleranceValue =
         testData.accuracyOfOperatingPotential.tolerance?.value ||
         testData.accuracyOfOperatingPotential.toleranceValue ||
@@ -259,11 +258,11 @@ const MainTestTableForInventionalRadiology: React.FC<MainTestTableProps> = ({ te
     }
   }
 
-  // Accuracy of Operating Potential — from total filtration measurements — RadiographyFixed
+  // Accuracy of Operating Potential � from total filtration measurements � RadiographyFixed
   if (testData.totalFilteration?.measurements && Array.isArray(testData.totalFilteration.measurements)) {
     const validRows = testData.totalFilteration.measurements.filter((row: any) => row.appliedKvp || row.averageKvp || row.measuredValues);
     if (validRows.length > 0) {
-      const toleranceSign = testData.totalFilteration.tolerance?.sign || "±";
+      const toleranceSign = testData.totalFilteration.tolerance?.sign || "�";
       const toleranceValue = testData.totalFilteration.tolerance?.value || "2.0";
       const testRows = validRows.map((row: any) => {
         let avgKvpNum: number | null = null;
@@ -310,7 +309,7 @@ const MainTestTableForInventionalRadiology: React.FC<MainTestTableProps> = ({ te
     }
   }
 
-  // Total Filtration — RadiographyFixed (required = mm Al in Fixed UI; some payloads use measured)
+  // Total Filtration � RadiographyFixed (required = mm Al in Fixed UI; some payloads use measured)
   if (testData.totalFilteration?.totalFiltration) {
     const tfTot = testData.totalFilteration.totalFiltration;
     const measuredStr = tfTot.required || tfTot.measured || "-";
@@ -351,7 +350,7 @@ const MainTestTableForInventionalRadiology: React.FC<MainTestTableProps> = ({ te
       if (!isNaN(requiredTolerance)) isPass = measuredVal >= requiredTolerance;
     }
 
-    const toleranceStr = "1.5 mm Al for kV ≤ 70; 2.0 mm Al for 70 ≤ kV ≤ 100; 2.5 mm Al for kV > 100";
+    const toleranceStr = "1.5 mm Al for kV <= 70; 2.0 mm Al for 70 ? kV ? 100; 2.5 mm Al for kV > 100";
     const atKvpStr = atKvp !== undefined && atKvp !== null && String(atKvp).trim() !== "" ? String(atKvp).trim() : "";
 
     addRowsForTest("Total Filtration", [
@@ -364,11 +363,11 @@ const MainTestTableForInventionalRadiology: React.FC<MainTestTableProps> = ({ te
     ]);
   }
 
-  // Linearity of mA / mAs Loading (Coefficient of Linearity) — RadiographyFixed + Inventional measurementOfMaLinearity
+  // Linearity of mA / mAs Loading (Coefficient of Linearity) � RadiographyFixed + Inventional measurementOfMaLinearity
   const linearityDoc = getLinearityDoc(testData);
   if (linearityDoc?.table2 && Array.isArray(linearityDoc.table2)) {
-    const hasTimer = inferHasTimerFromLinearityDoc(linearityDoc);
-    const linearityLabel = hasTimer
+    const isMaLoading = inferIsMaLoadingFromLinearityDoc(linearityDoc);
+    const linearityLabel = isMaLoading
       ? "Linearity of mA Loading (Coefficient of Linearity)"
       : "Linearity of mAs Loading (Coefficient of Linearity)";
 
@@ -460,7 +459,7 @@ const MainTestTableForInventionalRadiology: React.FC<MainTestTableProps> = ({ te
     }
   }
 
-  // Consistency of Radiation Output (CoV) — RadiographyFixed
+  // Consistency of Radiation Output (CoV) � RadiographyFixed
   if (outputConsistencyRoot?.outputRows && Array.isArray(outputConsistencyRoot.outputRows)) {
     const validRows = outputConsistencyRoot.outputRows.filter(
       (row: any) =>
@@ -561,7 +560,7 @@ const MainTestTableForInventionalRadiology: React.FC<MainTestTableProps> = ({ te
     }
   }
 
-  // Radiation leakage level at 1m from tube housing — RadiographyFixed + tube housing data
+  // Radiation leakage level at 1m from tube housing � RadiographyFixed + tube housing data
   const leakParent = testData.radiationLeakageLevel || testData.tubeHousingLeakage;
   const leakMeasurements =
     leakParent &&
@@ -639,7 +638,7 @@ const MainTestTableForInventionalRadiology: React.FC<MainTestTableProps> = ({ te
         return {
           specified: row.location || "-",
           measured: measuredValue,
-          tolerance: `≤ ${toleranceValue} ${toleranceUnit}`,
+          tolerance: `= ${toleranceValue} ${toleranceUnit}`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });
@@ -647,7 +646,7 @@ const MainTestTableForInventionalRadiology: React.FC<MainTestTableProps> = ({ te
     }
   }
 
-  // Radiation Protection Survey — RadiographyFixed (location + mR/week; support mR/hr fields from API)
+  // Radiation Protection Survey � RadiographyFixed (location + mR/week; support mR/hr fields from API)
   if (testData.radiationProtectionSurvey?.locations && Array.isArray(testData.radiationProtectionSurvey.locations)) {
     const validRows = testData.radiationProtectionSurvey.locations.filter(
       (loc: any) => loc.location || loc.mRPerWeek != null || loc.mRPerHr != null
@@ -668,7 +667,7 @@ const MainTestTableForInventionalRadiology: React.FC<MainTestTableProps> = ({ te
         return {
           specified: loc.location || "-",
           measured: mRPerWeek !== "-" ? `${mRPerWeek} mR/week` : "-",
-          tolerance: loc.category === "worker" ? "≤ 40 mR/week" : "≤ 2 mR/week",
+          tolerance: loc.category === "worker" ? "= 40 mR/week" : "= 2 mR/week",
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });
@@ -687,7 +686,7 @@ const MainTestTableForInventionalRadiology: React.FC<MainTestTableProps> = ({ te
       {
         specified: "Smallest Visible Hole",
         measured: smallestHoleSize ? `${smallestHoleSize} mm` : "-",
-        tolerance: `≤ ${recommendedStandard} mm`,
+        tolerance: `= ${recommendedStandard} mm`,
         remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
       },
     ]);
@@ -703,7 +702,7 @@ const MainTestTableForInventionalRadiology: React.FC<MainTestTableProps> = ({ te
       {
         specified: "Line Pairs per mm",
         measured: measuredLpPerMm ? `${measuredLpPerMm} lp/mm` : "-",
-        tolerance: `≥ ${recommendedStandard} lp/mm`,
+        tolerance: `= ${recommendedStandard} lp/mm`,
         remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
       },
     ]);
@@ -712,18 +711,27 @@ const MainTestTableForInventionalRadiology: React.FC<MainTestTableProps> = ({ te
   if (testData.exposureRateTableTop?.rows && Array.isArray(testData.exposureRateTableTop.rows)) {
     const validRows = testData.exposureRateTableTop.rows.filter((row: any) => row.distance || row.exposure);
     if (validRows.length > 0) {
-      const aecTol = testData.exposureRateTableTop.aecTolerance || "10";
-      const manualTol = testData.exposureRateTableTop.nonAecTolerance || "5";
+      const aecTolStr = testData.exposureRateTableTop.aecTolerance || "10";
+      const manualTolStr = testData.exposureRateTableTop.nonAecTolerance || "5";
 
       const testRows = validRows.map((row: any) => {
-        const isPass = row.result === "PASS" || row.result === "Pass";
-        const isAEC = row.remark === "AEC Mode";
-        const toleranceVal = isAEC ? aecTol : manualTol;
+        const aecTol = parseFloat(aecTolStr) || 0;
+        const manualTol = parseFloat(manualTolStr) || 0;
+        const exposure = parseFloat(row.exposure);
+        const mode = row.remark || row.mode || "";
+        let isPass = String(row.result || "").toUpperCase() === "PASS";
+        if (!row.result && !isNaN(exposure) && mode) {
+          isPass =
+            ((mode === "AEC Mode" || mode === "AEC") && exposure <= aecTol) ||
+            ((mode === "Manual Mode" || mode === "Manual") && exposure <= manualTol);
+        }
+        const isAEC = mode === "AEC Mode" || mode === "AEC";
+        const toleranceVal = isAEC ? aecTolStr : manualTolStr;
 
         return {
           specified: row.distance ? `${row.distance} cm` : "-",
           measured: row.exposure ? `${row.exposure} cGy/min` : "-",
-          tolerance: `≤ ${toleranceVal} cGy/min`,
+          tolerance: `= ${toleranceVal} cGy/min`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });

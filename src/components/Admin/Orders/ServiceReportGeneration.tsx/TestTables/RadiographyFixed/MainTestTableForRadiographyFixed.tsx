@@ -262,10 +262,15 @@ export const generateRadiographySummaryRows = (testData: any, hasTimer: boolean 
 
   // 7. Linearity of mA/mAs Loading
   if (testData.linearityOfMasLoading?.table2 && Array.isArray(testData.linearityOfMasLoading.table2)) {
-    const linearityLabel = hasTimer ? "Linearity of mA Loading" : "Linearity of mAs Loading ";
     const validRows = testData.linearityOfMasLoading.table2.filter((row: any) => row.mAsApplied || row.col != null || row.x != null);
     if (validRows.length > 0) {
-      const linearityKv = testData.linearityOfMasLoading?.table1?.[0]?.kv || testData.linearityOfMasLoading?.kv || "";
+      const table1 = Array.isArray(testData.linearityOfMasLoading?.table1)
+        ? testData.linearityOfMasLoading?.table1?.[0]
+        : testData.linearityOfMasLoading?.table1;
+      const hasTime = table1?.time !== undefined && table1?.time !== null && String(table1?.time).trim() !== "";
+      const timeVal = parseFloat(String(table1?.time ?? ""));
+      const isMaLoading = hasTime && !isNaN(timeVal) && timeVal > 0;
+      const linearityKv = table1?.kv || testData.linearityOfMasLoading?.kv || "";
       const tolerance = parseFloat(testData.linearityOfMasLoading.tolerance ?? "0.1") || 0.1;
       const toleranceOperator = testData.linearityOfMasLoading.toleranceOperator || "<=";
       let colValue =
@@ -280,11 +285,12 @@ export const generateRadiographySummaryRows = (testData: any, hasTimer: boolean 
             .map(getNumeric)
             .filter((v: number) => !isNaN(v) && v > 0);
           const avg = outputs.length > 0 ? outputs.reduce((a: number, b: number) => a + b, 0) / outputs.length : null;
-          const mAsLabel = String(row.mAsApplied ?? row.mAsRange ?? "");
+          const mAsLabel = String(row.mAsApplied ?? row.mAsRange ?? row.ma ?? row.mA ?? "");
           const match = mAsLabel.match(/(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)/);
           const midMas = match ? (parseFloat(match[1]) + parseFloat(match[2])) / 2 : parseFloat(mAsLabel) || 0;
           if (avg !== null && midMas > 0) {
-            const xVal = avg / midMas;
+            const denom = isMaLoading ? midMas * timeVal : midMas;
+            const xVal = denom > 0 ? avg / denom : NaN;
             if (isFinite(xVal)) xValues.push(xVal);
           }
         });
@@ -313,7 +319,7 @@ export const generateRadiographySummaryRows = (testData: any, hasTimer: boolean 
         remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
       }];
       addRowsForTest(
-        hasTimer
+        isMaLoading
           ? "Linearity of mA Loading Stations (Coefficient of Linearity)"
           : "Linearity of mAs Loading Stations (Coefficient of Linearity)",
         testRows

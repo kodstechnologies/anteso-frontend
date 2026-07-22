@@ -1,5 +1,5 @@
 import * as XLSX from 'xlsx';
-import { resolveMeasHeaders, getMeasuredOutputs, cellStr } from '../shared/exportMeasHeaders';
+import { resolveMeasHeaders, resolveExcelMeasHeaders, getMeasuredOutputs, cellStr } from '../shared/exportMeasHeaders';
 
 export const createOPGUploadableExcel = (data: any) => {
     const wb = XLSX.utils.book_new();
@@ -76,7 +76,7 @@ export const createOPGUploadableExcel = (data: any) => {
         });
 
         if (rows.length > 0 || table1.fcd) {
-            const settingsHeader = ['FCD', table1.fcd || '', 'kV', table1.kv || '', 'mA', table1.ma || ''];
+            const settingsHeader = ['FDD (cm)', table1.fcd || '', 'kV', table1.kv || '', 'mA', table1.ma || ''];
             const headers = ['Set Time (mSec)', 'Measured Time (mSec)', '% Error'];
             addSection('ACCURACY OF IRRADIATION TIME', headers, [settingsHeader, ...rows]);
         }
@@ -89,12 +89,12 @@ export const createOPGUploadableExcel = (data: any) => {
 
         const table2 = data.linearityOfMaLoading.table2 || [];
         if (table2.length > 0 || table1.fcd) {
-            const settingsHeader = ['FCD', table1.fcd || '', 'kV', table1.kv || '', 'Timer', table1.time || ''];
+            const settingsHeader = ['FDD (cm)', table1.fcd || '', 'kV', table1.kv || '', 'Timer', table1.time || ''];
             const maxMeas = Math.max(0, ...table2.map((r: any) => getMeasuredOutputs(r).length));
-            const measHeaders = resolveMeasHeaders(
+            const measHeaders = resolveExcelMeasHeaders(
                 data.linearityOfMaLoading.measHeaders || data.linearityOfMaLoading.measurementHeaders,
                 maxMeas,
-                'Measured mR'
+                'Measured Output'
             );
 
             const alignedRows = table2.map((row: any) => {
@@ -132,16 +132,16 @@ export const createOPGUploadableExcel = (data: any) => {
         allData.push(['Tolerance Operator', tolOp]);
         allData.push(['Tolerance Value (CoV)', tolVal]);
         if (oc.ffd != null && String(oc.ffd).trim() !== '') {
-            allData.push(['FFD', oc.ffd]);
+            allData.push(['FDD (cm)', oc.ffd]);
         }
 
         const outputRows = oc.outputRows || [];
         if (outputRows.length > 0) {
             const maxMeas = Math.max(0, ...outputRows.map((r: any) => getMeasuredOutputs(r).length));
-            const measHeaders = resolveMeasHeaders(
+            const measHeaders = resolveExcelMeasHeaders(
                 oc.measurementHeaders || oc.measHeaders || oc.outputHeaders,
                 maxMeas,
-                'Meas'
+                'Output'
             );
             const headers = ['kVp', 'mAs', ...measHeaders, 'Mean', 'CoV', 'Remarks'];
             allData.push(headers);
@@ -177,8 +177,8 @@ export const createOPGUploadableExcel = (data: any) => {
 
         if (rows.length > 0 || s.kv || s.kvp || s.ma) {
             const settingsHeader = [
-                'FFD', s.ffd || s.fcd || '',
-                'kVp', s.kvp || s.kv || '',
+                'FDD (cm)', s.ffd || s.fdd || s.fcd || '',
+                'kV', s.kvp || s.kv || '',
                 'mA', s.ma || '',
                 'Time', s.time || '',
                 'Tolerance', data.radiationLeakage.toleranceValue || data.radiationLeakage.tolerance || ''
