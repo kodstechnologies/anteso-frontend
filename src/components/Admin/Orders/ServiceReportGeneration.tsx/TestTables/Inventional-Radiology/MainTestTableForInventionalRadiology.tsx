@@ -164,9 +164,16 @@ const MainTestTableForInventionalRadiology: React.FC<MainTestTableProps> = ({ te
     if (validRows.length > 0) {
       const formatValue = (val: any) => {
         if (val === undefined || val === null || val === "") return null;
-        const numVal = typeof val === "number" ? val : parseFloat(val);
-        if (isNaN(numVal)) return null;
-        return numVal.toFixed(1);
+        // Keep exact entered/stored value (same as generate page) — do not round
+        if (typeof val === "string") {
+          const trimmed = val.trim();
+          return trimmed === "" ? null : trimmed;
+        }
+        if (typeof val === "number" && Number.isFinite(val)) {
+          return String(val);
+        }
+        const asStr = String(val).trim();
+        return asStr === "" || asStr === "NaN" ? null : asStr;
       };
 
       const toleranceCriteria = testData.effectiveFocalSpot.toleranceCriteria || {};
@@ -181,8 +188,18 @@ const MainTestTableForInventionalRadiology: React.FC<MainTestTableProps> = ({ te
 
       const testRows = validRows.map((spot: any) => {
         const isPass = spot.remark === "Pass" || spot.remark === "PASS";
-        const statedWidth = formatValue(spot.statedWidth);
-        const measuredWidth = formatValue(spot.measuredWidth);
+        const statedWidth = formatValue(
+          spot.statedNominal ??
+          (spot.statedWidth != null && spot.statedHeight != null
+            ? (Number(spot.statedWidth) + Number(spot.statedHeight)) / 2
+            : spot.statedWidth ?? spot.statedHeight)
+        );
+        const measuredWidth = formatValue(
+          spot.measuredNominal ??
+          (spot.measuredWidth != null && spot.measuredHeight != null
+            ? (Number(spot.measuredWidth) + Number(spot.measuredHeight)) / 2
+            : spot.measuredWidth ?? spot.measuredHeight)
+        );
         return {
           specified: statedWidth !== null ? `${statedWidth} mm` : "-",
           measured: measuredWidth !== null ? `${measuredWidth} mm` : "-",

@@ -280,6 +280,8 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
           });
           if (resolvedUlr) setUlrNumber(resolvedUlr);
 
+          const asDoc = (v: any) => (v && typeof v === "object" && !Array.isArray(v) ? v : null);
+
           const fromReport = {
             accuracyOfOperatingPotential: data.accuracyOfOperatingPotentialFixedRadioFluoro || data.accuracyOfOperatingPotentialRadigraphyFixed || null,
             outputConsistency: data.OutputConsistencyForFixedRadioFlouro || data.ConsistencyOfRadiationOutputFixedRadiography || null,
@@ -294,7 +296,7 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
             totalFiltration: data.TotalFilterationRadiographyFixed || null,
             lowContrastResolution: data.LowContrastResolutionFixedRadioFlouro || null,
             highContrastResolution: data.HighContrastResolutionFixedRadioFluoro || null,
-            exposureRate: data.ExposureRateTableTopFixedRadioFlouro || null,
+            exposureRate: asDoc(data.ExposureRateTableTopFixedRadioFlouro),
           };
           setTestData(fromReport);
 
@@ -344,6 +346,16 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
             fetchTest(() => getAccuracyOfOperatingPotentialByServiceIdForFixedRadioFluro(serviceId)),
           ]);
 
+          const preferWithRows = (existing: any, fetched: any) => {
+            const hasRows = (v: any) =>
+              v && typeof v === "object" && Array.isArray(v.rows) && v.rows.length > 0;
+            if (hasRows(fetched)) return fetched;
+            if (hasRows(existing)) return existing;
+            if (fetched && typeof fetched === "object") return fetched;
+            if (existing && typeof existing === "object") return existing;
+            return fetched || existing || null;
+          };
+
           setTestData((prev: any) => ({
             ...prev,
             totalFiltration: prev.totalFiltration || totalFiltrationRes || null,
@@ -353,7 +365,7 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
             outputConsistency: prev.outputConsistency || outputConsistencyRes || null,
             lowContrastResolution: prev.lowContrastResolution || lowContrastRes || null,
             highContrastResolution: prev.highContrastResolution || highContrastRes || null,
-            exposureRate: prev.exposureRate || exposureRateRes || null,
+            exposureRate: preferWithRows(prev.exposureRate, exposureRateRes),
             tubeHousingLeakage: prev.tubeHousingLeakage || tubeHousingRes || null,
             radiationProtectionSurvey: prev.radiationProtectionSurvey || radiationProtectionRes || null,
             accuracyOfIrradiationTime: prev.accuracyOfIrradiationTime || accuracyOfIrradiationTimeRes || null,
@@ -969,9 +981,16 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
                         {testData.effectiveFocalSpot.focalSpots.slice(0, 2).map((spot: any, i: number) => {
                           const formatValue = (val: any) => {
                             if (val === undefined || val === null || val === "") return "-";
-                            const numVal = typeof val === 'number' ? val : parseFloat(val);
-                            if (isNaN(numVal)) return "-";
-                            return numVal.toFixed(1);
+                            // Keep exact entered/stored value (same as generate page) — do not round
+                            if (typeof val === "string") {
+                              const trimmed = val.trim();
+                              return trimmed === "" ? "-" : trimmed;
+                            }
+                            if (typeof val === "number" && Number.isFinite(val)) {
+                              return String(val);
+                            }
+                            const asStr = String(val).trim();
+                            return asStr === "" || asStr === "NaN" ? "-" : asStr;
                           };
 
                           const statedNominal = formatValue(
@@ -1728,18 +1747,53 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
                   <table className="w-full border-2 border-black text-sm print:text-[8px] compact-table" style={{ fontSize: '10px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
                     <thead className="bg-gray-100">
                       <tr className="bg-blue-50">
-                        <th rowSpan={2} className="border border-black p-1 text-center font-bold">Location</th>
-                        <th colSpan={5} className="border border-black p-1 text-center font-bold">Exposure Level (mR/hr)</th>
-                        <th rowSpan={2} className="border border-black p-1 text-center font-bold">Result (mR in 1 hr)</th>
-                        <th rowSpan={2} className="border border-black p-1 text-center font-bold">Result (mGy in 1 hr)</th>
-                        <th rowSpan={2} className="border border-black p-1 text-center font-bold">Remarks</th>
+                        {/* Avoid rowSpan — html2canvas leaves a white patch over rowspan header cells in PDF */}
+                        <th
+                          className="border border-black p-0 text-center font-bold bg-gray-50"
+                          style={{ borderBottom: "none", padding: 0, backgroundColor: "#f9f9f9" }}
+                        >
+                          <div className="header-cell-simulated" style={{ fontWeight: 700, fontSize: "10px" }}>Location</div>
+                        </th>
+                        <th
+                          colSpan={5}
+                          className="border border-black p-0 text-center font-bold bg-gray-50"
+                          style={{ padding: 0, backgroundColor: "#f9f9f9" }}
+                        >
+                          <div style={{ padding: "4px 2px", fontWeight: 700, fontSize: "10px" }}>Exposure Level (mR/hr)</div>
+                        </th>
+                        <th
+                          className="border border-black p-0 text-center font-bold bg-gray-50"
+                          style={{ borderBottom: "none", padding: 0, backgroundColor: "#f9f9f9" }}
+                        >
+                          <div className="header-cell-simulated" style={{ fontWeight: 700, fontSize: "10px" }}>Result (mR in 1 hr)</div>
+                        </th>
+                        <th
+                          className="border border-black p-0 text-center font-bold bg-gray-50"
+                          style={{ borderBottom: "none", padding: 0, backgroundColor: "#f9f9f9" }}
+                        >
+                          <div className="header-cell-simulated" style={{ fontWeight: 700, fontSize: "10px" }}>Result (mGy in 1 hr)</div>
+                        </th>
+                        <th
+                          className="border border-black p-0 text-center font-bold bg-gray-50"
+                          style={{ borderBottom: "none", padding: 0, backgroundColor: "#f9f9f9" }}
+                        >
+                          <div className="header-cell-simulated" style={{ fontWeight: 700, fontSize: "10px" }}>Remarks</div>
+                        </th>
                       </tr>
-                      <tr className="bg-gray-50 text-[10px]">
-                        <th className="border border-black p-1 font-bold">Left</th>
-                        <th className="border border-black p-1 font-bold">Right</th>
-                        <th className="border border-black p-1 font-bold">Front</th>
-                        <th className="border border-black p-1 font-bold">Back</th>
-                        <th className="border border-black p-1 font-bold">Top</th>
+                      <tr style={{ height: "20px" }}>
+                        <th className="border border-black p-0 bg-gray-50 header-spacer-cell" style={{ borderTop: "none", padding: 0, backgroundColor: "#f9f9f9" }} />
+                        {["Left", "Right", "Front", "Back", "Top"].map((dir) => (
+                          <th
+                            key={dir}
+                            className="border border-black p-0 text-center font-bold bg-gray-50"
+                            style={{ padding: 0, backgroundColor: "#f9f9f9", fontSize: "10px" }}
+                          >
+                            <div style={{ padding: "4px 2px" }}>{dir}</div>
+                          </th>
+                        ))}
+                        <th className="border border-black p-0 bg-gray-50 header-spacer-cell" style={{ borderTop: "none", padding: 0, backgroundColor: "#f9f9f9" }} />
+                        <th className="border border-black p-0 bg-gray-50 header-spacer-cell" style={{ borderTop: "none", padding: 0, backgroundColor: "#f9f9f9" }} />
+                        <th className="border border-black p-0 bg-gray-50 header-spacer-cell" style={{ borderTop: "none", padding: 0, backgroundColor: "#f9f9f9" }} />
                       </tr>
                     </thead>
                     <tbody>
@@ -1773,14 +1827,26 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
                   </table>
                 </div>
 
-                {/* Formula and Note Block */}
+                {/* Formula and Note Block — solid borders (no gray/blue fills) so PDF has no white patches */}
                 <div className="mt-4 space-y-2 print:mt-1">
-                  <div className="bg-gray-50 p-2 border border-dashed border-black text-center font-mono text-[9px] print:text-[8px]">
-                    Max Leakage (mR in 1 hr) = (Workload × Max Exposure) / (60 × mA) | [1 mGy = 114 mR]
-                  </div>
-                  <div className="bg-blue-50 p-2 border-l-4 border-blue-500 rounded text-[9px] print:text-[8px] leading-tight">
-                    <strong>Note:</strong> The maximum leakage radiation from the X-ray tube housing and collimator, measured at a distance of 1 meter from the focus, averaged over an area of 100 cm², shall not exceed 1.0 mGy in one hour.
-                  </div>
+                  <table className="w-full border border-black compact-table" style={{ borderCollapse: "collapse", fontSize: "9px" }}>
+                    <tbody>
+                      <tr>
+                        <td className="border border-black text-center font-mono" style={{ padding: "4px 6px" }}>
+                          Max Leakage (mR in 1 hr) = (Workload × Max Exposure) / (60 × mA) | [1 mGy = 114 mR]
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                  <table className="w-full border border-black compact-table" style={{ borderCollapse: "collapse", fontSize: "9px" }}>
+                    <tbody>
+                      <tr>
+                        <td className="border border-black leading-tight" style={{ padding: "4px 6px", textAlign: "left" }}>
+                          <strong>Note:</strong> The maximum leakage radiation from the X-ray tube housing and collimator, measured at a distance of 1 meter from the focus, averaged over an area of 100 cm², shall not exceed 1.0 mGy in one hour.
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
                 </div>
               </div>
             )}
@@ -2032,6 +2098,20 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
         .is-generating-pdf th {
           padding-top: 4px !important;
           padding-bottom: 12px !important;
+        }
+        /* Tube Housing Leakage: simulated merged headers (no rowspan white patches in PDF) */
+        .header-cell-simulated {
+          padding-top: 5px;
+          padding-bottom: 0px;
+        }
+        .is-generating-pdf .header-cell-simulated {
+          padding-top: 0px !important;
+          padding-bottom: 0px !important;
+        }
+        .is-generating-pdf .header-spacer-cell {
+          padding-top: 0 !important;
+          padding-bottom: 0 !important;
+          height: 20px !important;
         }
         .fixed-report-pdf .report-pdf-page-shell,
         .fixed-report-pdf .report-pdf-last-page-shell {

@@ -1,7 +1,7 @@
 // components/TestTables/ConsistencyOfRadiationOutput.tsx
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Plus, Trash2, Loader2, Edit3, Save } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
@@ -66,6 +66,19 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
         operator: '<=',
         value: '0.05',
     });
+
+    const csvDataRef = useRef(csvData);
+    csvDataRef.current = csvData;
+
+    const getField = (row: any) => String(row?.['Field Name'] ?? row?.fieldName ?? '').trim();
+    const getValue = (row: any) => {
+        const v = row?.['Value'] ?? row?.value;
+        return v === undefined || v === null ? '' : String(v).trim();
+    };
+    const getRowIndex = (row: any) => {
+        const n = parseInt(String(row?.['Row Index'] ?? row?.rowIndex ?? '0'), 10);
+        return Number.isNaN(n) ? 0 : n;
+    };
 
     // Auto-calculate Mean, COV, and Remarks
     useEffect(() => {
@@ -145,6 +158,11 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
             setIsLoading(true);
             try {
                 const res = await getConsistencyOfRadiationOutputByServiceIdForInventionalRadiology(serviceId, tubeId);
+                // Do not overwrite UI if Excel/CSV data arrived while this request was in flight
+                if (csvDataRef.current && csvDataRef.current.length > 0) {
+                    setIsLoading(false);
+                    return;
+                }
                 const data = res?.data;
 
                 if (data) {
@@ -184,6 +202,10 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
                     setIsEditing(true);
                 }
             } catch (err: any) {
+                if (csvDataRef.current && csvDataRef.current.length > 0) {
+                    setIsLoading(false);
+                    return;
+                }
                 if (err.response?.status !== 404) {
                     toast.error('Failed to load test data');
                 }
@@ -197,94 +219,155 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
         loadTest();
     }, [propTestId, serviceId, tubeId, csvData]);
 
-    // CSV Data Injection
+    // CSV Data Injection — horizontal (Table2_ExpN) + vertical (Table1_Output / Table1_MeasN / Table1_mas)
     useEffect(() => {
-        if (csvData && csvData.length > 0) {
-            const tableRows = csvData.filter(
-                (r) =>
-                    r['Field Name'] === 'Table1_kv' ||
-                    r['Field Name'] === 'Table1_ma' ||
-                    r['Field Name']?.startsWith('Table2_Exp')
-            );
-            if (tableRows.length > 0) {
-                const measHeaders = csvData
-                    .filter((r) => r['Field Name'] === 'MeasHeader')
-                    .map((r) => r['Value'])
-                    .filter(Boolean);
-                const maxExpIdx = csvData
-                    .filter((r) => /^Table2_Exp\d+$/i.test(String(r['Field Name'] || '')))
-                    .reduce((max, r) => {
-                        const n = parseInt(String(r['Field Name']).replace(/Table2_Exp/i, ''), 10);
-                        return isNaN(n) ? max : Math.max(max, n);
-                    }, 0);
-                const outputColCount = measHeaders.length > 0
-                    ? measHeaders.length
-                    : maxExpIdx > 0
-                      ? maxExpIdx
-                      : 5;
-                if (measHeaders.length > 0) {
-                    setHeaders(measHeaders);
-                } else if (maxExpIdx > 0) {
-                    setHeaders(Array.from({ length: maxExpIdx }, (_, i) => `Meas ${i + 1}`));
+        if (!csvData || csvData.length === 0) return;
+
+        const isKvField = (f: string) =>
+            f === 'Table1_kv' || f === 'Table1_kvp' || f === 'Table1_kV' || f === 'OutputRow_kvp';
+        const isMasField = (f: string) =>
+            f === 'Table1_ma' || f === 'Table1_mas' || f === 'Table1_mAs' || f === 'Table1_mA' || f === 'mAs';
+        const isOutputField = (f: string) =>
+            /^Table2_Exp\d+$/i.test(f) ||
+            /^Table1_Meas\d+$/i.test(f) ||
+            /^Table1_Output(_\d+)?$/i.test(f) ||
+            /^Result_\d+$/i.test(f);
+
+        const tableRows = csvData.filter((r) => {
+            const f = getField(r);
+            return isKvField(f) || isMasField(f) || isOutputField(f);
+        });
+
+        if (tableRows.length > 0) {
+            const measHeaders = csvData
+                .filter((r) => getField(r) === 'MeasHeader')
+                .map((r) => getValue(r))
+                .filter(Boolean);
+
+            const maxExpIdx = csvData.reduce((max, r) => {
+                const f = getField(r);
+                const m =
+                    f.match(/^Table2_Exp(\d+)$/i) ||
+                    f.match(/^Table1_Meas(\d+)$/i) ||
+                    f.match(/^Result_(\d+)$/i) ||
+                    f.match(/^Table1_Output_(\d+)$/i);
+                if (!m) {
+                    if (/^Table1_Output$/i.test(f)) return Math.max(max, 1);
+                    return max;
                 }
+                const n = /^Result_|^Table1_Output_/i.test(f)
+                    ? parseInt(m[1], 10) + 1
+                    : parseInt(m[1], 10);
+                return isNaN(n) ? max : Math.max(max, n);
+            }, 0);
 
-                const rowIndices = Array.from(new Set(tableRows.map((r) => parseInt(r['Row Index'], 10)))).sort((a, b) => a - b);
-                const newRows = rowIndices.map((idx, i) => {
-                    const kv = csvData.find((r) => r['Field Name'] === 'Table1_kv' && parseInt(r['Row Index'], 10) === idx)?.['Value'] || '';
-                    const ma = csvData.find((r) => r['Field Name'] === 'Table1_ma' && parseInt(r['Row Index'], 10) === idx)?.['Value'] || '';
-                    const time = csvData.find((r) => r['Field Name'] === 'Table1_time' && parseInt(r['Row Index'], 10) === idx)?.['Value'] || '';
-                    const mas = ma && time ? String(parseFloat(ma) * parseFloat(time)) : ma;
-                    const outputs = Array.from({ length: outputColCount }, (_, n) =>
-                        csvData.find(
-                            (r) => r['Field Name'] === `Table2_Exp${n + 1}` && parseInt(r['Row Index'], 10) === idx
-                        )?.['Value'] ?? ''
-                    );
+            const outputColCount =
+                measHeaders.length > 0 ? measHeaders.length : maxExpIdx > 0 ? maxExpIdx : 5;
 
-                    return {
-                        id: String(i + 1),
-                        kvp: kv,
-                        mas,
-                        outputs,
-                        mean: '',
-                        cov: '',
-                        remarks: '' as 'Pass' | 'Fail' | '',
-                    };
-                });
-                if (newRows.length > 0) setOutputRows(newRows);
+            if (measHeaders.length > 0) {
+                setHeaders(measHeaders);
+            } else if (maxExpIdx > 0) {
+                setHeaders(Array.from({ length: maxExpIdx }, (_, i) => `Meas ${i + 1}`));
             }
 
-            // FDD
-            const fddVal = csvData.find(r => r['Field Name'] === 'Table1_fcd')?.['Value']; // FCD/FDD usually same in context
-            if (fddVal) setFdd(fddVal);
+            const rowIndices = Array.from(new Set(tableRows.map((r) => getRowIndex(r)))).sort(
+                (a, b) => a - b
+            );
 
-            // Tolerance operator + value
-            const tolOp = csvData.find(r =>
-                r['Field Name'] === 'ToleranceOperator' ||
-                r['Field Name'] === 'Tolerance_Operator' ||
-                r['Field Name'] === 'Tolerance Sign' ||
-                r['Field Name'] === 'Tolerance_Sign'
-            )?.['Value'];
-            const tol = csvData.find(r =>
-                r['Field Name'] === 'Tolerance' ||
-                r['Field Name'] === 'Tolerance_Value' ||
-                r['Field Name'] === 'Tolerance Value'
-            )?.['Value'];
-            if (tolOp || tol) {
-                setTolerance(prev => ({
-                    ...prev,
-                    ...(tolOp && ['<=', '<', '>=', '>'].includes(String(tolOp).trim())
-                        ? { operator: String(tolOp).trim() as '<=' | '<' | '>=' | '>' }
-                        : {}),
-                    ...(tol ? { value: String(tol).trim() } : {}),
-                }));
-            }
+            // Horizontal: FDD on row 0, measurements on 1+. Vertical: kv/mas/output on row 0.
+            const dataIndices =
+                rowIndices.some((i) => i > 0) &&
+                rowIndices.some((i) => i === 0) &&
+                !tableRows.some((r) => getRowIndex(r) === 0 && isOutputField(getField(r)))
+                    ? rowIndices.filter((i) => i > 0)
+                    : rowIndices;
 
-            if (!testId) {
-                setIsEditing(true);
-                setIsSaved(false);
-            }
+            const resolveOutput = (idx: number, n: number): string => {
+                const candidates = [
+                    `Table2_Exp${n}`,
+                    `Table1_Meas${n}`,
+                    n === 1 ? 'Table1_Output' : '',
+                    `Table1_Output_${n - 1}`,
+                    `Result_${n - 1}`,
+                ].filter(Boolean);
+                for (const name of candidates) {
+                    const hit = csvData.find((r) => getField(r) === name && getRowIndex(r) === idx);
+                    if (hit && getValue(hit) !== '') return getValue(hit);
+                }
+                return '';
+            };
+
+            const newRows = dataIndices.map((idx, i) => {
+                const kv = getValue(csvData.find((r) => isKvField(getField(r)) && getRowIndex(r) === idx));
+                // UI field is mAs — use Excel mAs/mA value as-is (do NOT multiply by Time)
+                const explicitMas = getValue(
+                    csvData.find(
+                        (r) =>
+                            (getField(r) === 'Table1_mas' || getField(r) === 'Table1_mAs') &&
+                            getRowIndex(r) === idx
+                    )
+                );
+                const maRaw = getValue(
+                    csvData.find(
+                        (r) =>
+                            (getField(r) === 'Table1_ma' ||
+                                getField(r) === 'Table1_mA' ||
+                                getField(r) === 'mAs') &&
+                            getRowIndex(r) === idx
+                    )
+                );
+                const mas = explicitMas || maRaw;
+
+                return {
+                    id: String(i + 1),
+                    kvp: kv,
+                    mas,
+                    outputs: Array.from({ length: outputColCount }, (_, n) => resolveOutput(idx, n + 1)),
+                    mean: '',
+                    cov: '',
+                    remarks: '' as 'Pass' | 'Fail' | '',
+                };
+            });
+
+            const usable = newRows.filter(
+                (r) =>
+                    r.kvp.trim() !== '' ||
+                    r.mas.trim() !== '' ||
+                    r.outputs.some((o) => String(o).trim() !== '')
+            );
+            if (usable.length > 0) setOutputRows(usable);
         }
-    }, [csvData, testId]);
+
+        const fddVal =
+            getValue(csvData.find((r) => getField(r) === 'Table1_fcd')) ||
+            getValue(csvData.find((r) => getField(r) === 'Table1_fdd'));
+        if (fddVal) setFdd(fddVal);
+
+        const tolOp = getValue(
+            csvData.find((r) =>
+                ['ToleranceOperator', 'Tolerance_Operator', 'Tolerance Sign', 'Tolerance_Sign'].includes(
+                    getField(r)
+                )
+            )
+        );
+        const tol = getValue(
+            csvData.find((r) =>
+                ['Tolerance', 'Tolerance_Value', 'Tolerance Value'].includes(getField(r))
+            )
+        );
+        if (tolOp || tol) {
+            setTolerance((prev) => ({
+                ...prev,
+                ...(tolOp && ['<=', '<', '>=', '>'].includes(String(tolOp).trim())
+                    ? { operator: String(tolOp).trim() as '<=' | '<' | '>=' | '>' }
+                    : {}),
+                ...(tol ? { value: String(tol).trim() } : {}),
+            }));
+        }
+
+        setIsEditing(true);
+        setIsSaved(false);
+    }, [csvData]);
 
     // Save / Update
     const handleSave = async () => {

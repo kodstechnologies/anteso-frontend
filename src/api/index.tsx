@@ -5194,20 +5194,33 @@ export const addExposureRateTableTopForFixedRadioFluro = async (serviceId: strin
 
 export const getExposureRateTableTopByTestIdForFixedRadioFluro = async (testId: string) => {
     const token = Cookies.get("accessToken");
-    const res = await api.get(
-        `/service-report/fixed-radio-fluro/exposure-rate/${testId}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-    );
-    return res.data;
+    try {
+        const res = await api.get(
+            `/service-report/fixed-radio-fluro/exposure-rate/${testId}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+        // Prefer unwrapped document; keep envelope fallback for callers that check success/data
+        return res.data?.data ?? res.data;
+    } catch (error: any) {
+        if (error.response?.status === 404) return null;
+        throw error;
+    }
 };
 
 export const getExposureRateByServiceIdForFixedRadioFluro = async (serviceId: string) => {
     const token = Cookies.get("accessToken");
-    const res = await api.get(
-        `/service-report/fixed-radio-fluro/exposure-rate-by-service/${serviceId}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-    );
-    return res.data;
+    try {
+        const res = await api.get(
+            `/service-report/fixed-radio-fluro/exposure-rate-by-service/${serviceId}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+        return res.data?.data ?? res.data;
+    } catch (error: any) {
+        if (error.response?.status === 404 || error.response?.data?.data === null) {
+            return null;
+        }
+        throw error;
+    }
 };
 
 export const updateExposureRateTableTopForFixedRadioFluro = async (testId: string, payload: any) => {

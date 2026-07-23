@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 import {
   addExposureRateTableTopForFixedRadioFluro,
   getExposureRateTableTopByTestIdForFixedRadioFluro,
+  getExposureRateByServiceIdForFixedRadioFluro,
   updateExposureRateTableTopForFixedRadioFluro,
 } from "../../../../../../api";
 
@@ -25,6 +26,14 @@ interface ExposureRateTableTopProps {
   initialData?: any;
 }
 
+const unwrapTestData = (raw: any) => {
+  if (!raw) return null;
+  if (raw.data && typeof raw.data === "object" && (raw.data.rows || raw.data._id)) {
+    return raw.data;
+  }
+  return raw;
+};
+
 const ExposureRateTableTop: React.FC<ExposureRateTableTopProps> = ({
   serviceId,
   testId: initialTestId = null,
@@ -36,7 +45,7 @@ const ExposureRateTableTop: React.FC<ExposureRateTableTopProps> = ({
   const [isSaved, setIsSaved] = useState(!!initialTestId);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [isLoading, setIsLoading] = useState(false); // Only show loader when actually loading
+  const [isLoading, setIsLoading] = useState(true);
 
   const [rows, setRows] = useState<Row[]>([
     { id: "1", distance: "100", appliedKv: "80", appliedMa: "100", exposure: "", remark: "" },
@@ -94,66 +103,99 @@ const ExposureRateTableTop: React.FC<ExposureRateTableTopProps> = ({
     });
   }, [rows, aecTolerance, nonAecTolerance]);
 
-  // Only load data if testId exists
+  const applySavedData = (data: any) => {
+    if (!data) return;
+    setTestId(data._id || null);
+    if (Array.isArray(data.rows) && data.rows.length > 0) {
+      setRows(
+        data.rows.map((r: any, i: number) => ({
+          id: `${Date.now()}-${i}`,
+          distance: r.distance != null ? String(r.distance) : "",
+          appliedKv: r.appliedKv != null ? String(r.appliedKv) : "",
+          appliedMa: r.appliedMa != null ? String(r.appliedMa) : "",
+          exposure: r.exposure != null ? String(r.exposure) : "",
+          remark: r.remark || "",
+        }))
+      );
+    }
+    setAecTolerance(data.aecTolerance != null ? String(data.aecTolerance) : "10");
+    setNonAecTolerance(data.nonAecTolerance != null ? String(data.nonAecTolerance) : "5");
+    setMinFocusDistance(data.minFocusDistance != null ? String(data.minFocusDistance) : "30");
+    setIsSaved(true);
+    setIsEditing(false);
+  };
+
+  // Load existing saved test by serviceId / testId (Disclosure remounts panels when closed)
   useEffect(() => {
-    if (!initialTestId) {
+    const hasCsvImport =
+      refreshKey != null &&
+      refreshKey > 0 &&
+      initialData &&
+      Array.isArray(initialData.rows) &&
+      initialData.rows.length > 0;
+
+    if (hasCsvImport) {
       setIsLoading(false);
       return;
     }
 
     const loadTest = async () => {
+      if (!serviceId) {
+        setIsLoading(false);
+        return;
+      }
+
       setIsLoading(true);
       try {
-        const data = await getExposureRateTableTopByTestIdForFixedRadioFluro(initialTestId);
-        if (data && data.rows) {
-          setRows(
-            data.rows.map((r: any, i: number) => ({
-              id: Date.now().toString() + i,
-              distance: r.distance || "",
-              appliedKv: r.appliedKv || "",
-              appliedMa: r.appliedMa || "",
-              exposure: r.exposure || "",
-              remark: r.remark || "",
-            }))
-          );
-          setAecTolerance(data.aecTolerance || "10");
-          setNonAecTolerance(data.nonAecTolerance || "5");
-          setMinFocusDistance(data.minFocusDistance || "30");
-          setIsSaved(true);
-          setIsEditing(false);
+        let data = null;
+        if (initialTestId) {
+          data = unwrapTestData(await getExposureRateTableTopByTestIdForFixedRadioFluro(initialTestId));
+        } else {
+          data = unwrapTestData(await getExposureRateByServiceIdForFixedRadioFluro(serviceId));
         }
-      } catch (err) {
-        toast.error("Failed to load test data");
+
+        if (data?._id) {
+          applySavedData(data);
+        } else {
+          setIsSaved(false);
+          setIsEditing(true);
+        }
+      } catch (err: any) {
+        if (err?.response?.status !== 404) {
+          toast.error("Failed to load test data");
+        }
+        setIsSaved(false);
+        setIsEditing(true);
       } finally {
         setIsLoading(false);
       }
     };
 
     loadTest();
-  }, [initialTestId]);
+  }, [initialTestId, serviceId, refreshKey]);
 
-  // Load CSV data when initialData is provided
+  // Load CSV data when initialData is provided after an import
   useEffect(() => {
-    if (initialData && refreshKey !== undefined) {
-      console.log('ExposureRateTableTop: Loading CSV data', initialData);
-      if (initialData.rows && initialData.rows.length > 0) {
-        setRows(initialData.rows.map((r: any, i: number) => ({
-          id: String(i + 1),
-          distance: String(r.distance || ''),
-          appliedKv: String(r.appliedKv || ''),
-          appliedMa: String(r.appliedMa || ''),
-          exposure: String(r.exposure || ''),
-          remark: r.remark || '',
-        })));
-      }
-      if (initialData.aecTolerance) setAecTolerance(String(initialData.aecTolerance));
-      if (initialData.nonAecTolerance) setNonAecTolerance(String(initialData.nonAecTolerance));
-      if (initialData.minFocusDistance) setMinFocusDistance(String(initialData.minFocusDistance));
-      setIsSaved(false);
-      setIsEditing(true);
-    }
-  }, [refreshKey, initialData]);
+    if (refreshKey == null || refreshKey <= 0) return;
+    if (!initialData || !Array.isArray(initialData.rows) || initialData.rows.length === 0) return;
 
+    setRows(
+      initialData.rows.map((r: any, i: number) => ({
+        id: String(i + 1),
+        distance: String(r.distance || ""),
+        appliedKv: String(r.appliedKv || ""),
+        appliedMa: String(r.appliedMa || ""),
+        exposure: String(r.exposure || ""),
+        remark: r.remark || "",
+      }))
+    );
+    if (initialData.aecTolerance) setAecTolerance(String(initialData.aecTolerance));
+    if (initialData.nonAecTolerance) setNonAecTolerance(String(initialData.nonAecTolerance));
+    if (initialData.minFocusDistance) setMinFocusDistance(String(initialData.minFocusDistance));
+    setIsSaved(false);
+    setIsEditing(true);
+    setIsLoading(false);
+  }, [refreshKey, initialData]);
 
   // Save handler
   const handleSave = async () => {
@@ -191,18 +233,33 @@ const ExposureRateTableTop: React.FC<ExposureRateTableTopProps> = ({
 
     setIsSaving(true);
     try {
+      let savedTestId = testId;
       if (testId) {
         await updateExposureRateTableTopForFixedRadioFluro(testId, payload);
         toast.success("Updated successfully!");
       } else {
         const res = await addExposureRateTableTopForFixedRadioFluro(serviceId, payload);
-        const newId = res.data?._id || res.data?.testId;
-        setTestId(newId);
-        onTestSaved?.(newId);
+        savedTestId = res?.data?._id || res?.data?.testId || res?._id || null;
+        setTestId(savedTestId);
+        if (savedTestId) onTestSaved?.(savedTestId);
         toast.success("Saved successfully!");
       }
-      setIsSaved(true);
-      setIsEditing(false);
+
+      // Re-load from server so remounts / view page always see persisted rows
+      try {
+        const reloaded = savedTestId
+          ? unwrapTestData(await getExposureRateTableTopByTestIdForFixedRadioFluro(savedTestId))
+          : unwrapTestData(await getExposureRateByServiceIdForFixedRadioFluro(serviceId));
+        if (reloaded?._id) {
+          applySavedData(reloaded);
+        } else {
+          setIsSaved(true);
+          setIsEditing(false);
+        }
+      } catch {
+        setIsSaved(true);
+        setIsEditing(false);
+      }
     } catch (err: any) {
       toast.error(err?.response?.data?.message || "Save failed");
     } finally {

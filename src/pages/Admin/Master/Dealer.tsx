@@ -93,8 +93,8 @@ const Dealers = () => {
     const [pageSize, setPageSize] = useState(PAGE_SIZES[0]);
     const [selectedRecords, setSelectedRecords] = useState<any[]>([]);
     const [sortStatus, setSortStatus] = useState<DataTableSortStatus>({
-        columnAccessor: 'name',
-        direction: 'asc',
+        columnAccessor: 'createdAt',
+        direction: 'desc',
     });
 
     const fetchDealers = async (filters: DealerListFilters = {}) => {
@@ -173,6 +173,12 @@ const Dealers = () => {
                 return sortStatus.direction === 'asc'
                     ? aLabel.localeCompare(bLabel)
                     : bLabel.localeCompare(aLabel);
+            }
+
+            if (sortStatus.columnAccessor === 'createdAt') {
+                const aTime = new Date(a.createdAt || 0).getTime();
+                const bTime = new Date(b.createdAt || 0).getTime();
+                return sortStatus.direction === 'asc' ? aTime - bTime : bTime - aTime;
             }
 
             const aValue = a[sortStatus.columnAccessor];

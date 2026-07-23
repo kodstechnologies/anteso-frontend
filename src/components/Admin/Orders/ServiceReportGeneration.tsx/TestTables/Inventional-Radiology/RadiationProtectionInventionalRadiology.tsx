@@ -61,47 +61,48 @@ const RadiationProtectionInterventionalRadiology: React.FC<Props> = ({ serviceId
         { id: "9", location: "Patient Waiting Area", mRPerHr: "", mRPerWeek: "", result: "", calculatedResult: "", category: "public" },
     ]);
 
-    // Formula: mR/week = (Workload × mR/hr) / (60 × mA used) (Simplified relative to CBCT impl?)
-    // Actually, let's stick exactly to Dental Cone logic user pointed to:
-    // mR/week = (Workload × mR/hr) / (60 × mA)
-    const calculateMRPerWeek = (mRPerHr: string) => {
+    // Formula: mR/week = (Workload × mR/hr) / (60 × mA used)
+    const calculateMRPerWeek = (mRPerHr: string, mAOverride?: string, workloadOverride?: string) => {
         const hr = parseFloat(mRPerHr) || 0;
-        const mA = parseFloat(appliedCurrent) || 1;
-        const wl = parseFloat(workload) || 0;
+        const mA = parseFloat(mAOverride ?? appliedCurrent) || 1;
+        const wl = parseFloat(workloadOverride ?? workload) || 0;
         if (hr <= 0 || mA <= 0 || wl <= 0) return "";
         return ((wl * hr) / (60 * mA)).toFixed(3);
     };
 
-    // Formula: Result = max radiation level × Workload / (60 × Applied Current (mA))
-    // Wait, in CBCT code: result just stores Pass/Fail logic. 
-    // calculatedResult is the numeric value same as mRPerWeek?
-    // Looking at CBCT code:
-    // const calculateMRPerWeek = ... same form ...
-    // const calculateResult = ... same form ... 
-    // Wait, line 62 in CBCT: `return ((maxRadiationLevel * wl) / (60 * mA)).toFixed(3);`
-    // line 54 in CBCT: `return ((wl * hr) / (60 * mA)).toFixed(3);`
-    // They seem identical. User might want redundancy or slight variation on display. I will keep as references.
-
-    const calculateNumericResult = (mRPerHr: string) => {
+    const calculateNumericResult = (mRPerHr: string, mAOverride?: string, workloadOverride?: string) => {
         const maxRadiationLevel = parseFloat(mRPerHr) || 0;
-        const wl = parseFloat(workload) || 0;
-        const mA = parseFloat(appliedCurrent) || 1;
+        const wl = parseFloat(workloadOverride ?? workload) || 0;
+        const mA = parseFloat(mAOverride ?? appliedCurrent) || 1;
         if (maxRadiationLevel <= 0 || wl <= 0 || mA <= 0) return "";
         return ((maxRadiationLevel * wl) / (60 * mA)).toFixed(3);
     };
 
+    const withCalculatedFields = (
+        item: Omit<LocationData, "mRPerWeek" | "calculatedResult" | "result"> &
+            Partial<Pick<LocationData, "mRPerWeek" | "calculatedResult" | "result">>,
+        mAOverride?: string,
+        workloadOverride?: string
+    ): LocationData => {
+        const mRPerWeek = calculateMRPerWeek(item.mRPerHr, mAOverride, workloadOverride);
+        const calculatedResult = calculateNumericResult(item.mRPerHr, mAOverride, workloadOverride);
+        const weekly = parseFloat(mRPerWeek) || 0;
+        const limit = item.category === "worker" ? 40 : 2;
+        const result = weekly > 0 ? (weekly <= limit ? "PASS" : "FAIL") : "";
+        return {
+            id: item.id,
+            location: item.location,
+            mRPerHr: item.mRPerHr,
+            category: item.category,
+            mRPerWeek,
+            calculatedResult,
+            result,
+        };
+    };
+
     useEffect(() => {
-        setLocations(prev =>
-            prev.map(item => {
-                const mRPerWeek = calculateMRPerWeek(item.mRPerHr);
-                const calculatedResult = calculateNumericResult(item.mRPerHr);
-                const weekly = parseFloat(mRPerWeek) || 0;
-                const limit = item.category === "worker" ? 40 : 2; // AERB Limits: 20mSv/yr ~ 40mR/week? Standard usually 20mSv/year (approx 40mrem/week for 50 weeks). Public 1mSv/year (approx 2mrem/week).
-                const result = weekly > 0 ? (weekly <= limit ? "PASS" : "FAIL") : "";
-                return { ...item, mRPerWeek, calculatedResult, result };
-            })
-        );
-    }, [locations.map(l => l.mRPerHr).join(), appliedCurrent, workload]);
+        setLocations((prev) => prev.map((item) => withCalculatedFields(item)));
+    }, [locations.map((l) => l.mRPerHr).join("|"), appliedCurrent, workload]);
 
     const addRow = (category: "worker" | "public") => {
         const newRow: LocationData = {
@@ -221,16 +222,21 @@ const RadiationProtectionInterventionalRadiology: React.FC<Props> = ({ serviceId
                     setExposureTime(data.exposureTime || "0.5");
                     setWorkload(data.workload || "5000");
                     if (Array.isArray(data.locations) && data.locations.length > 0) {
+                        const mA = data.appliedCurrent || "100";
+                        const wl = data.workload || "5000";
                         setLocations(
-                            data.locations.map((l: any, i: number) => ({
-                                id: Date.now().toString() + i,
-                                location: l.location || "",
-                                mRPerHr: l.mRPerHr || "",
-                                mRPerWeek: l.mRPerWeek || "",
-                                result: l.result || "",
-                                calculatedResult: l.calculatedResult || "",
-                                category: l.category || "worker",
-                            }))
+                            data.locations.map((l: any, i: number) =>
+                                withCalculatedFields(
+                                    {
+                                        id: Date.now().toString() + i,
+                                        location: l.location || "",
+                                        mRPerHr: l.mRPerHr || "",
+                                        category: (l.category || "worker") as "worker" | "public",
+                                    },
+                                    mA,
+                                    wl
+                                )
+                            )
                         );
                     }
                     setIsSaved(true);
@@ -254,49 +260,124 @@ const RadiationProtectionInterventionalRadiology: React.FC<Props> = ({ serviceId
 
     // CSV Data Injection — survey date & calibration are NOT taken from Excel
     useEffect(() => {
-        if (csvData && csvData.length > 0) {
-            setSurveyDate(defaultSurveyDate);
+        if (!csvData || csvData.length === 0) return;
 
-            const maVal = csvData.find(r => r['Field Name'] === 'Table1_appliedCurrent')?.['Value'];
-            if (maVal) setAppliedCurrent(maVal);
+        const getField = (r: any) => String(r?.["Field Name"] ?? r?.fieldName ?? "").trim();
+        const getValue = (r: any) => {
+            const v = r?.["Value"] ?? r?.value;
+            return v === undefined || v === null ? "" : String(v).trim();
+        };
+        const getRowIndex = (r: any) => {
+            const n = parseInt(String(r?.["Row Index"] ?? r?.rowIndex ?? "0"), 10);
+            return Number.isNaN(n) ? 0 : n;
+        };
+        const findValue = (...names: string[]) => {
+            const hit = csvData.find((r) => names.some((n) => getField(r).toLowerCase() === n.toLowerCase()));
+            return hit ? getValue(hit) : "";
+        };
 
-            const kvVal = csvData.find(r => r['Field Name'] === 'Table1_appliedVoltage')?.['Value'];
-            if (kvVal) setAppliedVoltage(kvVal);
+        setSurveyDate(defaultSurveyDate);
 
-            const timeVal = csvData.find(r => r['Field Name'] === 'Table1_exposureTime')?.['Value'];
-            if (timeVal) setExposureTime(timeVal);
+        const maVal =
+            findValue(
+                "Table1_appliedCurrent",
+                "AppliedCurrent",
+                "appliedCurrent",
+                "Applied Current",
+                "Table1_ma"
+            ) || appliedCurrent;
+        const kvVal =
+            findValue(
+                "Table1_appliedVoltage",
+                "AppliedVoltage",
+                "appliedVoltage",
+                "Applied Voltage",
+                "Table1_kv"
+            ) || appliedVoltage;
+        const timeVal =
+            findValue(
+                "Table1_exposureTime",
+                "ExposureTime",
+                "exposureTime",
+                "Exposure Time",
+                "Table1_time"
+            ) || exposureTime;
+        const workloadVal =
+            findValue("Table1_workload", "Workload", "workload") || workload;
 
-            const workloadVal = csvData.find(r => r['Field Name'] === 'Table1_workload')?.['Value'];
-            if (workloadVal) setWorkload(workloadVal);
+        if (maVal) setAppliedCurrent(maVal);
+        if (kvVal) setAppliedVoltage(kvVal);
+        if (timeVal) setExposureTime(timeVal);
+        if (workloadVal) setWorkload(workloadVal);
 
-            // Locations
-            const locationRows = csvData.filter(r => r['Field Name'] === 'Table1_location' || r['Field Name'] === 'Table1_mRPerHr');
-            if (locationRows.length > 0) {
-                const rowIndices = Array.from(new Set(locationRows.map(r => parseInt(r['Row Index'])))).sort((a, b) => a - b);
-                const newLocations = rowIndices.map((idx, i) => {
-                    const loc = csvData.find(r => r['Field Name'] === 'Table1_location' && parseInt(r['Row Index']) === idx)?.['Value'] || "";
-                    const mrhr = csvData.find(r => r['Field Name'] === 'Table1_mRPerHr' && parseInt(r['Row Index']) === idx)?.['Value'] || "";
-                    const cat = csvData.find(r => r['Field Name'] === 'Table1_category' && parseInt(r['Row Index']) === idx)?.['Value'] || "worker";
+        const locationRows = csvData.filter((r) => {
+            const f = getField(r).toLowerCase();
+            return (
+                f === "table1_location" ||
+                f === "table1_mrperhr" ||
+                f === "table1_mgyperhr" ||
+                f === "location" ||
+                f === "mr/hr" ||
+                f === "mgy/hr"
+            );
+        });
 
-                    return {
-                        id: Date.now().toString() + i,
-                        location: loc,
-                        mRPerHr: mrhr,
-                        mRPerWeek: "",
-                        result: "",
-                        calculatedResult: "",
-                        category: cat as any
-                    };
-                });
-                if (newLocations.length > 0) setLocations(newLocations);
-            }
+        if (locationRows.length > 0) {
+            const rowIndices = Array.from(new Set(locationRows.map((r) => getRowIndex(r)))).sort(
+                (a, b) => a - b
+            );
+            const newLocations = rowIndices
+                .map((idx, i) => {
+                    const loc =
+                        getValue(
+                            csvData.find(
+                                (r) =>
+                                    ["table1_location", "location"].includes(getField(r).toLowerCase()) &&
+                                    getRowIndex(r) === idx
+                            )
+                        ) || "";
+                    const mrhr =
+                        getValue(
+                            csvData.find(
+                                (r) =>
+                                    [
+                                        "table1_mrperhr",
+                                        "table1_mgyperhr",
+                                        "mr/hr",
+                                        "mgy/hr",
+                                        "mrperhr",
+                                    ].includes(getField(r).toLowerCase()) && getRowIndex(r) === idx
+                            )
+                        ) || "";
+                    const catRaw =
+                        getValue(
+                            csvData.find(
+                                (r) =>
+                                    ["table1_category", "category"].includes(getField(r).toLowerCase()) &&
+                                    getRowIndex(r) === idx
+                            )
+                        ) || "worker";
+                    const cat = /public/i.test(catRaw) ? "public" : "worker";
 
-            if (!isSaved) {
-                setIsEditing(true);
-            }
-            setIsSaved(false);
+                    return withCalculatedFields(
+                        {
+                            id: `${Date.now()}-${idx}-${i}`,
+                            location: loc,
+                            mRPerHr: mrhr,
+                            category: cat,
+                        },
+                        maVal,
+                        workloadVal
+                    );
+                })
+                .filter((l) => l.location.trim() !== "" || l.mRPerHr.trim() !== "");
+
+            if (newLocations.length > 0) setLocations(newLocations);
         }
-    }, [csvData, isSaved, defaultSurveyDate]);
+
+        setIsEditing(true);
+        setIsSaved(false);
+    }, [csvData, defaultSurveyDate]);
 
     const handleSave = async () => {
         if (!serviceId) {

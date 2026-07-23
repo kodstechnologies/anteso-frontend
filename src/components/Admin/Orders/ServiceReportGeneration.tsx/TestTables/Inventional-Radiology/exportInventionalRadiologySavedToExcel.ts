@@ -10,6 +10,9 @@ export interface InventionalRadiologySavedExportData {
   consistencyOfRadiationOutput?: any;
   linearityOfMasLoading?: any;
   measurementOfMaLinearity?: any;
+  /** Double-tube: Frontal / Lateral Measurement of mA Linearity (written with TEST suffix). */
+  measurementOfMaLinearityFrontal?: any;
+  measurementOfMaLinearityLateral?: any;
   lowContrastResolution?: any;
   highContrastResolution?: any;
   exposureRateTableTop?: any;
@@ -156,31 +159,57 @@ export const createInventionalRadiologySavedExcel = (
     addBlank();
   }
 
-  const mol = unwrap(data.measurementOfMaLinearity);
-  if (mol?.table2?.length > 0) {
+  const appendMeasurementOfMaLinearity = (raw: any, titleSuffix = "") => {
+    const mol = unwrap(raw);
+    if (!mol?.table2?.length) return;
     const t1 = mol.table1?.[0] || mol.table1 || {};
-    const hdrs = ["Meas 1", "Meas 2", "Meas 3"];
-    allData.push(["TEST: MEASUREMENT OF MA LINEARITY"]);
+    const maxOut = Math.max(
+      1,
+      ...(mol.table2 || []).map((r: any) => (Array.isArray(r.measuredOutputs) ? r.measuredOutputs.length : 0))
+    );
+    const savedHeaders = Array.isArray(mol.measurementHeaders) && mol.measurementHeaders.length > 0
+      ? mol.measurementHeaders.map((h: any, i: number) => String(h || `Meas ${i + 1}`))
+      : Array.isArray(mol.measHeaders) && mol.measHeaders.length > 0
+        ? mol.measHeaders.map((h: any, i: number) => String(h || `Meas ${i + 1}`))
+        : Array.from({ length: maxOut }, (_, i) => `Meas ${i + 1}`);
+    while (savedHeaders.length < maxOut) savedHeaders.push(`Meas ${savedHeaders.length + 1}`);
+    const hdrs = savedHeaders.slice(0, maxOut);
+    const headerCols = hdrs.map((_: string, i: number) => `Header ${i + 1}`);
+    allData.push([`TEST: MEASUREMENT OF MA LINEARITY${titleSuffix}`]);
     allData.push([
       "kVp",
       "Slice Thickness (mm)",
       "Time (ms)",
+      "Tolerance Operator",
       "Tolerance",
-      "Header 1",
-      "Header 2",
-      "Header 3",
+      ...headerCols,
       "mA Applied",
-      ...hdrs,
+      ...hdrs.map((_: string, i: number) => `Meas ${i + 1}`),
     ]);
     mol.table2.forEach((r: any, idx: number) => {
       const outs = (r.measuredOutputs || []).map((o: any) => (o == null ? "" : String(o)));
       const prefix =
         idx === 0
-          ? [t1.kvp ?? "", t1.sliceThickness ?? "", t1.time ?? "", mol.tolerance ?? "0.1", ...hdrs]
-          : ["", "", "", "", "", "", ""];
+          ? [
+              t1.kvp ?? "",
+              t1.sliceThickness ?? "",
+              t1.time ?? "",
+              mol.toleranceOperator ?? "<=",
+              mol.tolerance ?? "0.1",
+              ...hdrs,
+            ]
+          : Array(5 + hdrs.length).fill("");
       allData.push([...prefix, r.mAsApplied ?? "", ...hdrs.map((_, i) => outs[i] ?? "")]);
     });
     addBlank();
+  };
+
+  // Double-tube: Frontal / Lateral sections (with TEST suffixes for re-import)
+  if (data.measurementOfMaLinearityFrontal || data.measurementOfMaLinearityLateral) {
+    appendMeasurementOfMaLinearity(data.measurementOfMaLinearityFrontal, " - Frontal");
+    appendMeasurementOfMaLinearity(data.measurementOfMaLinearityLateral, " - Lateral");
+  } else {
+    appendMeasurementOfMaLinearity(data.measurementOfMaLinearity);
   }
 
   const lcr = unwrap(data.lowContrastResolution);

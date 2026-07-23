@@ -17,6 +17,7 @@ interface Table2Row {
   failedCells?: Record<string, boolean>;
 }
 
+
 interface Props {
   serviceId: string;
   testId?: string | null;

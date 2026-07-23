@@ -175,6 +175,9 @@ const InventionalRadiologyContent: React.FC<InventionalRadiologyProps> = ({ serv
       'ACCURACY OF OPERATING POTENTIAL': 'Accuracy Of Operating Potential',
       'TOTAL FILTRATION': 'Total Filtration',
       'CONSISTENCY OF RADIATION OUTPUT': 'Consistency Of Radiation Output',
+      'REPRODUCIBILITY OF RADIATION OUTPUT (CONSISTENCY TEST)': 'Consistency Of Radiation Output',
+      'REPRODUCIBILITY OF RADIATION OUTPUT': 'Consistency Of Radiation Output',
+      'OUTPUT CONSISTENCY': 'Consistency Of Radiation Output',
       'MEASUREMENT OF MA LINEARITY': 'Measurement of mA Linearity',
       'LOW CONTRAST RESOLUTION': 'Low Contrast Resolution',
       'HIGH CONTRAST RESOLUTION': 'High Contrast Resolution',
@@ -226,7 +229,8 @@ const InventionalRadiologyContent: React.FC<InventionalRadiologyProps> = ({ serv
       },
       'Consistency Of Radiation Output': {
         'FDD (cm)': 'Table1_fcd', 'FCD (cm)': 'Table1_fcd', 'FFD (cm)': 'Table1_fcd',
-        'kV': 'Table1_kv', 'mA': 'Table1_ma', 'Time': 'Table1_time',
+        'kV': 'Table1_kv', 'kVp': 'Table1_kv',
+        'mA': 'Table1_mas', 'mAs': 'Table1_mas', 'Time': 'Table1_time',
         'Exposure 1': 'Table2_Exp1', 'Exposure 2': 'Table2_Exp2', 'Exposure 3': 'Table2_Exp3',
         'Exposure 4': 'Table2_Exp4', 'Exposure 5': 'Table2_Exp5',
         'Average': 'Table2_Average', 'COV': 'Table2_COV',
@@ -245,6 +249,11 @@ const InventionalRadiologyContent: React.FC<InventionalRadiologyProps> = ({ serv
         'Meas 4': 'Table2_Result_3',
         'Meas 5': 'Table2_Result_4',
         'Tolerance': 'Tolerance',
+        'Tol Value': 'Tolerance',
+        'Tolerance Value': 'Tolerance',
+        'Tolerance Operator': 'ToleranceOperator',
+        'Tol Operator': 'ToleranceOperator',
+        'Tolerance Sign': 'ToleranceOperator',
       },
       'Low Contrast Resolution': {
         'Smallest Hole Size (mm)': 'Table1_smallestHoleSize',
@@ -277,9 +286,13 @@ const InventionalRadiologyContent: React.FC<InventionalRadiologyProps> = ({ serv
         'Tolerance Operator': 'ToleranceOperator', 'Tolerance Value': 'Table1_toleranceValue'
       },
       'Radiation Protection Survey Report': {
-        'Location': 'Table1_location', 'mR/hr': 'Table1_mRPerHr', 'Category': 'Table1_category',
-        'Applied Voltage': 'Table1_appliedVoltage', 'Applied Current': 'Table1_appliedCurrent', 'Exposure Time': 'Table1_exposureTime',
-        'Workload': 'Table1_workload'
+        'Location': 'Table1_location',
+        'mR/hr': 'Table1_mRPerHr', 'mR/Hr': 'Table1_mRPerHr', 'mGy/hr': 'Table1_mRPerHr', 'mGy/Hr': 'Table1_mRPerHr',
+        'Category': 'Table1_category',
+        'Applied Voltage': 'Table1_appliedVoltage', 'Applied kV': 'Table1_appliedVoltage',
+        'Applied Current': 'Table1_appliedCurrent', 'Applied mA': 'Table1_appliedCurrent',
+        'Exposure Time': 'Table1_exposureTime',
+        'Workload': 'Table1_workload',
         // Survey Date / Calibration Valid are not imported from Excel — filled from today/QA date and tools
       }
     };
@@ -470,8 +483,13 @@ const InventionalRadiologyContent: React.FC<InventionalRadiologyProps> = ({ serv
         continue;
       }
 
+      // Blank rows after a TEST marker (before headers/key-values) must not end the section —
+      // IR Consistency template has an empty row between TEST: and Tolerance Sign.
       if (isReadingTest && row.every(c => !c)) {
-        isReadingTest = false;
+        if (headers.length > 0) {
+          isReadingTest = false;
+          headers = [];
+        }
         continue;
       }
 
@@ -561,8 +579,21 @@ const InventionalRadiologyContent: React.FC<InventionalRadiologyProps> = ({ serv
               });
             }
             pushField('Table1_kv', row[colIdx(headers, 'kV', 'kVp')] ?? '', rowIdx, currentTestName);
-            pushField('Table1_ma', row[colIdx(headers, 'mA')] ?? '', rowIdx, currentTestName);
-            pushField('Table1_time', row[colIdx(headers, 'Time')] ?? '', rowIdx, currentTestName);
+            // Prefer exact mA/mAs column — includes("mA") would wrongly match "Meas 1"
+            const maExact = headers.findIndex((h) => /^(mA|mAs)$/i.test(String(h || '').trim()));
+            const maVal = (maExact >= 0 ? row[maExact] : '') ?? '';
+            // Always store as Table1_mas for UI (Consistency shows mAs, not mA×Time)
+            if (maVal !== '') {
+              pushField('Table1_mas', maVal, rowIdx, currentTestName);
+              pushField('Table1_ma', maVal, rowIdx, currentTestName);
+            }
+            const timeExact = headers.findIndex((h) => /^time(\s*\(.*\))?$/i.test(String(h || '').trim()));
+            pushField(
+              'Table1_time',
+              (timeExact >= 0 ? row[timeExact] : row[colIdx(headers, 'Time')]) ?? '',
+              rowIdx,
+              currentTestName
+            );
             resolveMeasColumns(headers, ['mA', 'mAs', 'Time', 'Meas 1']).forEach(({ idx }, mi) => {
               pushField(`Table2_Exp${mi + 1}`, row[idx] ?? '', rowIdx, currentTestName);
             });
@@ -583,7 +614,25 @@ const InventionalRadiologyContent: React.FC<InventionalRadiologyProps> = ({ serv
             pushField('Table1_kvp', row[colIdx(headers, 'kVp', 'kV')] ?? '', 0, currentTestName);
             pushField('Table1_SliceThickness', row[colIdx(headers, 'Slice Thickness')] ?? '', 0, currentTestName);
             pushField('Table1_Time', row[colIdx(headers, 'Time', 'Time (ms)')] ?? '', 0, currentTestName);
-            pushField('Tolerance', row[colIdx(headers, 'Tolerance', 'Tol Value')] ?? '', 0, currentTestName);
+            // Exact Tolerance Operator / Sign — avoid matching other columns
+            const tolOpExact = headers.findIndex((h) =>
+              /^(tolerance\s*(operator|sign)|tol\s*operator)$/i.test(String(h || '').trim())
+            );
+            pushField(
+              'ToleranceOperator',
+              (tolOpExact >= 0 ? row[tolOpExact] : row[colIdx(headers, 'Tolerance Operator', 'Tol Operator', 'Tolerance Sign')]) ?? '',
+              0,
+              currentTestName
+            );
+            const tolExact = headers.findIndex((h) =>
+              /^(tolerance|tol\s*value|tolerance\s*value)$/i.test(String(h || '').trim())
+            );
+            pushField(
+              'Tolerance',
+              (tolExact >= 0 ? row[tolExact] : row[colIdx(headers, 'Tolerance', 'Tol Value')]) ?? '',
+              0,
+              currentTestName
+            );
             headers.forEach((h, hi) => {
               if (isHeaderLabelCol(h)) {
                 const label = row[hi] ?? '';
@@ -598,17 +647,81 @@ const InventionalRadiologyContent: React.FC<InventionalRadiologyProps> = ({ serv
         } else if (currentTestNameBase === 'Exposure Rate At Table Top') {
           const isCArmSummary = colIdx(headers, 'AEC Tolerance', 'Max Exposure', 'Min Focus') >= 0;
           if (isCArmSummary) {
+            // Exact / prioritized column lookup — includes("mA") matches "Max…", includes("Distance") can match Min Focus
+            const colExact = (...names: string[]) => {
+              for (const name of names) {
+                const idx = headers.findIndex(
+                  (h) => String(h || '').trim().toLowerCase() === name.toLowerCase()
+                );
+                if (idx >= 0) return idx;
+              }
+              return -1;
+            };
+            const colPrefer = (...names: string[]) => {
+              const exact = colExact(...names);
+              if (exact >= 0) return exact;
+              return colIdx(headers, ...names);
+            };
+
             if (rowIdx === 1) {
-              pushField('Table1_aecTolerance', row[colIdx(headers, 'AEC Tolerance', 'Max Exposure (AEC Mode)', 'Max Exposure (AEC Mode) (cGy/Min)')] ?? '', 0, currentTestName);
-              pushField('Table1_nonAecTolerance', row[colIdx(headers, 'Manual Tolerance', 'Max Exposure (Manual Mode)', 'Max Exposure (Manual Mode) (cGy/Min)')] ?? '', 0, currentTestName);
-              pushField('Table1_minFocusDistance', row[colIdx(headers, 'Min Focus', 'Min. Focus to Tabletop Distance')] ?? '', 0, currentTestName);
+              pushField(
+                'Table1_aecTolerance',
+                row[
+                  colPrefer(
+                    'Max Exposure (AEC Mode) (cGy/Min)',
+                    'Max Exposure (AEC Mode)',
+                    'AEC Tolerance'
+                  )
+                ] ?? '',
+                0,
+                currentTestName
+              );
+              pushField(
+                'Table1_nonAecTolerance',
+                row[
+                  colPrefer(
+                    'Max Exposure (Manual Mode) (cGy/Min)',
+                    'Max Exposure (Manual Mode)',
+                    'Manual Tolerance'
+                  )
+                ] ?? '',
+                0,
+                currentTestName
+              );
+              pushField(
+                'Table1_minFocusDistance',
+                row[
+                  colPrefer(
+                    'Min. Focus to Tabletop Distance',
+                    'Min Focus to Tabletop Distance',
+                    'Min Focus'
+                  )
+                ] ?? '',
+                0,
+                currentTestName
+              );
             }
-            pushField('Table1_kv', row[colIdx(headers, 'Applied kV', 'kV')] ?? '', rowIdx, currentTestName);
-            pushField('Table1_ma', row[colIdx(headers, 'Applied mA', 'mA')] ?? '', rowIdx, currentTestName);
-            pushField('Table2_Mode', row[colIdx(headers, 'Mode')] ?? '', rowIdx, currentTestName);
-            pushField('Table2_MeasuredRate', row[colIdx(headers, 'Exposure', 'Measured Rate', 'Exposure (cGy/Min)')] ?? '', rowIdx, currentTestName);
-            pushField('Criteria', row[colIdx(headers, 'Criteria')] ?? '', rowIdx, currentTestName);
-            const dist = row[colIdx(headers, 'Distance (cm)', 'Distance')] ?? '';
+
+            const kvCol = colExact('Applied kV', 'kV', 'kVp');
+            const maCol = colExact('Applied mA', 'mA');
+            const modeCol = colExact('Mode');
+            const rateCol = colExact('Measured Rate', 'Exposure', 'Exposure (cGy/Min)');
+            const distCol = colExact('Distance (cm)', 'Distance');
+            const criteriaCol = colExact('Criteria');
+
+            pushField('Table1_kv', (kvCol >= 0 ? row[kvCol] : '') ?? '', rowIdx, currentTestName);
+            pushField('Table1_ma', (maCol >= 0 ? row[maCol] : '') ?? '', rowIdx, currentTestName);
+            pushField('Table2_Mode', (modeCol >= 0 ? row[modeCol] : '') ?? '', rowIdx, currentTestName);
+            pushField(
+              'Table2_MeasuredRate',
+              (rateCol >= 0 ? row[rateCol] : '') ?? '',
+              rowIdx,
+              currentTestName
+            );
+            if (criteriaCol >= 0) {
+              pushField('Criteria', row[criteriaCol] ?? '', rowIdx, currentTestName);
+            }
+            const dist = distCol >= 0 ? row[distCol] ?? '' : '';
             if (dist) pushField('Table2_Distance', dist, rowIdx, currentTestName);
           } else {
             pushLegacyRow(row, rowIdx);
@@ -650,8 +763,29 @@ const InventionalRadiologyContent: React.FC<InventionalRadiologyProps> = ({ serv
     }
     if (component === 'ConsistencyOfRadiationOutput') {
       if (fieldName === 'Table1_fdd') return 'Table1_fcd';
-      if (fieldName === 'Table1_mAs') return 'Table1_mas';
-      if (fieldName === 'Table1_Output') return `Table1_Meas${(isNaN(idx) ? 0 : idx) + 1}`;
+      if (fieldName === 'Table1_mAs' || fieldName === 'Table1_Mas') return 'Table1_mas';
+      // Vertical template: Table1_Output on a row → first measurement; Table1_MeasN / Table1_Output_N → Exp N
+      if (/^Table1_Output$/i.test(fieldName)) return 'Table2_Exp1';
+      const outMatch = String(fieldName).match(/^Table1_Output_(\d+)$/i);
+      if (outMatch) return `Table2_Exp${parseInt(outMatch[1], 10) + 1}`;
+      const measMatch = String(fieldName).match(/^Table1_Meas(\d+)$/i);
+      if (measMatch) return `Table2_Exp${measMatch[1]}`;
+    }
+    if (component === 'ExposureRateAtTableTop') {
+      if (fieldName === 'Table1_Mode') return 'Table2_Mode';
+      if (fieldName === 'Table1_Distance') return 'Table2_Distance';
+      if (fieldName === 'Table1_AppliedKV') return 'Table1_kv';
+      if (fieldName === 'Table1_AppliedMA') return 'Table1_ma';
+      if (fieldName === 'Table1_Exposure') return 'Table2_MeasuredRate';
+    }
+    if (component === 'RadiationProtectionInterventionalRadiology') {
+      if (fieldName === 'AppliedCurrent') return 'Table1_appliedCurrent';
+      if (fieldName === 'AppliedVoltage') return 'Table1_appliedVoltage';
+      if (fieldName === 'ExposureTime') return 'Table1_exposureTime';
+      if (fieldName === 'Workload') return 'Table1_workload';
+      if (fieldName === 'Table1_Location') return 'Table1_location';
+      if (fieldName === 'Table1_Category') return 'Table1_category';
+      if (fieldName === 'Table1_mGyPerHr') return 'Table1_mRPerHr';
     }
     if (component === 'TotalFilteration') {
       if (fieldName === 'Table2_Output') return 'Table2_MeasuredKV';
@@ -714,12 +848,25 @@ const InventionalRadiologyContent: React.FC<InventionalRadiologyProps> = ({ serv
   };
 
   const parseExcelToCSVFormat = (workbook: XLSX.WorkBook): any[] => {
-    const firstSheetName = workbook.SheetNames[0];
-    const worksheet = workbook.Sheets[firstSheetName];
-    const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' }) as any[][];
-    const vertical = parseVerticalData(jsonData);
-    if (vertical.length > 0) return vertical;
-    return parseHorizontalData(jsonData);
+    // Prefer sheets that actually contain test data (Export Template puts data on "Data Template", not sheet 0)
+    const preferred = workbook.SheetNames.find((n) =>
+      /data|test|template/i.test(String(n || ''))
+    );
+    const sheetOrder = preferred
+      ? [preferred, ...workbook.SheetNames.filter((n) => n !== preferred)]
+      : workbook.SheetNames;
+
+    for (const sheetName of sheetOrder) {
+      const worksheet = workbook.Sheets[sheetName];
+      if (!worksheet) continue;
+      const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' }) as any[][];
+      if (!jsonData?.length) continue;
+      const vertical = parseVerticalData(jsonData);
+      if (vertical.length > 0) return vertical;
+      const horizontal = parseHorizontalData(jsonData);
+      if (horizontal.length > 0) return horizontal;
+    }
+    return [];
   };
 
   const mergeCsvSections = (...keys: string[]) =>
@@ -816,6 +963,7 @@ const InventionalRadiologyContent: React.FC<InventionalRadiologyProps> = ({ serv
     try {
       toast.loading("Exporting data to Excel...", { id: "export-excel" });
       setIsExporting(true);
+      const isDouble = tubeType === "double";
       const tubeId = tubeType === "single" ? null : "frontal";
       const suffix = tubeId ? " - Frontal" : "";
       const registeredData = exportRegistry?.collect() ?? {};
@@ -826,7 +974,15 @@ const InventionalRadiologyContent: React.FC<InventionalRadiologyProps> = ({ serv
         accuracyOfOperatingPotential: registeredData.accuracyOfOperatingPotential,
         totalFiltration: registeredData.totalFiltration,
         consistencyOfRadiationOutput: registeredData.consistencyOfRadiationOutput ?? csvDataForComponents[`Consistency Of Radiation Output${suffix}`],
-        measurementOfMaLinearity: registeredData.measurementOfMaLinearity ?? csvDataForComponents[`Measurement of mA Linearity${suffix}`],
+        measurementOfMaLinearity: isDouble
+          ? undefined
+          : (registeredData.measurementOfMaLinearity ?? csvDataForComponents[`Measurement of mA Linearity${suffix}`]),
+        measurementOfMaLinearityFrontal: isDouble
+          ? (registeredData.measurementOfMaLinearityFrontal ?? csvDataForComponents['Measurement of mA Linearity - Frontal'])
+          : undefined,
+        measurementOfMaLinearityLateral: isDouble
+          ? (registeredData.measurementOfMaLinearityLateral ?? csvDataForComponents['Measurement of mA Linearity - Lateral'])
+          : undefined,
         linearityOfMasLoading: registeredData.linearityOfMasLoading,
         lowContrastResolution: registeredData.lowContrastResolution ?? csvDataForComponents[`Low Contrast Resolution${suffix}`],
         highContrastResolution: registeredData.highContrastResolution ?? csvDataForComponents[`High Contrast Resolution${suffix}`],
@@ -862,7 +1018,18 @@ const InventionalRadiologyContent: React.FC<InventionalRadiologyProps> = ({ serv
       exportData.accuracyOfOperatingPotential ??= await fetchTest(() => getAccuracyOfOperatingPotentialByServiceIdForInventionalRadiology(serviceId, tubeId));
       exportData.totalFiltration ??= await fetchTest(() => getTotalFilterationByServiceIdForInventionalRadiology(serviceId, tubeId));
       exportData.consistencyOfRadiationOutput ??= await fetchTest(() => getConsistencyOfRadiationOutputByServiceIdForInventionalRadiology(serviceId, tubeId));
-      exportData.measurementOfMaLinearity ??= await fetchTest(() => getMeasurementOfMaLinearityByServiceIdForInventionalRadiology(serviceId, tubeId));
+      if (isDouble) {
+        exportData.measurementOfMaLinearityFrontal ??= await fetchTest(() =>
+          getMeasurementOfMaLinearityByServiceIdForInventionalRadiology(serviceId, "frontal")
+        );
+        exportData.measurementOfMaLinearityLateral ??= await fetchTest(() =>
+          getMeasurementOfMaLinearityByServiceIdForInventionalRadiology(serviceId, "lateral")
+        );
+      } else {
+        exportData.measurementOfMaLinearity ??= await fetchTest(() =>
+          getMeasurementOfMaLinearityByServiceIdForInventionalRadiology(serviceId, tubeId)
+        );
+      }
       exportData.linearityOfMasLoading ??= await fetchTest(() => getLinearityOfmAsLoadingByServiceIdForInventionalRadiology(serviceId));
       exportData.lowContrastResolution ??= await fetchTest(() => getLowContrastResolutionByServiceIdForInventionalRadiology(serviceId, tubeId));
       exportData.highContrastResolution ??= await fetchTest(() => getHighContrastResolutionByServiceIdForInventionalRadiology(serviceId, tubeId));

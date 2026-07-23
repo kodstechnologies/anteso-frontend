@@ -1120,17 +1120,29 @@ const ViewServiceReport: React.FC = () => {
   const renderMeasurementOfMaLinearityLikeRadiographyFixed = (mol: any) => {
     const table1 = mol?.table1 || mol?.Table1 || [];
     const table2 = mol?.table2 || mol?.Table2 || [];
-    const measHeaderSource = mol?.measHeaders || mol?.measurementHeaders || mol?.MeasHeaders || [];
+    const measHeaderSource =
+      Array.isArray(mol?.measurementHeaders) && mol.measurementHeaders.length > 0
+        ? mol.measurementHeaders
+        : Array.isArray(mol?.measHeaders) && mol.measHeaders.length > 0
+          ? mol.measHeaders
+          : Array.isArray(mol?.MeasHeaders) && mol.MeasHeaders.length > 0
+            ? mol.MeasHeaders
+            : [];
     const tolerance = mol?.tolerance ?? mol?.Tolerance;
     const toleranceOperator = mol?.toleranceOperator ?? mol?.ToleranceOperator;
 
     if (!Array.isArray(table2) || table2.length === 0) return null;
     const measHeaders = (() => {
-      if (Array.isArray(measHeaderSource) && measHeaderSource.length > 0) return measHeaderSource;
       const n = Math.max(
         1,
-        ...table2.map((r: any) => (Array.isArray(r.measuredOutputs) ? r.measuredOutputs.length : 0))
+        ...table2.map((r: any) => (Array.isArray(r.measuredOutputs) ? r.measuredOutputs.length : 0)),
+        Array.isArray(measHeaderSource) ? measHeaderSource.length : 0
       );
+      if (Array.isArray(measHeaderSource) && measHeaderSource.length > 0) {
+        return Array.from({ length: n }, (_, i) =>
+          String(measHeaderSource[i] ?? "").trim() || `Meas ${i + 1}`
+        );
+      }
       return Array.from({ length: n }, (_, i) => `Meas ${i + 1}`);
     })();
     const tolVal = parseFloat(tolerance ?? "0.1") || 0.1;
@@ -1142,7 +1154,7 @@ const ViewServiceReport: React.FC = () => {
     const timeVal = parseFloat(timeStr);
     const isMaLoading = timeStr !== "" && timeStr !== "-" && !isNaN(timeVal) && timeVal > 0;
     const stationColumnLabel = isMaLoading ? "mA" : "mAs Range";
-    const xColLabel = isMaLoading ? "X (mGy/(mA*s))" : "X (mGy/mAs)";
+    const xUnitLabel = isMaLoading ? "mGy/(mA*s)" : "mGy/mAs";
 
     return (
       <>
@@ -1177,7 +1189,20 @@ const ViewServiceReport: React.FC = () => {
                   Output (mGy)
                 </th>
                 <th className="border border-black border-b-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: "10px", padding: "5px" }}>Avg Output</th>
-                <th className="border border-black border-b-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: "10px", padding: "5px" }}>{xColLabel}</th>
+                <th
+                  className="border border-black border-b-0 p-1.5 print:p-[3px] text-center"
+                  style={{
+                    fontSize: "10px",
+                    padding: "4px 6px",
+                    minWidth: isMaLoading ? "88px" : "72px",
+                    width: isMaLoading ? "12%" : "10%",
+                    whiteSpace: "normal",
+                    lineHeight: 1.25,
+                  }}
+                >
+                  <div>X</div>
+                  <div style={{ fontSize: "9px", fontWeight: 600 }}>({xUnitLabel})</div>
+                </th>
                 <th className="border border-black border-b-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: "10px", padding: "5px" }}>X MAX</th>
                 <th className="border border-black border-b-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: "10px", padding: "5px" }}>X MIN</th>
                 <th className="border border-black border-b-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: "10px", padding: "5px" }}>CoL</th>
@@ -1628,9 +1653,16 @@ const ViewServiceReport: React.FC = () => {
                                 {testDataFrontal.effectiveFocalSpot.focalSpots.slice(0, 2).map((spot: any, i: number) => {
                                   const formatValue = (val: any) => {
                                     if (val === undefined || val === null || val === "") return "-";
-                                    const numVal = typeof val === "number" ? val : parseFloat(val);
-                                    if (isNaN(numVal)) return "-";
-                                    return numVal.toFixed(1);
+                                    // Keep exact entered/stored value (same as generate page) — do not round
+                                    if (typeof val === "string") {
+                                      const trimmed = val.trim();
+                                      return trimmed === "" ? "-" : trimmed;
+                                    }
+                                    if (typeof val === "number" && Number.isFinite(val)) {
+                                      return String(val);
+                                    }
+                                    const asStr = String(val).trim();
+                                    return asStr === "" || asStr === "NaN" ? "-" : asStr;
                                   };
 
                                   const statedNominal = formatValue(
@@ -1714,9 +1746,16 @@ const ViewServiceReport: React.FC = () => {
                                 {testDataLateral.effectiveFocalSpot.focalSpots.slice(0, 2).map((spot: any, i: number) => {
                                   const formatValue = (val: any) => {
                                     if (val === undefined || val === null || val === "") return "-";
-                                    const numVal = typeof val === "number" ? val : parseFloat(val);
-                                    if (isNaN(numVal)) return "-";
-                                    return numVal.toFixed(1);
+                                    // Keep exact entered/stored value (same as generate page) — do not round
+                                    if (typeof val === "string") {
+                                      const trimmed = val.trim();
+                                      return trimmed === "" ? "-" : trimmed;
+                                    }
+                                    if (typeof val === "number" && Number.isFinite(val)) {
+                                      return String(val);
+                                    }
+                                    const asStr = String(val).trim();
+                                    return asStr === "" || asStr === "NaN" ? "-" : asStr;
                                   };
 
                                   const statedNominal = formatValue(
@@ -1800,9 +1839,16 @@ const ViewServiceReport: React.FC = () => {
                             {testData.effectiveFocalSpot.focalSpots.slice(0, 2).map((spot: any, i: number) => {
                               const formatValue = (val: any) => {
                                 if (val === undefined || val === null || val === "") return "-";
-                                const numVal = typeof val === "number" ? val : parseFloat(val);
-                                if (isNaN(numVal)) return "-";
-                                return numVal.toFixed(1);
+                                // Keep exact entered/stored value (same as generate page) — do not round
+                                if (typeof val === "string") {
+                                  const trimmed = val.trim();
+                                  return trimmed === "" ? "-" : trimmed;
+                                }
+                                if (typeof val === "number" && Number.isFinite(val)) {
+                                  return String(val);
+                                }
+                                const asStr = String(val).trim();
+                                return asStr === "" || asStr === "NaN" ? "-" : asStr;
                               };
 
                               const statedNominal = formatValue(

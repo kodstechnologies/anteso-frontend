@@ -94,46 +94,43 @@ function buildTubeBlock(rows, suffix, includeMaLinearity) {
         [['80', '100', '0.1', '2.6', '2.5']]
     );
 
-    addSection(
-        rows,
-        `CONSISTENCY OF RADIATION OUTPUT${suffix}`,
-        [
-            'FDD (cm)',
-            'kV',
-            'mA',
-            'Time',
-            'Tolerance',
-            'Header 1',
-            'Header 2',
-            'Header 3',
-            'Header 4',
-            'Header 5',
-            'Meas 1',
-            'Meas 2',
-            'Meas 3',
-            'Meas 4',
-            'Meas 5',
-        ],
-        [
-            [
-                '100',
-                '80',
-                '100',
-                '0.1',
-                '0.05',
-                'Exposure 1',
-                'Exposure 2',
-                'Exposure 3',
-                'Exposure 4',
-                'Exposure 5',
-                '0.5',
-                '0.51',
-                '0.5',
-                '0.49',
-                '0.5',
-            ],
-        ]
-    );
+    rows.push([`TEST: CONSISTENCY OF RADIATION OUTPUT${suffix}`]);
+    rows.push(['Tolerance Operator', '<=']);
+    rows.push(['Tolerance Sign', '<=']);
+    rows.push(['Tolerance Value (CoV)', '0.05']);
+    rows.push([
+        'FDD (cm)',
+        'kV',
+        'mA',
+        'Time',
+        'Header 1',
+        'Header 2',
+        'Header 3',
+        'Header 4',
+        'Header 5',
+        'Meas 1',
+        'Meas 2',
+        'Meas 3',
+        'Meas 4',
+        'Meas 5',
+    ]);
+    rows.push([
+        '100',
+        '80',
+        '100',
+        '0.1',
+        'Exposure 1',
+        'Exposure 2',
+        'Exposure 3',
+        'Exposure 4',
+        'Exposure 5',
+        '0.5',
+        '0.51',
+        '0.5',
+        '0.49',
+        '0.5',
+    ]);
+    pushBlank(rows);
 
     if (includeMaLinearity) {
         addSection(
@@ -143,6 +140,7 @@ function buildTubeBlock(rows, suffix, includeMaLinearity) {
                 'kVp',
                 'Slice Thickness (mm)',
                 'Time (ms)',
+                'Tolerance Operator',
                 'Tolerance',
                 'Header 1',
                 'Header 2',
@@ -153,9 +151,9 @@ function buildTubeBlock(rows, suffix, includeMaLinearity) {
                 'Meas 3',
             ],
             [
-                ['80', '5', '100', '0.1', 'Meas 1', 'Meas 2', 'Meas 3', '50', '0.10', '0.11', '0.09'],
-                ['', '', '', '', '', '', '', '100', '0.20', '0.21', '0.19'],
-                ['', '', '', '', '', '', '', '200', '0.40', '0.41', '0.39'],
+                ['80', '5', '100', '<=', '0.1', 'Meas 1', 'Meas 2', 'Meas 3', '50', '0.10', '0.11', '0.09'],
+                ['', '', '', '', '', '', '', '', '100', '0.20', '0.21', '0.19'],
+                ['', '', '', '', '', '', '', '', '200', '0.40', '0.41', '0.39'],
             ]
         );
     }
@@ -213,8 +211,8 @@ function generateTemplate(isDoubleTube) {
     ];
 
     if (isDoubleTube) {
-        buildTubeBlock(rows, ' - Frontal', false);
-        buildTubeBlock(rows, ' - Lateral', false);
+        buildTubeBlock(rows, ' - Frontal', true);
+        buildTubeBlock(rows, ' - Lateral', true);
     } else {
         buildTubeBlock(rows, '', true);
     }

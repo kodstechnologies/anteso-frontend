@@ -47,6 +47,7 @@ const MeasurementOfMaLinearity: React.FC<Props> = ({ serviceId, tubeId, testId: 
   ]);
 
   const [tolerance, setTolerance] = useState<string>("0.1");
+  const [toleranceOperator, setToleranceOperator] = useState<string>("<=");
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
@@ -159,14 +160,32 @@ const MeasurementOfMaLinearity: React.FC<Props> = ({ serviceId, tubeId, testId: 
       xMax !== "—" && xMin !== "—" && parseFloat(xMax) + parseFloat(xMin) > 0
         ? (Math.abs(parseFloat(xMax) - parseFloat(xMin)) / (parseFloat(xMax) + parseFloat(xMin))).toFixed(4)
         : "—";
-    const pass = colVal !== "—" && parseFloat(colVal) <= tol;
+    const pass =
+      colVal !== "—" &&
+      (() => {
+        const colNumber = parseFloat(colVal);
+        switch (toleranceOperator) {
+          case "<":
+            return colNumber < tol;
+          case "<=":
+            return colNumber <= tol;
+          case ">":
+            return colNumber > tol;
+          case ">=":
+            return colNumber >= tol;
+          case "=":
+            return Math.abs(colNumber - tol) < 0.0001;
+          default:
+            return colNumber <= tol;
+        }
+      })();
     const remarks = xValues.length > 0 ? (pass ? "Pass" : "Fail") : "";
 
     return {
       rows: rowsWithX,
       summary: { xMax, xMin, col: colVal, remarks, rowSpan: rowsWithX.length },
     };
-  }, [table2Rows, tolerance, table1Row.time]);
+  }, [table2Rows, tolerance, toleranceOperator, table1Row.time]);
 
   const hasValidTime = useMemo(() => {
     const timeSec = parseFloat(table1Row.time);
@@ -236,7 +255,17 @@ const MeasurementOfMaLinearity: React.FC<Props> = ({ serviceId, tubeId, testId: 
     }
 
     const tol = csvData.find((r) => r["Field Name"] === "Tolerance")?.["Value"];
-    if (tol) setTolerance(tol);
+    if (tol) setTolerance(String(tol));
+
+    const tolOp = csvData.find(
+      (r) =>
+        r["Field Name"] === "ToleranceOperator" ||
+        r["Field Name"] === "Tolerance_Operator" ||
+        r["Field Name"] === "Tolerance Sign"
+    )?.["Value"];
+    if (tolOp && ["<", "<=", ">", ">=", "="].includes(String(tolOp).trim())) {
+      setToleranceOperator(String(tolOp).trim());
+    }
 
     if (!testId) {
       setIsEditing(true);
@@ -275,9 +304,13 @@ const MeasurementOfMaLinearity: React.FC<Props> = ({ serviceId, tubeId, testId: 
           if (rec.table1?.[0]) setTable1Row(rec.table1[0]);
           if (Array.isArray(rec.table2) && rec.table2.length > 0) {
             const headers =
-              rec.table2[0].measuredOutputs?.length > 0
-                ? Array.from({ length: rec.table2[0].measuredOutputs.length }, (_, i) => `Meas ${i + 1}`)
-                : measHeaders;
+              Array.isArray(rec.measurementHeaders) && rec.measurementHeaders.length > 0
+                ? rec.measurementHeaders.map(String)
+                : Array.isArray(rec.measHeaders) && rec.measHeaders.length > 0
+                  ? rec.measHeaders.map(String)
+                  : rec.table2[0].measuredOutputs?.length > 0
+                    ? Array.from({ length: rec.table2[0].measuredOutputs.length }, (_, i) => `Meas ${i + 1}`)
+                    : measHeaders;
             setMeasHeaders(headers);
             setTable2Rows(
               rec.table2.map((r: any) => ({
@@ -295,6 +328,9 @@ const MeasurementOfMaLinearity: React.FC<Props> = ({ serviceId, tubeId, testId: 
             );
           }
           if (rec.tolerance != null) setTolerance(String(rec.tolerance));
+          if (rec.toleranceOperator && ["<", "<=", ">", ">=", "="].includes(String(rec.toleranceOperator).trim())) {
+            setToleranceOperator(String(rec.toleranceOperator).trim());
+          }
           setHasSaved(true);
           setIsEditing(false);
         } else {
@@ -331,6 +367,8 @@ const MeasurementOfMaLinearity: React.FC<Props> = ({ serviceId, tubeId, testId: 
         remarks: processedTable2.summary.remarks || "",
       })),
       tolerance,
+      toleranceOperator,
+      measurementHeaders: measHeaders,
       tubeId: tubeId || null,
     };
 
@@ -552,27 +590,43 @@ const MeasurementOfMaLinearity: React.FC<Props> = ({ serviceId, tubeId, testId: 
           </table>
         </div>
 
-        {!isViewMode && (
-          <div className="px-6 py-4 bg-gray-50 border-t flex justify-between items-center">
+        <div className="px-6 py-4 bg-gray-50 border-t flex justify-between items-center">
+          {!isViewMode ? (
             <button onClick={addTable2Row} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition">
               <Plus className="w-4 h-4" />
               Add Row
             </button>
+          ) : (
+            <div />
+          )}
 
-            <div className="flex items-center gap-2">
-              <label className="text-sm font-medium text-gray-700">Tolerance (CoL)</label>
-              <input
-                type="text"
-                value={tolerance}
-                onChange={(e) => setTolerance(e.target.value)}
-                disabled={isViewMode}
-                className={`w-24 px-2 py-1 border rounded text-sm text-center ${
-                  isViewMode ? "bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300" : "border-gray-300"
-                }`}
-              />
-            </div>
+          <div className="flex items-center gap-2">
+            <label className="text-sm font-medium text-gray-700">Tolerance (CoL)</label>
+            <select
+              value={toleranceOperator}
+              onChange={(e) => setToleranceOperator(e.target.value)}
+              disabled={isViewMode}
+              className={`w-20 px-2 py-1 border rounded text-sm ${
+                isViewMode ? "bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300" : "border-gray-300"
+              }`}
+            >
+              <option value="<">&lt;</option>
+              <option value="<=">&le;</option>
+              <option value=">">&gt;</option>
+              <option value=">=">&ge;</option>
+              <option value="=">=</option>
+            </select>
+            <input
+              type="text"
+              value={tolerance}
+              onChange={(e) => setTolerance(e.target.value)}
+              disabled={isViewMode}
+              className={`w-24 px-2 py-1 border rounded text-sm text-center ${
+                isViewMode ? "bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300" : "border-gray-300"
+              }`}
+            />
           </div>
-        )}
+        </div>
       </div>
 
       <div className="flex justify-end mt-6">

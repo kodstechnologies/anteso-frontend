@@ -118,52 +118,106 @@ const ExposureRateAtTableTop: React.FC<Props> = ({
     };
 
     const applyCsvData = (source: any[]) => {
-        const tableRows = source.filter(
-            (r) =>
-                r['Field Name'] === 'Table1_kv' ||
-                r['Field Name'] === 'Table1_ma' ||
-                r['Field Name'] === 'Table2_Mode' ||
-                r['Field Name'] === 'Table2_MeasuredRate' ||
-                r['Field Name'] === 'Table2_Distance'
-        );
+        const getField = (r: any) => String(r?.['Field Name'] ?? r?.fieldName ?? '').trim();
+        const getValue = (r: any) => {
+            const v = r?.['Value'] ?? r?.value;
+            return v === undefined || v === null ? '' : String(v).trim();
+        };
+        const getRowIndex = (r: any) => {
+            const n = parseInt(String(r?.['Row Index'] ?? r?.rowIndex ?? '0'), 10);
+            return Number.isNaN(n) ? 0 : n;
+        };
+        const normalizeMode = (mode: string): Row['remark'] => {
+            const m = String(mode || '').trim().toLowerCase();
+            if (!m) return '';
+            if (m === 'aec' || m === 'aec mode' || m.includes('aec')) return 'AEC Mode';
+            if (m === 'manual' || m === 'manual mode' || m.includes('manual')) return 'Manual Mode';
+            return '';
+        };
+
+        const tableRows = source.filter((r) => {
+            const f = getField(r);
+            return (
+                f === 'Table1_kv' ||
+                f === 'Table1_ma' ||
+                f === 'Table2_Mode' ||
+                f === 'Table1_Mode' ||
+                f === 'Table2_MeasuredRate' ||
+                f === 'Table1_Exposure' ||
+                f === 'Table2_Distance' ||
+                f === 'Table1_Distance'
+            );
+        });
 
         if (tableRows.length > 0) {
-            const rowIndices = Array.from(new Set(tableRows.map((r) => parseInt(r['Row Index'], 10)))).sort((a, b) => a - b);
-            const newRows = rowIndices.map((idx, i): Row => {
-                const kv = source.find((r) => r['Field Name'] === 'Table1_kv' && parseInt(r['Row Index'], 10) === idx)?.['Value'] || '';
-                const ma = source.find((r) => r['Field Name'] === 'Table1_ma' && parseInt(r['Row Index'], 10) === idx)?.['Value'] || '';
-                const exposure =
-                    source.find((r) => r['Field Name'] === 'Table2_MeasuredRate' && parseInt(r['Row Index'], 10) === idx)?.['Value'] || '';
-                const mode = source.find((r) => r['Field Name'] === 'Table2_Mode' && parseInt(r['Row Index'], 10) === idx)?.['Value'] || '';
-                const distance =
-                    source.find((r) => r['Field Name'] === 'Table2_Distance' && parseInt(r['Row Index'], 10) === idx)?.['Value'] || '';
+            const rowIndices = Array.from(new Set(tableRows.map((r) => getRowIndex(r)))).sort(
+                (a, b) => a - b
+            );
 
-                const remark: Row['remark'] =
-                    mode === 'AEC' || mode === 'AEC Mode'
-                        ? 'AEC Mode'
-                        : mode === 'Manual' || mode === 'Manual Mode'
-                          ? 'Manual Mode'
-                          : '';
+            // Build one UI row per Excel data row index that has measurement fields.
+            // Tolerances are stored on row 0 separately (Table1_aecTolerance etc.) and must not
+            // create an empty first measurement row when only row 0 has kv/ma from a bad parse.
+            const measurementIndices = rowIndices.filter((idx) =>
+                tableRows.some((r) => {
+                    if (getRowIndex(r) !== idx) return false;
+                    const f = getField(r);
+                    return (
+                        f === 'Table2_Mode' ||
+                        f === 'Table1_Mode' ||
+                        f === 'Table2_MeasuredRate' ||
+                        f === 'Table1_Exposure' ||
+                        f === 'Table2_Distance' ||
+                        f === 'Table1_Distance' ||
+                        f === 'Table1_kv' ||
+                        f === 'Table1_ma'
+                    );
+                })
+            );
+
+            // If both 0 and >0 exist, keep all indices that have real row content (mode/rate/kv/ma/distance)
+            const dataIndices =
+                measurementIndices.length > 0 ? measurementIndices : rowIndices.filter((i) => i > 0);
+
+            const newRows = (dataIndices.length > 0 ? dataIndices : rowIndices).map((idx, i): Row => {
+                const kv = getValue(source.find((r) => getField(r) === 'Table1_kv' && getRowIndex(r) === idx));
+                const ma = getValue(source.find((r) => getField(r) === 'Table1_ma' && getRowIndex(r) === idx));
+                const exposure =
+                    getValue(source.find((r) => getField(r) === 'Table2_MeasuredRate' && getRowIndex(r) === idx)) ||
+                    getValue(source.find((r) => getField(r) === 'Table1_Exposure' && getRowIndex(r) === idx));
+                const mode =
+                    getValue(source.find((r) => getField(r) === 'Table2_Mode' && getRowIndex(r) === idx)) ||
+                    getValue(source.find((r) => getField(r) === 'Table1_Mode' && getRowIndex(r) === idx));
+                const distance =
+                    getValue(source.find((r) => getField(r) === 'Table2_Distance' && getRowIndex(r) === idx)) ||
+                    getValue(source.find((r) => getField(r) === 'Table1_Distance' && getRowIndex(r) === idx));
 
                 return {
-                    id: Date.now().toString() + i,
+                    id: `${Date.now()}-${idx}-${i}`,
                     distance: String(distance),
                     appliedKv: String(kv),
                     appliedMa: String(ma),
                     exposure: String(exposure),
-                    remark,
+                    remark: normalizeMode(mode),
                 };
             });
-            if (newRows.length > 0) setRows(newRows);
+            const usable = newRows.filter(
+                (r) =>
+                    r.distance.trim() !== '' ||
+                    r.appliedKv.trim() !== '' ||
+                    r.appliedMa.trim() !== '' ||
+                    r.exposure.trim() !== '' ||
+                    r.remark !== ''
+            );
+            if (usable.length > 0) setRows(usable);
         }
 
-        const aecTolVal = source.find(r => r['Field Name'] === 'Table1_aecTolerance')?.['Value'];
+        const aecTolVal = getValue(source.find((r) => getField(r) === 'Table1_aecTolerance'));
         if (aecTolVal) setAecTolerance(String(aecTolVal));
 
-        const manualTolVal = source.find(r => r['Field Name'] === 'Table1_nonAecTolerance')?.['Value'];
+        const manualTolVal = getValue(source.find((r) => getField(r) === 'Table1_nonAecTolerance'));
         if (manualTolVal) setNonAecTolerance(String(manualTolVal));
 
-        const minFocusVal = source.find(r => r['Field Name'] === 'Table1_minFocusDistance')?.['Value'];
+        const minFocusVal = getValue(source.find((r) => getField(r) === 'Table1_minFocusDistance'));
         if (minFocusVal) setMinFocusDistance(String(minFocusVal));
 
         setIsSaved(false);
@@ -203,13 +257,15 @@ const ExposureRateAtTableTop: React.FC<Props> = ({
                 const testData = data ? (data?.data || data) : null;
                 const hasSavedRows = Array.isArray(testData?.rows) && testData.rows.length > 0;
 
-                if (testData?._id && hasSavedRows) {
-                    applySavedData(testData);
+                // Excel/CSV upload takes priority so multi-row template data always fills the UI
+                if (csvData && csvData.length > 0) {
+                    applyCsvData(csvData);
+                    if (testData?._id) setTestId(testData._id);
                     return;
                 }
 
-                if (csvData && csvData.length > 0) {
-                    applyCsvData(csvData);
+                if (testData?._id && hasSavedRows) {
+                    applySavedData(testData);
                     return;
                 }
 
