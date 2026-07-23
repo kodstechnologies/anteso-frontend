@@ -122,7 +122,7 @@ const View: React.FC = () => {
                         />
                     )}
                     <Detail label="Calibration Valid Till" value={dayjs(tool.calibrationValidTill).format('DD-MM-YYYY')} icon={<FaRegCalendarCheck />} />
-                    <Detail label="Manufacture Date" value={dayjs(tool.manufacture_date).format('DD-MM-YYYY')} icon={<FiCalendar />} />
+                    <Detail label="Purchase Date" value={dayjs(tool.manufacture_date).format('DD-MM-YYYY')} icon={<FiCalendar />} />
                     <Detail label="Range" value={tool.range} icon={<FiTool />} />
                 </div>
             </div>

@@ -302,7 +302,7 @@ const AddTool = () => {
 
                                 {/* Date Fields with min/max */}
                                 {[
-                                    { name: 'manufacture_date', label: 'Manufacture Date', type: 'date', maxDate: new Date() },
+                                    { name: 'manufacture_date', label: 'Purchase Date', type: 'date', maxDate: new Date() },
                                     { name: 'calibrationValidTill', label: 'Calibration Valid Till', type: 'date', minDate: new Date() },
                                 ].map(({ name, label, type, minDate, maxDate }) => (
                                     <div key={name} className={touched[name as keyof ToolFormValues] && errors[name as keyof ToolFormValues] ? 'has-error' : ''}>

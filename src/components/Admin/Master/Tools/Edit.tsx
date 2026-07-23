@@ -72,6 +72,7 @@ const EditTool = () => {
     const SubmittedForm = Yup.object().shape({
         nomenclature: Yup.string().required('Please fill the Field'),
         manufacturer: Yup.string().required('Please fill the Field'),
+        manufacture_date: Yup.string().required('Please fill the Field'),
         model: Yup.string().required('Please fill the Field'),
         srNo: Yup.string().required('Please fill the Field'),
         calibrationCertificateNo: Yup.string().required('Please fill the Field'),
@@ -197,6 +198,7 @@ const EditTool = () => {
                 setInitialValues({
                     nomenclature: tool.nomenclature || '',
                     manufacturer: tool.manufacturer || '',
+                    manufacture_date: tool.manufacture_date ? tool.manufacture_date.split('T')[0] : '',
                     model: tool.model || '',
                     srNo: tool.SrNo || '',
                     calibrationCertificateNo: tool.calibrationCertificateNo || '',
@@ -254,6 +256,7 @@ const EditTool = () => {
                             SrNo: values.srNo,
                             nomenclature: values.nomenclature,
                             manufacturer: values.manufacturer,
+                            manufacture_date: values.manufacture_date,
                             model: values.model,
                             calibrationCertificateNo: values.calibrationCertificateNo,
                             calibrationValidTill: values.calibrationValidTill,
@@ -315,6 +318,20 @@ const EditTool = () => {
                                     <label htmlFor="manufacturer">Manufacturer </label>
                                     <Field name="manufacturer" type="text" className="form-input" />
                                     <ErrorMessage name="manufacturer">
+                                        {(msg) => <div className="text-danger mt-1">{msg}</div>}
+                                    </ErrorMessage>
+                                </div>
+
+                                {/* Purchase Date */}
+                                <div className={submitCount ? 'has-success' : ''}>
+                                    <label htmlFor="manufacture_date">Purchase Date</label>
+                                    <Field
+                                        name="manufacture_date"
+                                        type="date"
+                                        className="form-input"
+                                        max={new Date().toISOString().split('T')[0]}
+                                    />
+                                    <ErrorMessage name="manufacture_date">
                                         {(msg) => <div className="text-danger mt-1">{msg}</div>}
                                     </ErrorMessage>
                                 </div>
