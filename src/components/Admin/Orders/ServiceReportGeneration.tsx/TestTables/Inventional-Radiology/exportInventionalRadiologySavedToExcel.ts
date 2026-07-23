@@ -199,7 +199,7 @@ export const createInventionalRadiologySavedExcel = (
               ...hdrs,
             ]
           : Array(5 + hdrs.length).fill("");
-      allData.push([...prefix, r.mAsApplied ?? "", ...hdrs.map((_, i) => outs[i] ?? "")]);
+      allData.push([...prefix, r.mAsApplied ?? "", ...hdrs.map((_: string, i: number) => outs[i] ?? "")]);
     });
     addBlank();
   };
