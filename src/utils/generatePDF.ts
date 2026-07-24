@@ -235,6 +235,36 @@ export const applyEmbeddedImagesToClone = (
   applyImageDataUrlMapToDocument(doc, imageDataUrlMap);
 };
 
+/** Detect mostly-white canvas slices that show up as blank PDF pages. */
+const isCanvasMostlyBlank = (canvas: HTMLCanvasElement): boolean => {
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return false;
+  const { width, height } = canvas;
+  if (width === 0 || height === 0) return true;
+
+  const stepX = Math.max(1, Math.floor(width / 40));
+  const stepY = Math.max(1, Math.floor(height / 40));
+  const data = ctx.getImageData(0, 0, width, height).data;
+  let ink = 0;
+  let samples = 0;
+
+  for (let y = 0; y < height; y += stepY) {
+    for (let x = 0; x < width; x += stepX) {
+      const idx = (y * width + x) * 4;
+      samples += 1;
+      const r = data[idx];
+      const g = data[idx + 1];
+      const b = data[idx + 2];
+      const a = data[idx + 3];
+      if (a > 8 && (r < 245 || g < 245 || b < 245)) {
+        ink += 1;
+      }
+    }
+  }
+
+  return samples > 0 && ink / samples < 0.005;
+};
+
 /**
  * Generate PDF from HTML element with fixed alignment and multi-page support.
  * Captures each A4 page shell individually for perfect alignment, with fallback for standard elements.
@@ -337,7 +367,8 @@ export const generatePDF = async ({
               clonedShell.style.boxShadow = 'none';
               clonedShell.style.width = '210mm';
               clonedShell.style.height = 'auto';
-              clonedShell.style.minHeight = '297mm';
+              // Avoid forced A4 min-height so leftover whitespace isn't sliced into blank pages
+              clonedShell.style.minHeight = '0';
               clonedShell.style.maxHeight = 'none';
               clonedShell.style.overflow = 'visible';
 
@@ -372,6 +403,13 @@ export const generatePDF = async ({
             canvas.width,
             sliceHeight,
           );
+
+          // Skip trailing leftover slices that are nearly empty (blank PDF pages)
+          const isTrailingSlice = pageIndex > 0;
+          const isTinySlice = sliceHeight < pageHeightInCanvasPixels * 0.15;
+          if (isTrailingSlice && (isTinySlice || pageIndex === shellPageCount - 1) && isCanvasMostlyBlank(pageCanvas)) {
+            continue;
+          }
 
           if (generatedPageCount > 0) pdf.addPage();
 

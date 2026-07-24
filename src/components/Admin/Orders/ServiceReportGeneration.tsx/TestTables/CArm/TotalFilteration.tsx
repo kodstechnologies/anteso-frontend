@@ -226,7 +226,12 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
                 remarks: r.remarks,
             })),
             tolerance: { sign: toleranceSign, value: toleranceValue },
-            totalFiltration,
+            totalFiltration: {
+                // Keep both fields in sync: form input is bound to `required`
+                measured: totalFiltration.measured || totalFiltration.required || "",
+                required: totalFiltration.required || totalFiltration.measured || "",
+                atKvp: totalFiltration.atKvp || "",
+            },
             filtrationTolerance,
         };
 

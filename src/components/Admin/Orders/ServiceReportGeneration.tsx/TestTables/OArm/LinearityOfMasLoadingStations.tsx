@@ -9,6 +9,7 @@ import {
   getLinearityOfMasLoadingStationByServiceIdForOArm,
   updateLinearityOfMasLoadingStationForOArm,
 } from '../../../../../../api';
+import { toUiMeasHeaderLabel } from '../shared/exportMeasHeaders';
 
 interface Table1Row { fcd: string; kv: string; time: string; }
 interface Table2Row {
@@ -203,20 +204,25 @@ const LinearityOfMasLoadingStationsForOArm: React.FC<Props> = ({ serviceId, test
       const rowMap: { [idx: number]: any } = {};
       csvData.forEach((item: any) => {
         const field = item['Field Name'];
-        const val = item['Value'];
+        const val = item['Value'] ?? item['value'];
         if (field === 'Tolerance_Value' && val) setTolerance(String(val));
         if (field === 'Tolerance_Operator' && val) setToleranceOperator(String(val));
         if (field === 'Exposure_FCD' && val) setTable1Row(p => ({ ...p, fcd: String(val) }));
         if (field === 'Exposure_KV' && val) setTable1Row(p => ({ ...p, kv: String(val) }));
         if (field === 'Exposure_Time' && val) setTable1Row(p => ({ ...p, time: String(val) }));
         if (field?.startsWith('Header_')) {
-          const idx = parseInt(field.replace('Header_', ''), 10) - 1;
-          while (h.length <= idx) h.push(`Meas ${h.length + 1}`);
-          h[idx] = val != null ? String(val) : '';
+          const idx = parseInt(String(field).replace('Header_', ''), 10) - 1;
+          if (Number.isNaN(idx) || idx < 0) return;
+          while (h.length <= idx) h.push('');
+          // Keep custom Excel labels; only normalize Measured Output N / Output N → Meas N
+          h[idx] = toUiMeasHeaderLabel(val != null ? String(val) : '', idx);
         }
         const rowIdx = item['Row Index'];
-        if (!rowMap[rowIdx]) rowMap[rowIdx] = {};
-        rowMap[rowIdx][field] = val;
+        if (rowIdx === undefined || rowIdx === null || rowIdx === '') return;
+        const idxNum = parseInt(String(rowIdx), 10);
+        if (Number.isNaN(idxNum)) return;
+        if (!rowMap[idxNum]) rowMap[idxNum] = {};
+        rowMap[idxNum][field] = val;
       });
 
       const collectMeas = (r: Record<string, any>) => {
@@ -248,36 +254,44 @@ const LinearityOfMasLoadingStationsForOArm: React.FC<Props> = ({ serviceId, test
         const r = rowMap[idx];
         const measuredOutputs = collectMeas(r);
         if (r['Row_mAsRange'] || measuredOutputs.some(v => v !== '')) {
-          const colCount = Math.max(measuredOutputs.length, h.length, measHeaders.length, 3);
-          const paddedOutputs = padOutputsToLen(measuredOutputs, colCount);
           newRows.push({ 
             id: Date.now().toString() + Math.random() + idxStr, 
             mAsRange: r['Row_mAsRange'] != null ? String(r['Row_mAsRange']) : '',
-            measuredOutputs: paddedOutputs,
-            measuredOutputsStatus: Array(paddedOutputs.length).fill(true), 
+            measuredOutputs,
+            measuredOutputsStatus: Array(measuredOutputs.length).fill(true), 
             average: '', x: '', xMax: '', xMin: '', col: '', remarks: '' 
           });
         }
       });
       
-      if (newRows.length > 0) {
+      if (newRows.length > 0 || h.some(Boolean)) {
         const colCount = Math.max(
+          h.filter(Boolean).length,
           h.length,
           ...newRows.map(r => r.measuredOutputs.length),
-          measHeaders.length,
-          3
+          1
         );
-        const finalHeaders = h.length > 0
-          ? h
-          : Array.from({ length: colCount }, (_, i) => `Meas ${i + 1}`);
+        const finalHeaders = Array.from({ length: colCount }, (_, i) =>
+          (h[i] && String(h[i]).trim()) || `Meas ${i + 1}`
+        );
         setMeasHeaders(finalHeaders);
-        setTable2Rows(
-          newRows.map(r => ({
-            ...r,
-            measuredOutputs: padOutputsToLen(r.measuredOutputs, finalHeaders.length),
-            measuredOutputsStatus: Array(finalHeaders.length).fill(true),
-          }))
-        );
+        if (newRows.length > 0) {
+          setTable2Rows(
+            newRows.map(r => ({
+              ...r,
+              measuredOutputs: padOutputsToLen(r.measuredOutputs, finalHeaders.length),
+              measuredOutputsStatus: Array(finalHeaders.length).fill(true),
+            }))
+          );
+        } else {
+          setTable2Rows(prev =>
+            prev.map(r => ({
+              ...r,
+              measuredOutputs: padOutputsToLen(r.measuredOutputs || [], finalHeaders.length),
+              measuredOutputsStatus: Array(finalHeaders.length).fill(true),
+            }))
+          );
+        }
         setHasSaved(false);
         setIsEditing(true);
       }
@@ -440,15 +454,13 @@ const LinearityOfMasLoadingStationsForOArm: React.FC<Props> = ({ serviceId, test
   const isViewMode = hasSaved && !isEditing;
   const buttonText = isViewMode ? 'Edit' : testId ? 'Update' : 'Save';
   const ButtonIcon = isViewMode ? Edit3 : Save;
-  const isTimerSelected = isMaMode && String(table1Row.time || '').trim() !== '';
-  const tableTitle = isMaMode
-    ? (isTimerSelected ? 'Linearity of mAs Loading' : 'Linearity of mA Loading Stations')
-    : 'Linearity of mAs Loading';
+  // Titles follow mode prop only — do not switch to mAs when Time is filled in mA mode
+  const tableTitle = isMaMode ? 'Linearity of mA Loading' : 'Linearity of mAs Loading';
   const sectionTitle = isMaMode
-    ? (isTimerSelected ? 'Linearity of mAs Loading and Accuracy of Irradiation Time' : 'Linearity of mA Loading Stations')
+    ? 'Linearity of mA Loading Stations'
     : 'Linearity of Radiation Output Across mAs Ranges';
   const xUnitLabel = isMaMode
-    ? (isTimerSelected ? 'mGy/(mA*s)' : 'mGy/mA')
+    ? (hasValidTime ? 'mGy/(mA*s)' : 'mGy/mA')
     : 'mGy/mAs';
   const rowLabel = isMaMode ? 'mA' : 'mAs Range';
 
@@ -511,44 +523,68 @@ const LinearityOfMasLoadingStationsForOArm: React.FC<Props> = ({ serviceId, test
           <h3 className="text-lg font-semibold text-blue-900">{sectionTitle}</h3>
         </div>
         <div className="overflow-x-auto">
-          <table className="min-w-full table-fixed divide-y divide-gray-200">
-            <colgroup>
-              <col className="w-[6.5rem]" />
-              {measHeaders.map((_, i) => (
-                <col key={`mcol-${i}`} className="w-[6.5rem]" />
-              ))}
-              <col className="w-[5.5rem]" />
-              <col className="w-[6rem]" />
-              <col className="w-[5rem]" />
-              <col className="w-[5rem]" />
-              <col className="w-[4.5rem]" />
-              <col className="w-[6.5rem]" />
-              <col className="w-12" />
-            </colgroup>
+          <table className="min-w-max w-full divide-y divide-gray-200">
             <thead className="bg-blue-50">
               <tr>
-                <th rowSpan={2} className="px-3 py-3 text-left text-xs font-medium text-gray-700 border-r align-middle">{rowLabel}</th>
-                <th colSpan={measHeaders.length} className="px-6 py-3 text-center text-xs font-medium text-gray-700 border-r">
-                  <div className="flex items-center justify-between px-4">
+                <th
+                  rowSpan={2}
+                  className="sticky left-0 z-10 px-4 py-3 w-28 text-left text-xs font-semibold text-gray-700 border-r whitespace-nowrap bg-blue-50 align-middle"
+                >
+                  {rowLabel}
+                </th>
+                <th
+                  colSpan={measHeaders.length}
+                  className="px-3 py-3 text-center text-xs font-semibold text-gray-700 border-r align-middle"
+                >
+                  <div className="flex items-center justify-center gap-2 whitespace-nowrap">
                     <span>Radiation Output (mGy)</span>
-                    {!isViewMode && <button onClick={addMeasColumn} className="p-2 text-green-600 hover:bg-green-100 rounded-lg"><Plus className="w-5 h-5" /></button>}
+                    {!isViewMode && (
+                      <button
+                        type="button"
+                        onClick={addMeasColumn}
+                        title="Add measurement column"
+                        className="inline-flex items-center justify-center p-1 text-green-600 hover:bg-green-100 rounded"
+                      >
+                        <Plus className="w-4 h-4" />
+                      </button>
+                    )}
                   </div>
                 </th>
-                <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700 border-r">Avg Output</th>
-                <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700 border-r">X ({xUnitLabel})</th>
-                <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700 border-r">X MAX</th>
-                <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700 border-r">X MIN</th>
-                <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700 border-r">CoL</th>
-                <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700">Remarks</th>
+                <th rowSpan={2} className="px-3 py-3 w-28 text-center text-xs font-semibold text-gray-700 border-r whitespace-nowrap align-middle">Avg Output</th>
+                <th rowSpan={2} className="px-3 py-3 w-36 text-center text-xs font-semibold text-gray-700 border-r whitespace-nowrap align-middle">X ({xUnitLabel})</th>
+                <th rowSpan={2} className="px-3 py-3 w-24 text-center text-xs font-semibold text-gray-700 border-r whitespace-nowrap align-middle">X MAX</th>
+                <th rowSpan={2} className="px-3 py-3 w-24 text-center text-xs font-semibold text-gray-700 border-r whitespace-nowrap align-middle">X MIN</th>
+                <th rowSpan={2} className="px-3 py-3 w-20 text-center text-xs font-semibold text-gray-700 border-r whitespace-nowrap align-middle">CoL</th>
+                <th rowSpan={2} className="px-3 py-3 w-28 text-center text-xs font-semibold text-gray-700 whitespace-nowrap align-middle">Remarks</th>
                 <th rowSpan={2} className="w-12" />
               </tr>
               <tr>
                 {measHeaders.map((h, i) => (
-                  <th key={i} className="px-3 py-3 text-center text-xs font-medium text-gray-600 border-r">
-                    <div className="flex items-center justify-center gap-2">
-                      <input type="text" value={h} onChange={e => { setMeasHeaders(p => { const c = [...p]; c[i] = e.target.value || `Meas ${i + 1}`; return c; }); }} disabled={isViewMode}
-                        className={`w-24 px-2 py-1 text-xs border rounded focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`} />
-                      {measHeaders.length > 1 && !isViewMode && <button onClick={() => removeMeasColumn(i)} className="text-red-600 hover:bg-red-100 p-1 rounded"><Trash2 className="w-4 h-4" /></button>}
+                  <th key={i} className="px-2 py-2 text-center text-xs font-medium text-gray-600 border-r bg-blue-50/80">
+                    <div className="flex items-center justify-center gap-1 whitespace-nowrap min-w-[6.5rem]">
+                      <input
+                        type="text"
+                        value={h}
+                        onChange={e => {
+                          setMeasHeaders(p => {
+                            const c = [...p];
+                            c[i] = e.target.value || `Meas ${i + 1}`;
+                            return c;
+                          });
+                        }}
+                        disabled={isViewMode}
+                        className={`w-20 px-1.5 py-1 text-xs text-center border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300 bg-white'}`}
+                      />
+                      {measHeaders.length > 1 && !isViewMode && (
+                        <button
+                          type="button"
+                          onClick={() => removeMeasColumn(i)}
+                          title="Remove column"
+                          className="p-0.5 text-red-600 hover:bg-red-100 rounded"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                     </div>
                   </th>
                 ))}
@@ -559,7 +595,7 @@ const LinearityOfMasLoadingStationsForOArm: React.FC<Props> = ({ serviceId, test
                 const computed = processedRowById.get(row.id) || row;
                 return (
                 <tr key={row.id} className="hover:bg-gray-50">
-                  <td className="px-3 py-4 border-r align-top">
+                  <td className="sticky left-0 z-10 px-3 py-3 border-r bg-white align-middle">
                     <input
                       type="text"
                       inputMode="decimal"
@@ -567,7 +603,7 @@ const LinearityOfMasLoadingStationsForOArm: React.FC<Props> = ({ serviceId, test
                       onChange={e => updateCell(row.id, 'mAsRange', e.target.value)}
                       disabled={isViewMode}
                       placeholder={isMaMode ? '100' : '10 - 20'}
-                      className={`w-full min-w-0 px-2 py-2 text-center text-sm text-gray-900 border rounded font-medium focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-700 cursor-not-allowed' : ''}`}
+                      className={`w-full min-w-[5.5rem] px-2 py-2 text-center text-sm text-gray-900 border rounded font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-700 cursor-not-allowed' : 'border-gray-300'}`}
                     />
                   </td>
                   {measHeaders.map((_, idx) => {
@@ -575,42 +611,50 @@ const LinearityOfMasLoadingStationsForOArm: React.FC<Props> = ({ serviceId, test
                     const hasValue = val !== '' && !isNaN(parseFloat(String(val))) && parseFloat(String(val)) > 0;
                     const isValid = computed.measuredOutputsStatus?.[idx] !== false;
                     return (
-                      <td key={idx} className={`px-2 py-4 text-center border-r align-top ${hasValue && !isValid ? 'bg-red-100' : ''}`}>
+                      <td key={idx} className={`px-2 py-3 text-center border-r align-middle ${hasValue && !isValid ? 'bg-red-100' : ''}`}>
                         <input
                           type="text"
                           inputMode="decimal"
                           value={val}
                           onChange={e => updateCell(row.id, idx, e.target.value)}
                           disabled={isViewMode}
-                          className={`w-full min-w-0 px-2 py-2 text-center text-sm text-gray-900 border rounded focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-700 cursor-not-allowed' : hasValue && !isValid ? 'border-red-500 bg-red-50' : ''}`}
+                          className={`w-24 px-2 py-2 text-center text-sm text-gray-900 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-700 cursor-not-allowed' : hasValue && !isValid ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
                         />
                       </td>
                     );
                   })}
-                  <td className="px-6 py-4 text-center font-bold border-r bg-gray-50">{computed.average}</td>
-                  <td className="px-6 py-4 text-center font-bold border-r bg-gray-50">{computed.x}</td>
+                  <td className="px-3 py-3 text-center font-bold border-r bg-gray-50 align-middle whitespace-nowrap">{computed.average || '—'}</td>
+                  <td className="px-3 py-3 text-center font-bold border-r bg-gray-50 align-middle whitespace-nowrap">{computed.x || '—'}</td>
                   {index === 0 && (
                     <>
-                      <td rowSpan={processedTable2.summary.rowSpan} className="px-6 py-4 text-center font-bold border-r bg-yellow-50 align-middle">{processedTable2.summary.xMax}</td>
-                      <td rowSpan={processedTable2.summary.rowSpan} className="px-6 py-4 text-center font-bold border-r bg-yellow-50 align-middle">{processedTable2.summary.xMin}</td>
-                      <td rowSpan={processedTable2.summary.rowSpan} className="px-6 py-4 text-center font-bold border-r bg-yellow-50 align-middle">{processedTable2.summary.col}</td>
-                      <td rowSpan={processedTable2.summary.rowSpan} className="px-6 py-4 text-center align-middle">
-                        <span className={`inline-block px-4 py-2 rounded-full text-sm font-bold ${processedTable2.summary.remarks === 'Pass' ? 'bg-green-100 text-green-800' : processedTable2.summary.remarks === 'Fail' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-600'}`}>
+                      <td rowSpan={processedTable2.summary.rowSpan} className="px-3 py-3 text-center font-bold border-r bg-yellow-50 align-middle whitespace-nowrap">{processedTable2.summary.xMax || '—'}</td>
+                      <td rowSpan={processedTable2.summary.rowSpan} className="px-3 py-3 text-center font-bold border-r bg-yellow-50 align-middle whitespace-nowrap">{processedTable2.summary.xMin || '—'}</td>
+                      <td rowSpan={processedTable2.summary.rowSpan} className="px-3 py-3 text-center font-bold border-r bg-yellow-50 align-middle whitespace-nowrap">{processedTable2.summary.col || '—'}</td>
+                      <td rowSpan={processedTable2.summary.rowSpan} className="px-3 py-3 text-center align-middle">
+                        <span className={`inline-block px-3 py-1.5 rounded-full text-sm font-bold ${processedTable2.summary.remarks === 'Pass' ? 'bg-green-100 text-green-800' : processedTable2.summary.remarks === 'Fail' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-600'}`}>
                           {processedTable2.summary.remarks || '—'}
                         </span>
                       </td>
                     </>
                   )}
-                  <td className="px-3 py-4 text-center">
-                    {table2Rows.length > 1 && !isViewMode && <button onClick={() => removeTable2Row(row.id)} className="text-red-600 hover:bg-red-50 p-2 rounded"><Trash2 className="w-5 h-5" /></button>}
+                  <td className="px-2 py-3 text-center align-middle">
+                    {table2Rows.length > 1 && !isViewMode && (
+                      <button type="button" onClick={() => removeTable2Row(row.id)} className="text-red-600 hover:bg-red-50 p-1.5 rounded">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
                   </td>
                 </tr>
               )})}
             </tbody>
           </table>
         </div>
-        <div className="px-6 py-4 bg-gray-50 border-t flex justify-between items-center">
-          {!isViewMode && <button onClick={addTable2Row} className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"><Plus className="w-5 h-5" /> Add {rowLabel}</button>}
+        <div className="px-6 py-4 bg-gray-50 border-t flex flex-wrap justify-between items-center gap-3">
+          {!isViewMode && (
+            <button type="button" onClick={addTable2Row} className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium">
+              <Plus className="w-5 h-5" /> Add {rowLabel}
+            </button>
+          )}
           <div className="flex items-center gap-3 ml-auto">
             <span className="text-sm font-medium text-gray-700">Tolerance (CoL)</span>
             <select value={toleranceOperator} onChange={e => setToleranceOperator(e.target.value)} disabled={isViewMode}
@@ -630,7 +674,7 @@ const LinearityOfMasLoadingStationsForOArm: React.FC<Props> = ({ serviceId, test
       <div className="flex justify-end mt-6">
         <button onClick={isViewMode ? toggleEdit : handleSave} disabled={isSaving || (!isViewMode && !isFormValid)}
           className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${isSaving || (!isViewMode && !isFormValid) ? 'bg-gray-400 cursor-not-allowed' : isViewMode ? 'bg-orange-600 hover:bg-orange-700' : 'bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300'}`}>
-          {isSaving ? <><Loader2 className="w-4 h-4 animate-spin" />Saving...</> : <><ButtonIcon className="w-4 h-4" />{buttonText} {isMaMode ? (isTimerSelected ? 'mAs' : 'mA') : 'mAs'} Linearity</>}
+          {isSaving ? <><Loader2 className="w-4 h-4 animate-spin" />Saving...</> : <><ButtonIcon className="w-4 h-4" />{buttonText} {isMaMode ? 'mA' : 'mAs'} Linearity</>}
         </button>
       </div>
     </div>

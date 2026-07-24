@@ -301,13 +301,13 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
           const id = data._id;
           setTestId(id);
 
-          // Populate settings
+          // Backend stores fcd/kv/ma/time at top level (not nested settings[])
           const s = Array.isArray(data.settings) ? data.settings[0] : data.settings || {};
           setSettings({
-            fcd: s.fcd?.toString() || '100',
-            kv: s.kv?.toString() || s.kvp?.toString() || '120',
-            ma: s.ma?.toString() || '21',
-            time: s.time?.toString() || '2.0',
+            fcd: (data.fcd ?? s.fcd)?.toString() || '100',
+            kv: (data.kv ?? s.kv ?? s.kvp)?.toString() || '120',
+            ma: (data.ma ?? s.ma)?.toString() || '21',
+            time: (data.time ?? s.time)?.toString() || '2.0',
           });
 
           setWorkload(data.workload?.toString() || '');
@@ -340,7 +340,7 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
     };
 
     loadData();
-  }, [serviceId, propTestId, testId]); // Add testId to dependencies!
+  }, [serviceId, propTestId]);
 
   const handleSave = async () => {
     if (!isFormValid) {
@@ -348,7 +348,12 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
       return;
     }
 
+    // Send top-level fcd/kv/ma/time (model fields) plus settings for compatibility
     const payload = {
+      fcd: settings.fcd,
+      kv: settings.kv,
+      ma: settings.ma,
+      time: settings.time,
       settings: [settings],
       workload,
       toleranceValue,
@@ -380,12 +385,22 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
         if (newTestId) {
           setTestId(newTestId);
         }
+        // Keep Measurement Settings from server (top-level fcd/kv/ma/time), not form defaults
+        const saved = res.data || res;
+        if (saved?.fcd != null || saved?.kv != null || saved?.ma != null || saved?.time != null) {
+          setSettings({
+            fcd: saved.fcd?.toString() || settings.fcd,
+            kv: saved.kv?.toString() || settings.kv,
+            ma: saved.ma?.toString() || settings.ma,
+            time: saved.time?.toString() || settings.time,
+          });
+        }
         toast.success('Tube Housing Leakage test saved successfully!');
       }
 
       setHasSaved(true);
       setIsEditing(false);
-      onRefresh?.(); // This will now reload using the correct testId
+      onRefresh?.();
     } catch (error: any) {
       toast.error(error?.response?.data?.message || 'Failed to save test');
     } finally {

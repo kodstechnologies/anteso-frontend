@@ -99,13 +99,13 @@ const MainTestTableForOArm: React.FC<MainTestTableProps> = ({ testData, hasTimer
       }
     }
 
-    const specifiedValue = `${toleranceOperator} ${toleranceValue}�`;
-    const toleranceDisplay = `${toleranceOperator} ${toleranceValue}�`;
+    const specifiedValue = `${toleranceOperator} ${toleranceValue}°`;
+    const toleranceDisplay = `${toleranceOperator} ${toleranceValue}°`;
 
     addRowsForTest("Central Beam Alignment", [
       {
         specified: specifiedValue,
-        measured: tiltValue !== "-" ? `${tiltValue}�` : "-",
+        measured: tiltValue !== "-" ? `${tiltValue}°` : "-",
         tolerance: toleranceDisplay,
         remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
       },
@@ -170,7 +170,7 @@ const MainTestTableForOArm: React.FC<MainTestTableProps> = ({ testData, hasTimer
         return {
           specified: row.setTime || "-",
           measured: row.measuredTime || "-",
-          tolerance: `${toleranceOperator} ${toleranceValue}%`,
+          tolerance: `${toleranceOperator} ${toleranceValue}°`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });
@@ -185,7 +185,7 @@ const MainTestTableForOArm: React.FC<MainTestTableProps> = ({ testData, hasTimer
       const toleranceSign =
         testData.accuracyOfOperatingPotential.tolerance?.sign ||
         testData.accuracyOfOperatingPotential.toleranceSign ||
-        "�";
+        "±";
       const toleranceValue =
         testData.accuracyOfOperatingPotential.tolerance?.value ||
         testData.accuracyOfOperatingPotential.toleranceValue ||
@@ -218,7 +218,7 @@ const MainTestTableForOArm: React.FC<MainTestTableProps> = ({ testData, hasTimer
   if (tfRoot?.measurements && Array.isArray(tfRoot.measurements)) {
     const validRows = tfRoot.measurements.filter((row: any) => row.appliedKvp || row.averageKvp || row.measuredValues);
     if (validRows.length > 0) {
-      const toleranceSign = tfRoot.tolerance?.sign || "�";
+      const toleranceSign = tfRoot.tolerance?.sign || "±";
       const toleranceValue = tfRoot.tolerance?.value || "2.0";
       const testRows = validRows.map((row: any) => {
         let avgKvpNum: number | null = null;

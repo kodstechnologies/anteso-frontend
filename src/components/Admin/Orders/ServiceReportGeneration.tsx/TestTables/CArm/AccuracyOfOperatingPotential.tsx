@@ -36,7 +36,7 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
   const isViewMode = isSaved && !isEditing;
 
   const [mAStations, setMAStations] = useState<string[]>(["50 mA", "100 mA"]);
-  const [ffd, setFfd] = useState<string>(""); // FFD (cm) shown on top-right
+  const [ffd, setFfd] = useState<string>(""); // FDD (cm) — same label as Radiography Fixed
   const [rows, setRows] = useState<RowData[]>([
     { id: "1", appliedKvp: "60", measuredValues: ["", ""], averageKvp: "", remarks: "-" },
     { id: "2", appliedKvp: "80", measuredValues: ["", ""], averageKvp: "", remarks: "-" },
@@ -253,10 +253,10 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
     <div className="p-6 max-w-full overflow-x-auto space-y-10">
       <h2 className="text-2xl font-bold text-gray-800 mb-6">Accuracy of Operating Potential</h2>
 
-      {/* FFD (cm) - top right, similar to report layout */}
+      {/* FDD (cm) - top right, same label as Radiography Fixed measurement distance */}
       <div className="flex justify-end mb-4">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold text-gray-700">FFD (cm)</span>
+          <span className="text-sm font-semibold text-gray-700">FDD (cm)</span>
           <input
             type="number"
             value={ffd}

@@ -2,9 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { getReportHeaderForOArm, saveReportHeader, getDetails, getTools } from "../../../../../../api";
-import html2canvas from "html2canvas";
-import jsPDF from "jspdf";
-import { applyEmbeddedImagesToClone, prepareImagesForPdfCapture } from "../../../../../../utils/generatePDF";
+import { generatePDF, estimateReportPages } from "../../../../../../utils/generatePDF";
 import MainTestTableForOArm from "./MainTestTableForOArm";
 import { ReportPdfPageHeader } from "../RadiographyFixed/component/Header";
 import { ReportPdfPageFooter } from "../RadiographyFixed/component/Footer";
@@ -378,94 +376,48 @@ const ViewServiceReportOArm: React.FC = () => {
   };
 
   const downloadPDF = async () => {
-    const element = document.getElementById("report-content");
-    if (!element) return;
-
     try {
-      const btn = document.querySelector(".download-pdf-btn") as HTMLButtonElement;
-      if (btn) {
-        btn.textContent = "Generating PDF...";
-        btn.disabled = true;
-      }
-
-      const { imageDataUrlMap, restore: restoreImages } = await prepareImagesForPdfCapture(element);
-
-      try {
-      const canvas = await html2canvas(element, {
-        scale: 1.5, // Optimized for smaller file size
-        useCORS: true,
-        allowTaint: true,
-        logging: false,
-        backgroundColor: '#ffffff',
-        imageTimeout: 15000,
-        onclone: (clonedDoc) => {
-          applyEmbeddedImagesToClone(clonedDoc, imageDataUrlMap);
-        },
+      await generatePDF({
+        elementId: "report-content",
+        filename: `OArm-Report-${report?.testReportNumber || "report"}.pdf`,
+        buttonSelector: ".download-pdf-btn",
       });
-      // Convert to JPEG with compression for much smaller file size
-      const imgData = canvas.toDataURL("image/jpeg", 0.85); // JPEG at 85% quality - good balance
-      const pdf = new jsPDF("p", "mm", "a4");
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-      const imgWidth = pdfWidth;
-      const imgHeight = (canvas.height * pdfWidth) / canvas.width;
-      let heightLeft = imgHeight;
-      let position = 0;
 
-      pdf.addImage(imgData, "JPEG", 0, position, imgWidth, imgHeight);
-      heightLeft -= pdfHeight;
-
-      while (heightLeft >= 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, "JPEG", 0, position, imgWidth, imgHeight);
-        heightLeft -= pdfHeight;
-      }
-
-      pdf.save(`OArm-Report-${report?.testReportNumber || "report"}.pdf`);
-      const { estimateReportPages } = await import("../../../../../../utils/generatePDF");
-      const pageCount = estimateReportPages("report-content");
-      const response = await getReportHeaderForOArm(serviceId!);
-      if (response?.exists && response?.data && report) {
-        const d = response.data as any;
-        const payload = {
-          customerName: d.customerName,
-          address: d.address,
-          srfNumber: d.srfNumber,
-          srfDate: d.srfDate,
-          testReportNumber: d.testReportNumber,
-          issueDate: d.issueDate,
-          nomenclature: d.nomenclature,
-          make: d.make,
-          model: d.model,
-          slNumber: d.slNumber,
-          condition: d.condition,
-          testingProcedureNumber: d.testingProcedureNumber,
-          engineerNameRPId: d.engineerNameRPId,
-          testDate: d.testDate,
-          testDueDate: d.testDueDate,
-          location: d.location,
-          temperature: d.temperature,
-          humidity: d.humidity,
-          toolsUsed: d.toolsUsed,
-          notes: d.notes,
-          pages: String(pageCount),
-        };
-        await saveReportHeader(serviceId!, payload);
-        setReport((prev) => (prev ? { ...prev, pages: String(pageCount) } : null));
-      }
-      } finally {
-        restoreImages();
+      // Sync page count after PDF generation (same pattern as Radiography Portable / BMD)
+      if (serviceId) {
+        const pageCount = estimateReportPages("report-content");
+        const response = await getReportHeaderForOArm(serviceId);
+        if (response?.exists && response?.data) {
+          const d = response.data as any;
+          await saveReportHeader(serviceId, {
+            customerName: d.customerName,
+            address: d.address,
+            srfNumber: d.srfNumber,
+            srfDate: d.srfDate,
+            testReportNumber: d.testReportNumber,
+            issueDate: d.issueDate,
+            nomenclature: d.nomenclature,
+            make: d.make,
+            model: d.model,
+            slNumber: d.slNumber,
+            condition: d.condition,
+            testingProcedureNumber: d.testingProcedureNumber,
+            engineerNameRPId: d.engineerNameRPId,
+            testDate: d.testDate,
+            testDueDate: d.testDueDate,
+            location: d.location,
+            temperature: d.temperature,
+            humidity: d.humidity,
+            toolsUsed: d.toolsUsed,
+            notes: d.notes,
+            pages: String(pageCount),
+          });
+          setReport((prev) => (prev ? { ...prev, pages: String(pageCount) } : null));
+        }
       }
     } catch (error) {
       console.error("PDF Error:", error);
-      alert("Failed to generate PDF");
-    } finally {
-      const btn = document.querySelector(".download-pdf-btn") as HTMLButtonElement;
-      if (btn) {
-        btn.textContent = "Download PDF";
-        btn.disabled = false;
-      }
+      alert("Failed to generate PDF. Please try again.");
     }
   };
 
@@ -533,7 +485,7 @@ const ViewServiceReportOArm: React.FC = () => {
     <div
       className={`bg-white shadow-2xl print:shadow-none ${isLast ? "report-pdf-last-page-shell" : "report-pdf-page-shell"}`}
       style={{
-        pageBreakAfter: isLast ? "auto" : "always",
+        pageBreakAfter: "always",
         display: "flex",
         flexDirection: "column",
         width: "210mm",
@@ -633,13 +585,13 @@ const ViewServiceReportOArm: React.FC = () => {
                 ["Sl. No.", report.slNumber],
                 ["Condition of Test Item", report.condition],
                 ["Testing Procedure No.", report.testingProcedureNumber || "-"],
-                ["Engineer�s Name", report.engineerNameRPId || "-"],
+                ["Engineer's Name", report.engineerNameRPId || "-"],
                 ["RP ID", report.rpId || "-"],
                 ["No. of pages", report.pages || "-"],
                 ["QA Test Date", formatDate(report.testDate)],
                 ["QA Test Due Date", formatDate(report.testDueDate)],
                 ["Testing done at Location", report.location],
-                ["Temperature (�C)", report.temperature || "-"],
+                ["Temperature (°C)", report.temperature || "-"],
                 ["Humidity in RH (%)", report.humidity || "-"],
               ].map(([label, value], index) => (
                 <div key={String(label)} className="flex">
@@ -699,17 +651,25 @@ const ViewServiceReportOArm: React.FC = () => {
 
         {/* PAGE 2+ - SUMMARY TABLE */}
         <ReportPage>
-          <div className="max-w-5xl mx-auto print:max-w-none" style={{ width: '100%', maxWidth: 'none' }}>
+          <div className="report-pdf-last-main" style={{ width: "100%", flex: 1 }}>
             <MainTestTableForOArm
               testData={testData}
-              hasTimer={testData.linearityOfMasLoading?.selection === "mA"}
+              hasTimer={(() => {
+                const lin = testData.linearityOfMasLoading;
+                if (!lin) return false;
+                const sel = String(lin.selection || "").trim().toLowerCase();
+                if (sel === "ma") return true;
+                if (sel === "mas") return false;
+                const t1 = Array.isArray(lin.table1) ? lin.table1[0] : lin.table1;
+                return !!(t1 && String(t1.time ?? "").trim() !== "");
+              })()}
             />
           </div>
         </ReportPage>
 
         {/* PAGE 3+ - DETAILED TEST RESULTS */}
         <ReportPage>
-          <div className="max-w-5xl mx-auto print:max-w-none" style={{ width: '100%', maxWidth: 'none' }}>
+          <div className="report-pdf-last-main" style={{ width: "100%", flex: 1 }}>
             <h2 className="font-bold text-center underline mb-4" style={{ fontSize: "16px" }}>DETAILED TEST RESULTS</h2>
 
             {/* 1. Accuracy of Irradiation Time */}
@@ -1303,16 +1263,22 @@ const ViewServiceReportOArm: React.FC = () => {
             {/* 8. Linearity of mA/mAs Loading — table1 (Test Conditions) + table2 with Measured Values like RadiographyFixed */}
             {testData.linearityOfMasLoading && (() => {
               const lin = testData.linearityOfMasLoading;
-              const isMaLinear = lin.selection === "mA" || lin.selection === "ma";
-              const linearitySectionTitle = isMaLinear ? "8. Linearity of mA Loading" : "8. Linearity of mAs Loading";
-              const firstColHeader = isMaLinear ? "mA" : "mAs range";
               const t1 = lin.table1?.[0];
+              const sel = String(lin.selection || "").trim().toLowerCase();
+              const hasTimeInTable1 = !!(t1 && String(t1.time ?? "").trim() !== "");
+              // Prefer saved selection; if missing, infer mA when Time is present
+              const isMaLinear =
+                sel === "ma" || (sel !== "mas" && hasTimeInTable1);
+              const linearitySectionTitle = isMaLinear
+                ? "8. Linearity of mA Loading"
+                : "8. Linearity of mAs Loading";
+              const firstColHeader = isMaLinear ? "mA" : "mAs range";
               const timeSec = parseFloat(String(t1?.time ?? ""));
               const hasValidTimer = !isNaN(timeSec) && timeSec > 0;
               const xColHeader = isMaLinear
                 ? (hasValidTimer ? "X (mGy/(mA*s))" : "X (mGy/mA)")
                 : "X (mGy/mAs)";
-              const showTimeCol = isMaLinear || !!(t1 && String(t1.time ?? "").trim() !== "");
+              const showTimeCol = isMaLinear;
               return (
                 <div className="mb-16 print:mb-12 test-section">
                   <h3 className="text-lg font-bold mb-4 print:mb-1 print:text-sm" style={{ fontSize: '14px', marginBottom: '4px' }}>{linearitySectionTitle}</h3>
@@ -1409,7 +1375,7 @@ const ViewServiceReportOArm: React.FC = () => {
           </div>
         </ReportPage>
         <ReportPage isLast>
-          <div style={{ width: "100%", flex: 1 }}>
+          <div className="report-pdf-last-main" style={{ width: "100%", flex: 1, display: "flex", flexDirection: "column" }}>
             <ReportPdfPageDeclaration
               todayDate={todayDate}
               customerCity={placeValue}
@@ -1420,9 +1386,8 @@ const ViewServiceReportOArm: React.FC = () => {
             />
           </div>
         </ReportPage>
-      </div>
 
-      <style>{`
+        <style>{`
         .fixed-report-pdf {
           font-family: "Times New Roman", Times, serif;
           color: #000;
@@ -1461,6 +1426,8 @@ const ViewServiceReportOArm: React.FC = () => {
           line-height: 1.1 !important;
           vertical-align: middle !important;
         }
+
+        /* PDF-ONLY ADJUSTMENTS: html2canvas tends to sink text, so we push it up in the PDF */
         .is-generating-pdf td,
         .is-generating-pdf th {
           padding-top: 4px !important;
@@ -1475,6 +1442,9 @@ const ViewServiceReportOArm: React.FC = () => {
           box-sizing: border-box !important;
           background: white !important;
         }
+        .fixed-report-pdf .report-pdf-last-main {
+          flex: 1 1 auto !important;
+        }
         @media print {
           body { -webkit-print-color-adjust: exact; margin: 0; padding: 0; }
           @page { margin: 0; size: A4; }
@@ -1487,6 +1457,7 @@ const ViewServiceReportOArm: React.FC = () => {
           }
         }
       `}</style>
+      </div>
     </>
   );
 };

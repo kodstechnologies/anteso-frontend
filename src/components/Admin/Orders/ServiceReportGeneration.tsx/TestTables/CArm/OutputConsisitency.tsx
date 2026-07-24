@@ -447,6 +447,8 @@ const OutputConsistencyForCArm: React.FC<Props> = ({
         </table>
       </div>
 
+
+
       {/* Table 2: Output Consistency with Remark */}
       <div className="bg-white shadow-md rounded-lg overflow-hidden">
         <h3 className="px-6 py-3 text-lg font-semibold bg-teal-50 border-b">
@@ -588,15 +590,7 @@ const OutputConsistencyForCArm: React.FC<Props> = ({
           />
         </div>
 
-        <div className="flex items-center justify-between">
-          <span className="text-sm font-medium text-gray-700">Final Result:</span>
-          <span className={`inline-flex px-6 py-3 text-lg font-bold rounded-full ${finalRemark === 'Pass' ? 'bg-green-100 text-green-800' :
-            finalRemark === 'Fail' ? 'bg-red-100 text-red-800' :
-              'bg-gray-100 text-gray-500'
-            }`}>
-            {finalRemark || '—'}
-          </span>
-        </div>
+      
       </div>
 
       <div className="flex justify-end mt-6">

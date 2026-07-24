@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Edit3, Save, Loader2, Plus, Trash2 } from 'lucide-react';
+import { Edit3, Save, Loader2, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
   addCongruenceForRadiographyPortable,
@@ -70,16 +70,6 @@ const CongruenceOfRadiation: React.FC<Props> = ({ serviceId, testId: propTestId,
       return { ...row, percentFED, remark };
     });
   }, [congruenceRows, techniqueRows]);
-
-  // Add new technique row
-  const addTechniqueRow = () => {
-    setTechniqueRows(prev => [...prev, {
-      id: Date.now().toString(),
-      fcd: '100',
-      kv: '80',
-      mas: '10',
-    }]);
-  };
 
   const removeTechniqueRow = (id: string) => {
     if (techniqueRows.length <= 1) return;
@@ -332,17 +322,6 @@ const CongruenceOfRadiation: React.FC<Props> = ({ serviceId, testId: propTestId,
             </tbody>
           </table>
         </div>
-        {!isViewOnly && (
-          <div className="px-6 py-4 bg-gray-50 border-t">
-            <button
-              onClick={addTechniqueRow}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
-            >
-              <Plus className="w-4 h-4" />
-              Add Row
-            </button>
-          </div>
-        )}
       </div>
 
       {/* Table 2: Congruence Measurement */}

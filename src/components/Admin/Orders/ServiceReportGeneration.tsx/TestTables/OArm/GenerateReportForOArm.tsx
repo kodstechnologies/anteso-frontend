@@ -31,7 +31,11 @@ import {
   mergeTextWithRadiographyVerticalParse,
   mergeWithRadiographyVerticalParse,
 } from "../shared/mergeRadiographyVerticalParse";
-import { normalizeCsvComparisonOperator } from "../shared/parseRadiographyStyleTableFormat";
+import { enrichParsedRowsWithMatrixMeasHeaders } from "../shared/enrichMeasHeadersFromMatrix";
+import {
+  normalizeCsvComparisonOperator,
+  sheetRowsFromWorksheet,
+} from "../shared/parseRadiographyStyleTableFormat";
 import { isExcelFileUrl } from "../../../../../../utils/spreadsheetFile";
 
 // Test-table imports
@@ -591,15 +595,15 @@ const OArmContent: React.FC<OArmProps> = ({ serviceId, csvFileUrl }) => {
       'Linearity of mA Loading': {
         'FCD': 'Exposure_FCD', 'FDD (cm)': 'Exposure_FCD', 'FDD': 'Exposure_FCD',
         'kV': 'Exposure_KV',
-        'Time': 'Exposure_Time', 'Time (sec)': 'Exposure_Time',
-        'mA': 'Row_mAsRange',
+        'Time': 'Exposure_Time', 'Time (sec)': 'Exposure_Time', 'Time (s)': 'Exposure_Time',
+        'mA': 'Row_mAsRange', 'mA Applied': 'Row_mAsRange',
         'Meas 1': 'Row_Meas_0', 'Meas 2': 'Row_Meas_1', 'Meas 3': 'Row_Meas_2',
         'Meas 4': 'Row_Meas_3', 'Meas 5': 'Row_Meas_4',
       },
       'Linearity of mAs Loading': {
         'FCD': 'Exposure_FCD', 'FDD (cm)': 'Exposure_FCD', 'FDD': 'Exposure_FCD',
         'kV': 'Exposure_KV',
-        'mAs Range': 'Row_mAsRange',
+        'mAs Range': 'Row_mAsRange', 'mAs': 'Row_mAsRange', 'mAs Applied': 'Row_mAsRange',
         'Meas 1': 'Row_Meas_0', 'Meas 2': 'Row_Meas_1', 'Meas 3': 'Row_Meas_2',
         'Meas 4': 'Row_Meas_3', 'Meas 5': 'Row_Meas_4',
       },
@@ -623,9 +627,21 @@ const OArmContent: React.FC<OArmProps> = ({ serviceId, csvFileUrl }) => {
         'Total Filtration At kVp',
         'Total Filtration (mm Al)',
       ]),
-      'Output Consistency': new Set(['FFD', 'FDD (cm)', 'FDD', 'Time', 'Time (s)', 'kVp', 'kV', 'mA']),
-      'Linearity of mAs Loading': new Set(['FCD', 'FDD (cm)', 'FDD', 'kV', 'mAs Range']),
-      'Linearity of mA Loading': new Set(['FCD', 'FDD (cm)', 'FDD', 'kV', 'Time', 'Time (sec)', 'mA']),
+      'Output Consistency': new Set(['FFD', 'FDD (cm)', 'FDD', 'Time', 'Time (s)', 'kVp', 'kV', 'mA', 'mAs']),
+      'Linearity of mAs Loading': new Set(['FCD', 'FDD (cm)', 'FDD', 'kV', 'mAs Range', 'mAs', 'mAs Applied']),
+      'Linearity of mA Loading': new Set([
+        'FCD', 'FDD (cm)', 'FDD', 'kV', 'Time', 'Time (sec)', 'Time (s)', 'mA', 'mA Applied',
+      ]),
+    };
+
+    const isLinearityConditionRow = (row: string[]) => {
+      const label = (row[0] || '').trim();
+      return /^(FDD\s*\(|FFD\s*\(|FCD|Tolerance\s*Operator|Tolerance\s*Value)/i.test(label);
+    };
+
+    const isLinearityMeasHeaderRow = (row: string[]) => {
+      const label = (row[0] || '').trim();
+      return /^mAs(\s*Range)?$/i.test(label) || /^mA\s*Applied$/i.test(label) || /^mA$/i.test(label);
     };
 
     const measFieldPrefixByTest: Record<string, string> = {
@@ -639,6 +655,8 @@ const OArmContent: React.FC<OArmProps> = ({ serviceId, csvFileUrl }) => {
       const trimmed = header.trim();
       if (!trimmed || trimmed.match(/^Header\s*\d+$/i)) return false;
       if (!measFieldPrefixByTest[testName]) return false;
+      // Never treat the row-label column as a measurement header
+      if (/^mA(\s*Applied)?$/i.test(trimmed) || /^mAs(\s*Range|\s*Applied)?$/i.test(trimmed)) return false;
       if (map[trimmed]) return false;
       const fixed = fixedHeadersByTest[testName];
       return !fixed?.has(trimmed);
@@ -676,9 +694,48 @@ const OArmContent: React.FC<OArmProps> = ({ serviceId, csvFileUrl }) => {
       }
 
       if (isReadingTest && headers.length === 0 && row.some(c => c)) {
-        headers = row;
         const map = headerMap[currentTestNameBase] || {};
-        if (measFieldPrefixByTest[currentTestNameBase]) {
+
+        // Radiography-style layout: first rows are FDD/kV/Time conditions — not column headers
+        if (
+          (currentTestNameBase === 'Linearity of mA Loading' ||
+            currentTestNameBase === 'Linearity of mAs Loading') &&
+          isLinearityConditionRow(row)
+        ) {
+          for (let c = 0; c < row.length; c += 2) {
+            const key = (row[c] || '').trim();
+            const val = row[c + 1];
+            const field = map[key];
+            if (field && val !== undefined && val !== null && String(val).trim() !== '') {
+              data.push({
+                'Field Name': field,
+                'Value': String(val).trim(),
+                'Row Index': 0,
+                'Test Name': currentTestName,
+              });
+            }
+          }
+          continue;
+        }
+
+        headers = row;
+        if (
+          (currentTestNameBase === 'Linearity of mA Loading' ||
+            currentTestNameBase === 'Linearity of mAs Loading') &&
+          isLinearityMeasHeaderRow(row)
+        ) {
+          // Only cells after mA / mAs label are measurement headers
+          row.slice(1).forEach((headerCell, headerIdx) => {
+            const h = (headerCell || '').trim();
+            if (!h) return;
+            data.push({
+              'Field Name': `Header_${headerIdx + 1}`,
+              'Value': h,
+              'Row Index': 0,
+              'Test Name': currentTestName,
+            });
+          });
+        } else if (measFieldPrefixByTest[currentTestNameBase]) {
           emitDynamicHeaderLabels(currentTestNameBase, headers, map);
         }
         continue;
@@ -690,6 +747,30 @@ const OArmContent: React.FC<OArmProps> = ({ serviceId, csvFileUrl }) => {
       }
 
       if (isReadingTest && currentTestName && currentTestNameBase && headers.length > 0) {
+        const firstDataCell = (row[0] || '').trim();
+        if (/^Tolerance\s*(Operator|Value)/i.test(firstDataCell)) {
+          const map = headerMap[currentTestNameBase] || {};
+          // Allow tolerance fields via label/value pairs on these rows
+          if (firstDataCell.match(/^Tolerance\s*Operator/i) && row[1]) {
+            data.push({
+              'Field Name': 'Tolerance_Operator',
+              'Value': normalizeCsvComparisonOperator(row[1]),
+              'Row Index': 0,
+              'Test Name': currentTestName,
+            });
+          } else if (firstDataCell.match(/^Tolerance\s*Value/i) && row[1]) {
+            data.push({
+              'Field Name': 'Tolerance_Value',
+              'Value': row[1],
+              'Row Index': 0,
+              'Test Name': currentTestName,
+            });
+          } else if (map['Tolerance Operator'] || map['Tolerance']) {
+            // fall through unused — keep skip behavior
+          }
+          continue;
+        }
+
         sectionRowCounter[currentTestName] = (sectionRowCounter[currentTestName] || 0) + 1;
         const rowIdx = sectionRowCounter[currentTestName];
         const map = headerMap[currentTestNameBase] || {};
@@ -714,7 +795,7 @@ const OArmContent: React.FC<OArmProps> = ({ serviceId, csvFileUrl }) => {
             return;
           }
 
-          if (!value) return;
+          if (!value && value !== 0) return;
           const headerMatch = header.match(/^Header\s*(\d+)$/i);
           const internalField = headerMatch
             ? `Header_${headerMatch[1]}`
@@ -739,13 +820,16 @@ const OArmContent: React.FC<OArmProps> = ({ serviceId, csvFileUrl }) => {
 
   const parseCSV = (text: string): any[] => {
     const lines = text.split('\n').map(line => line.split(',').map(c => c.trim()));
-    return mergeTextWithRadiographyVerticalParse(parseHorizontalData(lines), text, "oarm");
+    const merged = mergeTextWithRadiographyVerticalParse(parseHorizontalData(lines), text, "oarm");
+    const matrix = text.split(/\r?\n/).map((line) => line.split(",").map((c) => c.trim()));
+    return enrichParsedRowsWithMatrixMeasHeaders(merged, matrix, "oarm");
   };
 
   const parseExcelToCSVFormat = (workbook: XLSX.WorkBook, preferTimer: boolean | null = null): any[] => {
     const worksheet = resolveOArmWorksheet(workbook, preferTimer ?? hasTimer);
-    const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' }) as any[][];
-    return mergeWithRadiographyVerticalParse(parseHorizontalData(jsonData), jsonData, "oarm");
+    const jsonData = sheetRowsFromWorksheet(worksheet);
+    const merged = mergeWithRadiographyVerticalParse(parseHorizontalData(jsonData), jsonData, "oarm");
+    return enrichParsedRowsWithMatrixMeasHeaders(merged, jsonData, "oarm");
   };
 
   // When applyConfigFromExcel is true (file from ServiceDetails2 redirect), infer hasTimer from Excel and skip timer modal.

@@ -1732,7 +1732,7 @@ const InventionalRadiologyContent: React.FC<InventionalRadiologyProps> = ({ serv
             ),
           },
           {
-            title: "Total Filtration",
+            title: "Accuracy of Operating Potential",
             component: (
               <TotalFilteration
                 key={`total-filtration-${refreshKey}`}
@@ -1828,7 +1828,7 @@ const InventionalRadiologyContent: React.FC<InventionalRadiologyProps> = ({ serv
             component: <EffectiveFocalspotMeasurement serviceId={serviceId} tubeId="frontal" csvData={csvDataForComponents['Effective Focal Spot Size - Frontal']} />,
           },
           {
-            title: "Total Filtration - Frontal",
+            title: "Accuracy of Operating Potential - Frontal",
             component: <TotalFilteration key={`total-filtration-frontal-${refreshKey}`} serviceId={serviceId} tubeId="frontal" csvData={mergeCsvSections('Accuracy Of Operating Potential - Frontal', 'Total Filtration - Frontal')} />,
           },
           {
@@ -1870,7 +1870,7 @@ const InventionalRadiologyContent: React.FC<InventionalRadiologyProps> = ({ serv
             component: <EffectiveFocalspotMeasurement serviceId={serviceId} tubeId="lateral" csvData={csvDataForComponents['Effective Focal Spot Size - Lateral']} />,
           },
           {
-            title: "Total Filtration - Lateral",
+            title: "Accuracy of Operating Potential - Lateral",
             component: <TotalFilteration key={`total-filtration-lateral-${refreshKey}`} serviceId={serviceId} tubeId="lateral" csvData={mergeCsvSections('Accuracy Of Operating Potential - Lateral', 'Total Filtration - Lateral')} />,
           },
           {

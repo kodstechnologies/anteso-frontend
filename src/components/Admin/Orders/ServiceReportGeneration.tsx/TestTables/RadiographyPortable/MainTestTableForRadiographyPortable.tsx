@@ -70,10 +70,10 @@ const MainTestTableForRadiographyPortable: React.FC<MainTestTableProps> = ({ tes
   // 3. Central Beam Alignment
   if (testData.centralBeamAlignment?.observedTilt) {
     const tiltValue = testData.centralBeamAlignment.observedTilt.value || "-";
-    const toleranceOperator = testData.centralBeamAlignment.tolerance?.operator || "<=";
-    const toleranceValue = testData.centralBeamAlignment.tolerance?.value || "5";
+    const toleranceOperator = testData.centralBeamAlignment.tolerance?.operator || "=";
+    const toleranceValue = testData.centralBeamAlignment.tolerance?.value || "1.5";
     
-    // Determine pass/fail based on tolerance
+    // Determine pass/fail based on tolerance (same rules as generate-page CentralBeamAlignment)
     let isPass = false;
     if (testData.centralBeamAlignment.observedTilt.remark === "Pass" || testData.centralBeamAlignment.observedTilt.remark === "PASS") {
       isPass = true;
@@ -83,16 +83,12 @@ const MainTestTableForRadiographyPortable: React.FC<MainTestTableProps> = ({ tes
       const observed = parseFloat(tiltValue);
       const tol = parseFloat(toleranceValue);
       if (!isNaN(observed) && !isNaN(tol)) {
-        if (toleranceOperator === "<") {
+        if (toleranceOperator === "<" || toleranceOperator === "<=") {
           isPass = observed < tol;
-        } else if (toleranceOperator === ">") {
+        } else if (toleranceOperator === ">" || toleranceOperator === ">=") {
           isPass = observed > tol;
-        } else if (toleranceOperator === "<=") {
-          isPass = observed <= tol;
-        } else if (toleranceOperator === ">=") {
-          isPass = observed >= tol;
         } else if (toleranceOperator === "=") {
-          isPass = Math.abs(observed - tol) < 0.01;
+          isPass = Math.abs(observed - tol) < 0.0001;
         }
       }
     }
