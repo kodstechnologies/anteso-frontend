@@ -95,11 +95,11 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
                         const measured = parseFloat(val || "0");
                         return checkTolerance(measured, rowApplied, tol, loadedSign);
                     });
-                    const nums = (m.measuredValues || [])
+                    const nums: number[] = (m.measuredValues || [])
                         .filter((v: string) => v !== "" && !isNaN(Number(v)))
-                        .map(Number);
+                        .map((v: string) => Number(v));
                     const avgFromData = String(m.averageKvp ?? "").trim();
-                    const avg = avgFromData || (nums.length > 0 ? (nums.reduce((a, b) => a + b, 0) / nums.length).toFixed(2) : "");
+                    const avg = avgFromData || (nums.length > 0 ? (nums.reduce((a: number, b: number) => a + b, 0) / nums.length).toFixed(2) : "");
                     const avgNum = parseFloat(avg || "0");
                     const avgStatus = checkTolerance(avgNum, rowApplied, tol, loadedSign);
                     const hasAnyFailure = measuredStatus.some((status: boolean) => status === false) || avgStatus === false;

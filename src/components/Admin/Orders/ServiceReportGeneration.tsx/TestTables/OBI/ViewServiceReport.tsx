@@ -55,6 +55,7 @@ interface ReportData {
   location?: string;
   temperature?: string;
   humidity?: string;
+  hasTimer?: boolean | null;
   pages?: string;
   toolsUsed?: Tool[];
   qrCode?: string;
