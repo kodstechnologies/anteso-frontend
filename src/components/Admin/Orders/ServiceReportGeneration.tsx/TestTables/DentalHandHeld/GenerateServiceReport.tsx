@@ -14,7 +14,8 @@ import {
     getConsistencyOfRadiationOutputByServiceIdForDentalHandHeld,
     getRadiationLeakageLevelByServiceIdForDentalHandHeld,
     getTubeHousingLeakageByServiceIdForDentalHandHeld,
-    getRadiationProtectionSurveyByServiceIdForDentalHandHeld
+    getRadiationProtectionSurveyByServiceIdForDentalHandHeld,
+  saveTimerPreference,
 } from "../../../../../../api";
 import { Disclosure } from "@headlessui/react";
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
@@ -227,6 +228,10 @@ const GenerateReportForDentalHandHeldContent: React.FC<DentalProps> = ({ service
             try {
                 const res = await getReportHeaderForDentalHandHeld(serviceId);
                 if (res?.exists && res?.data) {
+          if (typeof res.data.hasTimer === "boolean") {
+            setHasTimer(res.data.hasTimer);
+            setShowTimerModal(false);
+          }
                     // Update form data from report header
                     setFormData(prev => ({
                         ...prev,
@@ -278,10 +283,12 @@ const GenerateReportForDentalHandHeldContent: React.FC<DentalProps> = ({ service
                         setHasTimer(false);
                         setShowTimerModal(false);
                         localStorage.setItem(`dental_hand_held_timer_choice_${serviceId}`, JSON.stringify(false));
+                    try { await saveTimerPreference(serviceId, false); } catch (e) { console.error("Failed to persist timer preference:", e); }
                     } else if ((hasMaLinearity || hasLinearityOfTime) && !hasMasLinearity) {
                         setHasTimer(true);
                         setShowTimerModal(false);
                         localStorage.setItem(`dental_hand_held_timer_choice_${serviceId}`, JSON.stringify(true));
+                    try { await saveTimerPreference(serviceId, true); } catch (e) { console.error("Failed to persist timer preference:", e); }
                     } else if (savedChoice !== null) {
                         setHasTimer(JSON.parse(savedChoice));
                         setShowTimerModal(false);
@@ -446,6 +453,7 @@ const GenerateReportForDentalHandHeldContent: React.FC<DentalProps> = ({ service
             'accuracyOfOperatingPotential': {
                 'Applied kVp': 'Applied_kVp', 'applied kvp': 'Applied_kVp', 'Applied KVp': 'Applied_kVp',
                 'mA Station 1 kVp': 'Measured_0', 'mA Station 2 kVp': 'Measured_1',
+                'mAs Station 1 kVp': 'Measured_0', 'mAs Station 2 kVp': 'Measured_1',
                 'Measured 1': 'Measured', 'Measured 2': 'Required',
                 'Measurement 1': 'Measured_0', 'Measurement 2': 'Measured_1',
                 'Measured (mm Al)': 'Measured',
@@ -795,12 +803,14 @@ const GenerateReportForDentalHandHeldContent: React.FC<DentalProps> = ({ service
                 setShowTimerModal(false);
                 if (serviceId) {
                     localStorage.setItem(`dental_hand_held_timer_choice_${serviceId}`, JSON.stringify(false));
+                try { await saveTimerPreference(serviceId, false); } catch (e) { console.error("Failed to persist timer preference:", e); }
                 }
             } else if (hasTimerSection && !hasMasSection) {
                 setHasTimer(true);
                 setShowTimerModal(false);
                 if (serviceId) {
                     localStorage.setItem(`dental_hand_held_timer_choice_${serviceId}`, JSON.stringify(true));
+                try { await saveTimerPreference(serviceId, true); } catch (e) { console.error("Failed to persist timer preference:", e); }
                 }
             } else if (savedChoice !== null) {
                 setHasTimer(JSON.parse(savedChoice));
@@ -810,6 +820,7 @@ const GenerateReportForDentalHandHeldContent: React.FC<DentalProps> = ({ service
                 setShowTimerModal(false);
                 if (serviceId) {
                     localStorage.setItem(`dental_hand_held_timer_choice_${serviceId}`, JSON.stringify(hasTimerSection));
+                try { await saveTimerPreference(serviceId, hasTimerSection); } catch (e) { console.error("Failed to persist timer preference:", e); }
                 }
             }
         }
@@ -1041,11 +1052,18 @@ const GenerateReportForDentalHandHeldContent: React.FC<DentalProps> = ({ service
     }
 
     // Close modal and set timer choice
-    const handleTimerChoice = (choice: boolean) => {
-        setHasTimer(choice);
-        setShowTimerModal(false);
-        localStorage.setItem(`dental_hand_held_timer_choice_${serviceId}`, JSON.stringify(choice));
-    };
+    const handleTimerChoice = async (choice: boolean) => {
+    setHasTimer(choice);
+    setShowTimerModal(false);
+    if (serviceId) {
+      localStorage.setItem(`dental_hand_held_timer_choice_${serviceId}`, JSON.stringify(choice));
+      try {
+        await saveTimerPreference(serviceId, choice);
+      } catch (err) {
+        console.error("Failed to save timer preference:", err);
+      }
+    }
+  }
 
     // MODAL POPUP — only when not coming from Excel URL (csvFileUrlFromProps)
     if (showTimerModal && hasTimer === null) {

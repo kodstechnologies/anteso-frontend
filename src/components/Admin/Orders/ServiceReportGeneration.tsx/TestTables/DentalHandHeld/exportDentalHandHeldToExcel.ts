@@ -50,7 +50,7 @@ export const createDentalHandHeldUploadableExcel = (data: DentalHandHeldExportDa
         const maxMeas = measurements.length > 0
             ? Math.max(...measurements.map((r) => getMeasured(r).length), 0)
             : 0;
-        const stations = resolveMeasHeaders(aop.mAStations, maxMeas, 'mA');
+        const stations = resolveMeasHeaders(aop.mAStations, maxMeas, 'mAs');
 
         allData.push(['TEST: ACCURACY OF OPERATING POTENTIAL']);
         allData.push(['Tolerance Sign', tolSign]);

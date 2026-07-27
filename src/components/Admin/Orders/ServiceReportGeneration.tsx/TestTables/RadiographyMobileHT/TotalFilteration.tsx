@@ -23,6 +23,7 @@ interface TotalFilterationProps {
     testId?: string | null;
     onTestSaved?: (testId: string) => void;
     initialData?: any;
+    csvDataVersion?: number;
 }
 
 const TotalFilteration: React.FC<TotalFilterationProps> = ({
@@ -30,6 +31,7 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
     testId: initialTestId = null,
     onTestSaved,
     initialData,
+    csvDataVersion = 0,
 }) => {
     const [testId, setTestId] = useState<string | null>(initialTestId);
     const [isSaved, setIsSaved] = useState(!!initialTestId);
@@ -76,26 +78,75 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
         }
     };
 
+    // Apply CSV/Excel initial data (same pattern as Radiography Fixed)
     useEffect(() => {
         if (!initialData) return;
-        if (initialData.mAStations?.length) setMAStations(initialData.mAStations);
-        if (initialData.measurements?.length) setRows(initialData.measurements.map((m: any, i: number) => ({
-            id: String(i + 1),
-            appliedKvp: m.appliedKvp ?? "",
-            measuredValues: m.measuredValues ?? [],
-            measuredValuesStatus: [],
-            averageKvp: m.averageKvp ?? "",
-            remarks: (m.remarks as "PASS" | "FAIL" | "-") ?? "-",
-        })));
         if (initialData.tolerance?.sign) setToleranceSign(initialData.tolerance.sign);
-        if (initialData.tolerance?.value) setToleranceValue(initialData.tolerance.value);
-        if (initialData.totalFiltration?.measured) setTotalFiltration(prev => ({ ...prev, measured: initialData.totalFiltration.measured }));
-        if (initialData.totalFiltration?.required) setTotalFiltration(prev => ({ ...prev, required: initialData.totalFiltration.required }));
-    }, [initialData]);
+        if (initialData.tolerance?.value) setToleranceValue(String(initialData.tolerance.value));
+        if (initialData.mAStations?.length) setMAStations(initialData.mAStations);
+        if (initialData.measurements?.length) {
+            const loadedSign = (initialData.tolerance?.sign || toleranceSign) as "+" | "-" | "±";
+            const loadedTolValue = initialData.tolerance?.value || toleranceValue;
+            setRows(
+                initialData.measurements.map((m: any, i: number) => {
+                    const rowApplied = parseFloat(m.appliedKvp || "0");
+                    const tol = parseFloat(loadedTolValue || "0");
+                    const measuredStatus = (m.measuredValues || []).map((val: string) => {
+                        const measured = parseFloat(val || "0");
+                        return checkTolerance(measured, rowApplied, tol, loadedSign);
+                    });
+                    const nums = (m.measuredValues || [])
+                        .filter((v: string) => v !== "" && !isNaN(Number(v)))
+                        .map(Number);
+                    const avgFromData = String(m.averageKvp ?? "").trim();
+                    const avg = avgFromData || (nums.length > 0 ? (nums.reduce((a, b) => a + b, 0) / nums.length).toFixed(2) : "");
+                    const avgNum = parseFloat(avg || "0");
+                    const avgStatus = checkTolerance(avgNum, rowApplied, tol, loadedSign);
+                    const hasAnyFailure = measuredStatus.some((status: boolean) => status === false) || avgStatus === false;
+                    const hasValidData =
+                        !isNaN(rowApplied) && rowApplied > 0 && !isNaN(tol) && tol > 0 &&
+                        ((m.measuredValues || []).some((v: string) => v !== "" && !isNaN(parseFloat(v))) || (!isNaN(avgNum) && avgNum > 0));
+                    const importedRemark = String(m.remarks ?? "").trim().toUpperCase();
+                    let remark: "PASS" | "FAIL" | "-" = "-";
+                    if (importedRemark === "PASS" || importedRemark === "P") remark = "PASS";
+                    else if (importedRemark === "FAIL" || importedRemark === "F") remark = "FAIL";
+                    else if (hasValidData) remark = hasAnyFailure ? "FAIL" : "PASS";
+                    return {
+                        id: String(i + 1),
+                        appliedKvp: m.appliedKvp ?? "",
+                        measuredValues: m.measuredValues ?? [],
+                        measuredValuesStatus: measuredStatus,
+                        averageKvp: avg,
+                        averageKvpStatus: avgStatus,
+                        remarks: remark,
+                    };
+                }),
+            );
+        }
+        if (initialData.totalFiltration) {
+            setTotalFiltration((prev) => ({
+                ...prev,
+                measured: String(initialData.totalFiltration.measured ?? prev.measured),
+                required: String(initialData.totalFiltration.required ?? prev.required),
+                atKvp: String(
+                    initialData.totalFiltration.atKvp ??
+                    initialData.totalFiltration.appliedKV ??
+                    prev.atKvp,
+                ),
+            }));
+        }
+        setIsSaved(false);
+        setIsEditing(true);
+        setIsLoading(false);
+    }, [csvDataVersion, initialData]);
 
     // Load existing test data
     useEffect(() => {
         const loadTest = async () => {
+            if (csvDataVersion) {
+                setIsLoading(false);
+                return;
+            }
             if (!serviceId) {
                 setIsLoading(false);
                 return;
@@ -165,7 +216,7 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
                     setTotalFiltration({
                         measured: data.totalFiltration?.measured || "",
                         required: data.totalFiltration?.required || "",
-                        atKvp: data.totalFiltration?.appliedKV || "",
+                        atKvp: data.totalFiltration?.atKvp || data.totalFiltration?.appliedKV || "",
                     });
                     if (data.filtrationTolerance) {
                         setFiltrationTolerance({
@@ -192,7 +243,7 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
             }
         };
         loadTest();
-    }, [serviceId, initialTestId]);
+    }, [serviceId, initialTestId, csvDataVersion]);
 
     // Save function
     const saveTest = async () => {
@@ -496,7 +547,7 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
                                         onChange={(e) => updateCell(row.id, "appliedKvp", e.target.value)}
                                         disabled={!isEditing}
                                         className={`w-full px-3 py-2 text-center border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 ${!isEditing ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`}
-                                        placeholder="80"
+                                        placeholder="kVp"
                                     />
                                 </td>
                                 {row.measuredValues.map((val, idx) => {
@@ -647,7 +698,7 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
                             onChange={(e) => { setTotalFiltration({ ...totalFiltration, atKvp: e.target.value }); setIsSaved(false); }}
                             disabled={!isEditing}
                             className={`w-24 px-3 py-2 text-lg font-bold text-center border-2 rounded-lg ${!isEditing ? 'border-gray-300 bg-gray-50 text-gray-500 cursor-not-allowed' : 'border-gray-400 focus:border-green-500 focus:ring-4 focus:ring-green-200'}`}
-                            placeholder="80"
+                            placeholder="kVp"
                         />
                         <span className="text-xl font-medium text-gray-700">kVp)</span>
                         <input

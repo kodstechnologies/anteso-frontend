@@ -673,7 +673,7 @@ const GenerateReportForBMDContent: React.FC<BMDProps> = ({ serviceId, csvFileUrl
             const derivedMeasCount = Math.max(0, ...opMeasurements.map((m: any) => m.measuredValues?.length || 0));
             const opMAStations = measColumnLabels.length > 0
               ? measColumnLabels
-              : (derivedMeasCount > 0 ? Array.from({ length: derivedMeasCount }, (_, i) => `mA Station ${i + 1}`) : ['10 mA', '100 mA', '200 mA']);
+              : (derivedMeasCount > 0 ? Array.from({ length: derivedMeasCount }, (_, i) => `mAs Station ${i + 1}`) : ['10 mA', '100 mA', '200 mA']);
             const opTolerance = {
               sign: tolerance.sign === 'both' ? '±' : tolerance.sign === 'plus' ? '+' : tolerance.sign === 'minus' ? '-' : tolerance.sign,
               value: tolerance.value,
@@ -1851,7 +1851,7 @@ const GenerateReportForBMDContent: React.FC<BMDProps> = ({ serviceId, csvFileUrl
             testId={savedTestIds['protection']}
             onTestSaved={(testId) => handleTestSaved('protection', testId)}
             initialData={csvDataForComponents.radiationProtectionSurvey}
-            initialSurveyDate={formData.testDate || minIssueDate || ""}
+            initialSurveyDate={formData.testDate || qaTestDate || minIssueDate || ""}
           />
         )
       },

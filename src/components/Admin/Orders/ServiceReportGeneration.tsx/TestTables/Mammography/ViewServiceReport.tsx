@@ -74,6 +74,7 @@ interface ReportData {
   location: string;
   temperature: string;
   humidity: string;
+  hasTimer?: boolean | null;
   toolsUsed: Tool[];
   notes: Note[];
   qrCode?: string;
@@ -244,12 +245,13 @@ const ViewServiceReportMammography: React.FC = () => {
   });
   const [calculatedPages, setCalculatedPages] = useState<string>("");
   const hasTimer = useMemo(() => {
+    if (typeof report?.hasTimer === "boolean") return report.hasTimer;
     if (serviceId) {
       const stored = localStorage.getItem(`mammography-timer-${serviceId}`);
       if (stored !== null) return stored === "true";
     }
     return !!(testData.irradiationTime || testData.maLoadingStations);
-  }, [serviceId, testData.irradiationTime, testData.maLoadingStations]);
+  }, [report?.hasTimer, serviceId, testData.irradiationTime, testData.maLoadingStations]);
 
   const sectionNumbers = useMemo(
     () => getMammographySummarySectionNumbers(testData, hasTimer),
@@ -418,6 +420,7 @@ const ViewServiceReportMammography: React.FC = () => {
             location: data.location || "N/A",
             temperature: data.temperature || "",
             humidity: data.humidity || "",
+            hasTimer: typeof data.hasTimer === "boolean" ? data.hasTimer : null,
             toolsUsed: mergedTools,
             notes: data.notes || defaultNotes,
             qrCode: data.qrCode || "",

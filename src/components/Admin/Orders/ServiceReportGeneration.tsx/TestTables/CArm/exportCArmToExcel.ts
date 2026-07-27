@@ -136,7 +136,7 @@ export const createCArmUploadableExcel = (data: CArmExportData): XLSX.WorkBook =
     allData.push(["Total Filtration Required (mm Al)", tFil.required ?? ""]);
     if (tFil.atKvp) allData.push(["Total Filtration At kVp", tFil.atKvp]);
     const stations = tf.mAStations || [];
-    stations.forEach((s: string, i: number) => allData.push([`mA Station ${i + 1}`, String(s).replace(/\s*mA\s*$/i, "").trim()]));
+    stations.forEach((s: string, i: number) => allData.push([`mAs Station ${i + 1}`, String(s).replace(/\s*mA\s*$/i, "").trim()]));
     const maxMeas = Math.max(...(tf.measurements || []).map((m: any) => (m.measuredValues || []).length), stations.length, 1);
     const headerLabels = stations.length > 0 ? stations : Array.from({ length: maxMeas }, (_, i) => `Meas ${i + 1}`);
     allData.push(["Applied kVp", ...headerLabels.slice(0, maxMeas)]);
@@ -188,13 +188,21 @@ export const createCArmUploadableExcel = (data: CArmExportData): XLSX.WorkBook =
       "Applied kV",
       "Applied mA",
       "Exposure (cGy/Min)",
+      "Mode",
     ];
     const dataRows = exp.rows.map((r: any, idx: number) => {
       const base =
         idx === 0
           ? [exp.aecTolerance ?? "10", exp.nonAecTolerance ?? "5", exp.minFocusDistance ?? "30"]
           : ["", "", ""];
-      return [...base, r.distance ?? "", r.appliedKv ?? "", r.appliedMa ?? "", r.exposure ?? ""];
+      return [
+        ...base,
+        r.distance ?? "",
+        r.appliedKv ?? "",
+        r.appliedMa ?? "",
+        r.exposure ?? "",
+        r.remark ?? r.mode ?? "",
+      ];
     });
     addSection(allData, "EXPOSURE RATE AT TABLE TOP", headerRow, dataRows);
   }
@@ -329,10 +337,11 @@ export const buildCArmTemplateRows = (hasTimer: boolean): any[][] => {
       "Applied kV",
       "Applied mA",
       "Exposure (cGy/Min)",
+      "Mode",
     ],
     [
-      ["10", "5", "30", "100", "80", "100", "0.5"],
-      ["", "", "", "100", "80", "100", "0.6"],
+      ["10", "5", "30", "100", "80", "100", "0.5", "AEC Mode"],
+      ["", "", "", "100", "80", "100", "0.6", "Manual Mode"],
     ]
   );
 

@@ -22,26 +22,36 @@ interface LocationData {
 interface Props {
   serviceId: string;
   initialData?: any;
+  /** QA test date — used for survey date when available; else today */
+  qaSubmittedDate?: string | null;
 }
 
-const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, initialData }) => {
+const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, initialData, qaSubmittedDate }) => {
   const getTodayDate = () => {
     const today = new Date();
     return today.toISOString().split('T')[0];
   };
+
+  const toInputDate = (value: any): string => {
+    if (!value) return "";
+    const text = String(value);
+    return text.includes("T") ? text.split("T")[0] : text;
+  };
+
+  const defaultSurveyDate = () => toInputDate(qaSubmittedDate) || getTodayDate();
 
   const [testId, setTestId] = useState<string | null>(null);
   const [isSaved, setIsSaved] = useState(false);
   const [isEditing, setIsEditing] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [surveyDate, setSurveyDate] = useState<string>(getTodayDate());
+  const [surveyDate, setSurveyDate] = useState<string>(defaultSurveyDate());
   const [hasValidCalibration, setHasValidCalibration] = useState<string>("");
 
   const [appliedCurrent, setAppliedCurrent] = useState<string>("100");
   const [appliedVoltage, setAppliedVoltage] = useState<string>("80");
   const [exposureTime, setExposureTime] = useState<string>("0.5");
-  const [workload, setWorkload] = useState<string>("5000");
+  const [workload, setWorkload] = useState<string>("500");
 
   const [locations, setLocations] = useState<LocationData[]>([
     { id: "1", location: "Control Console (Operator Position)", mRPerHr: "", mRPerWeek: "", result: "", category: "worker" },
@@ -57,14 +67,15 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, initialData }) 
 
   useEffect(() => {
     if (!initialData) return;
-    if (initialData.surveyDate) setSurveyDate(initialData.surveyDate);
+    // Survey date from QA test date (else today) — not from Excel
+    setSurveyDate(defaultSurveyDate());
     if (initialData.hasValidCalibration) setHasValidCalibration(initialData.hasValidCalibration);
     if (initialData.appliedCurrent) setAppliedCurrent(initialData.appliedCurrent);
     if (initialData.appliedVoltage) setAppliedVoltage(initialData.appliedVoltage);
     if (initialData.exposureTime) setExposureTime(initialData.exposureTime);
     if (initialData.workload) setWorkload(initialData.workload);
     if (initialData.locations?.length) setLocations(initialData.locations.map((l: any, i: number) => ({ id: String(i + 1), location: l.location ?? '', mRPerHr: l.mRPerHr ?? '', mRPerWeek: '', result: '', category: (l.category === 'public' ? 'public' : 'worker') as 'worker' | 'public' })));
-  }, [initialData]);
+  }, [initialData, qaSubmittedDate]);
 
   // Formula: mR/week = (Workload × mR/hr) / (60 × mA used)
   const calculateMRPerWeek = (mRPerHr: string) => {
@@ -194,12 +205,13 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, initialData }) 
         const data = res?.data;
         if (data) {
           setTestId(data._id || null);
-          setSurveyDate(data.surveyDate ? new Date(data.surveyDate).toISOString().split('T')[0] : "");
+          const savedDate = data.surveyDate ? new Date(data.surveyDate).toISOString().split('T')[0] : "";
+          setSurveyDate(savedDate || defaultSurveyDate());
           setHasValidCalibration(data.hasValidCalibration || "");
           setAppliedCurrent(data.appliedCurrent || "100");
           setAppliedVoltage(data.appliedVoltage || "80");
           setExposureTime(data.exposureTime || "0.5");
-          setWorkload(data.workload || "5000");
+          setWorkload(data.workload || "500");
           if (Array.isArray(data.locations) && data.locations.length > 0) {
             setLocations(
               data.locations.map((l: any, i: number) => ({
@@ -215,19 +227,21 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, initialData }) 
           setIsSaved(true);
           setIsEditing(false);
         } else {
+          setSurveyDate(defaultSurveyDate());
           setIsEditing(true);
         }
       } catch (err: any) {
         if (err.response?.status !== 404) {
           toast.error("Failed to load radiation protection survey");
         }
+        setSurveyDate(defaultSurveyDate());
         setIsEditing(true);
       } finally {
         setIsLoading(false);
       }
     };
     load();
-  }, [serviceId]);
+  }, [serviceId, qaSubmittedDate]);
 
   const handleSave = async () => {
     if (!serviceId) {
@@ -350,7 +364,7 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, initialData }) 
             <label className="block text-sm font-medium text-gray-700">Workload (mA min/week)</label>
             <input type="number" value={workload} onChange={e => setWorkload(e.target.value)}
               disabled={isViewMode}
-              className={`mt-1 w-full px-4 py-3 text-center border rounded-lg ${isViewMode ? "bg-gray-100 cursor-not-allowed" : ""}`} placeholder="5000" />
+              className={`mt-1 w-full px-4 py-3 text-center border rounded-lg ${isViewMode ? "bg-gray-100 cursor-not-allowed" : ""}`} placeholder="500" />
           </div>
         </div>
       </section>

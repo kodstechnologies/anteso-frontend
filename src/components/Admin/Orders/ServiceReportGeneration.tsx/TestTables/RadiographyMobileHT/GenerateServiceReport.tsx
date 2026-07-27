@@ -22,6 +22,7 @@ import {
   getOutputConsistencyByServiceIdForRadiographyMobileHT,
   getRadiationLeakageLevelByServiceIdForRadiographyMobileHT,
   getRadiationProtectionSurveyByServiceIdForRadiographyMobileHT,
+  saveTimerPreference,
 } from "../../../../../../api";
 import { createRadiographyMobileHTUploadableExcel, RadiographyMobileHTExportData } from "./exportRadiographyMobileHTToExcel";
 import { TestExportRegistryProvider, useTestExportRegistry } from "../shared/TestExportRegistry";
@@ -42,6 +43,17 @@ import LinearityOfMasLoading from "./LinearityOfMasLoading";
 import ConsistencyOfRadiationOutput from "./ConsistencyOfRadiationOutput";
 import RadiationLeakageLevel from "./RadiationLeakageLevel";
 import RadiationProtectionSurvey from "./RadiationProtectionSurvey";
+
+type KvpRemark = "PASS" | "FAIL" | "-";
+
+const normalizeKvpStationRemark = (raw: unknown): KvpRemark => {
+  const s = String(raw ?? "").trim();
+  if (!s || s === "-") return "-";
+  const u = s.toUpperCase();
+  if (u === "PASS" || u === "P") return "PASS";
+  if (u === "FAIL" || u === "F") return "FAIL";
+  return "-";
+};
 
 interface Standard {
   slNumber: string;
@@ -94,6 +106,7 @@ const RadiographyMobileHTContent: React.FC<RadiographyMobileHTProps> = ({ servic
     centralBeamAlignment?: any;
     effectiveFocalSpot?: any;
     accuracyOfIrradiationTime?: any;
+    totalFiltration?: any;
     totalFilteration?: any;
     linearityOfMaLoading?: any;
     linearityOfMasLoading?: any;
@@ -161,14 +174,18 @@ const RadiographyMobileHTContent: React.FC<RadiographyMobileHTProps> = ({ servic
   }, [serviceId, csvFileUrl]);
 
   // Close modal and set timer choice
-  const handleTimerChoice = (choice: boolean) => {
+  const handleTimerChoice = async (choice: boolean) => {
     setHasTimer(choice);
     setShowTimerModal(false);
-    // Store in localStorage so it persists across refreshes
     if (serviceId) {
       localStorage.setItem(`radiography-mobile-ht-timer-${serviceId}`, String(choice));
+      try {
+        await saveTimerPreference(serviceId, choice);
+      } catch (err) {
+        console.error("Failed to save timer preference:", err);
+      }
     }
-  };
+  }
 
   // Fetch initial data
   useEffect(() => {
@@ -256,6 +273,10 @@ const RadiographyMobileHTContent: React.FC<RadiographyMobileHTProps> = ({ servic
       try {
         const res = await getReportHeaderForRadiographyMobileHT(serviceId);
         if (res?.exists && res?.data) {
+          if (typeof res.data.hasTimer === "boolean") {
+            setHasTimer(res.data.hasTimer);
+            setShowTimerModal(false);
+          }
           // Update form data from report header
           setFormData(prev => ({
             ...prev,
@@ -398,8 +419,10 @@ const RadiographyMobileHTContent: React.FC<RadiographyMobileHTProps> = ({ servic
     return lines.map(parseLine);
   };
 
-  const isCArmMobileHTFormat = (text: string): boolean =>
-    /^\s*TEST\s*:/im.test(text) && !/^\s*Field Name\s*,/im.test(text.split(/\r?\n/)[0] || "");
+  const isCArmMobileHTFormat = (text: string): boolean => {
+    const firstLine = text.split(/\r?\n/).find((line) => line.trim()) || "";
+    return /TEST\s*:/i.test(text) && !/^\s*Field Name\s*,/i.test(firstLine);
+  };
 
   // C-Arm horizontal TEST: layout (column headers + data rows)
   const parseHorizontalMobileHTTemplate = (rows: string[][]): any[] => {
@@ -420,6 +443,25 @@ const RadiographyMobileHTContent: React.FC<RadiographyMobileHTProps> = ({ servic
         if (idx >= 0) return idx;
       }
       return -1;
+    };
+    const colIdxExact = (header: string[], ...names: string[]) => {
+      for (const name of names) {
+        const idx = header.findIndex((h) => h.trim().toLowerCase() === name.toLowerCase());
+        if (idx >= 0) return idx;
+      }
+      return -1;
+    };
+    const colAtKvp = (header: string[], row: string[]) => {
+      const exactIdx = colIdxExact(
+        header,
+        "Total Filtration At kVp",
+        "Total Filtration At kV",
+        "At kVp",
+        "At kV",
+      );
+      if (exactIdx >= 0) return row[exactIdx] ?? "";
+      const fuzzyIdx = colIdx(header, "Total Filtration At kVp", "At kVp", "At kV");
+      return fuzzyIdx >= 0 ? row[fuzzyIdx] ?? "" : "";
     };
     const isMeasCol = (h: string) => /^meas\s*\d+$/i.test(String(h || "").trim());
     const isHeaderLabelCol = (h: string) => /^header\s*\d+$/i.test(String(h || "").trim());
@@ -572,21 +614,60 @@ const RadiographyMobileHTContent: React.FC<RadiographyMobileHTProps> = ({ servic
         });
       } else if (title.includes("ACCURACY OF OPERATING POTENTIAL") || title.includes("TOTAL FILTRATION")) {
         const testName = "Total Filtration";
-        const hCols = header.filter((h) => isHeaderLabelCol(h));
-        sectionRows.forEach((r, idx) => {
-          if (idx === 0) {
-            pushRow("Tolerance_Sign", r[colIdx(header, "Tolerance Sign")] ?? "", 0, testName);
-            pushRow("Tolerance_Value", r[colIdx(header, "Tolerance Value")] ?? "", 0, testName);
-            pushRow("TotalFiltration_Measured", r[colIdx(header, "Total Filtration Measured", "Measured")] ?? "", 0, testName);
-            pushRow("TotalFiltration_Required", r[colIdx(header, "Total Filtration Required", "Required")] ?? "", 0, testName);
-            hCols.forEach((_, hi) => {
-              const label = r[colIdx(header, `Header ${hi + 1}`)] ?? "";
-              if (label) pushRow("MeasHeader", label, 0, testName);
-            });
-          }
-          pushRow("Measurement_AppliedKvp", r[colIdx(header, "Applied kVp", "Applied kV")] ?? "", idx, testName);
-          pushMeasFields(r, header, idx, testName, "Measurement_", ["Applied kVp", "Applied kV"]);
-        });
+        const isStandaloneTf =
+          title.includes("TOTAL FILTRATION") && !title.includes("ACCURACY OF OPERATING POTENTIAL");
+
+        if (isStandaloneTf) {
+          sectionRows.forEach((r) => {
+            const param = String(r[colIdx(header, "Parameter")] ?? "").trim();
+            if (/^TotalFiltration$/i.test(param)) {
+              pushRow(
+                "TotalFiltration_measured",
+                r[colIdx(header, "Measured mm Al", "Measured")] ?? "",
+                0,
+                testName,
+              );
+              pushRow(
+                "TotalFiltration_required",
+                r[colIdx(header, "Required mm Al", "Required")] ?? "",
+                0,
+                testName,
+              );
+              pushRow(
+                "TotalFiltration_atKvp",
+                colAtKvp(header, r),
+                0,
+                testName,
+              );
+            }
+          });
+        } else {
+          const hCols = header.filter((h) => isHeaderLabelCol(h));
+          sectionRows.forEach((r, idx) => {
+            if (idx === 0) {
+              pushRow("Tolerance_sign", r[colIdx(header, "Tolerance Sign")] ?? "", 0, testName);
+              pushRow("Tolerance_value", r[colIdx(header, "Tolerance Value")] ?? "", 0, testName);
+              pushRow("TotalFiltration_measured", r[colIdx(header, "Total Filtration Measured", "Measured")] ?? "", 0, testName);
+              pushRow("TotalFiltration_required", r[colIdx(header, "Total Filtration Required", "Required")] ?? "", 0, testName);
+              pushRow(
+                "TotalFiltration_atKvp",
+                colAtKvp(header, r),
+                0,
+                testName,
+              );
+              hCols.forEach((_, hi) => {
+                const label = r[colIdx(header, `Header ${hi + 1}`)] ?? "";
+                if (label) pushRow("MeasHeader", label, 0, testName);
+              });
+            }
+            pushRow("Measurement_AppliedKvp", r[colIdx(header, "Applied kVp", "Applied kV")] ?? "", idx, testName);
+            pushMeasFields(r, header, idx, testName, "Measurement_", ["Applied kVp", "Applied kV"]);
+            const avgKvp = r[colIdx(header, "Average kVp", "Average", "Avg kVp")] ?? "";
+            if (avgKvp) pushRow("Measurement_AverageKvp", avgKvp, idx, testName);
+            const remark = r[colIdx(header, "Remarks", "Remark")] ?? "";
+            if (remark) pushRow("Measurement_remarks", remark, idx, testName);
+          });
+        }
       } else if (title.includes("LINEARITY OF MA LOADING")) {
         const testName = "Linearity of mA Loading";
         const hCols = header.filter((h) => isHeaderLabelCol(h));
@@ -835,42 +916,149 @@ const RadiographyMobileHTContent: React.FC<RadiographyMobileHTProps> = ({ servic
         }
 
         // 5) ACCURACY OF OPERATING POTENTIAL (kVp) & TOTAL FILTRATION
-        if (label === "ACCURACY OF OPERATING POTENTIAL (kVp) & TOTAL FILTRATION") {
+        if (/^ACCURACY OF OPERATING POTENTIAL\s*\(KVP\)\s*&\s*TOTAL FILTRATION$/i.test(label)) {
           const testName = "Total Filtration";
+          const headerLine = (lines[i + 1] || "").trim();
+          const headerCells = headerLine.split(",").map((c) => c.trim());
+
+          // Horizontal layout (column headers in one row — RadiographyMobileHT template)
+          if (/^Tolerance Sign$/i.test(headerCells[0] || "")) {
+            const colIdxExact = (...names: string[]) => {
+              for (const name of names) {
+                const idx = headerCells.findIndex((h) => h.toLowerCase() === name.toLowerCase());
+                if (idx >= 0) return idx;
+              }
+              return -1;
+            };
+            const colIdx = (...names: string[]) => {
+              for (const name of names) {
+                const idx = headerCells.findIndex((h) => h.toLowerCase().includes(name.toLowerCase()));
+                if (idx >= 0) return idx;
+              }
+              return -1;
+            };
+            const colAtKvp = (row: string[]) => {
+              const exactIdx = colIdxExact(
+                "Total Filtration At kVp",
+                "Total Filtration At kV",
+                "At kVp",
+                "At kV",
+              );
+              if (exactIdx >= 0) return row[exactIdx] ?? "";
+              const fuzzyIdx = colIdx("Total Filtration At kVp", "At kVp", "At kV");
+              return fuzzyIdx >= 0 ? row[fuzzyIdx] ?? "" : "";
+            };
+            const isHeaderLabelCol = (h: string) => /^header\s*\d+$/i.test(h);
+            const isMeasCol = (h: string) => /^meas\s*\d+$/i.test(h);
+            const hCols = headerCells.filter((h) => isHeaderLabelCol(h));
+            const dataRow = (lines[i + 2] || "").split(",").map((c) => c.trim());
+
+            const tolSign = dataRow[colIdx("Tolerance Sign")] ?? "";
+            const tolVal = dataRow[colIdx("Tolerance Value")] ?? "";
+            const tfMeasured = dataRow[colIdx("Total Filtration Measured", "Measured")] ?? "";
+            const tfRequired = dataRow[colIdx("Total Filtration Required", "Required")] ?? "";
+            const tfAtKvp = colAtKvp(dataRow);
+            if (tolSign) pushRow(testName, "Tolerance_sign", tolSign, 0);
+            if (tolVal) pushRow(testName, "Tolerance_value", tolVal, 0);
+            if (tfMeasured) pushRow(testName, "TotalFiltration_measured", tfMeasured, 0);
+            if (tfRequired) pushRow(testName, "TotalFiltration_required", tfRequired, 0);
+            if (tfAtKvp) pushRow(testName, "TotalFiltration_atKvp", tfAtKvp, 0);
+            hCols.forEach((_, hi) => {
+              const label = dataRow[colIdx(`Header ${hi + 1}`)] ?? "";
+              if (label) pushRow(testName, "MeasHeader", label, 0);
+            });
+
+            let rowIdx = 0;
+            let j = i + 2;
+            for (; j < lines.length; j++) {
+              const l = lines[j].trim();
+              if (!l || l.startsWith("TEST:")) break;
+              const cells = l.split(",").map((c) => c.trim());
+              const kvp = cells[colIdx("Applied kVp", "Applied kV")] ?? "";
+              if (!kvp || isNaN(Number(kvp))) continue;
+              pushRow(testName, "Measurement_AppliedKvp", kvp, rowIdx);
+              const measCols = headerCells
+                .map((h, idx) => ({ h, idx }))
+                .filter(({ h }) => isMeasCol(h));
+              if (measCols.length > 0) {
+                measCols.forEach(({ h, idx }, mi) => {
+                  const m = h.match(/^meas\s*(\d+)$/i);
+                  const measNum = m ? m[1] : String(mi + 1);
+                  const val = cells[idx] ?? "";
+                  if (val) pushRow(testName, `Measurement_Meas${measNum}`, val, rowIdx);
+                });
+              } else if (hCols.length > 0) {
+                const anchorIdx = colIdx("Applied kVp", "Applied kV");
+                for (let mi = 0; mi < hCols.length; mi++) {
+                  const val = cells[anchorIdx + 1 + mi] ?? "";
+                  if (val) pushRow(testName, `Measurement_Meas${mi + 1}`, val, rowIdx);
+                }
+              }
+              const remark = cells[colIdx("Remarks", "Remark")] ?? "";
+              if (remark) pushRow(testName, "Measurement_remarks", remark, rowIdx);
+              rowIdx++;
+            }
+            i = j;
+            continue;
+          }
+
           let j = i + 1;
-          // tolerance and total filtration summary
+          // Legacy vertical tolerance rows
           for (; j < lines.length; j++) {
             const l = lines[j].trim();
             if (!l) continue;
-            if (l.startsWith("Applied kVp")) break;
+            if (/^Applied kVp/i.test(l)) break;
             const cells = l.split(",");
             const labelCell = (cells[0] || "").trim();
             const valCell = (cells[1] || "").trim();
-            if (labelCell === "Tolerance Sign") pushRow(testName, "Tolerance_Sign", valCell, 0);
-            if (labelCell.startsWith("Tolerance Value")) pushRow(testName, "Tolerance_Value", valCell, 0);
-            if (labelCell.startsWith("Total Filtration Measured")) pushRow(testName, "TotalFiltration_Measured", valCell, 0);
-            if (labelCell.startsWith("Total Filtration Required")) pushRow(testName, "TotalFiltration_Required", valCell, 0);
+            if (labelCell === "Tolerance Sign") pushRow(testName, "Tolerance_sign", valCell, 0);
+            if (labelCell.startsWith("Tolerance Value")) pushRow(testName, "Tolerance_value", valCell, 0);
+            if (labelCell.startsWith("Total Filtration Measured")) pushRow(testName, "TotalFiltration_measured", valCell, 0);
+            if (labelCell.startsWith("Total Filtration Required")) pushRow(testName, "TotalFiltration_required", valCell, 0);
+            if (labelCell.startsWith("Total Filtration At kVp") || labelCell.startsWith("Total Filtration At kV")) {
+              pushRow(testName, "TotalFiltration_atKvp", valCell, 0);
+            }
           }
-          // mA headers from "Applied kVp,50 mA,100 mA"
-          const header = (lines[j] || "").split(",");
-          for (let c = 1; c < header.length; c++) {
-            const h = (header[c] || "").trim();
+          const legacyHeaderCells = (lines[j] || "").split(",").map((c) => c.trim());
+          const isMeta = (h: string) => /^(avg|average|mean|remark|remarks|result)$/i.test(h);
+          let stationCount = 0;
+          if (/^Applied kVp$/i.test(legacyHeaderCells[0] || "")) {
+            for (let c = 1; c < legacyHeaderCells.length; c++) {
+              if (!legacyHeaderCells[c] || isMeta(legacyHeaderCells[c])) break;
+              stationCount++;
+            }
+          }
+          for (let c = 1; c <= stationCount; c++) {
+            const h = legacyHeaderCells[c];
             if (h) pushRow(testName, "MeasHeader", h, 0);
           }
-          // measurement rows
           let rowIdx = 0;
           j++;
           for (; j < lines.length; j++) {
             const l = lines[j].trim();
             if (!l || l.startsWith("TEST:")) break;
-            const cells = l.split(",");
-            const kvp = (cells[0] || "").trim();
-            if (kvp) {
-              pushRow(testName, "Measurement_AppliedKvp", kvp, rowIdx);
-              if (cells[1] !== undefined) pushRow(testName, "Measurement_Meas1", cells[1], rowIdx);
-              if (cells[2] !== undefined) pushRow(testName, "Measurement_Meas2", cells[2], rowIdx);
-              rowIdx++;
+            const cells = l.split(",").map((c) => c.trim());
+            const kvp = cells[0] || "";
+            if (!kvp || isNaN(Number(kvp))) continue;
+            pushRow(testName, "Measurement_AppliedKvp", kvp, rowIdx);
+            const measCount =
+              stationCount > 0
+                ? stationCount
+                : Math.max(0, cells.length - 1 - (cells.some((c, ci) => ci > 0 && /^(pass|fail|-)$/i.test(c)) ? 1 : 0));
+            for (let c = 0; c < measCount; c++) {
+              const val = cells[c + 1];
+              if (val !== undefined && val !== "") {
+                pushRow(testName, `Measurement_Meas${c + 1}`, val, rowIdx);
+              }
             }
+            const avgIdx = measCount + 1;
+            const remarkIdx = measCount + 2;
+            if (cells[avgIdx] && !/^(pass|fail|-)$/i.test(cells[avgIdx])) {
+              pushRow(testName, "Measurement_AverageKvp", cells[avgIdx], rowIdx);
+            }
+            const remark = cells[remarkIdx] ?? (cells[avgIdx] && /^(pass|fail|-)$/i.test(cells[avgIdx]) ? cells[avgIdx] : "");
+            if (remark) pushRow(testName, "Measurement_remarks", remark, rowIdx);
+            rowIdx++;
           }
           i = j;
           continue;
@@ -1120,11 +1308,20 @@ const RadiographyMobileHTContent: React.FC<RadiographyMobileHTProps> = ({ servic
     const sheet = workbook.Sheets[sheetName];
     const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" }) as any[][];
     if (jsonData.length === 0) return [];
-    const firstCell = String(jsonData[0]?.[0] ?? "").trim();
+    let startRow = 0;
+    for (let r = 0; r < Math.min(jsonData.length, 15); r++) {
+      const cell = String(jsonData[r]?.[0] ?? "").trim();
+      if (/^TEST\s*:/i.test(cell)) {
+        startRow = r;
+        break;
+      }
+    }
+    const rowsFromStart = jsonData
+      .slice(startRow)
+      .map((row) => (row ?? []).map((cell) => String(cell ?? "")));
+    const firstCell = String(rowsFromStart[0]?.[0] ?? "").trim();
     if (/^TEST\s*:/i.test(firstCell)) {
-      return parseHorizontalMobileHTTemplate(
-        jsonData.map((row) => (row ?? []).map((cell) => String(cell ?? ""))),
-      );
+      return parseHorizontalMobileHTTemplate(rowsFromStart);
     }
     return parseExcelToCSVFormat(workbook);
   };
@@ -1148,6 +1345,7 @@ const RadiographyMobileHTContent: React.FC<RadiographyMobileHTProps> = ({ servic
         setShowTimerModal(false);
         if (serviceId) {
           localStorage.setItem(`radiography-mobile-ht-timer-${serviceId}`, String(hasTimerSection));
+        try { await saveTimerPreference(serviceId, hasTimerSection); } catch (e) { console.error("Failed to persist timer preference:", e); }
         }
       }
 
@@ -1245,30 +1443,47 @@ const RadiographyMobileHTContent: React.FC<RadiographyMobileHTProps> = ({ servic
 
       if (grouped["Total Filtration"]?.length) {
         const data = grouped["Total Filtration"];
-        const measurements: any[] = [];
-        let toleranceSign = "±", toleranceValue = "2.0", totalFiltrationMeasured = "", totalFiltrationRequired = "2.5";
-        const mAStations: string[] = [];
+        const ma: string[] = [];
+        const meas: any[] = [];
+        const tol: Record<string, string> = {};
+        const total: Record<string, string> = {};
         data.forEach((r) => {
-          const f = (r["Field Name"] ?? "").trim();
-          const v = (r["Value"] ?? "").trim();
+          const key = (r["Field Name"] ?? "").trim();
+          const val = (r["Value"] ?? "").trim();
           const ri = parseInt(r["Row Index"] ?? "0", 10);
-          if (f === "Tolerance_Sign") toleranceSign = v;
-          if (f === "Tolerance_Value") toleranceValue = v;
-          if (f === "TotalFiltration_Measured") totalFiltrationMeasured = v;
-          if (f === "TotalFiltration_Required") totalFiltrationRequired = v;
-          if (f === "MeasHeader" && v && !mAStations.includes(v)) mAStations.push(v);
-          if (f === "Measurement_AppliedKvp") {
-            while (measurements.length <= ri) measurements.push({ appliedKvp: "", measuredValues: [], averageKvp: "", remarks: "-" as "PASS" | "FAIL" | "-" });
-            measurements[ri].appliedKvp = v;
-          } else if (f.startsWith("Measurement_Meas") && measurements[ri]) {
-            const idx = parseInt(f.replace("Measurement_Meas", ""), 10) - 1;
-            if (!isNaN(idx)) {
-              while (measurements[ri].measuredValues.length <= idx) measurements[ri].measuredValues.push("");
-              measurements[ri].measuredValues[idx] = v;
+          if (key === "MeasHeader" && val && !ma.includes(val)) ma.push(val);
+          else if (key === "Measurement_AppliedKvp" || key === "Measurement_appliedKvp") {
+            while (meas.length <= ri) {
+              meas.push({ appliedKvp: "", measuredValues: [], averageKvp: "", remarks: "-" as KvpRemark });
             }
-          } else if (f === "Measurement_AverageKvp" && measurements[ri]) measurements[ri].averageKvp = v;
+            meas[ri].appliedKvp = val;
+          } else if (key.startsWith("Measurement_Meas")) {
+            const m = key.match(/^Measurement_Meas(\d+)$/i);
+            if (m) {
+              while (meas.length <= ri) {
+                meas.push({ appliedKvp: "", measuredValues: [], averageKvp: "", remarks: "-" as KvpRemark });
+              }
+              const mIdx = parseInt(m[1], 10) - 1;
+              while (meas[ri].measuredValues.length <= mIdx) meas[ri].measuredValues.push("");
+              meas[ri].measuredValues[mIdx] = val;
+            }
+          } else if (key === "Measurement_AverageKvp") {
+            while (meas.length <= ri) {
+              meas.push({ appliedKvp: "", measuredValues: [], averageKvp: "", remarks: "-" as KvpRemark });
+            }
+            meas[ri].averageKvp = val;
+          } else if (key === "Measurement_remarks" || key === "Measurement_remark") {
+            while (meas.length <= ri) {
+              meas.push({ appliedKvp: "", measuredValues: [], averageKvp: "", remarks: "-" as KvpRemark });
+            }
+            meas[ri].remarks = normalizeKvpStationRemark(val);
+          } else if (key.startsWith("Tolerance_")) {
+            tol[key.split("_")[1] || ""] = val;
+          } else if (key.startsWith("TotalFiltration_")) {
+            total[key.split("_")[1] || ""] = val;
+          }
         });
-        measurements.forEach((m) => {
+        meas.forEach((m) => {
           if (!String(m.averageKvp || "").trim()) {
             const nums: number[] = (m.measuredValues || [])
               .filter((v: string) => String(v || "").trim() !== "" && !isNaN(Number(v)))
@@ -1278,7 +1493,27 @@ const RadiographyMobileHTContent: React.FC<RadiographyMobileHTProps> = ({ servic
             }
           }
         });
-        setCsvDataForComponents((prev) => ({ ...prev, totalFilteration: { mAStations: mAStations.length ? mAStations : ["50 mA", "100 mA"], measurements, tolerance: { sign: toleranceSign, value: toleranceValue }, totalFiltration: { measured: totalFiltrationMeasured, required: totalFiltrationRequired, atKvp: "" } } }));
+        const tfPayload = {
+          mAStations: ma.length ? ma : ["50 mA", "100 mA"],
+          measurements: meas.filter(
+            (m) => m.appliedKvp || (m.measuredValues || []).some((v: string) => String(v || "").trim() !== ""),
+          ),
+          tolerance: {
+            sign: tol.Sign || tol.sign || "±",
+            value: tol.Value || tol.value || "2.0",
+          },
+          totalFiltration: {
+            measured: total.Measured || total.measured || "",
+            required: total.Required || total.required || "",
+            atKvp: total.AtKvp || total.atKvp || "",
+            appliedKV: total.AtKvp || total.atKvp || "",
+          },
+        };
+        setCsvDataForComponents((prev) => ({
+          ...prev,
+          totalFiltration: tfPayload,
+          totalFilteration: tfPayload,
+        }));
       }
 
       if (grouped["Linearity of mA Loading"]?.length || grouped["Linearity of mAs Loading Stations"]?.length || grouped["Linearity of mAs Loading"]?.length) {
@@ -1458,6 +1693,8 @@ const RadiographyMobileHTContent: React.FC<RadiographyMobileHTProps> = ({ servic
           let rows: any[];
           if (isCArmMobileHTFormat(text)) {
             rows = parseHorizontalMobileHTTemplate(parseTextToRows(text));
+          } else if (/TEST\s*:/i.test(text)) {
+            rows = parseHorizontalMobileHTTemplate(parseTextToRows(text));
           } else {
             const tableRows = parseTableCSVToRows(text);
             const horizontalRows = text.includes("Field Name") ? parseCSV(text) : [];
@@ -1580,7 +1817,7 @@ const RadiographyMobileHTContent: React.FC<RadiographyMobileHTProps> = ({ servic
         effectiveFocalSpot: registeredData.effectiveFocalSpot ?? csvDataForComponents.effectiveFocalSpot,
         accuracyOfIrradiationTime: registeredData.accuracyOfIrradiationTime ?? csvDataForComponents.accuracyOfIrradiationTime,
         accuracyOfOperatingPotential: registeredData.accuracyOfOperatingPotential,
-        totalFiltration: registeredData.totalFiltration ?? csvDataForComponents.totalFilteration,
+        totalFiltration: registeredData.totalFiltration ?? csvDataForComponents.totalFiltration ?? csvDataForComponents.totalFilteration,
         linearityOfMaLoading: registeredData.linearityOfMaLoading ?? csvDataForComponents.linearityOfMaLoading ?? csvDataForComponents.linearityOfMasLoading,
         outputConsistency: registeredData.outputConsistency ?? csvDataForComponents.consistencyOfRadiationOutput,
         radiationLeakageLevel: registeredData.radiationLeakageLevel ?? csvDataForComponents.radiationLeakageLevel,
@@ -2033,7 +2270,7 @@ const RadiographyMobileHTContent: React.FC<RadiographyMobileHTProps> = ({ servic
             ]
             : []),
 
-          { title: "Accuracy Of Operating Potential & Total Filtration", component: <TotalFilteration key={`total-${refreshKey}`} serviceId={serviceId} initialData={csvDataForComponents.totalFilteration} /> },
+          { title: "Accuracy Of Operating Potential & Total Filtration", component: <TotalFilteration serviceId={serviceId} initialData={csvDataForComponents.totalFiltration ?? csvDataForComponents.totalFilteration} csvDataVersion={csvDataVersion} /> },
 
           ...(hasTimer === true
             ? [
@@ -2056,7 +2293,7 @@ const RadiographyMobileHTContent: React.FC<RadiographyMobileHTProps> = ({ servic
           { title: "Tube Housing Leakage", component: <RadiationLeakageLevel key={`leakage-${refreshKey}`} serviceId={serviceId} initialData={csvDataForComponents.radiationLeakageLevel} /> },
           {
             title: "Details Of Radiation Protection Survey of the Installation",
-            component: <RadiationProtectionSurvey key={`survey-${refreshKey}`} serviceId={serviceId} initialData={csvDataForComponents.radiationProtectionSurvey} />,
+            component: <RadiationProtectionSurvey key={`survey-${refreshKey}`} serviceId={serviceId} initialData={csvDataForComponents.radiationProtectionSurvey} qaSubmittedDate={formData.testDate || qaTestDate || null} />,
           },
         ].map((item, i) => (
           <Disclosure key={i} defaultOpen={i === 0}>

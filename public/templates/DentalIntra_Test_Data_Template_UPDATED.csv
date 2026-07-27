@@ -1,6 +1,6 @@
 NOTE,Rows starting with CUSTOMIZABLE_HEADERS are header names you can edit. Rows starting with SAMPLE_VALUES are example data for those headers.,,,,,,,,,,,,,,
 TEST: ACCURACY OF OPERATING POTENTIAL,,,,,,,,,,,,,,
-CUSTOMIZABLE_HEADERS,Applied kVp,mA Station 1 kVp,mA Station 2 kVp,,,,,,,,,,,,
+CUSTOMIZABLE_HEADERS,Applied kVp,mAs Station 1 kVp,mAs Station 2 kVp,,,,,,,,,,,,
 SAMPLE_VALUES,60,60.1,60.2,,,,,,,,,,,,
 SAMPLE_VALUES,70,70.1,70.2,,,,,,,,,,,,
 SAMPLE_VALUES,40,44,11,,,,,,,,,,,,

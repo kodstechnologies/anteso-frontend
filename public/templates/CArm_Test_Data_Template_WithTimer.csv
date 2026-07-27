@@ -9,9 +9,9 @@ Tolerance Sign,±,,,,,,,,
 Tolerance Value (kVp),2.0,,,,,,,,
 Total Filtration Required (mm Al),2.5,,,,,,,,
 Total Filtration At kVp,80,,,,,,,,
-mA Station 1,50,,,,,,,,
-mA Station 2,100,,,,,,,,
-mA Station 3,200,,,,,,,,
+mAs Station 1,50,,,,,,,,
+mAs Station 2,100,,,,,,,,
+mAs Station 3,200,,,,,,,,
 Applied kVp,Measured 1,Measured 2,Measured 3,,,,,,
 60,60.1,60.2,60.0,,,,,,
 80,80.1,80.2,80.0,,,,,,
@@ -36,9 +36,9 @@ Measured Resolution (lp/mm),Recommended Standard (lp/mm)
 2.0,>= 2.0 lp/mm
 
 TEST: EXPOSURE RATE AT TABLE TOP
-Max Exposure (AEC Mode) (cGy/Min),Max Exposure (Manual Mode) (cGy/Min),Min. Focus to Tabletop Distance,Distance (cm),Applied kV,Applied mA,Exposure (cGy/Min)
-10,5,30,100,80,100,0.5
-,,,100,80,100,0.6
+Max Exposure (AEC Mode) (cGy/Min),Max Exposure (Manual Mode) (cGy/Min),Min. Focus to Tabletop Distance,Distance (cm),Applied kV,Applied mA,Exposure (cGy/Min),Mode
+10,5,30,100,80,100,0.5,AEC Mode
+,,,100,80,100,0.6,Manual Mode
 
 TEST: TUBE HOUSING LEAKAGE
 FDD (cm),kV,mA,Time (sec),Workload (mA·min/week),Tol Value,Tol Operator,Location,Front,Back,Left,Right,Top

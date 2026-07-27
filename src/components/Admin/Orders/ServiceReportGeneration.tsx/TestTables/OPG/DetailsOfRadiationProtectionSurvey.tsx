@@ -28,9 +28,11 @@ interface Props {
   testId?: string | null;
   onTestSaved?: (testId: string) => void;
   csvData?: any[];
+  /** QA test date — used for survey date when available; else today */
+  initialSurveyDate?: string | null;
 }
 
-const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, testId: propTestId = null, onTestSaved, csvData }) => {
+const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, testId: propTestId = null, onTestSaved, csvData, initialSurveyDate }) => {
   const [testId, setTestId] = useState<string | null>(propTestId);
   const [isSaved, setIsSaved] = useState(!!propTestId);
   const [isEditing, setIsEditing] = useState(true);
@@ -42,7 +44,7 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, testId: propTes
   const [appliedCurrent, setAppliedCurrent] = useState<string>("100");
   const [appliedVoltage, setAppliedVoltage] = useState<string>("80");
   const [exposureTime, setExposureTime] = useState<string>("0.5");
-  const [workload, setWorkload] = useState<string>("5000");
+  const [workload, setWorkload] = useState<string>("500");
 
   const [locations, setLocations] = useState<LocationData[]>([
     { id: "1", location: "Control Console (Operator Position)", mRPerHr: "", mRPerWeek: "", result: "", calculatedResult: "", category: "worker" },
@@ -60,6 +62,24 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, testId: propTes
     if (!value) return "";
     const asString = String(value);
     return asString.includes("T") ? asString.split("T")[0] : asString;
+  };
+
+  const todayInputDate = () => new Date().toISOString().split("T")[0];
+
+  /** Prefer QA test date from details/prop; otherwise today. */
+  const resolveDefaultSurveyDate = (details?: any): string => {
+    const firstTest = details?.qaTests?.[0];
+    const fromDetails = toInputDate(
+      firstTest?.qatestSubmittedAt ||
+        firstTest?.createdAt ||
+        details?.qaTestDate ||
+        details?.qatestSubmittedAt ||
+        ""
+    );
+    if (fromDetails) return fromDetails;
+    const fromProp = toInputDate(initialSurveyDate);
+    if (fromProp) return fromProp;
+    return todayInputDate();
   };
 
   // Formula: mR/week = (Workload × mR/hr) / (60 × mA used)
@@ -134,21 +154,22 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, testId: propTes
   const maxWorkerWeekly = Math.max(...workerLocations.map(r => parseFloat(r.mRPerWeek) || 0), 0).toFixed(3);
   const maxPublicWeekly = Math.max(...publicLocations.map(r => parseFloat(r.mRPerWeek) || 0), 0).toFixed(3);
 
-  // Load existing survey
+  // Prefill survey date from QA test date (else today)
   useEffect(() => {
-    const prefillSurveyDateFromSrf = async () => {
-      if (!serviceId) return;
+    const prefillSurveyDate = async () => {
+      if (!serviceId) {
+        setSurveyDate((prev) => prev || toInputDate(initialSurveyDate) || todayInputDate());
+        return;
+      }
       try {
         const detailsRes = await getDetails(serviceId);
-        const details = detailsRes?.data;
-        const srfDate = toInputDate(details?.srfDate || details?.orderCreatedAt);
-        if (srfDate) setSurveyDate(prev => prev || srfDate);
+        setSurveyDate((prev) => prev || resolveDefaultSurveyDate(detailsRes?.data));
       } catch {
-        // Ignore SRF prefill failures; survey flow should continue.
+        setSurveyDate((prev) => prev || toInputDate(initialSurveyDate) || todayInputDate());
       }
     };
-    prefillSurveyDateFromSrf();
-  }, [serviceId]);
+    prefillSurveyDate();
+  }, [serviceId, initialSurveyDate]);
 
   // Load existing survey
   useEffect(() => {
@@ -164,13 +185,14 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, testId: propTes
           setTestId(data._id || null);
           const hasCsvImport = csvData && csvData.length > 0;
           if (!hasCsvImport) {
-            setSurveyDate(data.surveyDate ? new Date(data.surveyDate).toISOString().split('T')[0] : "");
+            const savedDate = data.surveyDate ? new Date(data.surveyDate).toISOString().split('T')[0] : "";
+            setSurveyDate(savedDate || toInputDate(initialSurveyDate) || todayInputDate());
           }
           setHasValidCalibration(data.hasValidCalibration || "");
           setAppliedCurrent(data.appliedCurrent || "100");
           setAppliedVoltage(data.appliedVoltage || "80");
           setExposureTime(data.exposureTime || "0.5");
-          setWorkload(data.workload || "5000");
+          setWorkload(data.workload || "500");
           if (Array.isArray(data.locations) && data.locations.length > 0) {
             setLocations(
               data.locations.map((l: any, i: number) => ({
@@ -187,19 +209,21 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, testId: propTes
           setIsSaved(true);
           setIsEditing(false);
         } else {
+          setSurveyDate((prev) => prev || toInputDate(initialSurveyDate) || todayInputDate());
           setIsEditing(true);
         }
       } catch (err: any) {
         if (err.response?.status !== 404) {
           toast.error("Failed to load radiation protection survey");
         }
+        setSurveyDate((prev) => prev || toInputDate(initialSurveyDate) || todayInputDate());
         setIsEditing(true);
       } finally {
         setIsLoading(false);
       }
     };
     load();
-  }, [serviceId, csvData]);
+  }, [serviceId, csvData, initialSurveyDate]);
 
   // Auto-check calibration validity
   useEffect(() => {
@@ -256,23 +280,24 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, testId: propTes
     checkCalibration();
   }, [serviceId]);
 
-  // CSV Data Injection — equipment settings from Excel; survey date always from SRF / user
+  // CSV Data Injection — equipment settings from Excel; survey date from QA test date (else today)
   useEffect(() => {
     if (!csvData || csvData.length === 0) return;
 
-    const refreshSurveyDateFromSrf = async () => {
-      if (!serviceId) return;
+    const refreshSurveyDateFromQa = async () => {
+      if (!serviceId) {
+        setSurveyDate(toInputDate(initialSurveyDate) || todayInputDate());
+        return;
+      }
       try {
         const detailsRes = await getDetails(serviceId);
-        const details = detailsRes?.data;
-        const srfDate = toInputDate(details?.srfDate || details?.orderCreatedAt);
-        if (srfDate) setSurveyDate(srfDate);
+        setSurveyDate(resolveDefaultSurveyDate(detailsRes?.data));
       } catch {
-        // Keep existing survey date if SRF lookup fails.
+        setSurveyDate(toInputDate(initialSurveyDate) || todayInputDate());
       }
     };
 
-    refreshSurveyDateFromSrf();
+    refreshSurveyDateFromQa();
 
       let newLocations: LocationData[] = [];
       let foundSettings = false;
@@ -315,7 +340,7 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, testId: propTes
       }
 
       if (!testId && (newLocations.length > 0 || foundSettings)) setIsEditing(true);
-  }, [csvData, serviceId]);
+  }, [csvData, serviceId, initialSurveyDate]);
 
   const handleSave = async () => {
     if (!serviceId) {
@@ -482,7 +507,7 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, testId: propTes
             <label className="block text-sm font-medium text-gray-700">Workload (mA min/week)</label>
             <input type="number" value={workload} onChange={e => setWorkload(e.target.value)}
               disabled={isViewMode}
-              className={`mt-1 w-full px-4 py-3 text-center border rounded-lg ${isViewMode ? "bg-gray-100 cursor-not-allowed" : ""}`} placeholder="5000" />
+              className={`mt-1 w-full px-4 py-3 text-center border rounded-lg ${isViewMode ? "bg-gray-100 cursor-not-allowed" : ""}`} placeholder="500" />
           </div>
         </div>
       </section>

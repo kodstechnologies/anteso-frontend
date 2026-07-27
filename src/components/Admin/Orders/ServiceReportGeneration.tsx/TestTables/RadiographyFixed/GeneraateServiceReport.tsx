@@ -166,14 +166,33 @@ const RadiographyFixedContent: React.FC<RadiographyFixedProps> = ({ serviceId, q
     }
   }, [serviceId, csvFileUrl]);
 
-  // Close modal and set timer choice
-  const handleTimerChoice = (choice: boolean) => {
+  // Close modal and set timer choice — persist to DB + localStorage
+  const handleTimerChoice = async (choice: boolean) => {
     setHasTimer(choice);
     setShowTimerModal(false);
     setTimerPreferenceResolved(true);
-    // Store in localStorage so it persists across refreshes
     if (serviceId) {
       localStorage.setItem(`radiography-fixed-timer-${serviceId}`, String(choice));
+      try {
+        await saveReportHeaderForRadiographyFixed(serviceId, {
+          hasTimer: choice,
+        });
+      } catch (err) {
+        console.error("Failed to save timer preference:", err);
+        toast.error("Timer choice saved locally, but failed to save to server");
+      }
+    }
+  };
+
+  const persistTimerPreference = async (choice: boolean) => {
+    if (!serviceId) return;
+    localStorage.setItem(`radiography-fixed-timer-${serviceId}`, String(choice));
+    try {
+      await saveReportHeaderForRadiographyFixed(serviceId, {
+        hasTimer: choice,
+      });
+    } catch (err) {
+      console.error("Failed to save timer preference:", err);
     }
   };
 
@@ -363,6 +382,16 @@ const RadiographyFixedContent: React.FC<RadiographyFixedProps> = ({ serviceId, q
             setShowTimerModal(false);
             setTimerPreferenceResolved(true);
             localStorage.setItem(`radiography-fixed-timer-${serviceId}`, String(inferredTimerChoice));
+            // Persist inferred choice if DB did not already have it
+            if (parseTimerChoice(reportRes?.data) === null) {
+              try {
+                await saveReportHeaderForRadiographyFixed(serviceId, {
+                  hasTimer: inferredTimerChoice,
+                });
+              } catch (e) {
+                console.error("Failed to persist inferred timer preference:", e);
+              }
+            }
           }
         } catch (reportErr) {
           console.error("Failed to load existing report:", reportErr);
@@ -731,7 +760,7 @@ const RadiographyFixedContent: React.FC<RadiographyFixedProps> = ({ serviceId, q
           for (; j < lines.length; j++) {
             const l = lines[j].trim();
             if (!l) continue;
-            if (l.startsWith("mA Station")) break;
+            if (/^mAs?\s*Station/i.test(l)) break;
             const cells = l.split(",");
             const labelCell = (cells[0] || "").trim();
             const valCell = (cells[1] || "").trim();
@@ -750,7 +779,7 @@ const RadiographyFixedContent: React.FC<RadiographyFixedProps> = ({ serviceId, q
             const cells = l.split(",");
             const labelCell = (cells[0] || "").trim();
             const valCell = (cells[1] || "").trim();
-            if (labelCell.startsWith("mA Station")) pushRow(testName, "mAStations", valCell, 0);
+            if (/^mAs?\s*Station/i.test(labelCell)) pushRow(testName, "mAStations", valCell, 0);
           }
 
           // Header row (Applied kVp / Measured N / Average / Remark) may already be consumed above
@@ -1079,7 +1108,7 @@ const RadiographyFixedContent: React.FC<RadiographyFixedProps> = ({ serviceId, q
         setHasTimer(hasTimerSection);
         setShowTimerModal(false);
         if (serviceId) {
-          localStorage.setItem(`radiography-fixed-timer-${serviceId}`, String(hasTimerSection));
+          await persistTimerPreference(hasTimerSection);
         }
       }
 
@@ -1089,7 +1118,7 @@ const RadiographyFixedContent: React.FC<RadiographyFixedProps> = ({ serviceId, q
         setShowTimerModal(false);
         setTimerPreferenceResolved(true);
         if (serviceId) {
-          localStorage.setItem(`radiography-fixed-timer-${serviceId}`, String(inferredTimer));
+          await persistTimerPreference(inferredTimer);
         }
       }
 
@@ -1882,7 +1911,6 @@ const RadiographyFixedContent: React.FC<RadiographyFixedProps> = ({ serviceId, q
       const payload = {
         ...formData,
         hasTimer,
-        timerMode: hasTimer === true ? "timer" : hasTimer === false ? "no-timer" : "",
         rpid: formData.rpId,
         rpID: formData.rpId,
         RPId: formData.rpId,
@@ -2252,7 +2280,7 @@ const RadiographyFixedContent: React.FC<RadiographyFixedProps> = ({ serviceId, q
           },
           {
             title: "Details Of Radiation Protection Survey of the Installation",
-            component: <RadiationProtectionSurvey serviceId={serviceId} initialData={csvDataForComponents.radiationProtectionSurvey} csvDataVersion={csvDataVersion} />,
+            component: <RadiationProtectionSurvey serviceId={serviceId} initialData={csvDataForComponents.radiationProtectionSurvey} csvDataVersion={csvDataVersion} qaSubmittedDate={formData.testDate || qaTestDate || null} />,
           },
         ].map((item, i) => (
           <Disclosure key={i} defaultOpen={i === 0}>

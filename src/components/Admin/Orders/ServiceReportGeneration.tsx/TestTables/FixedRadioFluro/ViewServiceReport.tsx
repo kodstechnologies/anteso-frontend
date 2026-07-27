@@ -72,6 +72,7 @@ interface ReportData {
   location: string;
   temperature: string;
   humidity: string;
+  hasTimer?: boolean | null;
   toolsUsed?: Tool[];
   qrCode?: string;
   notes?: Note[];
@@ -140,7 +141,11 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
     const validTillDate = new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
     return validTillDate >= todayStart;
   };
+
+  const [loading, setLoading] = useState(true);
+  const [report, setReport] = useState<ReportData | null>(null);
   const hasTimer = (() => {
+    if (typeof report?.hasTimer === "boolean") return report.hasTimer;
     if (!serviceId) return true;
     const stored = localStorage.getItem(`fixedradiofluro_timer_choice_${serviceId}`);
     if (stored != null) {
@@ -152,9 +157,6 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
     }
     return localStorage.getItem(`fixed-radio-fluro-timer-${serviceId}`) === "true";
   })();
-
-  const [loading, setLoading] = useState(true);
-  const [report, setReport] = useState<ReportData | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [testData, setTestData] = useState<any>({});
   const [calculatedPages, setCalculatedPages] = useState<string>("");

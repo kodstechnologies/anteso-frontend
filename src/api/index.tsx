@@ -3970,6 +3970,18 @@ export const saveReportHeader = async (serviceId: any, payload: any) => {
     );
     return res.data;
 };
+
+/** Persist timer / no-timer popup choice (ServiceReport.hasTimer) */
+export const saveTimerPreference = async (serviceId: string, hasTimer: boolean) => {
+    const token = Cookies.get('accessToken');
+    const res = await api.put(
+        `/service-report/timer-preference/${serviceId}`,
+        { hasTimer },
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+
 // api/index.ts or wherever
 export const getReportHeader = async (serviceId: string) => {
     console.log("i m inside-- getReportHeader")

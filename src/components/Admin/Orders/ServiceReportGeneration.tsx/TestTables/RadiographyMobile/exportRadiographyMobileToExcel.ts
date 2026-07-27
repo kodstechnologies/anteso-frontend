@@ -180,7 +180,7 @@ export const createRadiographyMobileUploadableExcel = (
     ]);
     addSection(
       "ACCURACY OF OPERATING POTENTIAL",
-      ["Applied kVp", "mA Station 1 kVp", "mA Station 2 kVp", "mA Station 3 kVp"],
+      ["Applied kVp", "mAs Station 1 kVp", "mAs Station 2 kVp", "mAs Station 3 kVp"],
       rows
     );
   }

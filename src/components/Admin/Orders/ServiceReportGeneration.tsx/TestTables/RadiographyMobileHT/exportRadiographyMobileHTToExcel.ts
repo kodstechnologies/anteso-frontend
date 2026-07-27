@@ -132,7 +132,7 @@ export const createRadiographyMobileHTUploadableExcel = (
   if (tf?.totalFiltration) {
     const t = tf.totalFiltration;
     const rows = [
-      ["TotalFiltration", t.measured ?? "", t.required ?? "", t.atKvp ?? ""],
+      ["TotalFiltration", t.measured ?? "", t.required ?? "", t.atKvp ?? t.appliedKV ?? ""],
     ];
     addSection(
       "TOTAL FILTRATION",

@@ -20,6 +20,7 @@ import {
   getLinearityOfMasLoadingStationsByServiceIdForRadiographyMobile,
   getConsistencyOfRadiationOutputByServiceIdForRadiographyMobile,
   getRadiationLeakageLevelByServiceIdForRadiographyMobile,
+  saveTimerPreference,
 } from "../../../../../../api";
 import { createRadiographyMobileUploadableExcel, RadiographyMobileExportData } from "./exportRadiographyMobileToExcel";
 import { TestExportRegistryProvider, useTestExportRegistry } from "../shared/TestExportRegistry";
@@ -185,13 +186,18 @@ const RadiographyMobileContent: React.FC<RadiographyMobileProps> = ({ serviceId,
     }
   }, [serviceId, csvFileUrl]);
 
-  const handleTimerChoice = (choice: boolean) => {
+  const handleTimerChoice = async (choice: boolean) => {
     setHasTimer(choice);
     setShowTimerModal(false);
     if (serviceId) {
       localStorage.setItem(`radiography-mobile-timer-${serviceId}`, String(choice));
+      try {
+        await saveTimerPreference(serviceId, choice);
+      } catch (err) {
+        console.error("Failed to save timer preference:", err);
+      }
     }
-  };
+  }
 
   // ── Load service details ──────────────────────────────────────────────────
   useEffect(() => {
@@ -278,6 +284,10 @@ const RadiographyMobileContent: React.FC<RadiographyMobileProps> = ({ serviceId,
       try {
         const res = await getReportHeaderForRadiographyMobile(serviceId);
         if (res?.exists && res?.data) {
+          if (typeof res.data.hasTimer === "boolean") {
+            setHasTimer(res.data.hasTimer);
+            setShowTimerModal(false);
+          }
           setFormData(prev => ({
             ...prev,
             customerName: res.data.customerName || prev.customerName,
@@ -771,8 +781,8 @@ const RadiographyMobileContent: React.FC<RadiographyMobileProps> = ({ serviceId,
           const testName = "Accuracy of Operating Potential";
           const nextLine = (lines[i + 1] || "").trim();
 
-          // Excel / horizontal template: header row starts with "mA Station"
-          if (nextLine.startsWith("mA Station")) {
+          // Excel / horizontal template: header row starts with "mA Station" or "mAs Station"
+          if (nextLine.startsWith("mA Station") || nextLine.startsWith("mAs Station")) {
             const header = nextLine.split(",");
             const col = (name: string) =>
               header.findIndex((h) => (h || "").trim().toLowerCase() === name.toLowerCase());
@@ -1292,6 +1302,7 @@ const RadiographyMobileContent: React.FC<RadiographyMobileProps> = ({ serviceId,
         setShowTimerModal(false);
         if (serviceId) {
           localStorage.setItem(`radiography-mobile-timer-${serviceId}`, String(hasTimerSection));
+        try { await saveTimerPreference(serviceId, hasTimerSection); } catch (e) { console.error("Failed to persist timer preference:", e); }
         }
       }
 

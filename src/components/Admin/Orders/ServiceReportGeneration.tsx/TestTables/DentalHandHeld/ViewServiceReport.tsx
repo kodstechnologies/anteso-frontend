@@ -67,6 +67,7 @@ interface ReportData {
   location: string;
   temperature: string;
   humidity: string;
+  hasTimer?: boolean | null;
   toolsUsed?: Tool[];
   qrCode?: string;
   notes?: Note[];
@@ -772,15 +773,17 @@ const ViewServiceReportDentalHandHeld: React.FC = () => {
             <MainTestTableForDentalHandHeld
               testData={testData}
               hasTimer={
-                !testData._isNoTimerMode &&
-                Boolean(
-                  testData.accuracyOfIrradiationTime?.irradiationTimes?.some(
-                    (r: any) =>
-                      String(r?.setTime ?? "").trim() !== "" ||
-                      String(r?.measuredTime ?? "").trim() !== ""
-                  ) ||
-                    testData.linearityOfmALoading?.table2?.length
-                )
+                typeof report?.hasTimer === "boolean"
+                  ? report.hasTimer
+                  : !testData._isNoTimerMode &&
+                    Boolean(
+                      testData.accuracyOfIrradiationTime?.irradiationTimes?.some(
+                        (r: any) =>
+                          String(r?.setTime ?? "").trim() !== "" ||
+                          String(r?.measuredTime ?? "").trim() !== ""
+                      ) ||
+                        testData.linearityOfmALoading?.table2?.length
+                    )
               }
             />
           </div>

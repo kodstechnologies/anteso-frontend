@@ -17,8 +17,8 @@ const rows = [
 
     // ===== Accuracy of Operating Potential =====
     ['========== ACCURACY OF OPERATING POTENTIAL (kVp) ==========', '', 'Section separator – do not edit'],
-    ['--- mA Station Headers ---', '', ''],
-    ['MeasHeader', '50 mA', 'Add one MeasHeader row per mA station (e.g. 50 mA, 100 mA, 200 mA)'],
+    ['--- mAs Station Headers ---', '', ''],
+    ['MeasHeader', '50 mA', 'Add one MeasHeader row per mAs station (e.g. 50 mA, 100 mA, 200 mA)'],
     ['MeasHeader', '100 mA', ''],
     ['MeasHeader', '200 mA', ''],
     ['--- Measurements (one block per applied kVp) ---', '', ''],
@@ -44,6 +44,7 @@ const rows = [
     ['--- Total Filtration ---', '', ''],
     ['TotalFiltration_Measured', '', 'Measured total filtration in mm Al'],
     ['TotalFiltration_Required', '2.5', 'Required minimum in mm Al'],
+    ['TotalFiltration_AtKvp', '80', 'kVp at which total filtration was measured'],
 
     // ===== Accuracy of Irradiation Time =====
     ['========== ACCURACY OF IRRADIATION TIME ==========', '', 'Section separator – do not edit'],

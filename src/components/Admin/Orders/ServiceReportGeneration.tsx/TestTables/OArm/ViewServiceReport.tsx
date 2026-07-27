@@ -55,6 +55,7 @@ interface ReportData {
   location: string;
   temperature: string;
   humidity: string;
+  hasTimer?: boolean | null;
   toolsUsed?: Tool[];
   qrCode?: string;
   notes?: Note[];
@@ -204,6 +205,7 @@ const ViewServiceReportOArm: React.FC = () => {
             location: data.location || "N/A",
             temperature: data.temperature || "",
             humidity: data.humidity || "",
+            hasTimer: typeof data.hasTimer === "boolean" ? data.hasTimer : null,
             toolsUsed: mergedTools,
             qrCode: data.qrCode || "",
 
@@ -655,6 +657,7 @@ const ViewServiceReportOArm: React.FC = () => {
             <MainTestTableForOArm
               testData={testData}
               hasTimer={(() => {
+                if (typeof report?.hasTimer === "boolean") return report.hasTimer;
                 const lin = testData.linearityOfMasLoading;
                 if (!lin) return false;
                 const sel = String(lin.selection || "").trim().toLowerCase();

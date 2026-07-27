@@ -25,6 +25,7 @@ import {
   getLinearityOfMaLoadingStationsByServiceIdForCArm,
   getLinearityOfMasLoadingStationsByServiceIdForCArm,
   proxyFile,
+  saveTimerPreference,
 } from "../../../../../../api";
 import { createCArmUploadableExcel, CArmExportData } from "./exportCArmToExcel";
 import { mergeWithRadiographyVerticalParse } from "../shared/mergeRadiographyVerticalParse";
@@ -244,6 +245,10 @@ const CArmContent: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
       try {
         const res = await getReportHeaderForCArm(serviceId);
         if (res?.exists && res?.data) {
+          if (typeof res.data.hasTimer === "boolean") {
+            setHasTimer(res.data.hasTimer);
+            setShowTimerModal(false);
+          }
           setFormData(prev => ({
             ...prev,
             customerName: res.data.customerName || prev.customerName,
@@ -545,12 +550,18 @@ const CArmContent: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
   };
 
   // Close modal and set timer choice
-  const handleTimerChoice = (choice: boolean) => {
+  const handleTimerChoice = async (choice: boolean) => {
     setHasTimer(choice);
     setShowTimerModal(false);
-    // Persist choice in localStorage
-    localStorage.setItem(`carm_timer_choice_${serviceId}`, JSON.stringify(choice));
-  };
+    if (serviceId) {
+      localStorage.setItem(`carm_timer_choice_${serviceId}`, JSON.stringify(choice));
+      try {
+        await saveTimerPreference(serviceId, choice);
+      } catch (err) {
+        console.error("Failed to save timer preference:", err);
+      }
+    }
+  }
 
   const resolveCArmWorksheet = (workbook: XLSX.WorkBook, preferTimer: boolean | null): XLSX.WorkSheet => {
     const names = workbook.SheetNames;
@@ -650,6 +661,7 @@ const CArmContent: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
         },
         'Total Filtration': {
           'mA Station': 'mAStations',
+          'mAs Station': 'mAStations',
           'mA Stations': 'mAStations',
           'Applied kVp': 'Measurement_AppliedKvp',
           'Applied kV': 'Measurement_AppliedKvp',
@@ -706,6 +718,8 @@ const CArmContent: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
           'Exposure (cGy/Min)': 'ExposureRate_Exposure',
           'Exposure': 'ExposureRate_Exposure',
           'Mode': 'ExposureRate_Mode',
+          'Remark': 'ExposureRate_Mode',
+          'Remarks': 'ExposureRate_Mode',
         },
         'Tube Housing Leakage': {
           'FDD (cm)': 'Leakage_FCD',
@@ -761,7 +775,7 @@ const CArmContent: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
         const label = (row[0] || '').trim();
         if (!label) return false;
         if (testName === 'Total Filtration') {
-          return /^(Tolerance Sign|Tolerance Value|Total Filtration|mA\s*Station)/i.test(label);
+          return /^(Tolerance Sign|Tolerance Value|Total Filtration|mAs?\s*Station)/i.test(label);
         }
         if (testName === 'Consistency of Radiation Output') {
           return /^(FDD\s*\(|FFD\s*\(|Time\s*\(|Tolerance\s*Operator|Tolerance\s*Value)/i.test(label);
@@ -777,7 +791,7 @@ const CArmContent: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
         const value = (row[1] || '').trim();
         if (!label) return;
 
-        if (/^mA\s*Station/i.test(label) && value) {
+        if (/^mAs?\s*Station/i.test(label) && value) {
           const stationVal = value.replace(/\s*mA\s*$/i, '').trim() || value;
           const formatted = /\bmA\b/i.test(value) ? value : `${stationVal} mA`;
           data.push({ 'Field Name': 'mAStations', 'Value': formatted, 'Row Index': '0', 'Test Name': testName });
@@ -810,7 +824,7 @@ const CArmContent: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
       ): string | null => {
         const headerMatch = header.match(/^Header\s*(\d+)$/i);
         if (headerMatch) return `Header_${headerMatch[1]}`;
-        const maStationMatch = header.match(/^mA\s*Station\s*(\d+)$/i);
+        const maStationMatch = header.match(/^mAs?\s*Station\s*(\d+)$/i);
         if (maStationMatch && testName === 'Total Filtration') return 'mAStations';
         const measMatch = header.match(/^(?:Meas|Measured(?:\s*Output)?|Output)\s*(\d+)$/i);
         if (measMatch) {
@@ -1081,6 +1095,7 @@ const CArmContent: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
       setShowTimerModal(false);
       if (serviceId) {
         localStorage.setItem(`carm_timer_choice_${serviceId}`, JSON.stringify(hasTimerSection));
+      try { await saveTimerPreference(serviceId, hasTimerSection); } catch (e) { console.error("Failed to persist timer preference:", e); }
       }
     }
 

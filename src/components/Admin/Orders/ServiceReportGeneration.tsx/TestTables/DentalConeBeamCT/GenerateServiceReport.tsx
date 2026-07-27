@@ -5,7 +5,9 @@ import toast from "react-hot-toast";
 import AuthorizedSignatorySelect from "../../AuthorizedSignatorySelect";
 import { Disclosure } from "@headlessui/react";
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
-import { saveReportHeaderForCBCT, getReportHeaderForCBCT, getAccuracyOfOperatingPotentialByServiceIdForCBCT, getAccuracyOfIrradiationTimeByServiceIdForCBCT, getLinearityOfMaLoadingByServiceIdForCBCT, getConsistencyOfRadiationOutputByServiceIdForCBCT, getRadiationLeakageLevelByServiceIdForCBCT, getRadiationProtectionSurveyByServiceIdForCBCT, proxyFile } from "../../../../../../api";
+import { saveReportHeaderForCBCT, getReportHeaderForCBCT, getAccuracyOfOperatingPotentialByServiceIdForCBCT, getAccuracyOfIrradiationTimeByServiceIdForCBCT, getLinearityOfMaLoadingByServiceIdForCBCT, getConsistencyOfRadiationOutputByServiceIdForCBCT, getRadiationLeakageLevelByServiceIdForCBCT, getRadiationProtectionSurveyByServiceIdForCBCT, proxyFile,
+  saveTimerPreference,
+} from "../../../../../../api";
 import { getDetails, getTools } from "../../../../../../api";
 import * as XLSX from 'xlsx';
 import { createCBCTUploadableExcel } from './exportCBCTToExcel';
@@ -674,12 +676,18 @@ const DentalConeBeamCTContent: React.FC<{ serviceId: string; qaTestDate?: string
     }, [serviceId]);
 
     // Close modal and set timer choice
-    const handleTimerChoice = (choice: boolean) => {
-        setHasTimer(choice);
-        setShowTimerModal(false);
-        // Persist choice in localStorage
-        localStorage.setItem(`cbct_timer_choice_${serviceId}`, JSON.stringify(choice));
-    };
+    const handleTimerChoice = async (choice: boolean) => {
+    setHasTimer(choice);
+    setShowTimerModal(false);
+    if (serviceId) {
+      localStorage.setItem(`cbct_timer_choice_${serviceId}`, JSON.stringify(choice));
+      try {
+        await saveTimerPreference(serviceId, choice);
+      } catch (err) {
+        console.error("Failed to save timer preference:", err);
+      }
+    }
+  }
 
     // When csvFileUrl is provided (redirect from ServiceDetails2), don't show timer modal — config will be set from Excel in fetchAndProcessFile
     useEffect(() => {
@@ -794,6 +802,10 @@ const DentalConeBeamCTContent: React.FC<{ serviceId: string; qaTestDate?: string
             try {
                 const res = await getReportHeaderForCBCT(serviceId);
                 if (res?.exists && res?.data) {
+          if (typeof res.data.hasTimer === "boolean") {
+            setHasTimer(res.data.hasTimer);
+            setShowTimerModal(false);
+          }
                     // Update form data from report header
                     setFormData(prev => ({
                         ...prev,
@@ -916,6 +928,7 @@ const DentalConeBeamCTContent: React.FC<{ serviceId: string; qaTestDate?: string
                         setShowTimerModal(false);
                         if (serviceId) {
                             localStorage.setItem(`cbct_timer_choice_${serviceId}`, JSON.stringify(hasTimerSection));
+                        try { await saveTimerPreference(serviceId, hasTimerSection); } catch (e) { console.error("Failed to persist timer preference:", e); }
                         }
                     }
                     toast.success('Excel data loaded successfully!', { id: 'csv-loading' });
@@ -935,6 +948,7 @@ const DentalConeBeamCTContent: React.FC<{ serviceId: string; qaTestDate?: string
                         setShowTimerModal(false);
                         if (serviceId) {
                             localStorage.setItem(`cbct_timer_choice_${serviceId}`, JSON.stringify(hasTimerSection));
+                        try { await saveTimerPreference(serviceId, hasTimerSection); } catch (e) { console.error("Failed to persist timer preference:", e); }
                         }
                     }
                     toast.success('CSV data loaded successfully!', { id: 'csv-loading' });
@@ -1347,6 +1361,7 @@ const DentalConeBeamCTContent: React.FC<{ serviceId: string; qaTestDate?: string
                         component: <DetailsOfRadiationProtection
                             serviceId={serviceId}
                             csvData={csvData?.radiationProtectionSurvey}
+                            initialSurveyDate={qaTestDate ?? formData.testDate ?? undefined}
                         />
                     },
 

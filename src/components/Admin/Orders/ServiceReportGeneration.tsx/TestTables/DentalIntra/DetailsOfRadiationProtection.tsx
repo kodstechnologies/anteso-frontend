@@ -44,7 +44,7 @@ const DetailsOfRadiationProtection: React.FC<Props> = ({ serviceId, testId: prop
   const [appliedCurrent, setAppliedCurrent] = useState<string>("100");
   const [appliedVoltage, setAppliedVoltage] = useState<string>("80");
   const [exposureTime, setExposureTime] = useState<string>("0.5");
-  const [workload, setWorkload] = useState<string>("5000");
+  const [workload, setWorkload] = useState<string>("500");
 
   const [locations, setLocations] = useState<LocationData[]>([
     { id: "1", location: "Control Console (Operator Position)", mRPerHr: "", mRPerWeek: "", result: "", calculatedResult: "", category: "worker" },
@@ -186,7 +186,7 @@ const DetailsOfRadiationProtection: React.FC<Props> = ({ serviceId, testId: prop
             setAppliedCurrent(data.appliedCurrent || "100");
             setAppliedVoltage(data.appliedVoltage || "80");
             setExposureTime(data.exposureTime || "0.5");
-            setWorkload(data.workload || "5000");
+            setWorkload(data.workload || "500");
             if (Array.isArray(data.locations) && data.locations.length > 0) {
               setLocations(
                 data.locations.map((l: any, i: number) => ({
@@ -499,7 +499,7 @@ const DetailsOfRadiationProtection: React.FC<Props> = ({ serviceId, testId: prop
             <label className="block text-sm font-medium text-gray-700">Workload (mA min/week)</label>
             <input type="number" value={workload} onChange={e => setWorkload(e.target.value)}
               disabled={isViewMode}
-              className={`mt-1 w-full px-4 py-3 text-center border rounded-lg ${isViewMode ? "bg-gray-100 cursor-not-allowed" : ""}`} placeholder="5000" />
+              className={`mt-1 w-full px-4 py-3 text-center border rounded-lg ${isViewMode ? "bg-gray-100 cursor-not-allowed" : ""}`} placeholder="500" />
           </div>
         </div>
       </section>

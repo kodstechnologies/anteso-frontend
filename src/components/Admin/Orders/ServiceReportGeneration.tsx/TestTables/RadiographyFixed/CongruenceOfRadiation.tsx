@@ -232,7 +232,7 @@ const CongruenceOfRadiation: React.FC<Props> = ({ serviceId, testId: propTestId,
     <div className="p-6 max-w-full mx-auto space-y-10">
       {/* Header */}
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-800">Congruence of Radiation & Light Field</h2>
+        <h2 className="text-2xl font-bold text-gray-800">Congruence of Radiation & Optical Field</h2>
       </div>
 
       {/* Table 1: Technique Factors */}

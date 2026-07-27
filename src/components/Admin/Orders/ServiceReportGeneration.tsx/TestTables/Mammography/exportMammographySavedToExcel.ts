@@ -73,7 +73,7 @@ export const createMammographySavedExcel = (
     const stations = resolveMeasHeaders(
       aop?.mAStations || aop?.measHeaders,
       maxMeas,
-      "mA Station"
+      "mAs Station"
     );
     const tol = aop?.tolerance || {};
     allData.push(["TEST: ACCURACY OF OPERATING POTENTIAL (kVp)"]);

@@ -24,6 +24,7 @@ import {
     getTubeHousingLeakageByServiceIdForFixedRadioFluro,
     getRadiationProtectionSurveyByServiceIdForFixedRadioFluro,
     getExposureRateByServiceIdForFixedRadioFluro,
+  saveTimerPreference,
 } from "../../../../../../api";
 import { getDetails, getTools } from "../../../../../../api";
 import { createFixedRadioFluroUploadableExcel, FixedRadioFluroExportData } from "./exportFixedRadioFluroToExcel";
@@ -147,12 +148,18 @@ const RadioFluroContent: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, q
     const [notes, setNotes] = useState<string[]>(defaultNotes);
 
     // Close modal and set timer choice
-    const handleTimerChoice = (choice: boolean) => {
-        setHasTimer(choice);
-        setShowTimerModal(false);
-        // Persist choice in localStorage
-        localStorage.setItem(`fixedradiofluro_timer_choice_${serviceId}`, JSON.stringify(choice));
-    };
+    const handleTimerChoice = async (choice: boolean) => {
+    setHasTimer(choice);
+    setShowTimerModal(false);
+    if (serviceId) {
+      localStorage.setItem(`fixedradiofluro_timer_choice_${serviceId}`, JSON.stringify(choice));
+      try {
+        await saveTimerPreference(serviceId, choice);
+      } catch (err) {
+        console.error("Failed to save timer preference:", err);
+      }
+    }
+  }
 
     // Fetch initial data
     useEffect(() => {
@@ -231,6 +238,14 @@ const RadioFluroContent: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, q
                     const headerRes = await getReportHeader(serviceId);
                     if (headerRes?.exists && headerRes?.data) {
                         const reportData = headerRes.data;
+                        if (typeof reportData.hasTimer === "boolean") {
+                            setHasTimer(reportData.hasTimer);
+                            setShowTimerModal(false);
+                            localStorage.setItem(
+                                `fixedradiofluro_timer_choice_${serviceId}`,
+                                JSON.stringify(reportData.hasTimer)
+                            );
+                        }
                         setFormData((prev) => ({
                             ...prev,
                             customerName: reportData.customerName || prev.customerName,
@@ -293,6 +308,7 @@ const RadioFluroContent: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, q
                     setHasTimer(true);
                     setShowTimerModal(false);
                     localStorage.setItem(`fixedradiofluro_timer_choice_${serviceId}`, JSON.stringify(true));
+                try { await saveTimerPreference(serviceId, true); } catch (e) { console.error("Failed to persist timer preference:", e); }
                 } else {
                     // Check localStorage for saved choice
                     const savedChoice = localStorage.getItem(`fixedradiofluro_timer_choice_${serviceId}`);
@@ -662,6 +678,11 @@ const RadioFluroContent: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, q
                 setShowTimerModal(false);
                 if (serviceId) {
                     localStorage.setItem(`fixedradiofluro_timer_choice_${serviceId}`, JSON.stringify(hasTimerSection));
+                        try {
+                            await saveTimerPreference(serviceId, hasTimerSection);
+                        } catch (e) {
+                            console.error("Failed to persist timer preference:", e);
+                        }
                 }
             }
 
@@ -1329,7 +1350,9 @@ const RadioFluroContent: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, q
                         if (field === 'Settings_time') settings.time = value;
                         if (field === 'Workload') workload = value;
                         if (field === 'ToleranceValue') toleranceValue = value;
-                        if (field === 'ToleranceOperator') toleranceOperator = value;
+                        if (field === 'ToleranceOperator') {
+                            toleranceOperator = normalizeCsvComparisonOperator(value) || value || '<=';
+                        }
 
                         if (field.startsWith('LeakageMeasurement_')) {
                             while (leakageMeasurements.length <= rowIndex) {

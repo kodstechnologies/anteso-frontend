@@ -56,6 +56,7 @@ interface ReportData {
   location: string;
   temperature: string;
   humidity: string;
+  hasTimer?: boolean | null;
   toolsUsed?: Tool[];
   qrCode?: string;
   notes?: Note[];
@@ -246,7 +247,14 @@ const ViewServiceReportCArm: React.FC = () => {
             detailsLeadOwner?.name ||
             ""
           ).trim();
+          if (typeof data.hasTimer === "boolean") {
+            setTimerChoice(data.hasTimer);
+            try {
+              localStorage.setItem(`carm_timer_choice_${serviceId}`, JSON.stringify(data.hasTimer));
+            } catch {}
+          }
           setReport({
+            hasTimer: typeof data.hasTimer === "boolean" ? data.hasTimer : null,
             customerName: data.customerName || "N/A",
             address: data.address || "N/A",
             city: data.city || detailsData?.city || "",

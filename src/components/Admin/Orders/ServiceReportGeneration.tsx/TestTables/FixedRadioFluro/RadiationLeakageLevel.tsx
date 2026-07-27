@@ -37,6 +37,43 @@ interface Props {
   initialData?: any;
 }
 
+type LeakageToleranceOperator = 'less than or equal to' | 'greater than or equal to' | '=';
+
+/** Map Excel/API symbols (`<`, `<=`, `≤`, etc.) to select option values. */
+function normalizeLeakageToleranceOperator(raw: unknown): LeakageToleranceOperator {
+  const s = String(raw ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .replace(/≤/g, '<=')
+    .replace(/≥/g, '>=');
+  if (!s) return 'less than or equal to';
+  if (s === '=' || s === '==' || s === 'equals' || s === 'equal to') return '=';
+  if (
+    s === '<' ||
+    s === '<=' ||
+    s === 'lt' ||
+    s === 'lte' ||
+    s === 'less than' ||
+    s === 'less than or equal' ||
+    s === 'less than or equal to'
+  ) {
+    return 'less than or equal to';
+  }
+  if (
+    s === '>' ||
+    s === '>=' ||
+    s === 'gt' ||
+    s === 'gte' ||
+    s === 'greater than' ||
+    s === 'greater than or equal' ||
+    s === 'greater than or equal to'
+  ) {
+    return 'greater than or equal to';
+  }
+  return 'less than or equal to';
+}
+
 export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRefresh, refreshKey, initialData }: Props) {
   const [testId, setTestId] = useState<string | null>(propTestId || null);
 
@@ -55,7 +92,7 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
 
   const [workload, setWorkload] = useState<string>('');
   const [toleranceValue, setToleranceValue] = useState<string>('1');
-  const [toleranceOperator, setToleranceOperator] = useState<'less than or equal to' | 'greater than or equal to' | '='>('less than or equal to');
+  const [toleranceOperator, setToleranceOperator] = useState<LeakageToleranceOperator>('less than or equal to');
   const [toleranceTime, setToleranceTime] = useState<string>('1');
 
   const [isSaving, setIsSaving] = useState(false);
@@ -95,10 +132,11 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
         // Calculate Pass/Fail for this row
         const tol = parseFloat(toleranceValue) || 0;
         if (tol > 0) {
+          const op = normalizeLeakageToleranceOperator(toleranceOperator);
           let pass = false;
-          if (toleranceOperator === 'less than or equal to') pass = mgyValue <= tol;
-          if (toleranceOperator === 'greater than or equal to') pass = mgyValue >= tol;
-          if (toleranceOperator === '=') pass = Math.abs(mgyValue - tol) < 0.01;
+          if (op === 'less than or equal to') pass = mgyValue <= tol;
+          if (op === 'greater than or equal to') pass = mgyValue >= tol;
+          if (op === '=') pass = Math.abs(mgyValue - tol) < 0.01;
           remark = pass ? 'Pass' : 'Fail';
         }
       }
@@ -153,9 +191,10 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
     if (!toleranceValue || globalMaxResultMR === 0) return '';
 
     let pass = false;
-    if (toleranceOperator === 'less than or equal to') pass = result <= tol;
-    if (toleranceOperator === 'greater than or equal to') pass = result >= tol;
-    if (toleranceOperator === '=') pass = Math.abs(result - tol) < 0.01;
+    const op = normalizeLeakageToleranceOperator(toleranceOperator);
+    if (op === 'less than or equal to') pass = result <= tol;
+    if (op === 'greater than or equal to') pass = result >= tol;
+    if (op === '=') pass = Math.abs(result - tol) < 0.01;
 
     return pass ? 'Pass' : 'Fail';
   }, [globalMaxResultMGy, toleranceValue, toleranceOperator, globalMaxResultMR]);
@@ -235,7 +274,7 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
           if (data.fcd) setSettings({ fcd: data.fcd, kv: data.kv || '', ma: data.ma || '', time: data.time || '' });
           if (data.workload) setWorkload(data.workload);
           if (data.toleranceValue) setToleranceValue(data.toleranceValue);
-          if (data.toleranceOperator) setToleranceOperator(data.toleranceOperator);
+          if (data.toleranceOperator) setToleranceOperator(normalizeLeakageToleranceOperator(data.toleranceOperator));
           if (data.toleranceTime) setToleranceTime(data.toleranceTime);
           if (Array.isArray(data.leakageMeasurements) && data.leakageMeasurements.length > 0) {
             // Ensure Tube is always first, then Collimator if it exists
@@ -305,7 +344,15 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
       }
       if (initialData.tolerance) {
         if (initialData.tolerance.value) setToleranceValue(String(initialData.tolerance.value));
-        if (initialData.tolerance.operator) setToleranceOperator(initialData.tolerance.operator);
+        if (initialData.tolerance.operator) {
+          setToleranceOperator(normalizeLeakageToleranceOperator(initialData.tolerance.operator));
+        }
+      }
+      if (initialData.toleranceOperator) {
+        setToleranceOperator(normalizeLeakageToleranceOperator(initialData.toleranceOperator));
+      }
+      if (initialData.toleranceValue != null && initialData.toleranceValue !== '') {
+        setToleranceValue(String(initialData.toleranceValue));
       }
       if (initialData.leakageMeasurements && initialData.leakageMeasurements.length > 0) {
         setLeakageRows(initialData.leakageMeasurements.map((m: any, i: number) => ({
@@ -355,7 +402,7 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
           mgy: row.mgy,
         })),
         toleranceValue,
-        toleranceOperator,
+        toleranceOperator: normalizeLeakageToleranceOperator(toleranceOperator),
         toleranceTime,
         remark: finalRemark,
       };
@@ -605,8 +652,8 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
           <p>
             <strong>Tolerance:</strong> Maximum Leakage Radiation Level at 1 meter from the Focus should be{' '}
             <select
-              value={toleranceOperator}
-              onChange={(e) => setToleranceOperator(e.target.value as any)}
+              value={normalizeLeakageToleranceOperator(toleranceOperator)}
+              onChange={(e) => setToleranceOperator(normalizeLeakageToleranceOperator(e.target.value))}
               disabled={isViewMode}
               className={`px-2 py-1 border rounded text-sm font-medium ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
             >

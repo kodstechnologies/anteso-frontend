@@ -26,6 +26,7 @@ import {
     getEquipmentSettingByServiceIdForMammography,
     getMaximumRadiationLevelByServiceIdForMammography,
     proxyFile,
+  saveTimerPreference,
 } from "../../../../../../api";
 import * as XLSX from "xlsx";
 import { createMammographySavedExcel, MammographySavedExportData } from "./exportMammographySavedToExcel";
@@ -757,6 +758,11 @@ const GenerateReportMammographyContent: React.FC<{ serviceId: string; csvFileUrl
                     setShowTimerModal(false);
                     if (serviceId) {
                         localStorage.setItem(`mammography-timer-${serviceId}`, String(hasTimerSection));
+                        try {
+                            await saveTimerPreference(serviceId, hasTimerSection);
+                        } catch (e) {
+                            console.error("Failed to persist timer preference:", e);
+                        }
                     }
                 }
             }
@@ -1447,31 +1453,55 @@ const GenerateReportMammographyContent: React.FC<{ serviceId: string; csvFileUrl
         }
     };
 
-    // Check localStorage for timer preference on mount. When csvFileUrl is provided (redirect from ServiceDetails2), skip modal — config will be set from Excel in processCSVData.
+    // Check DB / localStorage for timer preference on mount. When csvFileUrl is provided (redirect from ServiceDetails2), skip modal — config will be set from Excel in processCSVData.
     useEffect(() => {
         if (!serviceId) return;
         if (csvFileUrl) {
             setShowTimerModal(false);
             return;
         }
-        const stored = localStorage.getItem(`mammography-timer-${serviceId}`);
-        if (stored !== null) {
-            setHasTimer(stored === 'true');
-            setShowTimerModal(false);
-        } else {
-            setShowTimerModal(true);
-        }
+        let cancelled = false;
+        (async () => {
+            let resolved = false;
+            try {
+                const reportRes = await getReportHeaderForMammography(serviceId);
+                if (cancelled) return;
+                if (typeof reportRes?.data?.hasTimer === "boolean") {
+                    setHasTimer(reportRes.data.hasTimer);
+                    setShowTimerModal(false);
+                    localStorage.setItem(`mammography-timer-${serviceId}`, String(reportRes.data.hasTimer));
+                    resolved = true;
+                }
+            } catch (e) {
+                console.error("Failed to load timer preference from report:", e);
+            }
+            if (cancelled || resolved) return;
+            const stored = localStorage.getItem(`mammography-timer-${serviceId}`);
+            if (stored !== null) {
+                setHasTimer(stored === 'true');
+                setShowTimerModal(false);
+            } else {
+                setShowTimerModal(true);
+            }
+        })();
+        return () => {
+            cancelled = true;
+        };
     }, [serviceId, csvFileUrl]);
 
     // Close modal and set timer choice
-    const handleTimerChoice = (choice: boolean) => {
-        setHasTimer(choice);
-        setShowTimerModal(false);
-        // Store in localStorage so it persists across refreshes
-        if (serviceId) {
-            localStorage.setItem(`mammography-timer-${serviceId}`, String(choice));
-        }
-    };
+    const handleTimerChoice = async (choice: boolean) => {
+    setHasTimer(choice);
+    setShowTimerModal(false);
+    if (serviceId) {
+      localStorage.setItem(`mammography-timer-${serviceId}`, String(choice));
+      try {
+        await saveTimerPreference(serviceId, choice);
+      } catch (err) {
+        console.error("Failed to save timer preference:", err);
+      }
+    }
+  }
 
     // Handle CSV file upload
     const handleCSVUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {

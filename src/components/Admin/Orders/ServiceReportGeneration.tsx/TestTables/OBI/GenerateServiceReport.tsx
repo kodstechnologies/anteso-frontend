@@ -23,6 +23,7 @@ import {
     getHighContrastSensitivityByServiceIdForOBI,
     getLowContrastSensitivityByServiceIdForOBI,
     proxyFile,
+  saveTimerPreference,
 } from "../../../../../../api";
 import { getDetails, getTools } from "../../../../../../api";
 import { createOBISavedExcel, OBISavedExportData } from "./exportOBISavedToExcel";
@@ -184,14 +185,18 @@ const OBIContent: React.FC<OBIProps> = ({ serviceId, csvFileUrl, qaTestDate }) =
     }, [serviceId, csvFileUrl]);
 
     // Close modal and set timer choice
-    const handleTimerChoice = (choice: boolean) => {
-        setHasTimer(choice);
-        setShowTimerModal(false);
-        // Store in localStorage so it persists across refreshes
-        if (serviceId) {
-            localStorage.setItem(`obi-timer-${serviceId}`, String(choice));
-        }
-    };
+    const handleTimerChoice = async (choice: boolean) => {
+    setHasTimer(choice);
+    setShowTimerModal(false);
+    if (serviceId) {
+      localStorage.setItem(`obi-timer-${serviceId}`, String(choice));
+      try {
+        await saveTimerPreference(serviceId, choice);
+      } catch (err) {
+        console.error("Failed to save timer preference:", err);
+      }
+    }
+  }
 
     // Only fetch initial service details and tools — NOT saved report
     useEffect(() => {
@@ -795,6 +800,7 @@ const OBIContent: React.FC<OBIProps> = ({ serviceId, csvFileUrl, qaTestDate }) =
                 setShowTimerModal(false);
                 if (serviceId) {
                     localStorage.setItem(`obi-timer-${serviceId}`, String(hasTimerSection));
+                try { await saveTimerPreference(serviceId, hasTimerSection); } catch (e) { console.error("Failed to persist timer preference:", e); }
                 }
             }
 
@@ -2003,6 +2009,10 @@ const OBIContent: React.FC<OBIProps> = ({ serviceId, csvFileUrl, qaTestDate }) =
             try {
                 const res = await getReportHeaderForOBI(serviceId);
                 if (res?.exists && res?.data) {
+          if (typeof res.data.hasTimer === "boolean") {
+            setHasTimer(res.data.hasTimer);
+            setShowTimerModal(false);
+          }
                     // Save test IDs
                     const testIds = {
                         AlignmentTestOBI: res.data.AlignmentTestOBI?._id || res.data.AlignmentTestOBI,

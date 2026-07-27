@@ -24,6 +24,7 @@ import {
   getLinearityOfMasLoadingStationByServiceIdForOArm,
   getAccuracyOfIrradiationTimeByServiceIdForOArm,
   proxyFile,
+  saveTimerPreference,
 } from "../../../../../../api";
 import { createOArmUploadableExcel, OArmExportData } from "./exportOArmToExcel";
 import { TestExportRegistryProvider, useTestExportRegistry } from "../shared/TestExportRegistry";
@@ -243,11 +244,18 @@ const OArmContent: React.FC<OArmProps> = ({ serviceId, csvFileUrl }) => {
     }
   }, [serviceId, csvFileUrl]);
 
-  const handleTimerChoice = (choice: boolean) => {
+  const handleTimerChoice = async (choice: boolean) => {
     setHasTimer(choice);
     setShowTimerModal(false);
-    if (serviceId) localStorage.setItem(`oarm_timer_choice_${serviceId}`, JSON.stringify(choice));
-  };
+    if (serviceId) {
+      localStorage.setItem(`oarm_timer_choice_${serviceId}`, JSON.stringify(choice));
+      try {
+        await saveTimerPreference(serviceId, choice);
+      } catch (err) {
+        console.error("Failed to save timer preference:", err);
+      }
+    }
+  }
 
   useEffect(() => {
     const loadReportHeader = async () => {
@@ -255,6 +263,10 @@ const OArmContent: React.FC<OArmProps> = ({ serviceId, csvFileUrl }) => {
       try {
         const res = await getReportHeaderForOArm(serviceId);
         if (res?.exists && res?.data) {
+          if (typeof res.data.hasTimer === "boolean") {
+            setHasTimer(res.data.hasTimer);
+            setShowTimerModal(false);
+          }
           setFormData(prev => ({
             ...prev,
             customerName: res.data.customerName || prev.customerName,
@@ -852,6 +864,7 @@ const OArmContent: React.FC<OArmProps> = ({ serviceId, csvFileUrl }) => {
         setShowTimerModal(false);
         if (serviceId) {
           localStorage.setItem(`oarm_timer_choice_${serviceId}`, JSON.stringify(hasTimerSection));
+        try { await saveTimerPreference(serviceId, hasTimerSection); } catch (e) { console.error("Failed to persist timer preference:", e); }
         }
       }
 

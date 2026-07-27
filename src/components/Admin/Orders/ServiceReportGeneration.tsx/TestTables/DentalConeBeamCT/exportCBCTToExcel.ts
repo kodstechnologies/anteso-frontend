@@ -55,7 +55,7 @@ export const createCBCTUploadableExcel = (data: any) => {
         0,
         ...measurements.map((r: any) => (Array.isArray(r.measuredValues) ? r.measuredValues.length : 0))
       );
-      const stationHeaders = resolveMeasHeaders(aop.mAStations, maxMeas, 'mA');
+      const stationHeaders = resolveMeasHeaders(aop.mAStations, maxMeas, 'mAs');
       const headers = ['Applied kVp', ...stationHeaders, 'Average kVp', 'Remarks'];
       allData.push(headers);
       measurements.forEach((row: any) => {

@@ -36,18 +36,26 @@ const RadiationProtectionSurvey: React.FC<Props> = ({
   initialData,
   initialSurveyDate,
 }) => {
+  const getTodayDate = () => new Date().toISOString().split("T")[0];
+  const toInputDate = (value: any): string => {
+    if (!value) return "";
+    const text = String(value);
+    return text.includes("T") ? text.split("T")[0] : text;
+  };
+  const defaultSurveyDate = () => toInputDate(initialSurveyDate) || getTodayDate();
+
   const [testId, setTestId] = useState<string | null>(propTestId || null);
   const [isSaved, setIsSaved] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
-  const [surveyDate, setSurveyDate] = useState<string>(initialSurveyDate || "");
+  const [surveyDate, setSurveyDate] = useState<string>(defaultSurveyDate());
   const [hasValidCalibration, setHasValidCalibration] = useState<string>("");
 
   const [appliedCurrent, setAppliedCurrent] = useState<string>("100");
   const [appliedVoltage, setAppliedVoltage] = useState<string>("80");
   const [exposureTime, setExposureTime] = useState<string>("0.5");
-  const [workload, setWorkload] = useState<string>("5000");
+  const [workload, setWorkload] = useState<string>("500");
 
   const [locations, setLocations] = useState<LocationData[]>([
     { id: "1", location: "Control Console (Operator Position)", mRPerHr: "", mRPerWeek: "", result: "", category: "worker" },
@@ -117,13 +125,14 @@ const RadiationProtectionSurvey: React.FC<Props> = ({
         if (data?.data) {
           const testData = data.data;
           setTestId(testData._id);
-          setSurveyDate(testData.surveyDate ? new Date(testData.surveyDate).toISOString().split('T')[0] : "");
+          const savedDate = testData.surveyDate ? new Date(testData.surveyDate).toISOString().split('T')[0] : "";
+          setSurveyDate(savedDate || defaultSurveyDate());
           // Calibration status is set by the tools check useEffect, don't override it here
           // (The tools check will run and set it based on current calibration dates)
           setAppliedCurrent(testData.appliedCurrent || "100");
           setAppliedVoltage(testData.appliedVoltage || "80");
           setExposureTime(testData.exposureTime || "0.5");
-          setWorkload(testData.workload || "5000");
+          setWorkload(testData.workload || "500");
           if (Array.isArray(testData.locations) && testData.locations.length > 0) {
             setLocations(
               testData.locations.map((l: any, i: number) => ({
@@ -137,26 +146,28 @@ const RadiationProtectionSurvey: React.FC<Props> = ({
             );
           }
           setIsSaved(true);
+        } else {
+          setSurveyDate(defaultSurveyDate());
         }
       } catch (err: any) {
         if (err.response?.status !== 404) {
           toast.error('Failed to load test data');
         }
+        setSurveyDate(defaultSurveyDate());
       } finally {
         setIsLoading(false);
       }
     };
 
     loadTest();
-  }, [serviceId]);
+  }, [serviceId, initialSurveyDate]);
 
   // Load initialData from CSV if provided
   useEffect(() => {
     if (initialData) {
       try {
-        if (initialData.surveyDate) {
-          setSurveyDate(initialData.surveyDate);
-        }
+        // Survey date from QA test date (else today) — not from Excel
+        setSurveyDate(defaultSurveyDate());
         if (initialData.appliedCurrent) setAppliedCurrent(initialData.appliedCurrent);
         if (initialData.appliedVoltage) setAppliedVoltage(initialData.appliedVoltage);
         if (initialData.exposureTime) setExposureTime(initialData.exposureTime);
@@ -176,7 +187,7 @@ const RadiationProtectionSurvey: React.FC<Props> = ({
         console.error('Error loading initialData:', err);
       }
     }
-  }, [initialData]);
+  }, [initialData, initialSurveyDate]);
 
   const handleSave = async () => {
     if (!serviceId) {
@@ -430,7 +441,7 @@ const RadiationProtectionSurvey: React.FC<Props> = ({
             <label className="block text-sm font-medium text-gray-700">Workload (mA min/week)</label>
             <input type="number" value={workload} onChange={e => setWorkload(e.target.value)}
               disabled={isDisabled}
-              className={`mt-1 w-full px-4 py-3 text-center border rounded-lg ${isDisabled ? "bg-gray-100 cursor-not-allowed" : ""}`} placeholder="5000" />
+              className={`mt-1 w-full px-4 py-3 text-center border rounded-lg ${isDisabled ? "bg-gray-100 cursor-not-allowed" : ""}`} placeholder="500" />
           </div>
         </div>
       </section>

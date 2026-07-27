@@ -17,8 +17,8 @@ const rows = [
 
     // ===== Accuracy of Operating Potential =====
     ['========== ACCURACY OF OPERATING POTENTIAL (kVp) ==========', '', 'Section separator – do not edit'],
-    ['--- mA Station Headers ---', '', ''],
-    ['MeasHeader', '50 mA', 'Add one MeasHeader row per mA station (e.g. 50 mA, 100 mA, 200 mA)'],
+    ['--- mAs Station Headers ---', '', ''],
+    ['MeasHeader', '50 mA', 'Add one MeasHeader row per mAs station (e.g. 50 mA, 100 mA, 200 mA)'],
     ['MeasHeader', '100 mA', ''],
     ['MeasHeader', '200 mA', ''],
     ['--- Measurements (one block per applied kVp) ---', '', ''],

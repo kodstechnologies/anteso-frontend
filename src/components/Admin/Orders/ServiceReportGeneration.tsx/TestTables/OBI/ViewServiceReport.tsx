@@ -172,9 +172,6 @@ function hasOBILinearitySummaryValue(v: any): boolean {
 const ViewServiceReportOBI: React.FC = () => {
   const [searchParams] = useSearchParams();
   const serviceId = searchParams.get("serviceId");
-  const hasTimer = serviceId
-    ? localStorage.getItem(`obi-timer-${serviceId}`) === "true"
-    : false;
   const isToolUnexpired = (validTillRaw: string): boolean => {
     if (!validTillRaw) return false;
     const parsed = new Date(validTillRaw);
@@ -187,6 +184,11 @@ const ViewServiceReportOBI: React.FC = () => {
 
   const [loading, setLoading] = useState(true);
   const [report, setReport] = useState<ReportData | null>(null);
+  const hasTimer = (() => {
+    if (typeof report?.hasTimer === "boolean") return report.hasTimer;
+    if (serviceId) return localStorage.getItem(`obi-timer-${serviceId}`) === "true";
+    return false;
+  })();
   const [notFound, setNotFound] = useState(false);
   const [testData, setTestData] = useState<any>({});
   const [calculatedPages, setCalculatedPages] = useState<string>("");
@@ -306,6 +308,7 @@ const ViewServiceReportOBI: React.FC = () => {
             location: data.location || "N/A",
             temperature: data.temperature || "",
             humidity: data.humidity || "",
+            hasTimer: typeof data.hasTimer === "boolean" ? data.hasTimer : null,
             toolsUsed: mergedTools,
             qrCode: data.qrCode || "",
 

@@ -23,7 +23,7 @@ export const createOPGUploadableExcel = (data: any) => {
         const maxMeas = measurements.length > 0
             ? Math.max(...measurements.map((r: any) => (r.measuredValues || []).length), 0)
             : 0;
-        const stations = resolveMeasHeaders(aop.mAStations, maxMeas, 'mA');
+        const stations = resolveMeasHeaders(aop.mAStations, maxMeas, 'mAs');
         const headers = ['Applied kVp', ...stations, 'Average kVp', 'Remarks'];
         const rows = measurements.map((row: any) => [
             row.appliedKvp || '',
@@ -108,7 +108,7 @@ export const createOPGUploadableExcel = (data: any) => {
             });
 
             if (isMaLoading) {
-                const headers = ['mA Station', ...measHeaders, 'Average', 'mR/mAs'];
+                const headers = ['mAs Station', ...measHeaders, 'Average', 'mR/mAs'];
                 addSection('LINEARITY OF mA LOADING', headers, [settingsHeader, ...alignedRows]);
             } else {
                 const headers = ['mAs Range', ...measHeaders, 'Average', 'mR/mAs'];

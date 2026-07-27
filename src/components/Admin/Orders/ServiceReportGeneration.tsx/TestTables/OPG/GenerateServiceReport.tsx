@@ -5,7 +5,9 @@ import toast from "react-hot-toast";
 import AuthorizedSignatorySelect from "../../AuthorizedSignatorySelect";
 import { Disclosure } from "@headlessui/react";
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
-import { getRadiationProfileWidthByServiceId, saveReportHeaderForOPG, getReportHeaderForOPG, getAccuracyOfOperatingPotentialByServiceIdForOPG, getAccuracyOfIrradiationTimeByServiceIdForOPG, getLinearityOfMaLoadingByServiceIdForOPG, getConsistencyOfRadiationOutputByServiceIdForOPG, getRadiationLeakageLevelByServiceIdForOPG, getRadiationProtectionSurveyByServiceIdForOPG, getDetails, getTools, proxyFile } from "../../../../../../api";
+import { getRadiationProfileWidthByServiceId, saveReportHeaderForOPG, getReportHeaderForOPG, getAccuracyOfOperatingPotentialByServiceIdForOPG, getAccuracyOfIrradiationTimeByServiceIdForOPG, getLinearityOfMaLoadingByServiceIdForOPG, getConsistencyOfRadiationOutputByServiceIdForOPG, getRadiationLeakageLevelByServiceIdForOPG, getRadiationProtectionSurveyByServiceIdForOPG, getDetails, getTools, proxyFile,
+  saveTimerPreference,
+} from "../../../../../../api";
 import * as XLSX from 'xlsx';
 import { createOPGUploadableExcel } from './exportOPGToExcel';
 import { TestExportRegistryProvider, useTestExportRegistry } from "../shared/TestExportRegistry";
@@ -190,7 +192,7 @@ const OPGContent: React.FC<{ serviceId: string; qaTestDate?: string | null; csvF
                 return;
             }
             if (currentSection) {
-                const headerOnlyMarkers = ['Applied kVp', 'Set Time (mSec)', 'mA Station', 'mAs Range', 'kVp', 'Location', 'LOCATION', 'Survey Date'];
+                const headerOnlyMarkers = ['Applied kVp', 'Set Time (mSec)', 'mA Station', 'mAs Station', 'mAs Range', 'kVp', 'Location', 'LOCATION', 'Survey Date'];
                 const firstLower = firstCell?.toLowerCase() || '';
                 let measHeaderLabelsToInject: string[] = [];
                 if (firstCell && headerOnlyMarkers.some((m) => m.toLowerCase() === firstLower)) {
@@ -328,12 +330,18 @@ const OPGContent: React.FC<{ serviceId: string; qaTestDate?: string | null; csvF
     }, [serviceId]);
 
     // Close modal and set timer choice
-    const handleTimerChoice = (choice: boolean) => {
-        setHasTimer(choice);
-        setShowTimerModal(false);
-        // Persist choice in localStorage
-        localStorage.setItem(`opg_timer_choice_${serviceId}`, JSON.stringify(choice));
-    };
+    const handleTimerChoice = async (choice: boolean) => {
+    setHasTimer(choice);
+    setShowTimerModal(false);
+    if (serviceId) {
+      localStorage.setItem(`opg_timer_choice_${serviceId}`, JSON.stringify(choice));
+      try {
+        await saveTimerPreference(serviceId, choice);
+      } catch (err) {
+        console.error("Failed to save timer preference:", err);
+      }
+    }
+  }
 
     // When csvFileUrl is provided (redirect from ServiceDetails2), don't show timer modal — config will be set from Excel in loadFileFromUrl
     useEffect(() => {
@@ -448,6 +456,10 @@ const OPGContent: React.FC<{ serviceId: string; qaTestDate?: string | null; csvF
             try {
                 const res = await getReportHeaderForOPG(serviceId);
                 if (res?.exists && res?.data) {
+          if (typeof res.data.hasTimer === "boolean") {
+            setHasTimer(res.data.hasTimer);
+            setShowTimerModal(false);
+          }
                     // Update form data from report header
                     setFormData(prev => ({
                         ...prev,
@@ -571,12 +583,14 @@ const OPGContent: React.FC<{ serviceId: string; qaTestDate?: string | null; csvF
                             setHasTimer(true);
                             if (serviceId) {
                                 localStorage.setItem(`opg_timer_choice_${serviceId}`, JSON.stringify(true));
+                            try { await saveTimerPreference(serviceId, true); } catch (e) { console.error("Failed to persist timer preference:", e); }
                             }
                             setShowTimerModal(false);
                         } else if (hasMasSection && !hasTimerSection) {
                             setHasTimer(false);
                             if (serviceId) {
                                 localStorage.setItem(`opg_timer_choice_${serviceId}`, JSON.stringify(false));
+                            try { await saveTimerPreference(serviceId, false); } catch (e) { console.error("Failed to persist timer preference:", e); }
                             }
                             setShowTimerModal(false);
                         } else {
@@ -644,7 +658,7 @@ const OPGContent: React.FC<{ serviceId: string; qaTestDate?: string | null; csvF
         if (!file) return;
 
         const reader = new FileReader();
-        reader.onload = (evt) => {
+        reader.onload = async (evt) => {
             const bstr = evt.target?.result;
             const wb = XLSX.read(bstr, { type: 'binary' });
             const wsname = wb.SheetNames[0];
@@ -666,12 +680,14 @@ const OPGContent: React.FC<{ serviceId: string; qaTestDate?: string | null; csvF
                     setHasTimer(true);
                     if (serviceId) {
                         localStorage.setItem(`opg_timer_choice_${serviceId}`, JSON.stringify(true));
+                        try { await saveTimerPreference(serviceId, true); } catch (e) { console.error("Failed to persist timer preference:", e); }
                     }
                     setShowTimerModal(false);
                 } else if (hasMasSection && !hasTimerSection) {
                     setHasTimer(false);
                     if (serviceId) {
                         localStorage.setItem(`opg_timer_choice_${serviceId}`, JSON.stringify(false));
+                        try { await saveTimerPreference(serviceId, false); } catch (e) { console.error("Failed to persist timer preference:", e); }
                     }
                     setShowTimerModal(false);
                 } else {
@@ -999,6 +1015,7 @@ const OPGContent: React.FC<{ serviceId: string; qaTestDate?: string | null; csvF
                             testId={savedTestIds.RadiationProtectionSurveyOPG || null}
                             onTestSaved={(id) => setSavedTestIds(prev => ({ ...prev, RadiationProtectionSurveyOPG: id }))}
                             csvData={csvData?.radiationProtectionSurvey}
+                            initialSurveyDate={qaTestDate ?? formData.testDate ?? undefined}
                         />
                     },
 

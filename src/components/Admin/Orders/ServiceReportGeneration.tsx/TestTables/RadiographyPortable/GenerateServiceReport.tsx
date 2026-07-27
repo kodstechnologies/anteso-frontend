@@ -20,6 +20,7 @@ import {
   getLinearityOfMasLoadingStationsByServiceIdForRadiographyPortable,
   getConsistencyOfRadiationOutputByServiceIdForRadiographyPortable,
   getRadiationLeakageLevelByServiceIdForRadiographyPortable,
+  saveTimerPreference,
 } from "../../../../../../api";
 import { createRadiographyPortableUploadableExcel, RadiographyPortableExportData } from "./exportRadiographyPortableToExcel";
 import { TestExportRegistryProvider, useTestExportRegistry } from "../shared/TestExportRegistry";
@@ -146,14 +147,18 @@ const RadiographyPortableContent: React.FC<RadiographyPortableProps> = ({ servic
   }, [serviceId, csvFileUrl]);
 
   // Close modal and set timer choice
-  const handleTimerChoice = (choice: boolean) => {
+  const handleTimerChoice = async (choice: boolean) => {
     setHasTimer(choice);
     setShowTimerModal(false);
-    // Store in localStorage so it persists across refreshes
     if (serviceId) {
       localStorage.setItem(`radiography-portable-timer-${serviceId}`, String(choice));
+      try {
+        await saveTimerPreference(serviceId, choice);
+      } catch (err) {
+        console.error("Failed to save timer preference:", err);
+      }
     }
-  };
+  }
 
   // Fetch initial data
   useEffect(() => {
@@ -230,6 +235,10 @@ const RadiographyPortableContent: React.FC<RadiographyPortableProps> = ({ servic
       try {
         const res = await getReportHeaderForRadiographyPortable(serviceId);
         if (res?.exists && res?.data) {
+          if (typeof res.data.hasTimer === "boolean") {
+            setHasTimer(res.data.hasTimer);
+            setShowTimerModal(false);
+          }
           // Update form data from report header
           setFormData(prev => ({
             ...prev,
@@ -757,6 +766,7 @@ const RadiographyPortableContent: React.FC<RadiographyPortableProps> = ({ servic
           setShowTimerModal(false);
           if (serviceId) {
             localStorage.setItem(`radiography-portable-timer-${serviceId}`, String(timerChoice));
+          try { await saveTimerPreference(serviceId, timerChoice); } catch (e) { console.error("Failed to persist timer preference:", e); }
           }
         }
       }

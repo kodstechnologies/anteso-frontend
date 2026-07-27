@@ -26,6 +26,29 @@ interface Props {
   initialData?: any[];
 }
 
+/** Map Excel/API mode values to the UI select options. */
+function normalizeExposureMode(raw: unknown): Row["remark"] {
+  const s = String(raw ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ");
+  if (!s) return "";
+  if (
+    s === "manual mode" ||
+    s === "manual" ||
+    s.includes("manual") ||
+    s.includes("non-aec") ||
+    s.includes("non aec") ||
+    s.includes("nonaec")
+  ) {
+    return "Manual Mode";
+  }
+  if (s === "aec mode" || s === "aec" || s.includes("aec") || s.includes("automatic")) {
+    return "AEC Mode";
+  }
+  return "";
+}
+
 const ExposureRateTableTopForCArm: React.FC<Props> = ({
   serviceId,
   testId: propTestId = null,
@@ -76,7 +99,7 @@ const ExposureRateTableTopForCArm: React.FC<Props> = ({
     }, {});
   }, [rows, hasValidMinFocus, minFocus, minFocusDistance]);
 
-  // Handle CSV initial data — Distance, Applied kV, Applied mA, Exposure from Excel; Mode auto-assigned; Result calculated
+  // Handle CSV initial data — Distance, Applied kV, Applied mA, Exposure, Mode from Excel; Result calculated
   useEffect(() => {
     if (initialData && initialData.length > 0) {
       try {
@@ -84,6 +107,19 @@ const ExposureRateTableTopForCArm: React.FC<Props> = ({
         let aecTol = "10";
         let nonAecTol = "5";
         let minFocus = "30";
+
+        const ensureRow = (rowIndex: number) => {
+          while (r.length <= rowIndex) {
+            r.push({
+              id: (r.length + 1).toString(),
+              distance: "",
+              appliedKv: "",
+              appliedMa: "",
+              exposure: "",
+              remark: "",
+            });
+          }
+        };
 
         const defaultMode = (idx: number): Row["remark"] => {
           if (idx === 0) return "AEC Mode";
@@ -102,21 +138,19 @@ const ExposureRateTableTopForCArm: React.FC<Props> = ({
 
           if (field.startsWith('ExposureRate_')) {
             const subField = field.replace('ExposureRate_', '');
-            if (subField === 'Distance' || subField === 'kVp' || subField === 'mA' || subField === 'Exposure') {
-              while (r.length <= rowIndex) {
-                r.push({
-                  id: (r.length + 1).toString(),
-                  distance: "",
-                  appliedKv: "",
-                  appliedMa: "",
-                  exposure: "",
-                  remark: "",
-                });
-              }
+            if (
+              subField === 'Distance' ||
+              subField === 'kVp' ||
+              subField === 'mA' ||
+              subField === 'Exposure' ||
+              subField === 'Mode'
+            ) {
+              ensureRow(rowIndex);
               if (subField === 'Distance') r[rowIndex].distance = val;
               if (subField === 'kVp') r[rowIndex].appliedKv = val;
               if (subField === 'mA') r[rowIndex].appliedMa = val;
               if (subField === 'Exposure') r[rowIndex].exposure = val;
+              if (subField === 'Mode') r[rowIndex].remark = normalizeExposureMode(val);
             }
           }
         });
@@ -126,7 +160,8 @@ const ExposureRateTableTopForCArm: React.FC<Props> = ({
             r.map((row, idx) => ({
               ...row,
               id: (idx + 1).toString(),
-              remark: defaultMode(idx),
+              // Prefer Mode from Excel; fall back to AEC/Manual for first two rows if blank
+              remark: row.remark || defaultMode(idx),
             }))
           );
         }

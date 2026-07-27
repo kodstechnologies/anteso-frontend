@@ -2038,7 +2038,20 @@ const ViewServiceReportCTScan: React.FC = () => {
                     const workloadValue = parseFloat(data.workload || "0");
 
                     const getSummaryForLocation = (locName: string) => {
-                      const row = data.leakageMeasurements.find((m: any) => m.location === locName);
+                      let row: any;
+                      if (locName === "Tube Housing") {
+                        row = data.leakageMeasurements.find((m: any) => {
+                          const loc = String(m.location || "").trim().toLowerCase();
+                          return loc === "tube housing" || loc === "tube" || (loc.includes("tube") && !loc.includes("collimator"));
+                        });
+                      } else if (locName === "Collimator") {
+                        row = data.leakageMeasurements.find((m: any) => {
+                          const loc = String(m.location || "").trim().toLowerCase();
+                          return loc === "collimator" || loc.includes("collimator");
+                        });
+                      } else {
+                        row = data.leakageMeasurements.find((m: any) => m.location === locName);
+                      }
                       if (!row) return null;
                       const values = [row.left, row.right, row.front, row.back, row.top].map((v: any) => parseFloat(v) || 0).filter((v: number) => v > 0);
                       const rowMax = values.length > 0 ? Math.max(...values) : 0;

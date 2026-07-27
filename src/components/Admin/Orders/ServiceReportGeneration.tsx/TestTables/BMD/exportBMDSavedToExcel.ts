@@ -133,7 +133,7 @@ export const createBMDSavedExcel = (data: BMDSavedExportData): XLSX.WorkBook => 
     const stations = resolveMeasHeaders(
       aop?.mAStations || tfForOp?.mAStations || aop?.measHeaders || aop?.measurementHeaders,
       maxMeas,
-      "mA Station"
+      "mAs Station"
     );
     const tol = aop?.tolerance || tfForOp?.tolerance || {};
     const tolSign = tol.sign ?? aop?.kvpToleranceSign ?? "±";

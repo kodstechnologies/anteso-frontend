@@ -121,7 +121,7 @@ export const createOArmUploadableExcel = (data: OArmExportData): XLSX.WorkBook =
     if (tFil.atKvp) allData.push(["Total Filtration At kVp", tFil.atKvp]);
     const stations = tf.mAStations || [];
     stations.forEach((s: string, i: number) =>
-      allData.push([`mA Station ${i + 1}`, String(s).replace(/\s*mA\s*$/i, "").trim()])
+      allData.push([`mAs Station ${i + 1}`, String(s).replace(/\s*mA\s*$/i, "").trim()])
     );
     const maxMeas = Math.max(
       ...(tf.measurements || []).map((m: any) => (m.measuredValues || []).length),

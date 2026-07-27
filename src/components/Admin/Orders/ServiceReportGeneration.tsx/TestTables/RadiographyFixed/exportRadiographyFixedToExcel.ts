@@ -93,9 +93,9 @@ export const buildFixedTemplateRows = (hasTimer: boolean): any[][] => {
     ["Tolerance Value (kVp)", "5"],
     ["Total Filtration Required (mm Al)", "2.5"],
     ["Total Filtration At kVp", "70"],
-    ["mA Station 1", "50"],
-    ["mA Station 2", "100"],
-    ["mA Station 3", "23"],
+    ["mAs Station 1", "50"],
+    ["mAs Station 2", "100"],
+    ["mAs Station 3", "23"],
     ["Applied kVp", "Measured 1", "Measured 2", "Measured 3"],
     ["60", "60.2", "60.1", "60.3"],
   ]);
@@ -187,7 +187,7 @@ export const createRadiographyFixedUploadableExcel = (
     ]);
     addSection(
       "ACCURACY OF OPERATING POTENTIAL",
-      ["Applied kVp", "mA Station 1 kVp", "mA Station 2 kVp", "mA Station 3 kVp", "Average", "Remark"],
+      ["Applied kVp", "mAs Station 1 kVp", "mAs Station 2 kVp", "mAs Station 3 kVp", "Average", "Remark"],
       rows
     );
   }
@@ -243,7 +243,7 @@ export const createRadiographyFixedUploadableExcel = (
     allData.push(["Total Filtration At kVp", tf.totalFiltration?.atKvp ?? ""]);
     stations.forEach((station: string, i: number) => {
       const numeric = String(station).replace(/\s*mA$/i, "").trim();
-      allData.push([`mA Station ${i + 1}`, numeric || station]);
+      allData.push([`mAs Station ${i + 1}`, numeric || station]);
     });
     allData.push([
       "Applied kVp",

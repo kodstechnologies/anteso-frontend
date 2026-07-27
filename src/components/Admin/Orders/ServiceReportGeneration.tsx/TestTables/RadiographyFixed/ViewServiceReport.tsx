@@ -59,6 +59,7 @@ export interface ReportData {
   location: string;
   temperature: string;
   humidity: string;
+  hasTimer?: boolean | null;
   toolsUsed?: Tool[];
   notes?: Note[];
   qrCode?: string;
@@ -103,9 +104,12 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
   const [notFound, setNotFound] = useState(false);
   const [testData, setTestData] = useState<any>({});
   const [calculatedPages, setCalculatedPages] = useState<string>("");
-  const hasTimer = serviceId
-    ? localStorage.getItem(`radiography-fixed-timer-${serviceId}`) === 'true'
-    : false;
+  // Prefer DB-saved timer preference; fall back to localStorage
+  const hasTimer = (() => {
+    if (typeof report?.hasTimer === "boolean") return report.hasTimer;
+    if (serviceId) return localStorage.getItem(`radiography-fixed-timer-${serviceId}`) === "true";
+    return false;
+  })();
 
   /** With timer: indices match legacy 4–10 (4=irradiation … 10=survey). Without timer: section 4 is omitted, so subtract 1 from 5–10. */
   const detailedSeq = (withTimerIndex: number) => (hasTimer ? withTimerIndex : withTimerIndex - 1);
@@ -242,6 +246,7 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
             location: data.location || "N/A",
             temperature: data.temperature || "",
             humidity: data.humidity || "",
+            hasTimer: typeof data.hasTimer === "boolean" ? data.hasTimer : null,
             toolsUsed: mergedTools,
             // notes: data.notes || defaultNotes,
             qrCode: data.qrCode || "",

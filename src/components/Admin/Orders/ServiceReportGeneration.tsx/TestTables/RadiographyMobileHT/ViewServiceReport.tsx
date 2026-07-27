@@ -56,6 +56,7 @@ interface ReportData {
   location: string;
   temperature: string;
   humidity: string;
+  hasTimer?: boolean | null;
   toolsUsed?: Tool[];
   qrCode?: string;
   notes?: Note[];
@@ -92,9 +93,11 @@ const ViewServiceReportRadiographyMobileHT: React.FC = () => {
 
   const [loading, setLoading] = useState(true);
   const [report, setReport] = useState<ReportData | null>(null);
-  const hasTimer = serviceId
-    ? localStorage.getItem(`radiography-mobile-ht-timer-${serviceId}`) === 'true'
-    : false;
+  const hasTimer = (() => {
+    if (typeof report?.hasTimer === "boolean") return report.hasTimer;
+    if (serviceId) return localStorage.getItem(`radiography-mobile-ht-timer-${serviceId}`) === "true";
+    return false;
+  })();
   const [notFound, setNotFound] = useState(false);
   const [testData, setTestData] = useState<any>({});
 
@@ -211,6 +214,7 @@ const ViewServiceReportRadiographyMobileHT: React.FC = () => {
             location: data.location || "N/A",
             temperature: data.temperature || "",
             humidity: data.humidity || "",
+            hasTimer: typeof data.hasTimer === "boolean" ? data.hasTimer : null,
             toolsUsed: mergedTools,
             notes: data.notes || defaultNotes,
             qrCode: data.qrCode || "",
@@ -1313,16 +1317,22 @@ const ViewServiceReportRadiographyMobileHT: React.FC = () => {
                 {testData.radiationLeakageLevel.leakageMeasurements?.length > 0 && (() => {
                   const maValue = parseFloat(testData.radiationLeakageLevel.ma || testData.radiationLeakageLevel.settings?.ma || "0");
                   const workloadValue = parseFloat(testData.radiationLeakageLevel.workload || "0");
-                  const getSummaryForLocation = (locName: string) => {
-                    const row = testData.radiationLeakageLevel.leakageMeasurements.find((m: any) => m.location === locName);
-                    if (!row) return null;
-                    const values = [row.left, row.right, row.front, row.back, row.top].map((v: any) => parseFloat(v) || 0).filter((v: number) => v > 0);
-                    const rowMax = values.length > 0 ? Math.max(...values) : 0;
-                    const resMR = (workloadValue * rowMax) / (60 * maValue);
-                    return { rowMax, resMR, resMGy: resMR / 114 };
-                  };
-                  const tubeSummary = getSummaryForLocation("Tube Housing");
-                  const collimatorSummary = getSummaryForLocation("Collimator");
+                  const summaries = (testData.radiationLeakageLevel.leakageMeasurements || [])
+                    .map((row: any) => {
+                      const values = [row.left, row.right, row.front, row.back, row.top]
+                        .map((v: any) => parseFloat(v) || 0)
+                        .filter((v: number) => v > 0);
+                      const rowMax = values.length > 0 ? Math.max(...values) : 0;
+                      if (!(rowMax > 0 && maValue > 0 && workloadValue > 0)) return null;
+                      const resMR = (workloadValue * rowMax) / (60 * maValue);
+                      return {
+                        location: row.location || "Tube",
+                        rowMax,
+                        resMR,
+                        resMGy: resMR / 114,
+                      };
+                    })
+                    .filter(Boolean) as Array<{ location: string; rowMax: number; resMR: number; resMGy: number }>;
                   return (
                     <div className="space-y-4 print:space-y-1">
                       <div className="bg-gray-50 p-4 print:p-1 rounded border border-gray-200">
@@ -1334,33 +1344,23 @@ const ViewServiceReportRadiographyMobileHT: React.FC = () => {
                           Where: Workload = {workloadValue} mA·min/week | mA = {maValue} | 1 mGy = 114 mR
                         </p>
                       </div>
-                      <div className="grid grid-cols-2 gap-4 print:gap-1">
-                        {tubeSummary && (
-                          <div className="border border-blue-200 rounded p-3 print:p-1 bg-blue-50/30">
-                            <p className="font-bold text-xs print:text-[9px] text-blue-800 mb-2">Tube Housing Summary:</p>
-                            <div className="text-[11px] print:text-[8px] space-y-1">
-                              <p>Max Measured: <strong>{tubeSummary.rowMax} mR/hr</strong></p>
-                              <p>Result: ({workloadValue} × {tubeSummary.rowMax}) / (60 × {maValue}) = <strong>{tubeSummary.resMR.toFixed(3)} mR</strong></p>
-                              <p>In mGy: {tubeSummary.resMR.toFixed(3)} / 114 = <span className="font-bold text-blue-700">{tubeSummary.resMGy.toFixed(4)} mGy</span></p>
+                      <div className="bg-white shadow-md rounded-lg p-4 print:p-1 border">
+                        <p className="text-sm print:text-[10px] font-bold mb-2 print:mb-1">Summary of Maximum Radiation Leakage</p>
+                        <div className="space-y-3 print:space-y-1">
+                          {summaries.map((s, idx) => (
+                            <div key={`${s.location}-${idx}`} className="text-[11px] print:text-[8px]">
+                              <p className="font-semibold">Maximum Radiation Leakage from {s.location}:</p>
+                              <p>Formula: ({workloadValue} mAmin in 1 hr x {s.rowMax.toFixed(2)} max Exposure Level (mR/hr)) / (60 x {maValue} mA used for measurement)</p>
+                              <p><strong>{s.resMGy.toFixed(4)} mGy</strong> in one hour</p>
                             </div>
-                          </div>
-                        )}
-                        {collimatorSummary && (
-                          <div className="border border-indigo-200 rounded p-3 print:p-1 bg-indigo-50/30">
-                            <p className="font-bold text-xs print:text-[9px] text-indigo-800 mb-2">Collimator Summary:</p>
-                            <div className="text-[11px] print:text-[8px] space-y-1">
-                              <p>Max Measured: <strong>{collimatorSummary.rowMax} mR/hr</strong></p>
-                              <p>Result: ({workloadValue} × {collimatorSummary.rowMax}) / (60 × {maValue}) = <strong>{collimatorSummary.resMR.toFixed(3)} mR</strong></p>
-                              <p>In mGy: {collimatorSummary.resMR.toFixed(3)} / 114 = <span className="font-bold text-indigo-700">{collimatorSummary.resMGy.toFixed(4)} mGy</span></p>
-                            </div>
-                          </div>
-                        )}
+                          ))}
+                        </div>
                       </div>
                       <div className="bg-blue-50 p-4 print:p-1 border-l-4 border-blue-500 rounded-r">
                         <p className="text-[11px] print:text-[8px] leading-relaxed">
-                          <strong>Tolerance:</strong> Maximum Leakage Radiation Level at 1 meter from the Focus should be{' '}
-                          {normalizeCsvComparisonOperator(testData.radiationLeakageLevel.toleranceOperator || '<=')}{' '}
-                          <strong>{testData.radiationLeakageLevel.toleranceValue || '1'} mGy ({parseFloat(testData.radiationLeakageLevel.toleranceValue || '1') * 114} mR) in one hour.</strong>
+                          <strong>Tolerance:</strong> Maximum Leakage Radiation Level at 1 meter from the Focus should be{" "}
+                          {normalizeCsvComparisonOperator(testData.radiationLeakageLevel.toleranceOperator || "<=")}{" "}
+                          <strong>{testData.radiationLeakageLevel.toleranceValue || "1"} mGy ({parseFloat(testData.radiationLeakageLevel.toleranceValue || "1") * 114} mR) in one hour.</strong>
                         </p>
                       </div>
                     </div>

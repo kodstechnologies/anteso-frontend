@@ -59,21 +59,22 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, refreshKey, ini
     return Number.isNaN(d.getTime()) ? "" : d.toISOString().split('T')[0];
   };
 
+  const defaultSurveyDate = () =>
+    normalizeDateForInput(initialSurveyDate) || getTodayDate();
+
   const [testId, setTestId] = useState<string | null>(null);
   const [isSaved, setIsSaved] = useState(false);
   const [isEditing, setIsEditing] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   // Default survey date to QA test submitted date (if provided), otherwise today
-  const [surveyDate, setSurveyDate] = useState<string>(
-    initialSurveyDate ? normalizeDateForInput(initialSurveyDate) || getTodayDate() : getTodayDate()
-  );
+  const [surveyDate, setSurveyDate] = useState<string>(defaultSurveyDate());
   const [hasValidCalibration, setHasValidCalibration] = useState<string>("");
 
   const [appliedCurrent, setAppliedCurrent] = useState<string>("100");
   const [appliedVoltage, setAppliedVoltage] = useState<string>("28");
   const [exposureTime, setExposureTime] = useState<string>("0.5");
-  const [workload, setWorkload] = useState<string>("5000");
+  const [workload, setWorkload] = useState<string>("500");
 
   const [locations, setLocations] = useState<LocationData[]>([
     { id: "1", location: "Control Console (Operator Position)", mRPerHr: "", mRPerWeek: "", result: "", category: "worker" },
@@ -207,6 +208,8 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, refreshKey, ini
   useEffect(() => {
     if (initialData) {
       console.log('RadiationProtectionSurvey: Loading initial data from CSV:', initialData);
+      // Survey date from QA test date (else today) — not from Excel
+      setSurveyDate(defaultSurveyDate());
       if (initialData.hasValidCalibration !== undefined) {
         setHasValidCalibration(initialData.hasValidCalibration);
       }
@@ -250,12 +253,12 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, refreshKey, ini
     // Reset state when refreshKey changes
     if (refreshKey !== undefined) {
       setIsLoading(true);
-      setSurveyDate(getTodayDate());
+      setSurveyDate(defaultSurveyDate());
       setHasValidCalibration('');
       setAppliedCurrent('100');
       setAppliedVoltage('28');
       setExposureTime('0.5');
-      setWorkload('5000');
+      setWorkload('500');
       setLocations([
         { id: "1", location: "Control Console (Operator Position)", mRPerHr: "", mRPerWeek: "", result: "", category: "worker" },
         { id: "2", location: "Outside Lead Glass / View Window", mRPerHr: "", mRPerWeek: "", result: "", category: "worker" },
@@ -284,13 +287,13 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, refreshKey, ini
         console.log('RadiationProtectionSurvey: Loaded data:', data);
         if (data) {
           setTestId(data._id || null);
-          setSurveyDate(normalizeDateForInput(data.surveyDate));
+          setSurveyDate(normalizeDateForInput(data.surveyDate) || defaultSurveyDate());
           // Calibration status is set by the tools check useEffect, don't override it here
           // (The tools check will run and set it based on current calibration dates)
           setAppliedCurrent(data.appliedCurrent || "100");
           setAppliedVoltage(data.appliedVoltage || "28");
           setExposureTime(data.exposureTime || "0.5");
-          setWorkload(data.workload || "5000");
+          setWorkload(data.workload || "500");
           if (Array.isArray(data.locations) && data.locations.length > 0) {
             setLocations(
               data.locations.map((l: any, i: number) => ({
@@ -498,7 +501,7 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, refreshKey, ini
             <label className="block text-sm font-medium text-gray-700">Workload (mA min/week)</label>
             <input type="number" value={workload} onChange={e => setWorkload(e.target.value)}
               disabled={isDisabled}
-              className={`mt-1 w-full px-4 py-3 text-center border rounded-lg ${isDisabled ? "bg-gray-100 cursor-not-allowed" : ""}`} placeholder="5000" />
+              className={`mt-1 w-full px-4 py-3 text-center border rounded-lg ${isDisabled ? "bg-gray-100 cursor-not-allowed" : ""}`} placeholder="500" />
           </div>
         </div>
       </section>

@@ -55,6 +55,7 @@ interface ReportData {
   location: string;
   temperature: string;
   humidity: string;
+  hasTimer?: boolean | null;
   toolsUsed?: Tool[];
   qrCode?: string;
   notes?: Note[];
@@ -107,12 +108,14 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
     return "";
   };
 
-  const hasTimer = serviceId
-    ? localStorage.getItem(`radiography-portable-timer-${serviceId}`) === 'true'
-    : false;
 
   const [loading, setLoading] = useState(true);
   const [report, setReport] = useState<ReportData | null>(null);
+  const hasTimer = (() => {
+    if (typeof report?.hasTimer === "boolean") return report.hasTimer;
+    if (serviceId) return localStorage.getItem(`radiography-portable-timer-${serviceId}`) === "true";
+    return false;
+  })();
   const [notFound, setNotFound] = useState(false);
   const [testData, setTestData] = useState<any>({});
 
@@ -231,6 +234,7 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
             location: data.location || "At Site",
             temperature: data.temperature || "",
             humidity: data.humidity || "",
+            hasTimer: typeof data.hasTimer === "boolean" ? data.hasTimer : null,
             toolsUsed: mergedTools,
             notes: data.notes || defaultNotes,
             pages: data.pages ?? "",
@@ -1606,7 +1610,20 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
                   const maValue = parseFloat(leak.ma || leak.settings?.ma || "0");
                   const workloadValue = parseFloat(leak.workload || "0");
                   const getSummary = (locName: string) => {
-                    const row = leak.leakageMeasurements?.find((m: any) => m.location === locName);
+                    let row: any;
+                    if (locName === "Tube Housing") {
+                      row = leak.leakageMeasurements?.find((m: any) => {
+                        const loc = String(m.location || "").trim().toLowerCase();
+                        return loc === "tube housing" || loc === "tube" || (loc.includes("tube") && !loc.includes("collimator"));
+                      });
+                    } else if (locName === "Collimator") {
+                      row = leak.leakageMeasurements?.find((m: any) => {
+                        const loc = String(m.location || "").trim().toLowerCase();
+                        return loc === "collimator" || loc.includes("collimator");
+                      });
+                    } else {
+                      row = leak.leakageMeasurements?.find((m: any) => m.location === locName);
+                    }
                     if (!row) return null;
                     const vals = [row.left, row.right, row.front, row.back, row.top].map((v: any) => parseFloat(v) || 0).filter((v: number) => v > 0);
                     const rowMax = vals.length > 0 ? Math.max(...vals) : 0;

@@ -59,7 +59,7 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, refreshKey, ini
     const [appliedCurrent, setAppliedCurrent] = useState<string>("100");
     const [appliedVoltage, setAppliedVoltage] = useState<string>("80");
     const [exposureTime, setExposureTime] = useState<string>("0.5");
-    const [workload, setWorkload] = useState<string>("5000");
+    const [workload, setWorkload] = useState<string>("500");
 
     const [locations, setLocations] = useState<LocationData[]>([
         { id: "1", location: "Control Console (Operator Position)", mRPerHr: "", mRPerWeek: "", result: "", category: "worker" },
@@ -194,9 +194,8 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, refreshKey, ini
         if (initialData) {
             console.log('RadiationProtectionSurvey: Loading initial data from CSV:', initialData);
             console.log('RadiationProtectionSurvey: initialData.locations:', initialData.locations);
-            if (initialData.surveyDate) {
-                setSurveyDate(initialData.surveyDate);
-            }
+            // Survey date from QA test date (else today) — not from Excel
+            setSurveyDate(initialSurveyDate || getTodayDate());
             if (initialData.hasValidCalibration !== undefined) {
                 setHasValidCalibration(initialData.hasValidCalibration);
             }
@@ -251,13 +250,14 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, refreshKey, ini
                 const data = res?.data;
                 if (data) {
                     setTestId(data._id || null);
-                    setSurveyDate(data.surveyDate ? new Date(data.surveyDate).toISOString().split('T')[0] : "");
+                    const savedDate = data.surveyDate ? new Date(data.surveyDate).toISOString().split('T')[0] : "";
+                    setSurveyDate(savedDate || initialSurveyDate || getTodayDate());
                     // Calibration status is set by the tools check useEffect, don't override it here
                     // (The tools check will run and set it based on current calibration dates)
                     setAppliedCurrent(data.appliedCurrent || "100");
                     setAppliedVoltage(data.appliedVoltage || "80");
                     setExposureTime(data.exposureTime || "0.5");
-                    setWorkload(data.workload || "5000");
+                    setWorkload(data.workload || "500");
                     if (Array.isArray(data.locations) && data.locations.length > 0) {
                         setLocations(
                             data.locations.map((l: any, i: number) => ({
@@ -273,6 +273,7 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, refreshKey, ini
                     setIsSaved(true);
                     setIsEditing(false);
                 } else {
+                    setSurveyDate(initialSurveyDate || getTodayDate());
                     setIsEditing(true);
                 }
             } catch (err: any) {
@@ -420,7 +421,7 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, refreshKey, ini
                         <label className="block text-sm font-medium text-gray-700">Workload (mA min/week)</label>
                         <input type="number" value={workload} onChange={e => setWorkload(e.target.value)}
                             disabled={isDisabled}
-                            className={`mt-1 w-full px-4 py-3 text-center border rounded-lg ${isDisabled ? "bg-gray-100 cursor-not-allowed" : ""}`} placeholder="5000" />
+                            className={`mt-1 w-full px-4 py-3 text-center border rounded-lg ${isDisabled ? "bg-gray-100 cursor-not-allowed" : ""}`} placeholder="500" />
                     </div>
                 </div>
             </section>
