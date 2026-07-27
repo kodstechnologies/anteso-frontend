@@ -807,7 +807,7 @@ const OArmContent: React.FC<OArmProps> = ({ serviceId, csvFileUrl }) => {
             return;
           }
 
-          if (!value && value !== 0) return;
+          if (!value) return;
           const headerMatch = header.match(/^Header\s*(\d+)$/i);
           const internalField = headerMatch
             ? `Header_${headerMatch[1]}`
