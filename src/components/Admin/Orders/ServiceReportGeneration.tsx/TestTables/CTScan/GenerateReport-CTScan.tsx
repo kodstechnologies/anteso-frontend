@@ -336,6 +336,8 @@ const CTScanReportContent: React.FC<CTScanReportProps> = ({ serviceId, qaTestDat
                 rpID: formData.rpId,
                 RPId: formData.rpId,
                 RPID: formData.rpId,
+                tubeType: tubeType || undefined,
+                hasGantryTilt: typeof hasGantryTilt === "boolean" ? hasGantryTilt : undefined,
                 toolsUsed: tools.map(t => ({
                     tool: t.certificate || null,
                     SrNo: t.SrNo,
@@ -809,11 +811,24 @@ const CTScanReportContent: React.FC<CTScanReportProps> = ({ serviceId, qaTestDat
             if (applyConfigFromExcel && Object.keys(groupedData).length > 0) {
                 const keys = Object.keys(groupedData);
                 const hasDoubleTube = keys.some((k) => / - Tube A\s*$/.test(k) || / - Tube B\s*$/.test(k));
-                const hasGantryTilt = keys.some((k) => k.trim() === 'Gantry Tilt' || k.startsWith('Gantry Tilt'));
-                setTubeType(hasDoubleTube ? 'double' : 'single');
-                setHasGantryTilt(!!hasGantryTilt);
+                const gantryTiltPresent = keys.some((k) => k.trim() === 'Gantry Tilt' || k.startsWith('Gantry Tilt'));
+                const inferredType: 'single' | 'double' = hasDoubleTube ? 'double' : 'single';
+                setTubeType(inferredType);
+                setHasGantryTilt(!!gantryTiltPresent);
                 setShowTubeModal(false);
                 setShowGantryTiltModal(false);
+                if (serviceId) {
+                    localStorage.setItem(`ctscan_tube_type_${serviceId}`, inferredType);
+                    localStorage.setItem(`ctscan_gantry_tilt_choice_${serviceId}`, JSON.stringify(!!gantryTiltPresent));
+                    try {
+                        await saveReportHeaderForCTScan(serviceId, {
+                            tubeType: inferredType,
+                            hasGantryTilt: !!gantryTiltPresent,
+                        });
+                    } catch (err) {
+                        console.error("Failed to save CT Scan preference:", err);
+                    }
+                }
             }
 
             setCsvDataForComponents(groupedData);
@@ -1169,13 +1184,20 @@ const CTScanReportContent: React.FC<CTScanReportProps> = ({ serviceId, qaTestDat
     }, [serviceId]);
 
     // Handle tube type selection - show gantry tilt modal after selection
-    const handleTubeTypeSelection = (type: 'single' | 'double') => {
+    const handleTubeTypeSelection = async (type: 'single' | 'double') => {
         setTubeType(type);
         setShowTubeModal(false);
-        // Save tube type to localStorage
+        // Persist tube type to DB and localStorage
         localStorage.setItem(`ctscan_tube_type_${serviceId}`, type);
+        try {
+            await saveReportHeaderForCTScan(serviceId!, { tubeType: type });
+        } catch (err) {
+            console.error("Failed to save tube type preference:", err);
+            toast.error("Failed to save tube type to database");
+        }
 
-        // Immediately resolve gantry tilt choice (show modal only when not saved yet)
+        // Prefer DB gantry tilt if already loaded into localStorage from previous session;
+        // otherwise ask via modal. loadPreferences below also hydrates from DB.
         const savedGantryTilt = localStorage.getItem(`ctscan_gantry_tilt_choice_${serviceId}`);
         if (savedGantryTilt !== null) {
             setHasGantryTilt(JSON.parse(savedGantryTilt));
@@ -1187,13 +1209,19 @@ const CTScanReportContent: React.FC<CTScanReportProps> = ({ serviceId, qaTestDat
     };
 
     // Close modal and set gantry tilt choice
-    const handleGantryTiltChoice = (choice: boolean) => {
+    const handleGantryTiltChoice = async (choice: boolean) => {
         setHasGantryTilt(choice);
         setShowGantryTiltModal(false);
         localStorage.setItem(`ctscan_gantry_tilt_choice_${serviceId}`, JSON.stringify(choice));
+        try {
+            await saveReportHeaderForCTScan(serviceId!, { hasGantryTilt: choice });
+        } catch (err) {
+            console.error("Failed to save gantry tilt preference:", err);
+            toast.error("Failed to save gantry tilt choice to database");
+        }
     };
 
-    // Load saved tube type on mount (if exists). When csvFileUrl is provided (redirect from ServiceDetails2 with Excel), skip modals — config will be set from Excel in processCSVData.
+    // Load saved tube type + gantry tilt on mount (prefer DB, fallback to localStorage).
     useEffect(() => {
         if (!serviceId) return;
 
@@ -1203,28 +1231,58 @@ const CTScanReportContent: React.FC<CTScanReportProps> = ({ serviceId, qaTestDat
             return;
         }
 
-        // Load saved tube type
-        const savedTubeType = localStorage.getItem(`ctscan_tube_type_${serviceId}`);
-        if (savedTubeType === 'single' || savedTubeType === 'double') {
-            setTubeType(savedTubeType as 'single' | 'double');
-            setShowTubeModal(false);
+        const loadPreferences = async () => {
+            let resolvedTube: 'single' | 'double' | null = null;
+            let resolvedGantry: boolean | null = null;
 
-            // Load saved gantry tilt choice (if any), otherwise ask
-            const savedGantryTilt = localStorage.getItem(`ctscan_gantry_tilt_choice_${serviceId}`);
-            if (savedGantryTilt !== null) {
-                setHasGantryTilt(JSON.parse(savedGantryTilt));
-                setShowGantryTiltModal(false);
-            } else {
-                setHasGantryTilt(null);
-                setShowGantryTiltModal(true);
+            try {
+                const res = await getReportHeaderForCTScan(serviceId, null);
+                const dbTubeType = res?.data?.tubeType;
+                if (dbTubeType === 'single' || dbTubeType === 'double') {
+                    resolvedTube = dbTubeType;
+                }
+                if (typeof res?.data?.hasGantryTilt === 'boolean') {
+                    resolvedGantry = res.data.hasGantryTilt;
+                }
+            } catch (err) {
+                console.error("Failed to load CT Scan preferences from DB:", err);
             }
-        } else {
-            // No saved tube type, show tube selection modal first
-            setShowTubeModal(true);
-            // Reset gantry tilt choice until tube is selected
-            setHasGantryTilt(null);
-            setShowGantryTiltModal(false);
-        }
+
+            if (!resolvedTube) {
+                const savedTubeType = localStorage.getItem(`ctscan_tube_type_${serviceId}`);
+                if (savedTubeType === 'single' || savedTubeType === 'double') {
+                    resolvedTube = savedTubeType;
+                }
+            }
+
+            if (resolvedGantry === null) {
+                const savedGantryTilt = localStorage.getItem(`ctscan_gantry_tilt_choice_${serviceId}`);
+                if (savedGantryTilt !== null) {
+                    resolvedGantry = JSON.parse(savedGantryTilt);
+                }
+            }
+
+            if (resolvedTube) {
+                setTubeType(resolvedTube);
+                setShowTubeModal(false);
+                localStorage.setItem(`ctscan_tube_type_${serviceId}`, resolvedTube);
+
+                if (resolvedGantry !== null) {
+                    setHasGantryTilt(resolvedGantry);
+                    setShowGantryTiltModal(false);
+                    localStorage.setItem(`ctscan_gantry_tilt_choice_${serviceId}`, JSON.stringify(resolvedGantry));
+                } else {
+                    setHasGantryTilt(null);
+                    setShowGantryTiltModal(true);
+                }
+            } else {
+                setShowTubeModal(true);
+                setHasGantryTilt(null);
+                setShowGantryTiltModal(false);
+            }
+        };
+
+        loadPreferences();
     }, [serviceId, csvFileUrl]);
 
     if (loading) {

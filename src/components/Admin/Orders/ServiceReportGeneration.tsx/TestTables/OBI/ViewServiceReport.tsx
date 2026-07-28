@@ -73,6 +73,7 @@ interface ReportData {
   EffectiveFocalSpotOBI?: any;
   LinearityOfMasLoadingStationsOBI?: any;
   LinearityOfTimeOBI?: any;
+  LinearityOfTimeForOBI?: any;
   TubeHousingLeakageOBI?: any;
   RadiationProtectionSurveyOBI?: any;
   HighContrastSensitivityOBI?: any;
@@ -89,7 +90,7 @@ const defaultNotes: Note[] = [
   { slNo: "5.7", text: "Name, Address & Contact detail is provided by Customer." },
 ];
 
-/** Matches LinearityOfTime.tsx — DB rows often omit summary fields; derive them for the PDF view. */
+/** Matches LinearityOfMaLoading.tsx — DB rows often omit summary fields; derive them for the PDF view. */
 function computeOBILinearityOfMaLoadingSummaryFromRows(lotData: any) {
   const testConditions = lotData.testConditions || {};
   const time = parseFloat(testConditions.time) || 0;
@@ -123,6 +124,79 @@ function computeOBILinearityOfMaLoadingSummaryFromRows(lotData: any) {
 
   const xMax = mGyPerMAsValues.length > 0 ? Math.max(...mGyPerMAsValues).toFixed(4) : "";
   const xMin = mGyPerMAsValues.length > 0 ? Math.min(...mGyPerMAsValues).toFixed(4) : "";
+  const colNum =
+    xMax && xMin && parseFloat(xMax) + parseFloat(xMin) > 0
+      ? Math.abs(parseFloat(xMax) - parseFloat(xMin)) / (parseFloat(xMax) + parseFloat(xMin))
+      : null;
+  const coefficientOfLinearity =
+    colNum !== null && colNum >= 0 ? parseFloat(colNum.toFixed(4)).toFixed(4) : "—";
+
+  let remarks = "—";
+  if (coefficientOfLinearity !== "—" && colNum !== null) {
+    const colVal = parseFloat(coefficientOfLinearity);
+    let pass = false;
+    switch (op) {
+      case "<":
+        pass = colVal < tol;
+        break;
+      case ">":
+        pass = colVal > tol;
+        break;
+      case "<=":
+        pass = colVal <= tol;
+        break;
+      case ">=":
+        pass = colVal >= tol;
+        break;
+      case "=":
+        pass = Math.abs(colVal - tol) < 0.0001;
+        break;
+      default:
+        pass = colVal <= tol;
+    }
+    remarks = pass ? "Pass" : "Fail";
+  }
+
+  return {
+    xMax: xMax || "—",
+    xMin: xMin || "—",
+    coefficientOfLinearity,
+    remarks,
+  };
+}
+
+/** Matches LinearityOfTime.tsx — derive X/CoL when DB omitted summary fields. */
+function computeOBILinearityOfTimeSummaryFromRows(lotData: any) {
+  const testConditions = lotData.testConditions || {};
+  const ma = parseFloat(testConditions.ma) || 0;
+  const tol = parseFloat(lotData.tolerance) || 0.1;
+  const op = lotData.toleranceOperator || "<=";
+  const rows = lotData.measurementRows || [];
+  const xValues: number[] = [];
+
+  for (const row of rows) {
+    let xStr = row.x != null ? String(row.x).trim() : "";
+    if (!xStr) {
+      const outputs = Array.isArray(row.radiationOutputs)
+        ? row.radiationOutputs
+            .map((v: any) => parseFloat(String(v)))
+            .filter((n: number) => !isNaN(n) && n > 0)
+        : [];
+      const averageOutput =
+        outputs.length > 0 ? outputs.reduce((a: number, b: number) => a + b, 0) / outputs.length : 0;
+      const timeApplied = parseFloat(String(row.timeApplied));
+      if (averageOutput > 0 && !isNaN(timeApplied) && timeApplied > 0 && ma > 0) {
+        xStr = (averageOutput / (ma * timeApplied)).toFixed(4);
+      }
+    }
+    const val = parseFloat(xStr);
+    if (!isNaN(val) && xStr !== "") {
+      xValues.push(val);
+    }
+  }
+
+  const xMax = xValues.length > 0 ? Math.max(...xValues).toFixed(4) : "";
+  const xMin = xValues.length > 0 ? Math.min(...xValues).toFixed(4) : "";
   const colNum =
     xMax && xMin && parseFloat(xMax) + parseFloat(xMin) > 0
       ? Math.abs(parseFloat(xMax) - parseFloat(xMin)) / (parseFloat(xMax) + parseFloat(xMin))
@@ -447,7 +521,7 @@ const ViewServiceReportOBI: React.FC = () => {
             };
           };
 
-          const transformLinearityOfTime = (lotData: any) => {
+          const transformLinearityOfMaLoading = (lotData: any) => {
             if (!lotData || typeof lotData !== 'object') return null;
             if (typeof lotData === 'string') return null;
             const measurementRows = Array.isArray(lotData.measurementRows) ? lotData.measurementRows : [];
@@ -469,6 +543,35 @@ const ViewServiceReportOBI: React.FC = () => {
                   ? lotData.col
                   : computed.coefficientOfLinearity,
               remarks: hasOBILinearitySummaryValue(lotData.remarks) ? lotData.remarks : computed.remarks,
+            };
+          };
+
+          const transformLinearityOfTime = (lotData: any) => {
+            if (!lotData || typeof lotData !== 'object') return null;
+            if (typeof lotData === 'string') return null;
+            const measurementRows = Array.isArray(lotData.measurementRows) ? lotData.measurementRows : [];
+            if (measurementRows.length === 0) return null;
+            const base = {
+              ...lotData,
+              measurementRows,
+              measHeaders: lotData.measHeaders,
+              testConditions: lotData.testConditions || {},
+            };
+            const computed = computeOBILinearityOfTimeSummaryFromRows(base);
+            return {
+              ...base,
+              xMax: hasOBILinearitySummaryValue(lotData.xMax) ? lotData.xMax : computed.xMax,
+              xMin: hasOBILinearitySummaryValue(lotData.xMin) ? lotData.xMin : computed.xMin,
+              coefficientOfLinearity: hasOBILinearitySummaryValue(lotData.col)
+                ? lotData.col
+                : hasOBILinearitySummaryValue(lotData.coefficientOfLinearity)
+                  ? lotData.coefficientOfLinearity
+                  : computed.coefficientOfLinearity,
+              remarks: hasOBILinearitySummaryValue(lotData.remark)
+                ? lotData.remark
+                : hasOBILinearitySummaryValue(lotData.remarks)
+                  ? lotData.remarks
+                  : computed.remarks,
             };
           };
 
@@ -548,7 +651,8 @@ const ViewServiceReportOBI: React.FC = () => {
             congruenceOfRadiation: transformCongruenceOfRadiation(data.CongruenceOfRadiationOBI),
             effectiveFocalSpot: transformEffectiveFocalSpot(data.EffectiveFocalSpotOBI),
             linearityOfMasLoading: transformLinearityOfMasLoading(data.LinearityOfMasLoadingStationsOBI),
-            linearityOfTime: transformLinearityOfTime(data.LinearityOfTimeOBI),
+            linearityOfMaLoading: transformLinearityOfMaLoading(data.LinearityOfTimeOBI),
+            linearityOfTime: transformLinearityOfTime(data.LinearityOfTimeForOBI),
             tubeHousingLeakage: transformTubeHousingLeakage(data.TubeHousingLeakageOBI),
             radiationProtection: transformRadiationProtection(data.RadiationProtectionSurveyOBI),
             highContrastSensitivity: transformHighContrastSensitivity(data.HighContrastSensitivityOBI),
@@ -573,6 +677,7 @@ const ViewServiceReportOBI: React.FC = () => {
             { name: 'congruenceOfRadiation', data: transformedTestData.congruenceOfRadiation, estimatedPages: 0.5 },
             { name: 'effectiveFocalSpot', data: transformedTestData.effectiveFocalSpot, estimatedPages: 0.5 },
             { name: 'linearityOfMasLoading', data: transformedTestData.linearityOfMasLoading, estimatedPages: 1 },
+            { name: 'linearityOfMaLoading', data: transformedTestData.linearityOfMaLoading, estimatedPages: 1 },
             { name: 'linearityOfTime', data: transformedTestData.linearityOfTime, estimatedPages: 1 },
             { name: 'tubeHousingLeakage', data: transformedTestData.tubeHousingLeakage, estimatedPages: 1.5 }, // Large section with calculations
             { name: 'radiationProtection', data: transformedTestData.radiationProtection, estimatedPages: 1.5 }, // Large section
@@ -737,12 +842,6 @@ const ViewServiceReportOBI: React.FC = () => {
   const customerCity = extractCity(report?.location || "") || extractCity(report?.address || "") || "-";
   const placeValue = report?.city && String(report.city).trim() !== "" ? String(report.city).trim() : customerCity;
 
-  const headerReport = {
-    srfNumber: report.srfNumber ?? "",
-    srfDate: report.srfDate != null ? String(report.srfDate) : "",
-    reportULRNumber: report.reportULRNumber || ulrNumber,
-  };
-
   const ReportPage: React.FC<{
     isLast?: boolean;
     children: React.ReactNode;
@@ -760,7 +859,7 @@ const ViewServiceReportOBI: React.FC = () => {
         padding: "15mm 20mm",
       }}
     >
-      <ReportPdfPageHeader report={headerReport} formatDate={formatDate} />
+      <ReportPdfPageHeader report={report!} formatDate={formatDate} />
       <div style={{ flex: 1, display: "flex", flexDirection: "column", width: "100%" }}>
         {children}
       </div>
@@ -896,7 +995,7 @@ const ViewServiceReportOBI: React.FC = () => {
                 ["QA Test Date", formatDate(report.testDate)],
                 ["QA Test Due Date", formatDate(report.testDueDate || "")],
                 ["Testing done at Location", report.location],
-                ["Temperature (�C)", report.temperature || "-"],
+                ["Temperature (°C)", report.temperature || "-"],
                 ["Humidity in RH (%)", report.humidity || "-"],
               ].map(([label, value], index) => (
                 <div key={label} className="flex">
@@ -1130,8 +1229,8 @@ const ViewServiceReportOBI: React.FC = () => {
                     </thead>
                     <tbody>
                       <tr style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
-                        <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{testData.centralBeamAlignment.observedTilt?.value ? `${testData.centralBeamAlignment.observedTilt.value}�` : "-"}</td>
-                        <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{testData.centralBeamAlignment.tolerance?.operator } {testData.centralBeamAlignment.tolerance?.value || "-"}�</td>
+                        <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{testData.centralBeamAlignment.observedTilt?.value ? `${testData.centralBeamAlignment.observedTilt.value}°` : "-"}</td>
+                        <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{testData.centralBeamAlignment.tolerance?.operator } {testData.centralBeamAlignment.tolerance?.value ? `${testData.centralBeamAlignment.tolerance.value}°` : "-"}</td>
                         <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>
                           <span className={testData.centralBeamAlignment.finalResult === "Pass" || testData.centralBeamAlignment.observedTilt?.remark === "Pass" ? "text-green-600 font-semibold" : testData.centralBeamAlignment.finalResult === "Fail" || testData.centralBeamAlignment.observedTilt?.remark === "Fail" ? "text-red-600 font-semibold" : ""}>
                             {testData.centralBeamAlignment.finalResult || testData.centralBeamAlignment.observedTilt?.remark || "-"}
@@ -1218,6 +1317,13 @@ const ViewServiceReportOBI: React.FC = () => {
                 )}
               </div>
             )}
+
+          </div>
+        </ReportPage>
+
+        {/* DETAILED TEST RESULTS (PART 2) - Timer + Accuracy of Operating Potential */}
+        <ReportPage>
+          <div className="report-pdf-last-main" style={{ width: "100%", flex: 1 }}>
 
             {/* 3. Timer Test */}
             {testData.timerTest?.irradiationTimes?.length > 0 && (
@@ -1461,7 +1567,12 @@ const ViewServiceReportOBI: React.FC = () => {
               </div>
             )}
 
+          </div>
+        </ReportPage>
 
+        {/* DETAILED TEST RESULTS (PART 3) - Output Consistency + Contrast */}
+        <ReportPage>
+          <div className="report-pdf-last-main" style={{ width: "100%", flex: 1 }}>
 
             {/* 4. Output Consistency */}
             {testData.outputConsistency?.outputRows?.length > 0 && (
@@ -1622,28 +1733,35 @@ const ViewServiceReportOBI: React.FC = () => {
               </div>
             )}
 
-   {/* 9. Linearity of Time */}
-   {testData.linearityOfTime?.measurementRows?.length > 0 && (
+          </div>
+        </ReportPage>
+
+        {/* DETAILED TEST RESULTS (PART 4) - Linearity tests */}
+        <ReportPage>
+          <div className="report-pdf-last-main" style={{ width: "100%", flex: 1 }}>
+
+   {/* 9. Linearity of mA Loading */}
+   {testData.linearityOfMaLoading?.measurementRows?.length > 0 && (
               <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
-                <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>10. Linearity of mA loading</h3>
+                <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>10. Linearity of mA Loading</h3>
                 <div className="mb-4 print:mb-1" style={{ marginBottom: '4px' }}>
                   <span className="text-sm print:text-[9px] font-bold block mb-2" style={{ fontSize: '11px', marginBottom: '4px' }}>Test conditions:</span>
                   <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
                     <tbody>
                       <tr style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
                         <td className="border border-black p-2 print:p-1 text-center font-bold" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>FDD (cm)</td>
-                        <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{testData.linearityOfTime.testConditions?.fdd || "-"}</td>
+                        <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{testData.linearityOfMaLoading.testConditions?.fdd || "-"}</td>
                         <td className="border border-black p-2 print:p-1 text-center font-bold" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>kV</td>
-                        <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{testData.linearityOfTime.testConditions?.kv || "-"}</td>
+                        <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{testData.linearityOfMaLoading.testConditions?.kv || "-"}</td>
                         <td className="border border-black p-2 print:p-1 text-center font-bold" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Time (Sec)</td>
-                        <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{testData.linearityOfTime.testConditions?.time || "-"}</td>
+                        <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{testData.linearityOfMaLoading.testConditions?.time || "-"}</td>
                       </tr>
                     </tbody>
                   </table>
                 </div>
                 <div className="overflow-x-auto mb-6 print:mb-1 print:overflow-visible" style={{ marginBottom: '4px' }}>
                   {(() => {
-                    const lot = testData.linearityOfTime;
+                    const lot = testData.linearityOfMaLoading;
                     const rows = lot.measurementRows;
                     const numMeas = Math.max(
                       lot.measHeaders?.length ?? 0,
@@ -1891,21 +2009,184 @@ const ViewServiceReportOBI: React.FC = () => {
                 <div className="bg-gray-50 p-4 print:p-1 rounded border" style={{ padding: "2px 4px", marginTop: "4px" }}>
                   <p className="text-sm print:text-[10px]" style={{ fontSize: "10px", margin: "2px 0" }}>
                     <strong>Tolerance (CoL):</strong>{" "}
-                    {testData.linearityOfTime.toleranceOperator === "<="
+                    {testData.linearityOfMaLoading.toleranceOperator === "<="
                       ? ""
-                      : testData.linearityOfTime.toleranceOperator === ">="
+                      : testData.linearityOfMaLoading.toleranceOperator === ">="
                         ? ""
-                        : testData.linearityOfTime.toleranceOperator || ""}{" "}
-                    {testData.linearityOfTime.tolerance || "0.1"}
+                        : testData.linearityOfMaLoading.toleranceOperator || ""}{" "}
+                    {testData.linearityOfMaLoading.tolerance || "0.1"}
                   </p>
                 </div>
               </div>
             )}
 
+   {/* 9b. Linearity of Time */}
+   {testData.linearityOfTime?.measurementRows?.length > 0 && (
+              <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
+                <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>11. Linearity of Time</h3>
+                <div className="mb-4 print:mb-1" style={{ marginBottom: '4px' }}>
+                  <span className="text-sm print:text-[9px] font-bold block mb-2" style={{ fontSize: '11px', marginBottom: '4px' }}>Test conditions:</span>
+                  <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
+                    <tbody>
+                      <tr style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
+                        <td className="border border-black p-2 print:p-1 text-center font-bold" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>FFD (cm)</td>
+                        <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{testData.linearityOfTime.testConditions?.ffd || "-"}</td>
+                        <td className="border border-black p-2 print:p-1 text-center font-bold" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>kV</td>
+                        <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{testData.linearityOfTime.testConditions?.kv || "-"}</td>
+                        <td className="border border-black p-2 print:p-1 text-center font-bold" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>mA</td>
+                        <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{testData.linearityOfTime.testConditions?.ma || "-"}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div className="overflow-x-auto mb-6 print:mb-1 print:overflow-visible" style={{ marginBottom: '4px' }}>
+                  {(() => {
+                    const lot = testData.linearityOfTime;
+                    const rows = lot.measurementRows;
+                    const numMeas = Math.max(
+                      lot.measHeaders?.length ?? 0,
+                      Array.isArray(rows[0]?.radiationOutputs) ? rows[0].radiationOutputs.length : 0,
+                      3
+                    );
+                    const displayHeaders: string[] = lot.measHeaders?.length
+                      ? [...lot.measHeaders]
+                      : [];
+                    while (displayHeaders.length < numMeas) {
+                      displayHeaders.push(String(displayHeaders.length + 1));
+                    }
+                    const hdrs = displayHeaders.slice(0, numMeas);
 
-       
+                    const formatCell = (val: any) => {
+                      if (val === undefined || val === null) return "-";
+                      const str = String(val).trim();
+                      return str === "" || str === "—" || str === "undefined" || str === "null" ? "-" : str;
+                    };
 
+                    const getOutputs = (row: any): string[] => {
+                      let out: string[] = [];
+                      if (Array.isArray(row.radiationOutputs)) {
+                        out = [...row.radiationOutputs];
+                      }
+                      while (out.length < numMeas) out.push("");
+                      return out.slice(0, numMeas);
+                    };
 
+                    const xMax = formatCell(lot.xMax);
+                    const xMin = formatCell(lot.xMin);
+                    const colVal = hasOBILinearitySummaryValue(lot.coefficientOfLinearity)
+                      ? String(lot.coefficientOfLinearity).trim()
+                      : hasOBILinearitySummaryValue(lot.col)
+                        ? String(lot.col).trim()
+                        : formatCell(lot.coefficientOfLinearity ?? lot.col);
+                    const remarks = formatCell(lot.remarks ?? lot.remark);
+
+                    return (
+                      <table
+                        className="w-full border-2 border-black compact-table force-small-text"
+                        style={{ fontSize: "10px", tableLayout: "fixed", width: "100%", borderCollapse: "collapse", borderSpacing: "0" }}
+                      >
+                        <thead className="bg-gray-100">
+                          <tr>
+                            <th className="border border-black border-b-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: "10px", padding: "5px", borderColor: "#000000", textAlign: "center" }}>
+                              Time Applied
+                            </th>
+                            <th colSpan={numMeas} className="border border-black p-1.5 print:p-[3px] text-center" style={{ fontSize: "10px", padding: "5px", borderColor: "#000000", textAlign: "center" }}>
+                              Radiation Output (mGy)
+                            </th>
+                            <th className="border border-black border-b-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: "10px", padding: "5px", borderColor: "#000000", textAlign: "center" }}>
+                              Average Output (mGy)
+                            </th>
+                            <th className="border border-black border-b-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: "10px", padding: "5px", borderColor: "#000000", textAlign: "center" }}>
+                              mGy / mAs (X)
+                            </th>
+                            <th className="border border-black border-b-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: "10px", padding: "5px", borderColor: "#000000", textAlign: "center" }}>
+                              X MAX
+                            </th>
+                            <th className="border border-black border-b-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: "10px", padding: "5px", borderColor: "#000000", textAlign: "center" }}>
+                              X MIN
+                            </th>
+                            <th className="border border-black border-b-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: "10px", padding: "5px", borderColor: "#000000", textAlign: "center" }}>
+                              CoL
+                            </th>
+                            <th className="border border-black border-b-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: "10px", padding: "5px", borderColor: "#000000", textAlign: "center" }}>
+                              Remarks
+                            </th>
+                          </tr>
+                          <tr>
+                            <th className="border border-black border-t-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: "10px", padding: "5px", borderColor: "#000000", textAlign: "center" }} />
+                            {hdrs.map((header: string, idx: number) => (
+                              <th key={idx} className="border border-black p-1.5 print:p-[3px] text-center" style={{ fontSize: "10px", padding: "5px", borderColor: "#000000", textAlign: "center" }}>
+                                {header || `Meas ${idx + 1}`}
+                              </th>
+                            ))}
+                            <th className="border border-black border-t-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: "10px", padding: "5px", borderColor: "#000000", textAlign: "center" }} />
+                            <th className="border border-black border-t-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: "10px", padding: "5px", borderColor: "#000000", textAlign: "center" }} />
+                            <th className="border border-black border-t-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: "10px", padding: "5px", borderColor: "#000000", textAlign: "center" }} />
+                            <th className="border border-black border-t-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: "10px", padding: "5px", borderColor: "#000000", textAlign: "center" }} />
+                            <th className="border border-black border-t-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: "10px", padding: "5px", borderColor: "#000000", textAlign: "center" }} />
+                            <th className="border border-black border-t-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: "10px", padding: "5px", borderColor: "#000000", textAlign: "center" }} />
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {rows.map((row: any, i: number) => (
+                            <tr key={i} className="text-center" style={{ fontSize: "10px" }}>
+                              <td className="border border-black p-1.5 print:p-[3px] text-center" style={{ fontSize: "10px", padding: "5px", borderColor: "#000000", textAlign: "center" }}>
+                                {formatCell(row.timeApplied)}
+                              </td>
+                              {getOutputs(row).map((val: string, idx: number) => (
+                                <td key={idx} className="border border-black p-1.5 print:p-[3px] text-center" style={{ fontSize: "10px", padding: "5px", borderColor: "#000000", textAlign: "center" }}>
+                                  {formatCell(val)}
+                                </td>
+                              ))}
+                              <td className="border border-black p-1.5 print:p-[3px] font-medium text-center" style={{ fontSize: "10px", padding: "5px", borderColor: "#000000", textAlign: "center" }}>
+                                {formatCell(row.averageOutput)}
+                              </td>
+                              <td className="border border-black p-1.5 print:p-[3px] font-medium text-center" style={{ fontSize: "10px", padding: "5px", borderColor: "#000000", textAlign: "center" }}>
+                                {formatCell(row.x)}
+                              </td>
+                              {i === 0 ? (
+                                <>
+                                  <td rowSpan={rows.length} className="border border-black p-1.5 print:p-[3px] font-medium text-center" style={{ fontSize: "10px", padding: "5px", verticalAlign: "middle", borderColor: "#000000", textAlign: "center" }}>
+                                    {xMax}
+                                  </td>
+                                  <td rowSpan={rows.length} className="border border-black p-1.5 print:p-[3px] font-medium text-center" style={{ fontSize: "10px", padding: "5px", verticalAlign: "middle", borderColor: "#000000", textAlign: "center" }}>
+                                    {xMin}
+                                  </td>
+                                  <td rowSpan={rows.length} className="border border-black p-1.5 print:p-[3px] font-medium text-center" style={{ fontSize: "10px", padding: "5px", verticalAlign: "middle", borderColor: "#000000", textAlign: "center" }}>
+                                    {colVal}
+                                  </td>
+                                  <td rowSpan={rows.length} className="border border-black p-1.5 print:p-[3px] text-center" style={{ fontSize: "10px", padding: "5px", verticalAlign: "middle", borderColor: "#000000", textAlign: "center" }}>
+                                    <span
+                                      className={
+                                        remarks === "Pass"
+                                          ? "text-green-600 font-semibold"
+                                          : remarks === "Fail"
+                                            ? "text-red-600 font-semibold"
+                                            : ""
+                                      }
+                                      style={{ fontSize: "10px" }}
+                                    >
+                                      {remarks}
+                                    </span>
+                                  </td>
+                                </>
+                              ) : null}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    );
+                  })()}
+                </div>
+                <div className="bg-gray-50 p-4 print:p-1 rounded border" style={{ padding: "2px 4px", marginTop: "4px" }}>
+                  <p className="text-sm print:text-[10px]" style={{ fontSize: "10px", margin: "2px 0" }}>
+                    <strong>Tolerance (CoL):</strong>{" "}
+                    {testData.linearityOfTime.toleranceOperator || "<="}{" "}
+                    {testData.linearityOfTime.tolerance || "0.1"}
+                  </p>
+                </div>
+              </div>
+            )}
 
             {/* 8. Linearity of mAs Loading Stations */}
             {testData.linearityOfMasLoading?.table2?.length > 0 && (
@@ -1986,7 +2267,14 @@ const ViewServiceReportOBI: React.FC = () => {
               </div>
             )}
 
-            {/* 11. Tube Housing Leakage � structure aligned with RadiographyFixed (radiationLeakageLevel); OBI uses tubeHousingLeakage */}
+          </div>
+        </ReportPage>
+
+        {/* DETAILED TEST RESULTS (PART 5) - Tube Housing Leakage */}
+        <ReportPage>
+          <div className="report-pdf-last-main" style={{ width: "100%", flex: 1 }}>
+
+            {/* 11. Tube Housing Leakage — structure aligned with RadiographyFixed (radiationLeakageLevel); OBI uses tubeHousingLeakage */}
             {(() => {
               const leakageData = testData.radiationLeakageLevel || testData.tubeHousingLeakage;
               if (!leakageData || (!leakageData.leakageMeasurements?.length && !leakageData.fcd)) return null;
@@ -2026,7 +2314,7 @@ const ViewServiceReportOBI: React.FC = () => {
                   </div>
                   <p style={{ fontSize: "10px", marginBottom: "4px" }}>
                     <strong>Workload:</strong> {leakageData.workload || "-"}{" "}
-                    {leakageData.workloadUnit || "mA�min/week"}
+                    {leakageData.workloadUnit || "mA·min/week"}
                   </p>
                   {leakageData.leakageMeasurements?.length > 0 && (
                     <table style={{ ...tableStyle, fontSize: "10px" }}>
@@ -2167,10 +2455,10 @@ const ViewServiceReportOBI: React.FC = () => {
                               padding: "2px",
                             }}
                           >
-                            Maximum Leakage (mR in 1 hr) = (Workload � Max Exposure) / (60 � mA)
+                            Maximum Leakage (mR in 1 hr) = (Workload × Max Exposure) / (60 × mA)
                           </p>
                           <p style={{ fontSize: "9px", marginTop: "2px", color: "#555", fontStyle: "italic" }}>
-                            Where: Workload = {workloadValue} mA�min/week | mA = {maValue} | 1 mGy = 114 mR
+                            Where: Workload = {workloadValue} mA·min/week | mA = {maValue} | 1 mGy = 114 mR
                           </p>
                         </div>
                         <div style={{ display: "flex", gap: "8px" }}>
@@ -2181,7 +2469,7 @@ const ViewServiceReportOBI: React.FC = () => {
                                 Max Measured: <strong>{tubeSummary.rowMax} mR/hr</strong>
                               </p>
                               <p>
-                                Result: ({workloadValue} � {tubeSummary.rowMax}) / (60 � {maValue}) ={" "}
+                                Result: ({workloadValue} × {tubeSummary.rowMax}) / (60 × {maValue}) ={" "}
                                 <strong>{tubeSummary.resMR.toFixed(3)} mR</strong>
                               </p>
                               <p>
@@ -2197,7 +2485,7 @@ const ViewServiceReportOBI: React.FC = () => {
                                 Max Measured: <strong>{collimatorSummary.rowMax} mR/hr</strong>
                               </p>
                               <p>
-                                Result: ({workloadValue} � {collimatorSummary.rowMax}) / (60 � {maValue}) ={" "}
+                                Result: ({workloadValue} × {collimatorSummary.rowMax}) / (60 × {maValue}) ={" "}
                                 <strong>{collimatorSummary.resMR.toFixed(3)} mR</strong>
                               </p>
                               <p>
@@ -2221,6 +2509,12 @@ const ViewServiceReportOBI: React.FC = () => {
               );
             })()}
 
+          </div>
+        </ReportPage>
+
+        {/* DETAILED TEST RESULTS (PART 6) - Radiation Protection Survey + Alignment */}
+        <ReportPage>
+          <div className="report-pdf-last-main" style={{ width: "100%", flex: 1 }}>
 
             {/* 11. Radiation Protection Survey */}
             {testData.radiationProtection?.locations?.length > 0 && (
@@ -2505,20 +2799,17 @@ const ViewServiceReportOBI: React.FC = () => {
         }
         .fixed-report-pdf .report-pdf-last-main {
           flex: 1 1 auto !important;
-          display: flex !important;
-          flex-direction: column !important;
         }
         @media print {
+          body { -webkit-print-color-adjust: exact; margin: 0; padding: 0; }
+          @page { margin: 0; size: A4; }
           .fixed-report-pdf { width: 210mm; margin: 0 auto; }
           .fixed-report-pdf .report-pdf-page-shell,
           .fixed-report-pdf .report-pdf-last-page-shell {
-            margin: 0 !important;
-            box-shadow: none !important;
-            page-break-after: always;
+             margin: 0 !important;
+             box-shadow: none !important;
+             page-break-after: always !important;
           }
-          body { -webkit-print-color-adjust: exact; margin: 0; padding: 0; }
-          .test-section { page-break-inside: avoid; break-inside: avoid; }
-          @page { margin: 0.5cm; size: A4; }
         }
       `}</style>
     </>

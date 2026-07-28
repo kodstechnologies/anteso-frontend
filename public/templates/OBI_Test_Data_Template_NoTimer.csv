@@ -39,7 +39,7 @@ FDD (cm),kV,mA,Time (sec),Workload,Tol Value,Tol Operator,Location,Left,Right,Fr
 ,,,,,,,,,,,,
 TEST: RADIATION PROTECTION SURVEY,,,,,,,,,,,,
 Survey Date,Has Valid Calibration,Applied Current (mA),Applied Voltage (kV),Exposure Time (s),Workload (mA min/week),,,,,,,
-,Yes,100,80,1,5000,,,,,,,
+,Yes,100,80,1,500,,,,,,,
 LOCATION,MAX. RADIATION LEVEL (MR/HR),CATEGORY,,,,,,,,,,
 Control Room,0.5,worker,,,,,,,,,,
 Corridor,0.2,public,,,,,,,,,,

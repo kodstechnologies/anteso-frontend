@@ -1376,7 +1376,7 @@ const GenerateReportMammographyContent: React.FC<{ serviceId: string; csvFileUrl
                     let appliedCurrent = '100';
                     let appliedVoltage = '28';
                     let exposureTime = '0.5';
-                    let workload = '5000';
+                    let workload = '500';
                     const locations: any[] = [];
 
                     data.forEach(row => {

@@ -95,8 +95,7 @@ const MainTestTableForOPG: React.FC<MainTestTableProps> = ({ testData }) => {
     if (validRows.length > 0) {
       const toleranceSign =
         testData.operatingPotential.tolerance?.sign ||
-        testData.operatingPotential.toleranceSign ||
-        "�";
+        testData.operatingPotential.toleranceSign || "±";
       const toleranceValue = testData.operatingPotential.toleranceValue || "2.0";
       const testRows = validRows.map((row: any) => {
         let isPass = false;
@@ -346,7 +345,7 @@ const MainTestTableForOPG: React.FC<MainTestTableProps> = ({ testData }) => {
 
 
 
-  // 5. Tube Housing Leakage � measured = mGy in one hour (same formula as generate page)
+  // 5. Tube Housing Leakage — measured = mGy in one hour (same formula as generate page)
   {
     const rll = testData.radiationLeakage;
     const sourceRows = rll?.leakageMeasurements || rll?.leakageRows;
@@ -400,7 +399,7 @@ const MainTestTableForOPG: React.FC<MainTestTableProps> = ({ testData }) => {
 
           let measuredMGy = NaN;
           if (rowMax > 0 && maValue > 0 && workloadValue > 0) {
-            // Same as generate: mGy/h ? mR/hr �114, then (W � mR/hr) / (60 � mA) / 114
+            // Same as generate: mGy/h → mR/hr ×114, then (W × mR/hr) / (60 × mA) / 114
             const exposureLevelMR = unit === "mGy/h" || !unit ? rowMax * 114 : rowMax;
             measuredMGy = (workloadValue * exposureLevelMR) / (60 * maValue) / 114;
           } else if (row.result !== undefined && row.result !== null && row.result !== "" && row.result !== "-") {

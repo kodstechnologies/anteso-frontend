@@ -74,7 +74,7 @@ const radiationProtectionSurveySection = (): any[][] => [
     "Exposure Time (s)",
     "1",
     "Workload (mA.min/week)",
-    "100",
+    "500",
   ],
   ["LOCATION", "MAX. RADIATION LEVEL (MR/HR)", "RESULT"],
   ["Control Console", "0.05", "Worker"],

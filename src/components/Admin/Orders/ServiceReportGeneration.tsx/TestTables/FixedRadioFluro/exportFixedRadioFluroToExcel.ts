@@ -142,7 +142,7 @@ export const buildFixedRadioFluroTemplateRows = (hasTimer: boolean): any[][] => 
       "Exposure Time (s)",
       "1",
       "Workload (mA.min/week)",
-      "5000",
+      "500",
     ],
     ["LOCATION", "mR/hr", "Category"],
     ["Control Room", "0.5", "worker"],

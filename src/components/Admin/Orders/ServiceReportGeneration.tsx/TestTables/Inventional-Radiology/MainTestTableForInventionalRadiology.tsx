@@ -41,7 +41,7 @@ function inferIsMaLoadingFromLinearityDoc(doc: any): boolean {
   return timeStr !== "" && timeStr !== "-" && !isNaN(timeVal) && timeVal > 0;
 }
 
-/** kV from table1 � MeasurementOfMaLinearity uses `kvp`; LinearityOfmAsLoading uses `kv`. */
+/** kV from table1 — MeasurementOfMaLinearity uses `kvp`; LinearityOfmAsLoading uses `kv`. */
 function getLinearityKvFromTable1(doc: any): any {
   const t1 = doc?.table1;
   const first = Array.isArray(t1) ? t1[0] : t1;
@@ -95,7 +95,7 @@ const MainTestTableForInventionalRadiology: React.FC<MainTestTableProps> = ({ te
 
   const outputConsistencyRoot = testData.outputConsistency || testData.consistencyOfRadiationOutput;
 
-  // Congruence of Radiation & Optical Field � RadiographyFixed
+  // Congruence of Radiation & Optical Field — RadiographyFixed
   if (testData.congruence?.congruenceMeasurements && Array.isArray(testData.congruence.congruenceMeasurements)) {
     const validRows = testData.congruence.congruenceMeasurements.filter((row: any) => row.dimension || row.percentFED);
     if (validRows.length > 0) {
@@ -114,7 +114,7 @@ const MainTestTableForInventionalRadiology: React.FC<MainTestTableProps> = ({ te
     }
   }
 
-  // Central Beam Alignment � RadiographyFixed
+  // Central Beam Alignment — RadiographyFixed
   if (testData.centralBeamAlignment?.observedTilt) {
     const tiltValue = testData.centralBeamAlignment.observedTilt.value || "-";
     const toleranceOperator = testData.centralBeamAlignment.tolerance?.operator || "=";
@@ -156,7 +156,7 @@ const MainTestTableForInventionalRadiology: React.FC<MainTestTableProps> = ({ te
     ]);
   }
 
-  // Effective Focal Spot Size � RadiographyFixed
+  // Effective Focal Spot Size — RadiographyFixed
   if (testData.effectiveFocalSpot?.focalSpots && Array.isArray(testData.effectiveFocalSpot.focalSpots)) {
     const validRows = testData.effectiveFocalSpot.focalSpots.filter(
       (spot: any) => spot.focusType || spot.measuredWidth || spot.measuredNominal
@@ -211,7 +211,7 @@ const MainTestTableForInventionalRadiology: React.FC<MainTestTableProps> = ({ te
     }
   }
 
-  // Accuracy of Irradiation Time(sec) � RadiographyFixed
+  // Accuracy of Irradiation Time(sec) — RadiographyFixed
   if (testData.accuracyOfIrradiationTime?.irradiationTimes && Array.isArray(testData.accuracyOfIrradiationTime.irradiationTimes)) {
     const validRows = testData.accuracyOfIrradiationTime.irradiationTimes.filter((row: any) => row.setTime || row.measuredTime);
     if (validRows.length > 0) {
@@ -241,7 +241,7 @@ const MainTestTableForInventionalRadiology: React.FC<MainTestTableProps> = ({ te
     }
   }
 
-  // Accuracy of Operating Potential (kVp Accuracy) � RadiographyFixed
+  // Accuracy of Operating Potential (kVp Accuracy) — RadiographyFixed
   if (testData.accuracyOfOperatingPotential?.table2 && Array.isArray(testData.accuracyOfOperatingPotential.table2)) {
     const validRows = testData.accuracyOfOperatingPotential.table2.filter((row: any) => row.setKV || row.avgKvp);
     if (validRows.length > 0) {
@@ -275,11 +275,11 @@ const MainTestTableForInventionalRadiology: React.FC<MainTestTableProps> = ({ te
     }
   }
 
-  // Accuracy of Operating Potential � from total filtration measurements � RadiographyFixed
+  // Accuracy of Operating Potential — from total filtration measurements — RadiographyFixed
   if (testData.totalFilteration?.measurements && Array.isArray(testData.totalFilteration.measurements)) {
     const validRows = testData.totalFilteration.measurements.filter((row: any) => row.appliedKvp || row.averageKvp || row.measuredValues);
     if (validRows.length > 0) {
-      const toleranceSign = testData.totalFilteration.tolerance?.sign || "�";
+      const toleranceSign = testData.totalFilteration.tolerance?.sign || "±";
       const toleranceValue = testData.totalFilteration.tolerance?.value || "2.0";
       const testRows = validRows.map((row: any) => {
         let avgKvpNum: number | null = null;
@@ -326,7 +326,7 @@ const MainTestTableForInventionalRadiology: React.FC<MainTestTableProps> = ({ te
     }
   }
 
-  // Total Filtration � RadiographyFixed (required = mm Al in Fixed UI; some payloads use measured)
+  // Total Filtration — RadiographyFixed (required = mm Al in Fixed UI; some payloads use measured)
   if (testData.totalFilteration?.totalFiltration) {
     const tfTot = testData.totalFilteration.totalFiltration;
     const measuredStr = tfTot.required || tfTot.measured || "-";
@@ -380,7 +380,7 @@ const MainTestTableForInventionalRadiology: React.FC<MainTestTableProps> = ({ te
     ]);
   }
 
-  // Linearity of mA / mAs Loading (Coefficient of Linearity) � RadiographyFixed + Inventional measurementOfMaLinearity
+  // Linearity of mA / mAs Loading (Coefficient of Linearity) — RadiographyFixed + Inventional measurementOfMaLinearity
   const linearityDoc = getLinearityDoc(testData);
   if (linearityDoc?.table2 && Array.isArray(linearityDoc.table2)) {
     const isMaLoading = inferIsMaLoadingFromLinearityDoc(linearityDoc);
@@ -476,7 +476,7 @@ const MainTestTableForInventionalRadiology: React.FC<MainTestTableProps> = ({ te
     }
   }
 
-  // Consistency of Radiation Output (CoV) � RadiographyFixed
+  // Consistency of Radiation Output (CoV) — RadiographyFixed
   if (outputConsistencyRoot?.outputRows && Array.isArray(outputConsistencyRoot.outputRows)) {
     const validRows = outputConsistencyRoot.outputRows.filter(
       (row: any) =>
@@ -577,7 +577,7 @@ const MainTestTableForInventionalRadiology: React.FC<MainTestTableProps> = ({ te
     }
   }
 
-  // Radiation leakage level at 1m from tube housing � RadiographyFixed + tube housing data
+  // Radiation leakage level at 1m from tube housing — RadiographyFixed + tube housing data
   const leakParent = testData.radiationLeakageLevel || testData.tubeHousingLeakage;
   const leakMeasurements =
     leakParent &&
@@ -663,7 +663,7 @@ const MainTestTableForInventionalRadiology: React.FC<MainTestTableProps> = ({ te
     }
   }
 
-  // Radiation Protection Survey � RadiographyFixed (location + mR/week; support mR/hr fields from API)
+  // Radiation Protection Survey — RadiographyFixed (location + mR/week; support mR/hr fields from API)
   if (testData.radiationProtectionSurvey?.locations && Array.isArray(testData.radiationProtectionSurvey.locations)) {
     const validRows = testData.radiationProtectionSurvey.locations.filter(
       (loc: any) => loc.location || loc.mRPerWeek != null || loc.mRPerHr != null

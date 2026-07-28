@@ -899,6 +899,11 @@ const InventionalRadiologyContent: React.FC<InventionalRadiologyProps> = ({ serv
         setShowTubeModal(false);
         if (serviceId) {
           localStorage.setItem(`inventional_radiology_tube_type_${serviceId}`, inferredType);
+          try {
+            await saveReportHeaderForInventionalRadiology(serviceId, { tubeType: inferredType });
+          } catch (err) {
+            console.error("Failed to save tube type preference:", err);
+          }
         }
       }
 
@@ -1237,14 +1242,20 @@ const InventionalRadiologyContent: React.FC<InventionalRadiologyProps> = ({ serv
   };
 
   // Handle tube type selection
-  const handleTubeTypeSelection = (type: 'single' | 'double') => {
+  const handleTubeTypeSelection = async (type: 'single' | 'double') => {
     setTubeType(type);
     setShowTubeModal(false);
-    // Save tube type to localStorage
+    // Persist tube type to DB and localStorage
     localStorage.setItem(`inventional_radiology_tube_type_${serviceId}`, type);
+    try {
+      await saveReportHeaderForInventionalRadiology(serviceId!, { tubeType: type });
+    } catch (err) {
+      console.error("Failed to save tube type preference:", err);
+      toast.error("Failed to save tube type to database");
+    }
   };
 
-  // Load saved tube type on mount (if exists). When csvFileUrl is provided (redirect from ServiceDetails2), skip modal — config will be set from Excel in processCSVData.
+  // Load saved tube type on mount (prefer DB, fallback to localStorage). When csvFileUrl is provided, skip modal — config will be set from Excel.
   useEffect(() => {
     if (!serviceId) return;
 
@@ -1253,15 +1264,35 @@ const InventionalRadiologyContent: React.FC<InventionalRadiologyProps> = ({ serv
       return;
     }
 
-    // Load saved tube type
-    const savedTubeType = localStorage.getItem(`inventional_radiology_tube_type_${serviceId}`);
-    if (savedTubeType === 'single' || savedTubeType === 'double') {
-      setTubeType(savedTubeType as 'single' | 'double');
-      setShowTubeModal(false);
-    } else {
-      // No saved tube type, show tube selection modal first
-      setShowTubeModal(true);
-    }
+    const loadTubeType = async () => {
+      let resolved: 'single' | 'double' | null = null;
+      try {
+        const res = await getReportHeaderForInventionalRadiology(serviceId, null);
+        const dbTubeType = res?.data?.tubeType;
+        if (dbTubeType === 'single' || dbTubeType === 'double') {
+          resolved = dbTubeType;
+        }
+      } catch (err) {
+        console.error("Failed to load tube type from DB:", err);
+      }
+
+      if (!resolved) {
+        const savedTubeType = localStorage.getItem(`inventional_radiology_tube_type_${serviceId}`);
+        if (savedTubeType === 'single' || savedTubeType === 'double') {
+          resolved = savedTubeType;
+        }
+      }
+
+      if (resolved) {
+        setTubeType(resolved);
+        setShowTubeModal(false);
+        localStorage.setItem(`inventional_radiology_tube_type_${serviceId}`, resolved);
+      } else {
+        setShowTubeModal(true);
+      }
+    };
+
+    loadTubeType();
   }, [serviceId, csvFileUrl]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1363,6 +1394,7 @@ const InventionalRadiologyContent: React.FC<InventionalRadiologyProps> = ({ serv
         rpID: formData.rpId,
         RPId: formData.rpId,
         RPID: formData.rpId,
+        tubeType: tubeType || undefined,
         toolsUsed: originalTools.map((t: any, idx: number) => ({
           toolId: t._id || t.toolId || null,
           SrNo: t.SrNo,

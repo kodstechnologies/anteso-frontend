@@ -11172,22 +11172,74 @@ export const updateAlignmentTestForOBI = async (testId: string, payload: any) =>
     return res.data;
 };
 
-// Linearity of Time - OBI
-export const addLinearityOfTimeForOBI = async (serviceId: string, payload: any) => {
+// Linearity of mA Loading - OBI (formerly Linearity of Time)
+export const addLinearityOfMaLoadingForOBI = async (serviceId: string, payload: any) => {
     const token = Cookies.get("accessToken");
     const res = await api.post(
-        `/service-report/obi/linearity-of-time/${serviceId}`,
+        `/service-report/obi/linearity-of-ma-loading/${serviceId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+/** @deprecated Use addLinearityOfMaLoadingForOBI */
+export const addLinearityOfTimeForOBI = addLinearityOfMaLoadingForOBI;
+
+export const getLinearityOfMaLoadingByServiceIdForOBI = async (serviceId: string) => {
+    const token = Cookies.get("accessToken");
+    try {
+        const res = await api.get(
+            `/service-report/obi/linearity-of-ma-loading-by-serviceId/${serviceId}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+        return res.data;
+    } catch (error: any) {
+        if (error.response?.status === 404) return null;
+        throw error;
+    }
+};
+/** @deprecated Use getLinearityOfMaLoadingByServiceIdForOBI */
+export const getLinearityOfTimeByServiceIdForOBI = getLinearityOfMaLoadingByServiceIdForOBI;
+
+export const getLinearityOfMaLoadingByTestIdForOBI = async (testId: string) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.get(
+        `/service-report/obi/linearity-of-ma-loading/${testId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+/** @deprecated Use getLinearityOfMaLoadingByTestIdForOBI */
+export const getLinearityOfTimeByTestIdForOBI = getLinearityOfMaLoadingByTestIdForOBI;
+
+export const updateLinearityOfMaLoadingForOBI = async (testId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(
+        `/service-report/obi/linearity-of-ma-loading/${testId}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return res.data;
+};
+/** @deprecated Use updateLinearityOfMaLoadingForOBI */
+export const updateLinearityOfTimeForOBI = updateLinearityOfMaLoadingForOBI;
+
+// Linearity of Time Measurement - OBI (FFD/kV/mA + Time Applied)
+export const addLinearityOfTimeMeasurementForOBI = async (serviceId: string, payload: any) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.post(
+        `/service-report/obi/linearity-of-time-measurement/${serviceId}`,
         payload,
         { headers: { Authorization: `Bearer ${token}` } }
     );
     return res.data;
 };
 
-export const getLinearityOfTimeByServiceIdForOBI = async (serviceId: string) => {
+export const getLinearityOfTimeMeasurementByServiceIdForOBI = async (serviceId: string) => {
     const token = Cookies.get("accessToken");
     try {
         const res = await api.get(
-            `/service-report/obi/linearity-of-time-by-serviceId/${serviceId}`,
+            `/service-report/obi/linearity-of-time-measurement-by-serviceId/${serviceId}`,
             { headers: { Authorization: `Bearer ${token}` } }
         );
         return res.data;
@@ -11197,19 +11249,19 @@ export const getLinearityOfTimeByServiceIdForOBI = async (serviceId: string) => 
     }
 };
 
-export const getLinearityOfTimeByTestIdForOBI = async (testId: string) => {
+export const getLinearityOfTimeMeasurementByTestIdForOBI = async (testId: string) => {
     const token = Cookies.get("accessToken");
     const res = await api.get(
-        `/service-report/obi/linearity-of-time/${testId}`,
+        `/service-report/obi/linearity-of-time-measurement/${testId}`,
         { headers: { Authorization: `Bearer ${token}` } }
     );
     return res.data;
 };
 
-export const updateLinearityOfTimeForOBI = async (testId: string, payload: any) => {
+export const updateLinearityOfTimeMeasurementForOBI = async (testId: string, payload: any) => {
     const token = Cookies.get("accessToken");
     const res = await api.put(
-        `/service-report/obi/linearity-of-time/${testId}`,
+        `/service-report/obi/linearity-of-time-measurement/${testId}`,
         payload,
         { headers: { Authorization: `Bearer ${token}` } }
     );

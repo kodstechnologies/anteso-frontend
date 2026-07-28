@@ -1,25 +1,25 @@
 // components/TestTables/OBI/LinearityOfTime.tsx
-import React, { useState, useEffect, useMemo } from 'react';
-import { Plus, Trash2, Loader2, Edit3, Save } from 'lucide-react';
-import toast from 'react-hot-toast';
+import React, { useState, useEffect, useMemo } from "react";
+import { Plus, Trash2, Loader2, Edit3, Save } from "lucide-react";
+import toast from "react-hot-toast";
 import {
-  addLinearityOfTimeForOBI,
-  getLinearityOfTimeByServiceIdForOBI,
-  updateLinearityOfTimeForOBI,
+  addLinearityOfTimeMeasurementForOBI,
+  getLinearityOfTimeMeasurementByServiceIdForOBI,
+  updateLinearityOfTimeMeasurementForOBI,
 } from "../../../../../../api";
 
 interface TestConditions {
-  fdd: string;  // FDD (cm)
-  kv: string;  // kV
-  time: string; // Time (Sec)
+  ffd: string;
+  kv: string;
+  ma: string;
 }
 
 interface MeasurementRow {
   id: string;
-  maApplied: string; // mA Applied
-  measuredOutputs: string[]; // Dynamic array of Radiation Outputs (mGy)
-  averageOutput: string; // Average Output (mGy) - calculated
-  mGyPerMAs: string; // mGy / mAs (X) - calculated
+  timeApplied: string;
+  measuredOutputs: string[];
+  averageOutput: string;
+  x: string;
 }
 
 interface Props {
@@ -28,59 +28,56 @@ interface Props {
   onRefresh?: () => void;
   refreshKey?: number;
   initialData?: {
-    testConditions?: {
-      fdd: string;
-      kv: string;
-      time: string;
-    };
+    testConditions?: { ffd?: string; kv?: string; ma?: string };
     headers?: string[];
     tolerance?: string;
     toleranceOperator?: string;
     measurementRows?: Array<{
-      maApplied: string;
+      timeApplied: string;
       radiationOutputs: string[];
       averageOutput?: string;
-      mGyPerMAs?: string;
+      x?: string;
     }>;
   };
 }
 
-const LinearityOfTime: React.FC<Props> = ({ serviceId, testId: propTestId, onRefresh, refreshKey, initialData }) => {
+const LinearityOfTime: React.FC<Props> = ({
+  serviceId,
+  testId: propTestId,
+  onRefresh,
+  refreshKey,
+  initialData,
+}) => {
   const [testId, setTestId] = useState<string | null>(propTestId || null);
-
-  // Test Conditions (Fixed)
   const [testConditions, setTestConditions] = useState<TestConditions>({
-    fdd: '',
-    kv: '',
-    time: '',
+    ffd: "",
+    kv: "",
+    ma: "",
   });
-
-  const [measHeaders, setMeasHeaders] = useState<string[]>(['1', '2', '3']);
-
-  // Measurement Rows (Dynamic)
+  const [measHeaders, setMeasHeaders] = useState<string[]>(["1", "2", "3"]);
   const [measurementRows, setMeasurementRows] = useState<MeasurementRow[]>([
     {
-      id: '1',
-      maApplied: '',
-      measuredOutputs: ['', '', ''],
-      averageOutput: '',
-      mGyPerMAs: '',
+      id: "1",
+      timeApplied: "",
+      measuredOutputs: ["", "", ""],
+      averageOutput: "",
+      x: "",
     },
   ]);
-
-  const [tolerance, setTolerance] = useState<string>('0.1');
-  const [toleranceOperator, setToleranceOperator] = useState<string>('<=');
-
+  const [tolerance, setTolerance] = useState<string>("0.1");
+  const [toleranceOperator, setToleranceOperator] = useState<string>("<=");
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [hasSaved, setHasSaved] = useState(false);
 
-  // Column Handling
   const addMeasColumn = () => {
     setMeasHeaders((prev) => [...prev, `${prev.length + 1}`]);
     setMeasurementRows((prev) =>
-      prev.map((row) => ({ ...row, measuredOutputs: [...row.measuredOutputs, ''] }))
+      prev.map((row) => ({
+        ...row,
+        measuredOutputs: [...row.measuredOutputs, ""],
+      }))
     );
   };
 
@@ -95,16 +92,15 @@ const LinearityOfTime: React.FC<Props> = ({ serviceId, testId: propTestId, onRef
     );
   };
 
-  // Row Handling
   const addMeasurementRow = () => {
     setMeasurementRows((prev) => [
       ...prev,
       {
         id: Date.now().toString(),
-        maApplied: '',
-        measuredOutputs: Array(measHeaders.length).fill(''),
-        averageOutput: '',
-        mGyPerMAs: '',
+        timeApplied: "",
+        measuredOutputs: Array(measHeaders.length).fill(""),
+        averageOutput: "",
+        x: "",
       },
     ]);
   };
@@ -116,14 +112,13 @@ const LinearityOfTime: React.FC<Props> = ({ serviceId, testId: propTestId, onRef
 
   const updateMeasurementRow = (
     id: string,
-    field: 'maApplied' | number,
+    field: "timeApplied" | number,
     value: string
   ) => {
     setMeasurementRows((prev) =>
       prev.map((row) => {
         if (row.id !== id) return row;
-
-        if (typeof field === 'number') {
+        if (typeof field === "number") {
           const newOutputs = [...row.measuredOutputs];
           newOutputs[field] = value;
           return { ...row, measuredOutputs: newOutputs };
@@ -133,182 +128,173 @@ const LinearityOfTime: React.FC<Props> = ({ serviceId, testId: propTestId, onRef
     );
   };
 
-  // Auto-calculations
   const processedRows = useMemo(() => {
-    const time = parseFloat(testConditions.time) || 0;
+    const ma = parseFloat(testConditions.ma) || 0;
     const tol = parseFloat(tolerance) || 0.1;
-    const mGyPerMAsValues: number[] = [];
+    const xValues: number[] = [];
 
     const rowsWithCalculations = measurementRows.map((row) => {
-      // Calculate Average Output
       const outputs = row.measuredOutputs
-        .map(v => parseFloat(v))
+        .map((v) => parseFloat(v))
         .filter((v) => !isNaN(v) && v > 0);
 
       const averageOutput =
         outputs.length > 0
           ? (outputs.reduce((a, b) => a + b, 0) / outputs.length).toFixed(4)
-          : '';
+          : "";
 
-      // Calculate mGy / mAs (X)
-      const maApplied = parseFloat(row.maApplied);
-      const mGyPerMAs =
-        averageOutput && !isNaN(maApplied) && maApplied > 0 && time > 0
-          ? (parseFloat(averageOutput) / (maApplied * time)).toFixed(4)
-          : '';
+      const timeApplied = parseFloat(row.timeApplied);
+      // X = Average Output / (mA × Time Applied) → mGy/mAs
+      const x =
+        averageOutput &&
+        !isNaN(timeApplied) &&
+        timeApplied > 0 &&
+        ma > 0
+          ? (parseFloat(averageOutput) / (ma * timeApplied)).toFixed(4)
+          : "";
 
-      if (mGyPerMAs) {
-        mGyPerMAsValues.push(parseFloat(mGyPerMAs));
-      }
+      if (x) xValues.push(parseFloat(x));
 
-      return {
-        ...row,
-        averageOutput,
-        mGyPerMAs,
-      };
+      return { ...row, averageOutput, x };
     });
 
-    // Calculate X MAX, X MIN, CoL, and Remarks
-    const xMax = mGyPerMAsValues.length > 0 ? Math.max(...mGyPerMAsValues).toFixed(4) : '';
-    const xMin = mGyPerMAsValues.length > 0 ? Math.min(...mGyPerMAsValues).toFixed(4) : '';
+    const xMax =
+      xValues.length > 0 ? Math.max(...xValues).toFixed(4) : "";
+    const xMin =
+      xValues.length > 0 ? Math.min(...xValues).toFixed(4) : "";
 
-    const colNum = xMax && xMin && (parseFloat(xMax) + parseFloat(xMin)) > 0
-      ? Math.abs(parseFloat(xMax) - parseFloat(xMin)) / (parseFloat(xMax) + parseFloat(xMin))
-      : null;
-    const col = colNum !== null && colNum >= 0 ? parseFloat(colNum.toFixed(4)).toFixed(4) : '—';
+    const colNum =
+      xMax && xMin && parseFloat(xMax) + parseFloat(xMin) > 0
+        ? Math.abs(parseFloat(xMax) - parseFloat(xMin)) /
+          (parseFloat(xMax) + parseFloat(xMin))
+        : null;
+    const col =
+      colNum !== null && colNum >= 0
+        ? parseFloat(colNum.toFixed(4)).toFixed(4)
+        : "—";
 
-    // Determine pass/fail based on tolerance operator and CoL value
     let pass = false;
-    let remarks = '—';
-    
-    if (col !== '—' && colNum !== null) {
+    let remark = "—";
+    if (col !== "—" && colNum !== null) {
       const colVal = parseFloat(col);
       switch (toleranceOperator) {
-        case '<':
+        case "<":
           pass = colVal < tol;
           break;
-        case '>':
+        case ">":
           pass = colVal > tol;
           break;
-        case '<=':
+        case "<=":
           pass = colVal <= tol;
           break;
-        case '>=':
+        case ">=":
           pass = colVal >= tol;
           break;
-        case '=':
+        case "=":
           pass = Math.abs(colVal - tol) < 0.0001;
           break;
         default:
           pass = colVal <= tol;
       }
-      remarks = pass ? 'Pass' : 'Fail';
+      remark = pass ? "Pass" : "Fail";
     }
 
     return {
       rows: rowsWithCalculations,
-      xMax: xMax || '—',
-      xMin: xMin || '—',
-      coefficientOfLinearity: col,
-      remarks,
+      xMax: xMax || "—",
+      xMin: xMin || "—",
+      col,
+      remark,
     };
-  }, [measurementRows, testConditions.time, tolerance, toleranceOperator]);
+  }, [measurementRows, testConditions.ma, tolerance, toleranceOperator]);
 
-  // Load CSV Initial Data
   useEffect(() => {
-    if (initialData) {
-      console.log('LinearityOfTime: Loading initial data from CSV:', initialData);
-      if (initialData.testConditions) {
-        setTestConditions({
-          fdd: initialData.testConditions.fdd || '',
-          kv: initialData.testConditions.kv || '',
-          time: initialData.testConditions.time || '',
-        });
-      }
-      if (initialData.headers && initialData.headers.length > 0) {
-        setMeasHeaders(initialData.headers);
-      }
-      if (initialData.tolerance) {
-        setTolerance(initialData.tolerance);
-      }
-      if (initialData.toleranceOperator) {
-        setToleranceOperator(initialData.toleranceOperator);
-      }
-      if (initialData.measurementRows && initialData.measurementRows.length > 0) {
-        const numCols = initialData.headers?.length || initialData.measurementRows[0]?.radiationOutputs?.length || 3;
-        setMeasurementRows(
-          initialData.measurementRows.map((r, i) => {
-            const outputs = Array.isArray(r.radiationOutputs) && r.radiationOutputs.length > 0
-              ? [...r.radiationOutputs]
-              : Array(numCols).fill('');
-            while (outputs.length < numCols) outputs.push('');
-            return {
-              id: `csv-row-${Date.now()}-${i}`,
-              maApplied: r.maApplied || '',
-              measuredOutputs: outputs,
-              averageOutput: r.averageOutput || '',
-              mGyPerMAs: r.mGyPerMAs || '',
-            };
-          })
-        );
-      }
-      setIsEditing(true);
-      setIsLoading(false);
-      console.log('LinearityOfTime: CSV data loaded into form');
+    if (!initialData) return;
+    if (initialData.testConditions) {
+      setTestConditions({
+        ffd: initialData.testConditions.ffd || "",
+        kv: initialData.testConditions.kv || "",
+        ma: initialData.testConditions.ma || "",
+      });
     }
+    if (initialData.headers && initialData.headers.length > 0) {
+      setMeasHeaders(initialData.headers);
+    }
+    if (initialData.tolerance != null && String(initialData.tolerance).trim() !== "") {
+      const tol = String(initialData.tolerance).trim();
+      // Ignore operator symbols accidentally parsed into the value field
+      if (!["<", ">", "<=", ">=", "="].includes(tol)) {
+        setTolerance(tol);
+      }
+    }
+    if (initialData.toleranceOperator) {
+      setToleranceOperator(initialData.toleranceOperator);
+    }
+    if (initialData.measurementRows && initialData.measurementRows.length > 0) {
+      const numCols =
+        initialData.headers?.length ||
+        initialData.measurementRows[0]?.radiationOutputs?.length ||
+        3;
+      setMeasurementRows(
+        initialData.measurementRows.map((r, i) => {
+          const outputs =
+            Array.isArray(r.radiationOutputs) && r.radiationOutputs.length > 0
+              ? [...r.radiationOutputs]
+              : Array(numCols).fill("");
+          while (outputs.length < numCols) outputs.push("");
+          return {
+            id: `csv-row-${Date.now()}-${i}`,
+            timeApplied: r.timeApplied || "",
+            measuredOutputs: outputs,
+            averageOutput: r.averageOutput || "",
+            x: r.x || "",
+          };
+        })
+      );
+    }
+    setIsEditing(true);
+    setIsLoading(false);
   }, [initialData]);
 
-  // Load existing test data
   useEffect(() => {
-    // Skip loading if we have initial CSV data
-    if (initialData) {
-      return;
-    }
-
-    if (!serviceId) return;
+    if (initialData || !serviceId) return;
 
     const loadTest = async () => {
       setIsLoading(true);
       try {
-        const data = await getLinearityOfTimeByServiceIdForOBI(serviceId);
+        const data = await getLinearityOfTimeMeasurementByServiceIdForOBI(serviceId);
         if (data?.data) {
           const testData = data.data;
           setTestId(testData._id);
           if (testData.testConditions) {
             setTestConditions({
-              fdd: testData.testConditions.fdd || '',
-              kv: testData.testConditions.kv || '',
-              time: testData.testConditions.time || '',
+              ffd: testData.testConditions.ffd || "",
+              kv: testData.testConditions.kv || "",
+              ma: testData.testConditions.ma || "",
             });
           }
-          if (testData.measHeaders && testData.measHeaders.length > 0) {
+          if (testData.measHeaders?.length > 0) {
             setMeasHeaders(testData.measHeaders);
           }
-          if (testData.measurementRows && testData.measurementRows.length > 0) {
+          if (testData.measurementRows?.length > 0) {
+            const targetLen = testData.measHeaders?.length || 3;
             setMeasurementRows(
-              testData.measurementRows.map((r: any) => ({
-                id: r.id || Date.now().toString() + Math.random(),
-                maApplied: r.maApplied || '',
-                measuredOutputs: Array.isArray(r.radiationOutputs)
-                  ? r.radiationOutputs
-                  : [r.radiationOutput1 || '', r.radiationOutput2 || '', r.radiationOutput3 || ''].filter(val => val !== undefined), // Fallback for old data
-                averageOutput: r.averageOutput || '',
-                mGyPerMAs: r.mGyPerMAs || '',
-              }))
+              testData.measurementRows.map((r: any) => {
+                const outputs = Array.isArray(r.radiationOutputs)
+                  ? [...r.radiationOutputs]
+                  : Array(targetLen).fill("");
+                while (outputs.length < targetLen) outputs.push("");
+                return {
+                  id: Date.now().toString() + Math.random(),
+                  timeApplied: r.timeApplied || "",
+                  measuredOutputs: outputs,
+                  averageOutput: r.averageOutput || "",
+                  x: r.x || "",
+                };
+              })
             );
-            // Ensure row outputs match headers length
-            setMeasurementRows(prev => prev.map(row => {
-              const currentLen = row.measuredOutputs.length;
-              const targetLen = testData.measHeaders?.length || 3;
-              if (currentLen < targetLen) {
-                return { ...row, measuredOutputs: [...row.measuredOutputs, ...Array(targetLen - currentLen).fill('')] };
-              }
-              return row;
-            }));
           }
-          if (testData.tolerance) {
-            setTolerance(testData.tolerance);
-          }
+          if (testData.tolerance) setTolerance(testData.tolerance);
           if (testData.toleranceOperator) {
             setToleranceOperator(testData.toleranceOperator);
           }
@@ -319,7 +305,7 @@ const LinearityOfTime: React.FC<Props> = ({ serviceId, testId: propTestId, onRef
         }
       } catch (err: any) {
         if (err.response?.status !== 404) {
-          toast.error("Failed to load test data");
+          toast.error("Failed to load Linearity of Time data");
         }
         setIsEditing(true);
       } finally {
@@ -328,7 +314,7 @@ const LinearityOfTime: React.FC<Props> = ({ serviceId, testId: propTestId, onRef
     };
 
     loadTest();
-  }, [serviceId, initialData]);
+  }, [serviceId, initialData, refreshKey]);
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -336,45 +322,52 @@ const LinearityOfTime: React.FC<Props> = ({ serviceId, testId: propTestId, onRef
       const payload = {
         testConditions,
         measurementRows: processedRows.rows.map((r) => ({
-          maApplied: r.maApplied,
+          timeApplied: r.timeApplied,
           radiationOutputs: r.measuredOutputs,
           averageOutput: r.averageOutput,
-          mGyPerMAs: r.mGyPerMAs,
+          x: r.x,
         })),
         measHeaders,
         tolerance,
         toleranceOperator,
-        xMax: processedRows.xMax,
-        xMin: processedRows.xMin,
-        coefficientOfLinearity: processedRows.coefficientOfLinearity,
-        remarks: processedRows.remarks,
+        xMax: processedRows.xMax === "—" ? "" : processedRows.xMax,
+        xMin: processedRows.xMin === "—" ? "" : processedRows.xMin,
+        col: processedRows.col === "—" ? "" : processedRows.col,
+        remark:
+          processedRows.remark === "Pass" || processedRows.remark === "Fail"
+            ? processedRows.remark
+            : "",
       };
 
-      let result;
       let currentTestId = testId;
-
-      // If no testId, try to get existing data by serviceId first
       if (!currentTestId) {
         try {
-          const existing = await getLinearityOfTimeByServiceIdForOBI(serviceId);
+          const existing = await getLinearityOfTimeMeasurementByServiceIdForOBI(
+            serviceId
+          );
           if (existing?.data?._id) {
             currentTestId = existing.data._id;
             setTestId(currentTestId);
           }
-        } catch (err) {
-          // No existing data, will create new
+        } catch {
+          // create new
         }
       }
 
       if (currentTestId) {
-        result = await updateLinearityOfTimeForOBI(currentTestId, payload);
+        await updateLinearityOfTimeMeasurementForOBI(currentTestId, payload);
         toast.success("Updated successfully");
       } else {
-        result = await addLinearityOfTimeForOBI(serviceId, payload);
-        const newId = result?.data?._id || result?.data?.data?._id || result?._id;
-        if (newId) {
-          setTestId(newId);
-        }
+        const result = await addLinearityOfTimeMeasurementForOBI(
+          serviceId,
+          payload
+        );
+        const newId =
+          result?.data?.testId ||
+          result?.data?._id ||
+          result?.data?.data?._id ||
+          result?._id;
+        if (newId) setTestId(newId);
         toast.success("Saved successfully");
       }
 
@@ -388,9 +381,8 @@ const LinearityOfTime: React.FC<Props> = ({ serviceId, testId: propTestId, onRef
     }
   };
 
-  const toggleEdit = () => setIsEditing(true);
   const isViewMode = hasSaved && !isEditing;
-  const buttonText = isViewMode ? 'Edit' : testId ? 'Update' : 'Save';
+  const buttonText = isViewMode ? "Edit" : testId ? "Update" : "Save";
   const ButtonIcon = isViewMode ? Edit3 : Save;
 
   if (isLoading) {
@@ -402,23 +394,24 @@ const LinearityOfTime: React.FC<Props> = ({ serviceId, testId: propTestId, onRef
     );
   }
 
-  // Calculate colspan for summary first cell
-  // Layout: mA | Meas Columns... | Avg | X | Delete (only update mode)
-  // Summary: Colspan (mA + Meas + Avg) | X Max | ...
-  const summaryColSpan = 1 + measHeaders.length + 1;
-
   return (
     <div className="p-6 max-w-full overflow-x-auto">
       <h2 className="text-2xl font-bold mb-6">Linearity of Time</h2>
 
-      {/* Table 1: FDD, kV, Time (sec) */}
+      {/* Table 1: FFD, kV, mA */}
       <div className="bg-white shadow-md rounded-lg overflow-hidden mb-8">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500  tracking-wider border-r">FDD (cm)</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500  tracking-wider border-r">kV</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500  tracking-wider">Time (sec)</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 tracking-wider border-r">
+                FFD (cm)
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 tracking-wider border-r">
+                kV
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 tracking-wider">
+                mA
+              </th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
@@ -426,10 +419,16 @@ const LinearityOfTime: React.FC<Props> = ({ serviceId, testId: propTestId, onRef
               <td className="px-4 py-2 border-r">
                 <input
                   type="text"
-                  value={testConditions.fdd}
-                  onChange={e => setTestConditions(p => ({ ...p, fdd: e.target.value }))}
+                  value={testConditions.ffd}
+                  onChange={(e) =>
+                    setTestConditions((p) => ({ ...p, ffd: e.target.value }))
+                  }
                   disabled={isViewMode}
-                  className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'}`}
+                  className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                    isViewMode
+                      ? "bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300"
+                      : "border-gray-300"
+                  }`}
                   placeholder="100"
                 />
               </td>
@@ -437,20 +436,32 @@ const LinearityOfTime: React.FC<Props> = ({ serviceId, testId: propTestId, onRef
                 <input
                   type="text"
                   value={testConditions.kv}
-                  onChange={e => setTestConditions(p => ({ ...p, kv: e.target.value }))}
+                  onChange={(e) =>
+                    setTestConditions((p) => ({ ...p, kv: e.target.value }))
+                  }
                   disabled={isViewMode}
-                  className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'}`}
+                  className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                    isViewMode
+                      ? "bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300"
+                      : "border-gray-300"
+                  }`}
                   placeholder="60"
                 />
               </td>
               <td className="px-4 py-2">
                 <input
                   type="text"
-                  value={testConditions.time}
-                  onChange={e => setTestConditions(p => ({ ...p, time: e.target.value }))}
+                  value={testConditions.ma}
+                  onChange={(e) =>
+                    setTestConditions((p) => ({ ...p, ma: e.target.value }))
+                  }
                   disabled={isViewMode}
-                  className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'}`}
-                  placeholder="0.10"
+                  className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                    isViewMode
+                      ? "bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300"
+                      : "border-gray-300"
+                  }`}
+                  placeholder="100"
                 />
               </td>
             </tr>
@@ -458,59 +469,103 @@ const LinearityOfTime: React.FC<Props> = ({ serviceId, testId: propTestId, onRef
         </table>
       </div>
 
-      {/* Table 2: mA + Output (mGy) */}
+      {/* Table 2: Time Applied + Radiation Output + summary */}
       <div className="bg-white shadow-md rounded-lg overflow-hidden">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-blue-50">
             <tr>
-              {/* Header – make mA column wider */}
               <th
                 rowSpan={2}
-                className="px-6 py-3 w-28 text-left text-xs font-medium text-gray-700  tracking-wider border-r whitespace-nowrap"
+                className="px-6 py-3 w-28 text-left text-xs font-medium text-gray-700 tracking-wider border-r whitespace-nowrap"
               >
-                mA Applied
+                Time Applied
               </th>
               <th
                 colSpan={measHeaders.length}
-                className="px-4 py-3 text-center text-xs font-medium text-gray-700  tracking-wider border-r"
+                className="px-4 py-3 text-center text-xs font-medium text-gray-700 tracking-wider border-r"
               >
                 <div className="flex items-center justify-between">
-                  <span>Output (mGy)</span>
+                  <span>Radiation Output (mGy)</span>
                   {!isViewMode && (
-                    <button onClick={addMeasColumn} className="p-1 text-green-600 hover:bg-green-100 rounded">
+                    <button
+                      onClick={addMeasColumn}
+                      className="p-1 text-green-600 hover:bg-green-100 rounded"
+                      type="button"
+                    >
                       <Plus className="w-4 h-4" />
                     </button>
                   )}
                 </div>
               </th>
-              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">Avg Output</th>
-              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">X (mGy/mAs)</th>
-              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">X MAX</th>
-              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">X MIN</th>
-              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">CoL</th>
-              <th rowSpan={2} className="px-4 py-3 text-left text-xs font-medium text-gray-700  tracking-wider">Remarks</th>
+              <th
+                rowSpan={2}
+                className="px-4 py-3 text-left text-xs font-medium text-gray-700 tracking-wider border-r"
+              >
+                Average Output (mGy)
+              </th>
+              <th
+                rowSpan={2}
+                className="px-4 py-3 text-left text-xs font-medium text-gray-700 tracking-wider border-r"
+              >
+                mGy / mAs (X)
+              </th>
+              <th
+                rowSpan={2}
+                className="px-4 py-3 text-left text-xs font-medium text-gray-700 tracking-wider border-r"
+              >
+                X MAX
+              </th>
+              <th
+                rowSpan={2}
+                className="px-4 py-3 text-left text-xs font-medium text-gray-700 tracking-wider border-r"
+              >
+                X MIN
+              </th>
+              <th
+                rowSpan={2}
+                className="px-4 py-3 text-left text-xs font-medium text-gray-700 tracking-wider border-r"
+              >
+                Coefficient of Linearity (CoL)
+              </th>
+              <th
+                rowSpan={2}
+                className="px-4 py-3 text-left text-xs font-medium text-gray-700 tracking-wider"
+              >
+                Remarks
+              </th>
               <th rowSpan={2} className="w-10" />
             </tr>
             <tr>
               {measHeaders.map((header, idx) => (
-                <th key={idx} className="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider border-r">
+                <th
+                  key={idx}
+                  className="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider border-r"
+                >
                   <div className="flex items-center justify-center gap-1">
                     <input
                       type="text"
                       value={header}
-                      onChange={e => {
+                      onChange={(e) => {
                         const val = e.target.value;
-                        setMeasHeaders(prev => {
-                          const newHeaders = [...prev];
-                          newHeaders[idx] = val;
-                          return newHeaders;
+                        setMeasHeaders((prev) => {
+                          const next = [...prev];
+                          next[idx] = val;
+                          return next;
                         });
                       }}
                       disabled={isViewMode}
-                      className={`w-20 px-1 py-0.5 text-xs border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'}`}
+                      className={`w-20 px-1 py-0.5 text-xs border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                        isViewMode
+                          ? "bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300"
+                          : "border-gray-300"
+                      }`}
                     />
                     {measHeaders.length > 1 && !isViewMode && (
-                      <button onClick={() => removeMeasColumn(idx)} className="p-0.5 text-red-600 hover:bg-red-100 rounded">
+                      <button
+                        onClick={() => removeMeasColumn(idx)}
+                        className="p-0.5 text-red-600 hover:bg-red-100 rounded"
+                        type="button"
+                      >
                         <Trash2 className="w-3 h-3" />
                       </button>
                     )}
@@ -525,60 +580,87 @@ const LinearityOfTime: React.FC<Props> = ({ serviceId, testId: propTestId, onRef
                 <td className="px-4 py-2 border-r">
                   <input
                     type="text"
-                    value={p.maApplied}
-                    onChange={e => updateMeasurementRow(p.id, 'maApplied', e.target.value)}
+                    value={p.timeApplied}
+                    onChange={(e) =>
+                      updateMeasurementRow(p.id, "timeApplied", e.target.value)
+                    }
                     disabled={isViewMode}
-                    className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'}`}
-                    placeholder="100"
+                    className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                      isViewMode
+                        ? "bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300"
+                        : "border-gray-300"
+                    }`}
+                    placeholder="0.10"
                   />
                 </td>
-
                 {p.measuredOutputs.map((val, colIdx) => (
                   <td key={colIdx} className="px-2 py-2 border-r">
                     <input
                       type="number"
                       step="any"
                       value={val}
-                      onChange={e => updateMeasurementRow(p.id, colIdx, e.target.value)}
+                      onChange={(e) =>
+                        updateMeasurementRow(p.id, colIdx, e.target.value)
+                      }
                       disabled={isViewMode}
-                      className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'}`}
+                      className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                        isViewMode
+                          ? "bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300"
+                          : "border-gray-300"
+                      }`}
                     />
                   </td>
                 ))}
-
-                <td className="px-4 py-2 text-center border-r font-medium bg-gray-50">{p.averageOutput}</td>
-                <td className="px-4 py-2 text-center border-r font-medium bg-gray-50">{p.mGyPerMAs}</td>
+                <td className="px-4 py-2 text-center border-r font-medium bg-gray-50">
+                  {p.averageOutput}
+                </td>
+                <td className="px-4 py-2 text-center border-r font-medium bg-gray-50">
+                  {p.x}
+                </td>
                 {index === 0 && (
                   <>
-                    <td rowSpan={processedRows.rows.length} className="px-4 py-2 text-center border-r font-medium bg-yellow-50 align-middle">
+                    <td
+                      rowSpan={processedRows.rows.length}
+                      className="px-4 py-2 text-center border-r font-medium bg-yellow-50 align-middle"
+                    >
                       {processedRows.xMax}
                     </td>
-                    <td rowSpan={processedRows.rows.length} className="px-4 py-2 text-center border-r font-medium bg-yellow-50 align-middle">
+                    <td
+                      rowSpan={processedRows.rows.length}
+                      className="px-4 py-2 text-center border-r font-medium bg-yellow-50 align-middle"
+                    >
                       {processedRows.xMin}
                     </td>
-                    <td rowSpan={processedRows.rows.length} className="px-4 py-2 text-center border-r font-medium bg-yellow-50 align-middle">
-                      {processedRows.coefficientOfLinearity}
+                    <td
+                      rowSpan={processedRows.rows.length}
+                      className="px-4 py-2 text-center border-r font-medium bg-yellow-50 align-middle"
+                    >
+                      {processedRows.col}
                     </td>
-                    <td rowSpan={processedRows.rows.length} className="px-4 py-2 text-center align-middle">
+                    <td
+                      rowSpan={processedRows.rows.length}
+                      className="px-4 py-2 text-center align-middle"
+                    >
                       <span
-                        className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${processedRows.remarks === 'Pass'
-                          ? 'bg-green-100 text-green-800'
-                          : processedRows.remarks === 'Fail'
-                            ? 'bg-red-100 text-red-800'
-                            : 'text-gray-400'
-                          }`}
+                        className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${
+                          processedRows.remark === "Pass"
+                            ? "bg-green-100 text-green-800"
+                            : processedRows.remark === "Fail"
+                              ? "bg-red-100 text-red-800"
+                              : "text-gray-400"
+                        }`}
                       >
-                        {processedRows.remarks || '—'}
+                        {processedRows.remark || "—"}
                       </span>
                     </td>
                   </>
                 )}
-
                 <td className="px-2 py-2 text-center">
                   {measurementRows.length > 1 && !isViewMode && (
                     <button
                       onClick={() => removeMeasurementRow(p.id)}
                       className="text-red-600 hover:bg-red-100 p-1 rounded transition-colors"
+                      type="button"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -593,56 +675,65 @@ const LinearityOfTime: React.FC<Props> = ({ serviceId, testId: propTestId, onRef
           {!isViewMode && (
             <button
               onClick={addMeasurementRow}
+              type="button"
               className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm font-medium"
             >
               <Plus className="w-4 h-4" /> Add Row
             </button>
           )}
           <div className="flex items-center gap-2 ml-auto">
-            <span className="text-sm font-medium text-gray-700">Tolerance (CoL)</span>
+            <span className="text-sm font-medium text-gray-700">
+              Tolerance (CoL)
+            </span>
             <select
               value={toleranceOperator}
-              onChange={e => setToleranceOperator(e.target.value)}
+              onChange={(e) => setToleranceOperator(e.target.value)}
               disabled={isViewMode}
-              className={`px-3 py-2 text-center font-bold border-2 border-blue-400 rounded-lg focus:ring-4 focus:ring-blue-200 text-sm ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`}
+              className={`px-3 py-2 text-center font-bold border-2 border-blue-400 rounded-lg focus:ring-4 focus:ring-blue-200 text-sm ${
+                isViewMode
+                  ? "bg-gray-50 text-gray-500 cursor-not-allowed"
+                  : ""
+              }`}
             >
-              <option value="<">&lt;</option>
               <option value=">">&gt;</option>
-              <option value="<=">&lt;=</option>
+              <option value="<">&lt;</option>
               <option value=">=">&gt;=</option>
+              <option value="<=">&lt;=</option>
               <option value="=">=</option>
             </select>
             <input
               type="number"
               step="0.001"
               value={tolerance}
-              onChange={e => setTolerance(e.target.value)}
+              onChange={(e) => setTolerance(e.target.value)}
               disabled={isViewMode}
-              className={`w-24 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'}`}
+              className={`w-24 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm ${
+                isViewMode
+                  ? "bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300"
+                  : "border-gray-300"
+              }`}
             />
           </div>
         </div>
       </div>
 
-      {/* SAVE BUTTON */}
       <div className="flex justify-end mt-6">
         <button
+          type="button"
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
-            if (isViewMode) {
-              toggleEdit();
-            } else {
-              handleSave();
-            }
+            if (isViewMode) setIsEditing(true);
+            else handleSave();
           }}
           disabled={isSaving}
-          className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${isSaving
-            ? 'bg-gray-400 cursor-not-allowed'
-            : isViewMode
-              ? 'bg-orange-600 hover:bg-orange-700'
-              : 'bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300'
-            }`}
+          className={`flex items-center gap-2 px-6 py-2.5 font-medium text-white rounded-lg transition-all ${
+            isSaving
+              ? "bg-gray-400 cursor-not-allowed"
+              : isViewMode
+                ? "bg-orange-600 hover:bg-orange-700"
+                : "bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300"
+          }`}
         >
           {isSaving ? (
             <>
@@ -652,7 +743,7 @@ const LinearityOfTime: React.FC<Props> = ({ serviceId, testId: propTestId, onRef
           ) : (
             <>
               <ButtonIcon className="w-4 h-4" />
-              {buttonText} Linearity
+              {buttonText} Linearity of Time
             </>
           )}
         </button>
@@ -662,526 +753,3 @@ const LinearityOfTime: React.FC<Props> = ({ serviceId, testId: propTestId, onRef
 };
 
 export default LinearityOfTime;
-
-
-
-// interface Props {
-//   serviceId: string;
-//   testId?: string;
-//   onRefresh?: () => void;
-// }
-
-// const LinearityOfTime: React.FC<Props> = ({ serviceId, testId: propTestId, onRefresh }) => {
-//   const [testId, setTestId] = useState<string | null>(propTestId || null);
-
-//   // Test Conditions (Fixed)
-//   const [testConditions, setTestConditions] = useState<TestConditions>({
-//     fdd: '',
-//     kv: '',
-//     time: '',
-//   });
-
-//   // Measurement Rows (Dynamic)
-//   const [measurementRows, setMeasurementRows] = useState<MeasurementRow[]>([
-//     {
-//       id: '1',
-//       maApplied: '',
-//       radiationOutput1: '',
-//       radiationOutput2: '',
-//       radiationOutput3: '',
-//       averageOutput: '',
-//       mGyPerMAs: '',
-//     },
-//   ]);
-
-//   const [tolerance, setTolerance] = useState<string>('0.1');
-
-//   const [isSaving, setIsSaving] = useState(false);
-//   const [isLoading, setIsLoading] = useState(false);
-//   const [isEditing, setIsEditing] = useState(false);
-//   const [hasSaved, setHasSaved] = useState(false);
-
-//   // Row Handling
-//   const addMeasurementRow = () => {
-//     setMeasurementRows((prev) => [
-//       ...prev,
-//       {
-//         id: Date.now().toString(),
-//         maApplied: '',
-//         radiationOutput1: '',
-//         radiationOutput2: '',
-//         radiationOutput3: '',
-//         averageOutput: '',
-//         mGyPerMAs: '',
-//       },
-//     ]);
-//   };
-
-//   const removeMeasurementRow = (id: string) => {
-//     if (measurementRows.length <= 1) return;
-//     setMeasurementRows((prev) => prev.filter((r) => r.id !== id));
-//   };
-
-//   const updateMeasurementRow = (
-//     id: string,
-//     field: 'maApplied' | 'radiationOutput1' | 'radiationOutput2' | 'radiationOutput3',
-//     value: string
-//   ) => {
-//     setMeasurementRows((prev) =>
-//       prev.map((row) => (row.id === id ? { ...row, [field]: value } : row))
-//     );
-//   };
-
-//   // Auto-calculations
-//   const processedRows = useMemo(() => {
-//     const time = parseFloat(testConditions.time) || 0;
-//     const tol = parseFloat(tolerance) || 0.1;
-//     const mGyPerMAsValues: number[] = [];
-
-//     const rowsWithCalculations = measurementRows.map((row) => {
-//       // Calculate Average Output
-//       const outputs = [
-//         parseFloat(row.radiationOutput1),
-//         parseFloat(row.radiationOutput2),
-//         parseFloat(row.radiationOutput3),
-//       ].filter((v) => !isNaN(v) && v > 0);
-
-//       const averageOutput =
-//         outputs.length > 0
-//           ? (outputs.reduce((a, b) => a + b, 0) / outputs.length).toFixed(4)
-//           : '';
-
-//       // Calculate mGy / mAs (X)
-//       const maApplied = parseFloat(row.maApplied);
-//       const mGyPerMAs =
-//         averageOutput && !isNaN(maApplied) && maApplied > 0 && time > 0
-//           ? (parseFloat(averageOutput) / (maApplied * time)).toFixed(4)
-//           : '';
-
-//       if (mGyPerMAs) {
-//         mGyPerMAsValues.push(parseFloat(mGyPerMAs));
-//       }
-
-//       return {
-//         ...row,
-//         averageOutput,
-//         mGyPerMAs,
-//       };
-//     });
-
-//     // Calculate X MAX, X MIN, CoL, and Remarks
-//     const xMax = mGyPerMAsValues.length > 0 ? Math.max(...mGyPerMAsValues).toFixed(4) : '';
-//     const xMin = mGyPerMAsValues.length > 0 ? Math.min(...mGyPerMAsValues).toFixed(4) : '';
-
-//     const col =
-//       xMax && xMin && (parseFloat(xMax) + parseFloat(xMin)) > 0
-//         ? ((parseFloat(xMax) - parseFloat(xMin)) / (parseFloat(xMax) + parseFloat(xMin))).toFixed(4)
-//         : '';
-
-//     const remarks = col && parseFloat(col) < tol ? 'Pass' : col ? 'Fail' : '';
-
-//     return {
-//       rows: rowsWithCalculations,
-//       xMax,
-//       xMin,
-//       coefficientOfLinearity: col,
-//       remarks,
-//     };
-//   }, [measurementRows, testConditions.time, tolerance]);
-
-//   // Load existing test data
-//   useEffect(() => {
-//     if (!serviceId) return;
-
-//     const loadTest = async () => {
-//       setIsLoading(true);
-//       try {
-//         const data = await getLinearityOfTimeByServiceIdForOBI(serviceId);
-//         if (data?.data) {
-//           const testData = data.data;
-//           setTestId(testData._id);
-//           if (testData.testConditions) {
-//             setTestConditions({
-//               fdd: testData.testConditions.fdd || '',
-//               kv: testData.testConditions.kv || '',
-//               time: testData.testConditions.time || '',
-//             });
-//           }
-//           if (testData.measurementRows && testData.measurementRows.length > 0) {
-//             setMeasurementRows(
-//               testData.measurementRows.map((r: any) => ({
-//                 id: r.id || Date.now().toString() + Math.random(),
-//                 maApplied: r.maApplied || '',
-//                 radiationOutput1: r.radiationOutput1 || '',
-//                 radiationOutput2: r.radiationOutput2 || '',
-//                 radiationOutput3: r.radiationOutput3 || '',
-//                 averageOutput: r.averageOutput || '',
-//                 mGyPerMAs: r.mGyPerMAs || '',
-//               }))
-//             );
-//           }
-//           if (testData.tolerance) {
-//             setTolerance(testData.tolerance);
-//           }
-//           setHasSaved(true);
-//         }
-//       } catch (err: any) {
-//         if (err.response?.status !== 404) {
-//           toast.error("Failed to load test data");
-//         }
-//       } finally {
-//         setIsLoading(false);
-//       }
-//     };
-
-//     loadTest();
-//   }, [serviceId]);
-
-//   const handleSave = async () => {
-//     setIsSaving(true);
-//     try {
-//       const payload = {
-//         testConditions,
-//         measurementRows: processedRows.rows.map((r) => ({
-//           maApplied: r.maApplied,
-//           radiationOutput1: r.radiationOutput1,
-//           radiationOutput2: r.radiationOutput2,
-//           radiationOutput3: r.radiationOutput3,
-//           averageOutput: r.averageOutput,
-//           mGyPerMAs: r.mGyPerMAs,
-//         })),
-//         tolerance,
-//         xMax: processedRows.xMax,
-//         xMin: processedRows.xMin,
-//         coefficientOfLinearity: processedRows.coefficientOfLinearity,
-//         remarks: processedRows.remarks,
-//       };
-
-//       let result;
-//       if (testId) {
-//         result = await updateLinearityOfTimeForOBI(testId, payload);
-//       } else {
-//         result = await addLinearityOfTimeForOBI(serviceId, payload);
-//         if (result?.data?._id) {
-//           setTestId(result.data._id);
-//         }
-//       }
-
-//       setHasSaved(true);
-//       setIsEditing(false);
-//       toast.success(testId ? "Updated successfully" : "Saved successfully");
-//       onRefresh?.();
-//     } catch (err: any) {
-//       toast.error(err.response?.data?.message || "Save failed");
-//     } finally {
-//       setIsSaving(false);
-//     }
-//   };
-
-//   const toggleEdit = () => setIsEditing(true);
-//   const isViewMode = hasSaved && !isEditing;
-//   const buttonText = isViewMode ? 'Edit' : testId ? 'Update' : 'Save';
-//   const ButtonIcon = isViewMode ? Edit3 : Save;
-
-//   if (isLoading) {
-//     return (
-//       <div className="flex items-center justify-center p-10">
-//         <Loader2 className="w-8 h-8 animate-spin" />
-//         <span className="ml-2">Loading...</span>
-//       </div>
-//     );
-//   }
-
-//   return (
-//     <div className="p-6 max-w-full overflow-x-auto">
-//       <div className="flex justify-between items-center mb-6">
-//         <h2 className="text-2xl font-bold">Linearity of Time</h2>
-//         <button
-//           onClick={isViewMode ? toggleEdit : handleSave}
-//           disabled={isSaving}
-//           className={`flex items-center gap-2 px-4 py-2 rounded text-sm font-medium ${isViewMode
-//             ? 'bg-blue-600 text-white hover:bg-blue-700'
-//             : 'bg-green-600 text-white hover:bg-green-700'
-//             } ${isSaving ? 'opacity-50 cursor-not-allowed' : ''}`}
-//         >
-//           {isSaving ? (
-//             <Loader2 className="w-4 h-4 animate-spin" />
-//           ) : (
-//             <ButtonIcon className="w-4 h-4" />
-//           )}
-//           {isSaving ? 'Saving...' : buttonText}
-//         </button>
-//       </div>
-
-//       {/* Test Conditions Table */}
-//       <div className="bg-white shadow-md rounded-lg overflow-hidden mb-8">
-//         <h3 className="px-6 py-3 text-lg font-semibold bg-blue-50 border-b">
-//           Test Conditions
-//         </h3>
-//         <table className="min-w-full divide-y divide-gray-200">
-//           <thead className="bg-gray-50">
-//             <tr>
-//               <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">
-//                 FDD (cm)
-//               </th>
-//               <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r">
-//                 kV
-//               </th>
-//               <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-//                 Time (Sec)
-//               </th>
-//             </tr>
-//           </thead>
-//           <tbody className="bg-white divide-y divide-gray-200">
-//             <tr className="hover:bg-gray-50">
-//               <td className="px-6 py-2 border-r">
-//                 <input
-//                   type="text"
-//                   value={testConditions.fdd}
-//                   onChange={(e) =>
-//                     setTestConditions((p) => ({ ...p, fdd: e.target.value }))
-//                   }
-//                   disabled={isViewMode}
-//                   className={`w-full px-3 py-2 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode
-//                     ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300'
-//                     : 'border-gray-300'
-//                     }`}
-//                   placeholder="100"
-//                 />
-//               </td>
-//               <td className="px-6 py-2 border-r">
-//                 <input
-//                   type="text"
-//                   value={testConditions.kv}
-//                   onChange={(e) =>
-//                     setTestConditions((p) => ({ ...p, kv: e.target.value }))
-//                   }
-//                   disabled={isViewMode}
-//                   className={`w-full px-3 py-2 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode
-//                     ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300'
-//                     : 'border-gray-300'
-//                     }`}
-//                   placeholder="60"
-//                 />
-//               </td>
-//               <td className="px-6 py-2">
-//                 <input
-//                   type="text"
-//                   value={testConditions.time}
-//                   onChange={(e) =>
-//                     setTestConditions((p) => ({ ...p, time: e.target.value }))
-//                   }
-//                   disabled={isViewMode}
-//                   className={`w-full px-3 py-2 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode
-//                     ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300'
-//                     : 'border-gray-300'
-//                     }`}
-//                   placeholder="0.10"
-//                 />
-//               </td>
-//             </tr>
-//           </tbody>
-//         </table>
-//       </div>
-
-//       {/* Main Measurement Table */}
-//       <div className="bg-white shadow-md rounded-lg overflow-hidden mb-8">
-//         <h3 className="px-6 py-3 text-lg font-semibold bg-blue-50 border-b">
-//           Measurements
-//         </h3>
-//         <div className="overflow-x-auto">
-//           <table className="min-w-full divide-y divide-gray-200">
-//             <thead className="bg-gray-50">
-//               <tr>
-//                 <th
-//                   rowSpan={2}
-//                   className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r"
-//                 >
-//                   mA Applied
-//                 </th>
-//                 <th
-//                   colSpan={3}
-//                   className="px-4 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider border-r"
-//                 >
-//                   Radiation Output (mGy)
-//                 </th>
-//                 <th
-//                   rowSpan={2}
-//                   className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r"
-//                 >
-//                   Average Output (mGy)
-//                 </th>
-//                 <th
-//                   rowSpan={2}
-//                   className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider"
-//                 >
-//                   mGy / mAs (X)
-//                 </th>
-//                 <th className="w-12" rowSpan={2} />
-//               </tr>
-//               <tr>
-//                 <th className="px-4 py-2 text-center text-xs font-medium text-gray-700 uppercase tracking-wider border-r">
-//                   1
-//                 </th>
-//                 <th className="px-4 py-2 text-center text-xs font-medium text-gray-700 uppercase tracking-wider border-r">
-//                   2
-//                 </th>
-//                 <th className="px-4 py-2 text-center text-xs font-medium text-gray-700 uppercase tracking-wider border-r">
-//                   3
-//                 </th>
-//               </tr>
-//             </thead>
-//             <tbody className="bg-white divide-y divide-gray-200">
-//               {processedRows.rows.map((row) => (
-//                 <tr key={row.id} className="hover:bg-gray-50">
-//                   <td className="px-4 py-2 border-r">
-//                     <input
-//                       type="text"
-//                       value={row.maApplied}
-//                       onChange={(e) =>
-//                         updateMeasurementRow(row.id, 'maApplied', e.target.value)
-//                       }
-//                       disabled={isViewMode}
-//                       className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode
-//                         ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300'
-//                         : 'border-gray-300'
-//                         }`}
-//                       placeholder="50"
-//                     />
-//                   </td>
-//                   <td className="px-4 py-2 border-r">
-//                     <input
-//                       type="text"
-//                       value={row.radiationOutput1}
-//                       onChange={(e) =>
-//                         updateMeasurementRow(row.id, 'radiationOutput1', e.target.value)
-//                       }
-//                       disabled={isViewMode}
-//                       className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode
-//                         ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300'
-//                         : 'border-gray-300'
-//                         }`}
-//                     />
-//                   </td>
-//                   <td className="px-4 py-2 border-r">
-//                     <input
-//                       type="text"
-//                       value={row.radiationOutput2}
-//                       onChange={(e) =>
-//                         updateMeasurementRow(row.id, 'radiationOutput2', e.target.value)
-//                       }
-//                       disabled={isViewMode}
-//                       className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode
-//                         ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300'
-//                         : 'border-gray-300'
-//                         }`}
-//                     />
-//                   </td>
-//                   <td className="px-4 py-2 border-r">
-//                     <input
-//                       type="text"
-//                       value={row.radiationOutput3}
-//                       onChange={(e) =>
-//                         updateMeasurementRow(row.id, 'radiationOutput3', e.target.value)
-//                       }
-//                       disabled={isViewMode}
-//                       className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode
-//                         ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300'
-//                         : 'border-gray-300'
-//                         }`}
-//                     />
-//                   </td>
-//                   <td className="px-4 py-2 border-r font-medium bg-gray-50 text-center">
-//                     {row.averageOutput || '—'}
-//                   </td>
-//                   <td className="px-4 py-2 font-medium bg-gray-50 text-center">
-//                     {row.mGyPerMAs || '—'}
-//                   </td>
-//                   <td className="px-2 py-2 text-center">
-//                     {measurementRows.length > 1 && !isViewMode && (
-//                       <button
-//                         onClick={() => removeMeasurementRow(row.id)}
-//                         className="text-red-600 hover:bg-red-100 p-1 rounded"
-//                       >
-//                         <Trash2 className="w-4 h-4" />
-//                       </button>
-//                     )}
-//                   </td>
-//                 </tr>
-//               ))}
-//               {/* Summary Row */}
-//               <tr className="bg-blue-50 font-semibold">
-//                 <td colSpan={5} className="px-4 py-2 text-center border-r">
-//                   Summary
-//                 </td>
-//                 <td className="px-4 py-2 text-center border-r">
-//                   X MAX: {processedRows.xMax || '—'}
-//                 </td>
-//                 <td className="px-4 py-2 text-center">
-//                   X MIN: {processedRows.xMin || '—'}
-//                 </td>
-//                 <td />
-//               </tr>
-//               <tr className="bg-blue-50 font-semibold">
-//                 <td colSpan={6} className="px-4 py-2 text-center border-r">
-//                   Coefficient of Linearity (CoL): {processedRows.coefficientOfLinearity || '—'}
-//                 </td>
-//                 <td className="px-4 py-2 text-center">
-//                   <span
-//                     className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${processedRows.remarks === 'Pass'
-//                       ? 'bg-green-100 text-green-800'
-//                       : processedRows.remarks === 'Fail'
-//                         ? 'bg-red-100 text-red-800'
-//                         : 'text-gray-400'
-//                       }`}
-//                   >
-//                     {processedRows.remarks || '—'}
-//                   </span>
-//                 </td>
-//                 <td />
-//               </tr>
-//             </tbody>
-//           </table>
-//         </div>
-//         {!isViewMode && (
-//           <div className="px-6 py-3 bg-gray-50 border-t">
-//             <button
-//               onClick={addMeasurementRow}
-//               className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm font-medium"
-//             >
-//               <Plus className="w-4 h-4" /> Add Row
-//             </button>
-//           </div>
-//         )}
-//       </div>
-
-//       {/* Tolerance */}
-//       <div className="bg-white p-6 shadow-md rounded-lg">
-//         <h3 className="text-lg font-semibold text-gray-800 mb-4">Tolerance Setting</h3>
-//         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-//           <div>
-//             <label className="block text-sm font-medium text-gray-700 mb-1">
-//               Tolerance (CoL &lt; value)
-//             </label>
-//             <input
-//               type="text"
-//               value={tolerance}
-//               onChange={(e) => setTolerance(e.target.value)}
-//               disabled={isViewMode}
-//               className={`w-full px-3 py-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode
-//                 ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300'
-//                 : 'border-gray-300'
-//                 }`}
-//               placeholder="0.1"
-//             />
-//           </div>
-//         </div>
-//         <p className="mt-2 text-sm text-gray-600">
-//           Tolerance: CoL &lt; {tolerance || '0.1'}
-//         </p>
-//       </div>
-//     </div>
-//   );
-// };
-
-// export default LinearityOfTime;

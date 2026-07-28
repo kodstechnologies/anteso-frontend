@@ -1626,7 +1626,7 @@ const RadiographyMobileHTContent: React.FC<RadiographyMobileHTProps> = ({ servic
 
       if (grouped["Radiation Protection Survey"]?.length) {
         const data = grouped["Radiation Protection Survey"];
-        let surveyDate = "", hasValidCalibration = "", appliedCurrent = "100", appliedVoltage = "80", exposureTime = "1.0", workload = "5000";
+        let surveyDate = "", hasValidCalibration = "", appliedCurrent = "100", appliedVoltage = "80", exposureTime = "1.0", workload = "500";
         const locations: any[] = [];
         data.forEach((r) => {
           const f = (r["Field Name"] ?? "").trim();

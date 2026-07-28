@@ -718,13 +718,13 @@ const ViewServiceReportBMD: React.FC = () => {
                 ...(report.category && report.category !== "N/A" && report.category !== "-" ? [["Category", report.category]] : []),
                 ["Condition of Test Item", report.condition],
                 ["Testing Procedure No.", report.testingProcedureNumber || "-"],
-                ["Engineer�s Name", report.engineerNameRPId || "-"],
+                ["Engineer's Name", report.engineerNameRPId || "-"],
                 ["RP ID", report.rpId || "-"],
                 ["No. of pages", report.pages || pageCount || "-"],
                 ["QA Test Date", formatDate(report.testDate || "")],
                 ["QA Test Due Date", formatDate(report.testDueDate || "")],
                 ["Testing done at Location", report.location],
-                ["Temperature (�C)", report.temperature || "-"],
+                ["Temperature (°C)", report.temperature || "-"],
                 ["Humidity in RH (%)", report.humidity || "-"],
               ].map(([label, value], index) => (
                 <div key={String(label)} className="flex">

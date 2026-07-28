@@ -99,7 +99,7 @@ const imagingPhantomSection = (): any[][] => [
 
 const radiationProtectionSurveySection = (): any[][] => [
   ["", "", "mA", "kV", "Time", "", "Workload", "Location", "mR/hr", "Category"],
-  ["", "", "100", "80", "0.5", "", "300", "Control Console (Operator Position)", "0.05", "worker"],
+  ["", "", "100", "80", "0.5", "", "500", "Control Console (Operator Position)", "0.05", "worker"],
   ["", "", "", "", "", "", "", "Outside Lead Glass", "0.03", "worker"],
   ["", "", "", "", "", "", "", "Outside Patient Entrance Door", "0.02", "public"],
   ["", "", "", "", "", "", "", "Patient Waiting Area", "0.01", "public"],

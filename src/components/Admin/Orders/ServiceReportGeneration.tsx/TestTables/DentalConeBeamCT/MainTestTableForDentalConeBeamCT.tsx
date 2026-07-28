@@ -92,8 +92,7 @@ const MainTestTableForDentalConeBeamCT: React.FC<MainTestTableProps> = ({ testDa
     if (validRows.length > 0) {
       const toleranceSign =
         testData.operatingPotential.tolerance?.sign ||
-        testData.operatingPotential.toleranceSign ||
-        "�";
+        testData.operatingPotential.toleranceSign || "±";
       const toleranceValue = testData.operatingPotential.toleranceValue || "2.0";
       const testRows = validRows.map((row: any) => {
         let isPass = false;
@@ -335,7 +334,7 @@ const MainTestTableForDentalConeBeamCT: React.FC<MainTestTableProps> = ({ testDa
   // 4. Linearity of mAs Loading
 
 
-  // 5. Tube Housing Leakage � measured = mGy in one hour (same formula as generate page)
+  // 5. Tube Housing Leakage — measured = mGy in one hour (same formula as generate page)
   {
     const rll = testData.radiationLeakage;
     const sourceRows = rll?.leakageRows || rll?.leakageMeasurements;

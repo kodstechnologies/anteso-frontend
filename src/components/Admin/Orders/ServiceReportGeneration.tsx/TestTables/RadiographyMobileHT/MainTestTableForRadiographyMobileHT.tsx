@@ -50,7 +50,7 @@ const MainTestTableForRadiographyMobileHT: React.FC<MainTestTableProps> = ({ tes
     });
   };
 
-  // Congruence of Radiation & Optical Field � RadiographyFixed
+  // Congruence of Radiation & Optical Field — RadiographyFixed
   if (testData.congruence?.congruenceMeasurements && Array.isArray(testData.congruence.congruenceMeasurements)) {
     const validRows = testData.congruence.congruenceMeasurements.filter((row: any) => row.dimension || row.percentFED);
     if (validRows.length > 0) {
@@ -69,7 +69,7 @@ const MainTestTableForRadiographyMobileHT: React.FC<MainTestTableProps> = ({ tes
     }
   }
 
-  // Central Beam Alignment � RadiographyFixed
+  // Central Beam Alignment — RadiographyFixed
   if (testData.centralBeamAlignment?.observedTilt) {
     const tiltValue = testData.centralBeamAlignment.observedTilt.value || "-";
     const toleranceOperator = testData.centralBeamAlignment.tolerance?.operator || "=";
@@ -98,20 +98,20 @@ const MainTestTableForRadiographyMobileHT: React.FC<MainTestTableProps> = ({ tes
       }
     }
 
-    const specifiedValue = `${toleranceOperator} ${toleranceValue}�`;
-    const toleranceDisplay = `${toleranceOperator} ${toleranceValue}�`;
+    const specifiedValue = `${toleranceOperator} ${toleranceValue}°`;
+    const toleranceDisplay = `${toleranceOperator} ${toleranceValue}°`;
 
     addRowsForTest("Central Beam Alignment", [
       {
         specified: specifiedValue,
-        measured: tiltValue !== "-" ? `${tiltValue}�` : "-",
+        measured: tiltValue !== "-" ? `${tiltValue}°` : "-",
         tolerance: toleranceDisplay,
         remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
       },
     ]);
   }
 
-  // Effective Focal Spot Size � RadiographyFixed
+  // Effective Focal Spot Size — RadiographyFixed
   if (testData.effectiveFocalSpot?.focalSpots && Array.isArray(testData.effectiveFocalSpot.focalSpots)) {
     const validRows = testData.effectiveFocalSpot.focalSpots.filter((spot: any) => spot.focusType || spot.measuredWidth);
     if (validRows.length > 0) {
@@ -147,7 +147,7 @@ const MainTestTableForRadiographyMobileHT: React.FC<MainTestTableProps> = ({ tes
     }
   }
 
-  // Accuracy of Irradiation Time(sec) � RadiographyFixed
+  // Accuracy of Irradiation Time(sec) — RadiographyFixed
   if (testData.accuracyOfIrradiationTime?.irradiationTimes && Array.isArray(testData.accuracyOfIrradiationTime.irradiationTimes)) {
     const validRows = testData.accuracyOfIrradiationTime.irradiationTimes.filter((row: any) => row.setTime || row.measuredTime);
     if (validRows.length > 0) {
@@ -179,14 +179,13 @@ const MainTestTableForRadiographyMobileHT: React.FC<MainTestTableProps> = ({ tes
     }
   }
 
-  // Accuracy of Operating Potential (kVp Accuracy) � RadiographyFixed (Mobile HT table2 / tolerance fields)
+  // Accuracy of Operating Potential (kVp Accuracy) — RadiographyFixed (Mobile HT table2 / tolerance fields)
   if (testData.accuracyOfOperatingPotential?.table2 && Array.isArray(testData.accuracyOfOperatingPotential.table2)) {
     const validRows = testData.accuracyOfOperatingPotential.table2.filter((row: any) => row.setKV || row.avgKvp);
     if (validRows.length > 0) {
       const toleranceSign =
         testData.accuracyOfOperatingPotential.tolerance?.sign ||
-        testData.accuracyOfOperatingPotential.toleranceSign ||
-        "�";
+        testData.accuracyOfOperatingPotential.toleranceSign || "±";
       const toleranceValue =
         testData.accuracyOfOperatingPotential.tolerance?.value ||
         testData.accuracyOfOperatingPotential.toleranceValue ||
@@ -215,13 +214,13 @@ const MainTestTableForRadiographyMobileHT: React.FC<MainTestTableProps> = ({ tes
     }
   }
 
-  // Total Filtration � Accuracy of Operating Potential (kVp at filtration) � RadiographyFixed
+  // Total Filtration — Accuracy of Operating Potential (kVp at filtration) — RadiographyFixed
   if (testData.totalFilteration?.measurements && Array.isArray(testData.totalFilteration.measurements)) {
     const validRows = testData.totalFilteration.measurements.filter(
       (row: any) => row.appliedKvp || row.averageKvp || row.measuredValues
     );
     if (validRows.length > 0) {
-      const toleranceSign = testData.totalFilteration.tolerance?.sign || "�";
+      const toleranceSign = testData.totalFilteration.tolerance?.sign || "±";
       const toleranceValue = testData.totalFilteration.tolerance?.value || "2.0";
       const testRows = validRows.map((row: any) => {
         let avgKvpNum: number | null = null;
@@ -268,7 +267,7 @@ const MainTestTableForRadiographyMobileHT: React.FC<MainTestTableProps> = ({ tes
     }
   }
 
-  // Total Filtration result � RadiographyFixed; Mobile HT uses `required` for mm Al and `appliedKV` for kVp (see ViewServiceReport)
+  // Total Filtration result — RadiographyFixed; Mobile HT uses `required` for mm Al and `appliedKV` for kVp (see ViewServiceReport)
   if (testData.totalFilteration?.totalFiltration) {
     const tf = testData.totalFilteration.totalFiltration;
     const measuredStr = tf.required || tf.measured || "-";
@@ -311,7 +310,7 @@ const MainTestTableForRadiographyMobileHT: React.FC<MainTestTableProps> = ({ tes
     ]);
   }
 
-  // Linearity of mAs / mA Loading (Coefficient of Linearity) � RadiographyFixed
+  // Linearity of mAs / mA Loading (Coefficient of Linearity) — RadiographyFixed
   if (testData.linearityOfMasLoading?.table2 && Array.isArray(testData.linearityOfMasLoading.table2)) {
     const linearityLabel = hasTimer
       ? "Linearity of mA Loading (Coefficient of Linearity)"
@@ -407,7 +406,7 @@ const MainTestTableForRadiographyMobileHT: React.FC<MainTestTableProps> = ({ tes
     }
   }
 
-  // Consistency of Radiation Output (CoV) � RadiographyFixed
+  // Consistency of Radiation Output (CoV) — RadiographyFixed
   if (testData.outputConsistency?.outputRows && Array.isArray(testData.outputConsistency.outputRows)) {
     const validRows = testData.outputConsistency.outputRows.filter(
       (row: any) => row.kv || row.cv || row.cov || (row.outputs && row.outputs.length > 0) || row.remark
@@ -492,7 +491,7 @@ const MainTestTableForRadiographyMobileHT: React.FC<MainTestTableProps> = ({ tes
     }
   }
 
-  // Radiation leakage level at 1m from tube housing � RadiographyFixed
+  // Radiation leakage level at 1m from tube housing — RadiographyFixed
   if (testData.radiationLeakageLevel?.leakageMeasurements && Array.isArray(testData.radiationLeakageLevel.leakageMeasurements)) {
     const validRows = testData.radiationLeakageLevel.leakageMeasurements.filter(
       (row: any) => row.location && (row.max || row.result || row.front || row.back)
@@ -560,7 +559,7 @@ const MainTestTableForRadiographyMobileHT: React.FC<MainTestTableProps> = ({ tes
     }
   }
 
-  // Radiation Protection Survey � RadiographyFixed
+  // Radiation Protection Survey — RadiographyFixed
   if (testData.radiationProtectionSurvey?.locations && Array.isArray(testData.radiationProtectionSurvey.locations)) {
     const validRows = testData.radiationProtectionSurvey.locations.filter((loc: any) => loc.location || loc.mRPerWeek);
     if (validRows.length > 0) {

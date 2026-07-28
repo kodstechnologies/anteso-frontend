@@ -166,7 +166,7 @@ Applied Current (mA),Applied Voltage (kV),Exposure Time (s),Workload (mA min/wee
 AppliedCurrent,100,0,,,,
 AppliedVoltage,80,0,,,,
 ExposureTime,0.5,0,,,,
-Workload,5000,0,,,,
+Workload,500,0,,,,
 ,,,,,
 --- SURVEY LOCATIONS (For Radiation Worker) ---,,,,,
 Location,Max. Radiation Level (mR/hr),mR/week,Result,Category
@@ -192,4 +192,3 @@ LocationRow_mRPerHr,0.02,7,,,
 LocationRow_Location,Patient Waiting Area,8,public,,
 LocationRow_mRPerHr,0.01,8,,,
 ,,,,,
-

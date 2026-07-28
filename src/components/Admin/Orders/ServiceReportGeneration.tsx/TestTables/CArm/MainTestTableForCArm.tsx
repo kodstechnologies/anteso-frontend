@@ -50,7 +50,7 @@ const MainTestTableForCArm: React.FC<MainTestTableProps> = ({ testData, hasTimer
     });
   };
 
-  // Congruence of Radiation & Optical Field � RadiographyFixed
+  // Congruence of Radiation & Optical Field — RadiographyFixed
   if (testData.congruence?.congruenceMeasurements && Array.isArray(testData.congruence.congruenceMeasurements)) {
     const validRows = testData.congruence.congruenceMeasurements.filter((row: any) => row.dimension || row.percentFED);
     if (validRows.length > 0) {
@@ -69,7 +69,7 @@ const MainTestTableForCArm: React.FC<MainTestTableProps> = ({ testData, hasTimer
     }
   }
 
-  // Central Beam Alignment � RadiographyFixed
+  // Central Beam Alignment — RadiographyFixed
   if (testData.centralBeamAlignment?.observedTilt) {
     const tiltValue = testData.centralBeamAlignment.observedTilt.value || "-";
     const toleranceOperator = testData.centralBeamAlignment.tolerance?.operator || "<=";
@@ -98,20 +98,20 @@ const MainTestTableForCArm: React.FC<MainTestTableProps> = ({ testData, hasTimer
       }
     }
 
-    const specifiedValue = `${toleranceOperator} ${toleranceValue}�`;
-    const toleranceDisplay = `${toleranceOperator} ${toleranceValue}�`;
+    const specifiedValue = `${toleranceOperator} ${toleranceValue}°`;
+    const toleranceDisplay = `${toleranceOperator} ${toleranceValue}°`;
 
     addRowsForTest("Central Beam Alignment", [
       {
         specified: specifiedValue,
-        measured: tiltValue !== "-" ? `${tiltValue}�` : "-",
+        measured: tiltValue !== "-" ? `${tiltValue}°` : "-",
         tolerance: toleranceDisplay,
         remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
       },
     ]);
   }
 
-  // Effective Focal Spot Size � RadiographyFixed
+  // Effective Focal Spot Size — RadiographyFixed
   if (testData.effectiveFocalSpot?.focalSpots && Array.isArray(testData.effectiveFocalSpot.focalSpots)) {
     const validRows = testData.effectiveFocalSpot.focalSpots.filter((spot: any) => spot.focusType || spot.measuredWidth);
     if (validRows.length > 0) {
@@ -147,7 +147,7 @@ const MainTestTableForCArm: React.FC<MainTestTableProps> = ({ testData, hasTimer
     }
   }
 
-  // Accuracy of Irradiation Time(sec) � only when unit has a timer
+  // Accuracy of Irradiation Time(sec) — only when unit has a timer
   const irrBlock = testData.accuracyOfIrradiationTime || testData.irradiationTime;
   if (hasTimer && irrBlock?.irradiationTimes && Array.isArray(irrBlock.irradiationTimes)) {
     const validRows = irrBlock.irradiationTimes.filter((row: any) => row.setTime || row.measuredTime);
@@ -178,14 +178,13 @@ const MainTestTableForCArm: React.FC<MainTestTableProps> = ({ testData, hasTimer
     }
   }
 
-  // Accuracy of Operating Potential (kVp Accuracy) � RadiographyFixed table2 (if present on CArm payload)
+  // Accuracy of Operating Potential (kVp Accuracy) — RadiographyFixed table2 (if present on CArm payload)
   if (testData.accuracyOfOperatingPotential?.table2 && Array.isArray(testData.accuracyOfOperatingPotential.table2)) {
     const validRows = testData.accuracyOfOperatingPotential.table2.filter((row: any) => row.setKV || row.avgKvp);
     if (validRows.length > 0) {
       const toleranceSign =
         testData.accuracyOfOperatingPotential.tolerance?.sign ||
-        testData.accuracyOfOperatingPotential.toleranceSign ||
-        "�";
+        testData.accuracyOfOperatingPotential.toleranceSign || "±";
       const toleranceValue =
         testData.accuracyOfOperatingPotential.tolerance?.value ||
         testData.accuracyOfOperatingPotential.toleranceValue ||
@@ -213,14 +212,14 @@ const MainTestTableForCArm: React.FC<MainTestTableProps> = ({ testData, hasTimer
     }
   }
 
-  // Accuracy of Operating Potential (from total filtration measurements) � RadiographyFixed; CArm uses operatingPotential === totalFilteration
+  // Accuracy of Operating Potential (from total filtration measurements) — RadiographyFixed; CArm uses operatingPotential === totalFilteration
   const tfRoot = testData.totalFilteration || testData.operatingPotential;
   if (tfRoot?.measurements && Array.isArray(tfRoot.measurements)) {
     const validRows = tfRoot.measurements.filter(
       (row: any) => row.appliedKvp || row.averageKvp || row.measuredValues
     );
     if (validRows.length > 0) {
-      const toleranceSign = tfRoot.tolerance?.sign || "�";
+      const toleranceSign = tfRoot.tolerance?.sign || "±";
       const toleranceValue = tfRoot.tolerance?.value || tfRoot.toleranceValue || "2.0";
       const testRows = validRows.map((row: any) => {
         let avgKvpNum: number | null = null;
@@ -267,7 +266,7 @@ const MainTestTableForCArm: React.FC<MainTestTableProps> = ({ testData, hasTimer
     }
   }
 
-  // Total Filtration � C-Arm stores mm Al in `measured`, kVp in `atKvp` (often omitted ? use measurements[].appliedKvp)
+  // Total Filtration — C-Arm stores mm Al in `measured`, kVp in `atKvp` (often omitted ? use measurements[].appliedKvp)
   if (testData.totalFilteration?.totalFiltration) {
     const tfRoot = testData.totalFilteration;
     const tf = tfRoot.totalFiltration;
@@ -335,7 +334,7 @@ const MainTestTableForCArm: React.FC<MainTestTableProps> = ({ testData, hasTimer
     ]);
   }
 
-  // Linearity of mAs / mA Loading (Coefficient of Linearity) � RadiographyFixed
+  // Linearity of mAs / mA Loading (Coefficient of Linearity) — RadiographyFixed
   const masTable2 = testData.linearityOfMasLoading?.table2;
   const masValidRows =
     Array.isArray(masTable2) ? masTable2.filter((row: any) => row.mAsApplied) : [];
@@ -423,7 +422,7 @@ const MainTestTableForCArm: React.FC<MainTestTableProps> = ({ testData, hasTimer
     ]);
   }
 
-  // C-Arm: mA linearity only when no mAs-applied rows � single summary row like Fixed CoL summary
+  // C-Arm: mA linearity only when no mAs-applied rows — single summary row like Fixed CoL summary
   if (masValidRows.length === 0) {
     const maLob = testData.linearityOfMaLoading;
     const maRows = maLob?.table2Rows || maLob?.table2;
@@ -471,7 +470,7 @@ const MainTestTableForCArm: React.FC<MainTestTableProps> = ({ testData, hasTimer
     }
   }
 
-  // Consistency of Radiation Output (CoV) � RadiographyFixed (CArm tolerance may be a plain string)
+  // Consistency of Radiation Output (CoV) — RadiographyFixed (CArm tolerance may be a plain string)
   if (testData.outputConsistency?.outputRows && Array.isArray(testData.outputConsistency.outputRows)) {
     const validRows = testData.outputConsistency.outputRows.filter(
       (row: any) =>
@@ -569,7 +568,7 @@ const MainTestTableForCArm: React.FC<MainTestTableProps> = ({ testData, hasTimer
     }
   }
 
-  // Radiation leakage level at 1m from tube housing � RadiographyFixed; CArm uses tubeHousingLeakage / leakageRows
+  // Radiation leakage level at 1m from tube housing — RadiographyFixed; CArm uses tubeHousingLeakage / leakageRows
   const leakParent = testData.radiationLeakageLevel || testData.tubeHousingLeakage;
   const leakMeasurements =
     leakParent &&
@@ -646,7 +645,7 @@ const MainTestTableForCArm: React.FC<MainTestTableProps> = ({ testData, hasTimer
     }
   }
 
-  // Radiation Protection Survey � RadiographyFixed
+  // Radiation Protection Survey — RadiographyFixed
   if (testData.radiationProtectionSurvey?.locations && Array.isArray(testData.radiationProtectionSurvey.locations)) {
     const validRows = testData.radiationProtectionSurvey.locations.filter((loc: any) => loc.location || loc.mRPerWeek);
     if (validRows.length > 0) {

@@ -101,8 +101,8 @@ const radiationLeakageSection = (): any[][] => [
 
 const radiationProtectionSurveySection = (): any[][] => [
   ["kV", "mA", "Time", "Workload", "Location", "mR/hr"],
-  ["80", "100", "0.5", "5000", "Control Console (Operator Position)", "0.02"],
-  ["80", "100", "0.5", "5000", "Outside Patient Entrance Door", "0.01"],
+  ["80", "100", "0.5", "500", "Control Console (Operator Position)", "0.02"],
+  ["80", "100", "0.5", "500", "Outside Patient Entrance Door", "0.01"],
 ];
 
 /** Mark mAs column cells as text so Excel does not convert them to dates. */

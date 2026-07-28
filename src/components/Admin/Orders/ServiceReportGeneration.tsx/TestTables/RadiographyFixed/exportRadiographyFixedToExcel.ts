@@ -147,7 +147,7 @@ export const buildFixedTemplateRows = (hasTimer: boolean): any[][] => {
       "Exposure Time (s)",
       "0.5",
       "Workload (mA.min/week)",
-      "5000",
+      "500",
     ],
     ["LOCATION", "mR/hr", "Category"],
     ["Control Console (Operator Position)", "0.1", "worker"],

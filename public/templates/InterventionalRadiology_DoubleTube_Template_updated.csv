@@ -115,6 +115,5 @@ kV,mA,Time,FDD (cm),Workload,Location,Left,Right,Front,Back,Top,Tolerance Operat
 
 TEST: RADIATION PROTECTION SURVEY REPORT
 Location,mR/hr,Category,Applied Voltage,Applied Current,Exposure Time,Workload
-Control Console,0.1,worker,80,100,0.5,5000
+Control Console,0.1,worker,80,100,0.5,500
 Entrance Door,0.05,public,,,,
-

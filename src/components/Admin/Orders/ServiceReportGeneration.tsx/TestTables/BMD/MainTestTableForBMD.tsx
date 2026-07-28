@@ -110,7 +110,7 @@ const MainTestTableForBMD: React.FC<MainTestTableProps> = ({ testData, hasTimer 
     }
   }
 
-  // 1. Accuracy of Operating Potential (kVp Accuracy) � BMD payload
+  // 1. Accuracy of Operating Potential (kVp Accuracy) — BMD payload
   if (testData.accuracyOfOperatingPotential && !isEmpty(testData.accuracyOfOperatingPotential)) {
     const test = testData.accuracyOfOperatingPotential;
     if (test.rows && Array.isArray(test.rows) && test.rows.length > 0) {
@@ -166,7 +166,7 @@ const MainTestTableForBMD: React.FC<MainTestTableProps> = ({ testData, hasTimer 
     }
   }
 
-  // Total Filtration � RadiographyFixed (BMD uses totalFiltration)
+  // Total Filtration — RadiographyFixed (BMD uses totalFiltration)
   const tfRoot = testData.totalFiltration;
   if (tfRoot?.measurements && Array.isArray(tfRoot.measurements)) {
     const validRows = tfRoot.measurements.filter(
@@ -294,7 +294,7 @@ const MainTestTableForBMD: React.FC<MainTestTableProps> = ({ testData, hasTimer 
     return fallback;
   };
 
-  // Linearity of mAs loading � RadiographyFixed (linearityOfMasLoading.table2 + mAsApplied)
+  // Linearity of mAs loading — RadiographyFixed (linearityOfMasLoading.table2 + mAsApplied)
   if (testData.linearityOfMasLoading?.table2 && Array.isArray(testData.linearityOfMasLoading.table2)) {
     const lob = testData.linearityOfMasLoading;
     const linearityLabel = hasTimer
@@ -464,7 +464,7 @@ const MainTestTableForBMD: React.FC<MainTestTableProps> = ({ testData, hasTimer 
     }
   }
 
-  // Output consistency (CoV) � RadiographyFixed (outputConsistency or BMD reproducibilityOfRadiationOutput)
+  // Output consistency (CoV) — RadiographyFixed (outputConsistency or BMD reproducibilityOfRadiationOutput)
   const outBlock = testData.outputConsistency || testData.reproducibilityOfRadiationOutput;
   if (outBlock?.outputRows && Array.isArray(outBlock.outputRows)) {
     const validRows = outBlock.outputRows.filter(
@@ -576,7 +576,7 @@ const MainTestTableForBMD: React.FC<MainTestTableProps> = ({ testData, hasTimer 
     ]);
   }
 
-  // Radiation leakage level at 1m from tube housing � same measured-value logic as RadiographyFixed
+  // Radiation leakage level at 1m from tube housing — same measured-value logic as RadiographyFixed
   const leakParent = testData.radiationLeakageLevel || testData.tubeHousingLeakage;
   const leakMeasurements =
     leakParent &&
@@ -669,7 +669,7 @@ const MainTestTableForBMD: React.FC<MainTestTableProps> = ({ testData, hasTimer 
     }
   }
 
-  // Radiation Protection Survey � RadiographyFixed
+  // Radiation Protection Survey — RadiographyFixed
   if (testData.radiationProtectionSurvey?.locations && Array.isArray(testData.radiationProtectionSurvey.locations)) {
     const validRows = testData.radiationProtectionSurvey.locations.filter(
       (loc: any) => loc.location || loc.mRPerWeek

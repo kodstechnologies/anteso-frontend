@@ -10,6 +10,7 @@ export interface OBISavedExportData {
   outputConsistency?: any;
   highContrastSensitivity?: any;
   lowContrastSensitivity?: any;
+  linearityOfMaLoading?: any;
   linearityOfTime?: any;
   linearityOfMasLoadingStations?: any;
   tubeHousingLeakage?: any;
@@ -159,7 +160,7 @@ export const createOBISavedExcel = (data: OBISavedExportData): XLSX.WorkBook => 
     addSection("LOW CONTRAST SENSITIVITY", ["Test", "Result"], rows);
   }
 
-  const lot = unwrap(data.linearityOfTime);
+  const lot = unwrap(data.linearityOfMaLoading);
   if (lot?.measurementRows?.length > 0 || lot?.table2?.length > 0) {
     const tc = lot.testConditions || lot.table1 || {};
     const rows = lot.measurementRows || lot.table2 || [];
@@ -174,7 +175,7 @@ export const createOBISavedExcel = (data: OBISavedExportData): XLSX.WorkBook => 
     );
     const headerCols = headers.map((_, i) => `Header ${i + 1}`);
     const measCols = headers.map((_, i) => `Meas ${i + 1}`);
-    allData.push(["TEST: LINEARITY OF TIME"]);
+    allData.push(["TEST: LINEARITY OF MA LOADING"]);
     allData.push(["FDD (cm)", "kV", "Time (sec)", "Tolerance Operator", "Tolerance Value", ...headerCols, "mA Applied", ...measCols]);
     rows.forEach((r: any, idx: number) => {
       const outs = r.radiationOutputs || r.measuredOutputs || [];
@@ -186,6 +187,39 @@ export const createOBISavedExcel = (data: OBISavedExportData): XLSX.WorkBook => 
         idx === 0 ? (lot.tolerance ?? "0.1") : "",
         ...(idx === 0 ? headers : Array(headers.length).fill("")),
         r.maApplied ?? r.ma ?? "",
+        ...headers.map((_, i) => outs[i] ?? ""),
+      ]);
+    });
+    addBlank();
+  }
+
+  const lotTime = unwrap(data.linearityOfTime);
+  if (lotTime?.measurementRows?.length > 0) {
+    const tc = lotTime.testConditions || {};
+    const rows = lotTime.measurementRows || [];
+    const maxMeasurements = Math.max(
+      1,
+      ...rows.map((r: any) => (r.radiationOutputs || r.measuredOutputs || []).length)
+    );
+    const savedHeaders = lotTime.measHeaders || lotTime.headers || [];
+    const headers = Array.from(
+      { length: Math.max(maxMeasurements, savedHeaders.length, 1) },
+      (_, i) => String(savedHeaders[i] ?? `Meas ${i + 1}`)
+    );
+    const headerCols = headers.map((_, i) => `Header ${i + 1}`);
+    const measCols = headers.map((_, i) => `Meas ${i + 1}`);
+    allData.push(["TEST: LINEARITY OF TIME"]);
+    allData.push(["FFD (cm)", "kV", "mA", "Tolerance Operator", "Tolerance Value", ...headerCols, "Time Applied", ...measCols]);
+    rows.forEach((r: any, idx: number) => {
+      const outs = r.radiationOutputs || r.measuredOutputs || [];
+      allData.push([
+        idx === 0 ? (tc.ffd ?? "") : "",
+        idx === 0 ? (tc.kv ?? "") : "",
+        idx === 0 ? (tc.ma ?? "") : "",
+        idx === 0 ? (lotTime.toleranceOperator ?? "<=") : "",
+        idx === 0 ? (lotTime.tolerance ?? "0.1") : "",
+        ...(idx === 0 ? headers : Array(headers.length).fill("")),
+        r.timeApplied ?? "",
         ...headers.map((_, i) => outs[i] ?? ""),
       ]);
     });

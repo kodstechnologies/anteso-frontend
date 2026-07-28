@@ -1395,7 +1395,7 @@ const RadioFluroContent: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, q
                     let appliedCurrent = '100';
                     let appliedVoltage = '80';
                     let exposureTime = '1.0';
-                    let workload = '5000';
+                    let workload = '500';
                     const locations: any[] = [];
 
                     data.forEach((row) => {

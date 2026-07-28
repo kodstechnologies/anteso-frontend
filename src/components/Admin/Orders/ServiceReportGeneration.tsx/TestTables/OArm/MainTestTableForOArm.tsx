@@ -51,7 +51,7 @@ const MainTestTableForOArm: React.FC<MainTestTableProps> = ({ testData, hasTimer
     });
   };
 
-  // Congruence of Radiation & Optical Field � RadiographyFixed
+  // Congruence of Radiation & Optical Field — RadiographyFixed
   if (testData.congruence?.congruenceMeasurements && Array.isArray(testData.congruence.congruenceMeasurements)) {
     const validRows = testData.congruence.congruenceMeasurements.filter((row: any) => row.dimension || row.percentFED);
     if (validRows.length > 0) {
@@ -70,7 +70,7 @@ const MainTestTableForOArm: React.FC<MainTestTableProps> = ({ testData, hasTimer
     }
   }
 
-  // Central Beam Alignment � RadiographyFixed
+  // Central Beam Alignment — RadiographyFixed
   if (testData.centralBeamAlignment?.observedTilt) {
     const tiltValue = testData.centralBeamAlignment.observedTilt.value || "-";
     const toleranceOperator = testData.centralBeamAlignment.tolerance?.operator || "<=";
@@ -112,7 +112,7 @@ const MainTestTableForOArm: React.FC<MainTestTableProps> = ({ testData, hasTimer
     ]);
   }
 
-  // Effective Focal Spot Size � RadiographyFixed
+  // Effective Focal Spot Size — RadiographyFixed
   if (testData.effectiveFocalSpot?.focalSpots && Array.isArray(testData.effectiveFocalSpot.focalSpots)) {
     const validRows = testData.effectiveFocalSpot.focalSpots.filter((spot: any) => spot.focusType || spot.measuredWidth);
     if (validRows.length > 0) {
@@ -148,7 +148,7 @@ const MainTestTableForOArm: React.FC<MainTestTableProps> = ({ testData, hasTimer
     }
   }
 
-  // Accuracy of Irradiation Time(sec) � RadiographyFixed
+  // Accuracy of Irradiation Time(sec) — RadiographyFixed
   if (testData.accuracyOfIrradiationTime?.irradiationTimes && Array.isArray(testData.accuracyOfIrradiationTime.irradiationTimes)) {
     const validRows = testData.accuracyOfIrradiationTime.irradiationTimes.filter((row: any) => row.setTime || row.measuredTime);
     if (validRows.length > 0) {
@@ -178,7 +178,7 @@ const MainTestTableForOArm: React.FC<MainTestTableProps> = ({ testData, hasTimer
     }
   }
 
-  // Accuracy of Operating Potential (kVp Accuracy) � RadiographyFixed table2
+  // Accuracy of Operating Potential (kVp Accuracy) — RadiographyFixed table2
   if (testData.accuracyOfOperatingPotential?.table2 && Array.isArray(testData.accuracyOfOperatingPotential.table2)) {
     const validRows = testData.accuracyOfOperatingPotential.table2.filter((row: any) => row.setKV || row.avgKvp);
     if (validRows.length > 0) {
@@ -213,7 +213,7 @@ const MainTestTableForOArm: React.FC<MainTestTableProps> = ({ testData, hasTimer
     }
   }
 
-  // Accuracy of Operating Potential (from Total Filtration / shared O-Arm document) � RadiographyFixed
+  // Accuracy of Operating Potential (from Total Filtration / shared O-Arm document) — RadiographyFixed
   const tfRoot = testData.totalFilteration || testData.operatingPotential;
   if (tfRoot?.measurements && Array.isArray(tfRoot.measurements)) {
     const validRows = tfRoot.measurements.filter((row: any) => row.appliedKvp || row.averageKvp || row.measuredValues);
@@ -265,7 +265,7 @@ const MainTestTableForOArm: React.FC<MainTestTableProps> = ({ testData, hasTimer
     }
   }
 
-  // Total Filtration � RadiographyFixed (required = mm Al in Fixed UI; O-Arm may use measured)
+  // Total Filtration — RadiographyFixed (required = mm Al in Fixed UI; O-Arm may use measured)
   if (testData.totalFilteration?.totalFiltration) {
     const tfBlock = testData.totalFilteration.totalFiltration;
     const measuredStr = tfBlock.required || tfBlock.measured || "-";
@@ -319,7 +319,7 @@ const MainTestTableForOArm: React.FC<MainTestTableProps> = ({ testData, hasTimer
     ]);
   }
 
-  // Linearity of mA / mAs Loading (Coefficient of Linearity) � RadiographyFixed
+  // Linearity of mA / mAs Loading (Coefficient of Linearity) — RadiographyFixed
   if (testData.linearityOfMasLoading?.table2 && Array.isArray(testData.linearityOfMasLoading.table2)) {
     const linearityLabel = hasTimer
       ? "Linearity of mA Loading (Coefficient of Linearity)"
@@ -409,7 +409,7 @@ const MainTestTableForOArm: React.FC<MainTestTableProps> = ({ testData, hasTimer
     }
   }
 
-  // Consistency of Radiation Output (CoV) � RadiographyFixed
+  // Consistency of Radiation Output (CoV) — RadiographyFixed
   if (testData.outputConsistency?.outputRows && Array.isArray(testData.outputConsistency.outputRows)) {
     const validRows = testData.outputConsistency.outputRows.filter(
       (row: any) =>
@@ -508,7 +508,7 @@ const MainTestTableForOArm: React.FC<MainTestTableProps> = ({ testData, hasTimer
     }
   }
 
-  // Radiation leakage level at 1m from tube housing � RadiographyFixed + O-Arm tube housing
+  // Radiation leakage level at 1m from tube housing — RadiographyFixed + O-Arm tube housing
   const leakParent = testData.radiationLeakageLevel || testData.tubeHousingLeakage;
   const leakMeasurements =
     leakParent &&
@@ -593,7 +593,7 @@ const MainTestTableForOArm: React.FC<MainTestTableProps> = ({ testData, hasTimer
     }
   }
 
-  // Radiation Protection Survey � RadiographyFixed
+  // Radiation Protection Survey — RadiographyFixed
   if (testData.radiationProtectionSurvey?.locations && Array.isArray(testData.radiationProtectionSurvey.locations)) {
     const validRows = testData.radiationProtectionSurvey.locations.filter((loc: any) => loc.location || loc.mRPerWeek);
     if (validRows.length > 0) {

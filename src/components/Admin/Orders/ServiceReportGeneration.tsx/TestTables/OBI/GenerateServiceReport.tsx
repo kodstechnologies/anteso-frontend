@@ -17,7 +17,8 @@ import {
     getCongruenceOfRadiationByServiceIdForOBI,
     getEffectiveFocalSpotByServiceIdForOBI,
     getLinearityOfMasLoadingStationsByServiceIdForOBI,
-    getLinearityOfTimeByServiceIdForOBI,
+    getLinearityOfMaLoadingByServiceIdForOBI,
+    getLinearityOfTimeMeasurementByServiceIdForOBI,
     getTubeHousingLeakageByServiceIdForOBI,
     getRadiationProtectionSurveyByServiceIdForOBI,
     getHighContrastSensitivityByServiceIdForOBI,
@@ -43,6 +44,7 @@ import CentralBeamAlignment from "./CentralBeamAlignment";
 import CongruenceOfRadiation from "./CongruenceOfRadiation";
 import EffectiveFocalSpot from "./EffectiveFocalSpot";
 import LinearityOfMasLoadingStation from "./LinearityOfMasLoadingStation";
+import LinearityOfMaLoading from "./LinearityOfMaLoading";
 import LinearityOfTime from "./LinearityOfTime";
 import TubeHousingLeakage from "./TubeHousingLeakage";
 import RadiationProtection from "./RadiationProtection";
@@ -99,6 +101,7 @@ const OBIContent: React.FC<OBIProps> = ({ serviceId, csvFileUrl, qaTestDate }) =
         EffectiveFocalSpotOBI?: string;
         LinearityOfMasLoadingStationsOBI?: string;
         LinearityOfTimeOBI?: string;
+        LinearityOfTimeForOBI?: string;
         TubeHousingLeakageOBI?: string;
         RadiationProtectionSurveyOBI?: string;
         HighContrastSensitivityOBI?: string;
@@ -155,6 +158,7 @@ const OBIContent: React.FC<OBIProps> = ({ serviceId, csvFileUrl, qaTestDate }) =
         congruenceOfRadiation?: any;
         effectiveFocalSpot?: any;
         linearityOfMasLoading?: any;
+        linearityOfMaLoading?: any;
         linearityOfTime?: any;
         tubeHousingLeakage?: any;
         radiationProtection?: any;
@@ -364,8 +368,28 @@ const OBIContent: React.FC<OBIProps> = ({ serviceId, csvFileUrl, qaTestDate }) =
             data.push({ 'Field Name': field, 'Value': normalized, 'Row Index': String(rowIndex), 'Test Name': testName });
         };
         const colIdx = (header: string[], ...names: string[]) => {
+            // Prefer exact header match first so "Tolerance" does not hit "Tolerance Operator"
             for (const name of names) {
-                const idx = header.findIndex((h) => h.toLowerCase().includes(name.toLowerCase()));
+                const lower = name.toLowerCase();
+                const exact = header.findIndex(
+                    (h) => String(h || "").trim().toLowerCase() === lower
+                );
+                if (exact >= 0) return exact;
+            }
+            for (const name of names) {
+                const lower = name.toLowerCase();
+                const idx = header.findIndex((h) => {
+                    const cell = String(h || "").toLowerCase().trim();
+                    if (!cell.includes(lower)) return false;
+                    // Avoid "Tolerance" matching "Tolerance Operator" / "Tolerance Sign"
+                    if (
+                        (lower === "tolerance" || lower === "tol") &&
+                        (cell.includes("operator") || cell.includes("sign") || /\bop\b/.test(cell))
+                    ) {
+                        return false;
+                    }
+                    return true;
+                });
                 if (idx >= 0) return idx;
             }
             return -1;
@@ -573,25 +597,67 @@ const OBIContent: React.FC<OBIProps> = ({ serviceId, csvFileUrl, qaTestDate }) =
                     pushRow('Table2_mAsApplied', r[colIdx(header, 'mAs', 'mAs Range', 'mAs Applied')] ?? '', idx, 'Linearity of mAs Loading Stations');
                     pushMeasFields(r, header, idx, 'Linearity of mAs Loading Stations', 'Table2_', ['mAs', 'mAs Range', 'mAs Applied']);
                 });
-            } else if (title.includes('LINEARITY OF TIME')) {
+            } else if (title.includes('LINEARITY OF MA LOADING')) {
                 const hCols = header.filter((h) => /^header\s*\d+$/i.test(String(h || '').trim()));
                 sectionRows.forEach((r, idx) => {
                     if (idx === 0) {
-                        pushRow('TestConditions_FDD', r[colIdx(header, 'FDD', 'FCD', 'FFD')] ?? '', 0, 'Linearity of Time');
-                        pushRow('TestConditions_kV', r[colIdx(header, 'kV')] ?? '', 0, 'Linearity of Time');
-                        pushRow('TestConditions_Time', r[colIdx(header, 'Time')] ?? '', 0, 'Linearity of Time');
-                        pushRow('ToleranceOperator', r[colIdx(header, 'Tol Operator', 'Tolerance Operator')] ?? '', 0, 'Linearity of Time');
-                        pushRow('Tolerance', r[colIdx(header, 'Tol Value', 'Tolerance', 'Tolerance Value')] ?? '', 0, 'Linearity of Time');
+                        pushRow('TestConditions_FDD', r[colIdx(header, 'FDD', 'FCD', 'FFD')] ?? '', 0, 'Linearity of mA Loading');
+                        pushRow('TestConditions_kV', r[colIdx(header, 'kV')] ?? '', 0, 'Linearity of mA Loading');
+                        pushRow('TestConditions_Time', r[colIdx(header, 'Time')] ?? '', 0, 'Linearity of mA Loading');
+                        pushRow('ToleranceOperator', r[colIdx(header, 'Tol Operator', 'Tolerance Operator')] ?? '', 0, 'Linearity of mA Loading');
+                        pushRow('Tolerance', r[colIdx(header, 'Tol Value', 'Tolerance Value', 'Tolerance')] ?? '', 0, 'Linearity of mA Loading');
                         hCols.forEach((_, hi) => {
                             const label = r[colIdx(header, `Header ${hi + 1}`)] ?? '';
-                            if (label) pushRow('MeasHeader', label, 0, 'Linearity of Time');
+                            if (label) pushRow('MeasHeader', label, 0, 'Linearity of mA Loading');
                         });
                     }
-                    pushRow('MeasurementRow_maApplied', r[colIdx(header, 'mA', 'mA Applied')] ?? '', idx, 'Linearity of Time');
+                    pushRow('MeasurementRow_maApplied', r[colIdx(header, 'mA', 'mA Applied')] ?? '', idx, 'Linearity of mA Loading');
                     resolveMeasValueColumns(header, ['mA', 'mA Applied']).forEach(({ idx: ci }, mi) => {
-                        pushRow(`MeasurementRow_RadiationOutput${mi + 1}`, r[ci] ?? '', idx, 'Linearity of Time');
+                        pushRow(`MeasurementRow_RadiationOutput${mi + 1}`, r[ci] ?? '', idx, 'Linearity of mA Loading');
                     });
                 });
+            } else if (title.includes('LINEARITY OF TIME')) {
+                const hCols = header.filter((h) => /^header\s*\d+$/i.test(String(h || '').trim()));
+                // Legacy sheets titled LINEARITY OF TIME with mA Applied → treat as mA Loading
+                const hasTimeAppliedCol = header.some((h) => /time\s*applied/i.test(String(h || '').trim()));
+                const hasMaAppliedCol = header.some((h) => /mA\s*Applied/i.test(String(h || '').trim()));
+                if (!hasTimeAppliedCol && hasMaAppliedCol) {
+                    sectionRows.forEach((r, idx) => {
+                        if (idx === 0) {
+                            pushRow('TestConditions_FDD', r[colIdx(header, 'FDD', 'FCD', 'FFD')] ?? '', 0, 'Linearity of mA Loading');
+                            pushRow('TestConditions_kV', r[colIdx(header, 'kV')] ?? '', 0, 'Linearity of mA Loading');
+                            pushRow('TestConditions_Time', r[colIdx(header, 'Time')] ?? '', 0, 'Linearity of mA Loading');
+                            pushRow('ToleranceOperator', r[colIdx(header, 'Tol Operator', 'Tolerance Operator')] ?? '', 0, 'Linearity of mA Loading');
+                            pushRow('Tolerance', r[colIdx(header, 'Tol Value', 'Tolerance Value', 'Tolerance')] ?? '', 0, 'Linearity of mA Loading');
+                            hCols.forEach((_, hi) => {
+                                const label = r[colIdx(header, `Header ${hi + 1}`)] ?? '';
+                                if (label) pushRow('MeasHeader', label, 0, 'Linearity of mA Loading');
+                            });
+                        }
+                        pushRow('MeasurementRow_maApplied', r[colIdx(header, 'mA', 'mA Applied')] ?? '', idx, 'Linearity of mA Loading');
+                        resolveMeasValueColumns(header, ['mA', 'mA Applied']).forEach(({ idx: ci }, mi) => {
+                            pushRow(`MeasurementRow_RadiationOutput${mi + 1}`, r[ci] ?? '', idx, 'Linearity of mA Loading');
+                        });
+                    });
+                } else {
+                    sectionRows.forEach((r, idx) => {
+                        if (idx === 0) {
+                            pushRow('TestConditions_FFD', r[colIdx(header, 'FFD', 'FDD', 'FCD')] ?? '', 0, 'Linearity of Time');
+                            pushRow('TestConditions_kV', r[colIdx(header, 'kV')] ?? '', 0, 'Linearity of Time');
+                            pushRow('TestConditions_ma', r[colIdx(header, 'mA')] ?? '', 0, 'Linearity of Time');
+                            pushRow('ToleranceOperator', r[colIdx(header, 'Tol Operator', 'Tolerance Operator')] ?? '', 0, 'Linearity of Time');
+                            pushRow('Tolerance', r[colIdx(header, 'Tol Value', 'Tolerance Value', 'Tolerance')] ?? '', 0, 'Linearity of Time');
+                            hCols.forEach((_, hi) => {
+                                const label = r[colIdx(header, `Header ${hi + 1}`)] ?? '';
+                                if (label) pushRow('MeasHeader', label, 0, 'Linearity of Time');
+                            });
+                        }
+                        pushRow('MeasurementRow_timeApplied', r[colIdx(header, 'Time Applied')] ?? '', idx, 'Linearity of Time');
+                        resolveMeasValueColumns(header, ['Time Applied']).forEach(({ idx: ci }, mi) => {
+                            pushRow(`MeasurementRow_RadiationOutput${mi + 1}`, r[ci] ?? '', idx, 'Linearity of Time');
+                        });
+                    });
+                }
             } else if (title.includes('TUBE HOUSING LEAKAGE')) {
                 sectionRows.forEach((r, idx) => {
                     if (idx === 0) {
@@ -661,6 +727,7 @@ const OBIContent: React.FC<OBIProps> = ({ serviceId, csvFileUrl, qaTestDate }) =
             '========== CONGRUENCE OF RADIATION ==========': 'Congruence of Radiation',
             '========== EFFECTIVE FOCAL SPOT ==========': 'Effective Focal Spot',
             '========== LINEARITY OF mAs LOADING STATIONS ==========': 'Linearity of mAs Loading Stations',
+            '========== LINEARITY OF MA LOADING ==========': 'Linearity of mA Loading',
             '========== LINEARITY OF TIME ==========': 'Linearity of Time',
             '========== TUBE HOUSING LEAKAGE ==========': 'Tube Housing Leakage',
             '========== RADIATION PROTECTION SURVEY ==========': 'Radiation Protection Survey',
@@ -682,6 +749,7 @@ const OBIContent: React.FC<OBIProps> = ({ serviceId, csvFileUrl, qaTestDate }) =
             'FocalSpot_FocusType',
             'Table2_mAsApplied',
             'MeasurementRow_maApplied',
+            'MeasurementRow_timeApplied',
             'LeakageMeasurement_Location',
             'Location_Location',
             'TestRow_TestName'
@@ -766,7 +834,10 @@ const OBIContent: React.FC<OBIProps> = ({ serviceId, csvFileUrl, qaTestDate }) =
                 'Congruence of Radiation': 'Congruence of Radiation',
                 'Effective Focal Spot': 'Effective Focal Spot',
                 'Linearity of mAs Loading Stations': 'Linearity of mAs Loading Stations',
+                'Linearity of mA Loading': 'Linearity of mA Loading',
                 'Linearity of Time': 'Linearity of Time',
+                'LINEARITY OF TIME': 'Linearity of Time',
+                'LINEARITY OF MA LOADING': 'Linearity of mA Loading',
                 'Tube Housing Leakage': 'Tube Housing Leakage',
                 'Radiation Protection Survey': 'Radiation Protection Survey',
                 'High Contrast Sensitivity': 'High Contrast Sensitivity',
@@ -795,7 +866,11 @@ const OBIContent: React.FC<OBIProps> = ({ serviceId, csvFileUrl, qaTestDate }) =
             });
 
             if (applyConfigFromExcel && Object.keys(groupedData).length > 0) {
-                const hasTimerSection = !!(groupedData['Accuracy of Irradiation Time']?.length);
+                const hasTimerSection = !!(
+                    groupedData['Accuracy of Irradiation Time']?.length ||
+                    groupedData['Linearity of mA Loading']?.length ||
+                    groupedData['Linearity of Time']?.length
+                );
                 setHasTimer(hasTimerSection);
                 setShowTimerModal(false);
                 if (serviceId) {
@@ -1203,10 +1278,10 @@ const OBIContent: React.FC<OBIProps> = ({ serviceId, csvFileUrl, qaTestDate }) =
                 }
             }
 
-            // Process Linearity of Time
-            if (groupedData['Linearity of Time'] && groupedData['Linearity of Time'].length > 0) {
+            // Process LINEARITY OF MA LOADING
+            if (groupedData['Linearity of mA Loading'] && groupedData['Linearity of mA Loading'].length > 0) {
                 try {
-                    const data = groupedData['Linearity of Time'];
+                    const data = groupedData['Linearity of mA Loading'];
                     const testConditions = { fdd: '', kv: '', time: '' };
                     const headers: string[] = [];
                     let tolerance = '0.1';
@@ -1256,14 +1331,148 @@ const OBIContent: React.FC<OBIProps> = ({ serviceId, csvFileUrl, qaTestDate }) =
                         toleranceOperator,
                         measurementRows: measurementRows.length > 0 ? measurementRows : [],
                     };
-                    console.log('✓ Linearity of Time data prepared for form:', csvData);
+                    console.log('✓ LINEARITY OF MA LOADING data prepared for form:', csvData);
                     setCsvDataForComponents(prev => ({
                         ...prev,
-                        linearityOfTime: csvData
+                        linearityOfMaLoading: csvData
                     }));
                 } catch (error: any) {
-                    console.error('Error processing Linearity of Time:', error);
-                    toast.error(`Failed to process Linearity of Time: ${error?.message || 'Unknown error'}`);
+                    console.error('Error processing LINEARITY OF MA LOADING:', error);
+                    toast.error(`Failed to process LINEARITY OF MA LOADING: ${error?.message || 'Unknown error'}`);
+                }
+            }
+
+            // Process LINEARITY OF TIME (FFD / kV / mA + Time Applied)
+            if (groupedData['Linearity of Time'] && groupedData['Linearity of Time'].length > 0) {
+                try {
+                    const data = groupedData['Linearity of Time'];
+                    // Legacy vertical sheets for mA Loading under LINEARITY OF TIME title
+                    const looksLikeMaLoading = data.some((row) =>
+                        String(row['Field Name'] || '').trim() === 'MeasurementRow_maApplied' ||
+                        String(row['Field Name'] || '').trim() === 'TestConditions_Time'
+                    ) && !data.some((row) =>
+                        String(row['Field Name'] || '').trim() === 'MeasurementRow_timeApplied' ||
+                        String(row['Field Name'] || '').trim() === 'TestConditions_ma' ||
+                        String(row['Field Name'] || '').trim() === 'TestConditions_FFD'
+                    );
+
+                    if (looksLikeMaLoading) {
+                        const testConditions = { fdd: '', kv: '', time: '' };
+                        const headers: string[] = [];
+                        let tolerance = '0.1';
+                        let toleranceOperator = '<=';
+                        const measurementRows: any[] = [];
+
+                        data.forEach((row) => {
+                            const field = (row['Field Name'] || '').trim();
+                            const value = (row['Value'] || '').trim();
+                            const rowIndex = parseInt(row['Row Index'] || '0');
+
+                            if (field === 'TestConditions_FDD') testConditions.fdd = value;
+                            if (field === 'TestConditions_kV') testConditions.kv = value;
+                            if (field === 'TestConditions_Time') testConditions.time = value;
+                            if (field === 'Tolerance') tolerance = value;
+                            if (field === 'ToleranceOperator') {
+                                const op = normalizeCsvComparisonOperator(value);
+                                if (['<', '>', '<=', '>=', '='].includes(op)) toleranceOperator = op;
+                            }
+                            if (field === 'MeasHeader' && value) headers.push(value);
+
+                            if (field.startsWith('MeasurementRow_')) {
+                                while (measurementRows.length <= rowIndex) {
+                                    measurementRows.push({ maApplied: '', radiationOutputs: [], averageOutput: '', mGyPerMAs: '', remark: '' as 'Pass' | 'Fail' | '' });
+                                }
+                                const fieldName = field.replace('MeasurementRow_', '');
+                                if (fieldName === 'maApplied') measurementRows[rowIndex].maApplied = value;
+                                if (fieldName.startsWith('RadiationOutput')) {
+                                    const numMatch = fieldName.match(/RadiationOutput(?:Meas)?(\d+)/i);
+                                    const colIndex = numMatch ? parseInt(numMatch[1], 10) - 1 : -1;
+                                    if (colIndex >= 0) {
+                                        while (measurementRows[rowIndex].radiationOutputs.length <= colIndex) {
+                                            measurementRows[rowIndex].radiationOutputs.push('');
+                                        }
+                                        measurementRows[rowIndex].radiationOutputs[colIndex] = value;
+                                    }
+                                }
+                            }
+                        });
+
+                        setCsvDataForComponents(prev => ({
+                            ...prev,
+                            linearityOfMaLoading: {
+                                testConditions,
+                                headers: headers.length > 0 ? headers : ['Meas 1', 'Meas 2', 'Meas 3'],
+                                tolerance,
+                                toleranceOperator,
+                                measurementRows,
+                            },
+                        }));
+                    } else {
+                        const testConditions = { ffd: '', kv: '', ma: '' };
+                        const headers: string[] = [];
+                        let tolerance = '0.1';
+                        let toleranceOperator = '<=';
+                        const measurementRows: any[] = [];
+
+                        data.forEach((row) => {
+                            const field = (row['Field Name'] || '').trim();
+                            const value = (row['Value'] || '').trim();
+                            const rowIndex = parseInt(row['Row Index'] || '0');
+
+                            if (field === 'TestConditions_FFD' || field === 'TestConditions_FDD' || field === 'FFD') testConditions.ffd = value;
+                            if (field === 'TestConditions_kV') testConditions.kv = value;
+                            if (field === 'TestConditions_ma') testConditions.ma = value;
+                            if (field === 'Tolerance') {
+                                const op = normalizeCsvComparisonOperator(value);
+                                if (['<', '>', '<=', '>=', '='].includes(op) && !/^\d/.test(value)) {
+                                    // skip — this is an operator wrongly stored as Tolerance
+                                } else if (value) {
+                                    tolerance = value;
+                                }
+                            }
+                            if (field === 'ToleranceOperator') {
+                                const op = normalizeCsvComparisonOperator(value);
+                                if (['<', '>', '<=', '>=', '='].includes(op)) toleranceOperator = op;
+                            }
+                            if (field === 'MeasHeader' && value) headers.push(value);
+
+                            if (field.startsWith('MeasurementRow_')) {
+                                while (measurementRows.length <= rowIndex) {
+                                    measurementRows.push({ timeApplied: '', radiationOutputs: [], averageOutput: '', x: '' });
+                                }
+                                const fieldName = field.replace('MeasurementRow_', '');
+                                if (fieldName === 'timeApplied') measurementRows[rowIndex].timeApplied = value;
+                                if (fieldName === 'AverageOutput') measurementRows[rowIndex].averageOutput = value;
+                                if (fieldName === 'x' || fieldName === 'X') measurementRows[rowIndex].x = value;
+                                if (fieldName.startsWith('RadiationOutput')) {
+                                    const numMatch = fieldName.match(/RadiationOutput(?:Meas)?(\d+)/i);
+                                    const colIndex = numMatch ? parseInt(numMatch[1], 10) - 1 : -1;
+                                    if (colIndex >= 0) {
+                                        while (measurementRows[rowIndex].radiationOutputs.length <= colIndex) {
+                                            measurementRows[rowIndex].radiationOutputs.push('');
+                                        }
+                                        measurementRows[rowIndex].radiationOutputs[colIndex] = value;
+                                    }
+                                }
+                            }
+                        });
+
+                        const csvData = {
+                            testConditions,
+                            headers: headers.length > 0 ? headers : ['Meas 1', 'Meas 2', 'Meas 3'],
+                            tolerance,
+                            toleranceOperator,
+                            measurementRows: measurementRows.length > 0 ? measurementRows : [],
+                        };
+                        console.log('✓ LINEARITY OF TIME data prepared for form:', csvData);
+                        setCsvDataForComponents(prev => ({
+                            ...prev,
+                            linearityOfTime: csvData
+                        }));
+                    }
+                } catch (error: any) {
+                    console.error('Error processing LINEARITY OF TIME:', error);
+                    toast.error(`Failed to process LINEARITY OF TIME: ${error?.message || 'Unknown error'}`);
                 }
             }
 
@@ -1331,7 +1540,7 @@ const OBIContent: React.FC<OBIProps> = ({ serviceId, csvFileUrl, qaTestDate }) =
                     let appliedCurrent = '100';
                     let appliedVoltage = '80';
                     let exposureTime = '1.0';
-                    let workload = '5000';
+                    let workload = '500';
                     const locations: any[] = [];
 
                     data.forEach((row) => {
@@ -1562,6 +1771,7 @@ const OBIContent: React.FC<OBIProps> = ({ serviceId, csvFileUrl, qaTestDate }) =
             '========== CONGRUENCE OF RADIATION ==========': 'Congruence of Radiation',
             '========== EFFECTIVE FOCAL SPOT ==========': 'Effective Focal Spot',
             '========== LINEARITY OF mAs LOADING STATIONS ==========': 'Linearity of mAs Loading Stations',
+            '========== LINEARITY OF MA LOADING ==========': 'Linearity of mA Loading',
             '========== LINEARITY OF TIME ==========': 'Linearity of Time',
             '========== TUBE HOUSING LEAKAGE ==========': 'Tube Housing Leakage',
             '========== RADIATION PROTECTION SURVEY ==========': 'Radiation Protection Survey',
@@ -1608,6 +1818,7 @@ const OBIContent: React.FC<OBIProps> = ({ serviceId, csvFileUrl, qaTestDate }) =
                     'FocalSpot_FocusType',
                     'Table2_mAsApplied',
                     'MeasurementRow_maApplied',
+                    'MeasurementRow_timeApplied',
                     'LeakageMeasurement_Location',
                     'Location_Location',
                     'TestRow_TestName'
@@ -1833,7 +2044,8 @@ const OBIContent: React.FC<OBIProps> = ({ serviceId, csvFileUrl, qaTestDate }) =
         ];
         if (hasTimer === true) {
             checks.push(run("Timer Test", () => getTimerTestByServiceIdForOBI(serviceId)));
-            checks.push(run("Linearity Of Time", () => getLinearityOfTimeByServiceIdForOBI(serviceId)));
+            checks.push(run("Linearity Of mA Loading", () => getLinearityOfMaLoadingByServiceIdForOBI(serviceId)));
+            checks.push(run("Linearity Of Time", () => getLinearityOfTimeMeasurementByServiceIdForOBI(serviceId)));
         } else if (hasTimer === false) {
             checks.push(run("Linearity Of mAs Loading Stations", () => getLinearityOfMasLoadingStationsByServiceIdForOBI(serviceId)));
         }
@@ -1932,6 +2144,7 @@ const OBIContent: React.FC<OBIProps> = ({ serviceId, csvFileUrl, qaTestDate }) =
                 congruenceOfRadiation: csvDataForComponents.congruenceOfRadiation,
                 effectiveFocalSpot: csvDataForComponents.effectiveFocalSpot,
                 linearityOfMasLoadingStations: csvDataForComponents.linearityOfMasLoading,
+                linearityOfMaLoading: csvDataForComponents.linearityOfMaLoading,
                 linearityOfTime: csvDataForComponents.linearityOfTime,
                 tubeHousingLeakage: csvDataForComponents.tubeHousingLeakage,
                 radiationProtectionSurvey: csvDataForComponents.radiationProtection,
@@ -1979,7 +2192,8 @@ const OBIContent: React.FC<OBIProps> = ({ serviceId, csvFileUrl, qaTestDate }) =
             await resolveSection("outputConsistency", () => getOutputConsistencyByServiceIdForOBI(serviceId));
             await resolveSection("highContrastSensitivity", () => getHighContrastSensitivityByServiceIdForOBI(serviceId));
             await resolveSection("lowContrastSensitivity", () => getLowContrastSensitivityByServiceIdForOBI(serviceId));
-            await resolveSection("linearityOfTime", () => getLinearityOfTimeByServiceIdForOBI(serviceId));
+            await resolveSection("linearityOfMaLoading", () => getLinearityOfMaLoadingByServiceIdForOBI(serviceId));
+            await resolveSection("linearityOfTime", () => getLinearityOfTimeMeasurementByServiceIdForOBI(serviceId));
             await resolveSection("linearityOfMasLoadingStations", () => getLinearityOfMasLoadingStationsByServiceIdForOBI(serviceId));
             await resolveSection("tubeHousingLeakage", () => getTubeHousingLeakageByServiceIdForOBI(serviceId));
             await resolveSection("radiationProtectionSurvey", () => getRadiationProtectionSurveyByServiceIdForOBI(serviceId));
@@ -2024,6 +2238,7 @@ const OBIContent: React.FC<OBIProps> = ({ serviceId, csvFileUrl, qaTestDate }) =
                         EffectiveFocalSpotOBI: res.data.EffectiveFocalSpotOBI?._id || res.data.EffectiveFocalSpotOBI,
                         LinearityOfMasLoadingStationsOBI: res.data.LinearityOfMasLoadingStationsOBI?._id || res.data.LinearityOfMasLoadingStationsOBI,
                         LinearityOfTimeOBI: res.data.LinearityOfTimeOBI?._id || res.data.LinearityOfTimeOBI,
+                        LinearityOfTimeForOBI: res.data.LinearityOfTimeForOBI?._id || res.data.LinearityOfTimeForOBI,
                         TubeHousingLeakageOBI: res.data.TubeHousingLeakageOBI?._id || res.data.TubeHousingLeakageOBI,
                         RadiationProtectionSurveyOBI: res.data.RadiationProtectionSurveyOBI?._id || res.data.RadiationProtectionSurveyOBI,
                     };
@@ -2363,11 +2578,22 @@ const OBIContent: React.FC<OBIProps> = ({ serviceId, csvFileUrl, qaTestDate }) =
                     ...(hasTimer === true
                         ? [
                             {
-                                title: "Linearity Of Time",
-                                component: <LinearityOfTime
-                                    key={`linearity-time-${refreshKey}`}
+                                title: "Linearity Of mA Loading",
+                                component: <LinearityOfMaLoading
+                                    key={`linearity-ma-${refreshKey}`}
                                     serviceId={serviceId}
                                     testId={savedTestIds.LinearityOfTimeOBI || undefined}
+                                    onRefresh={() => { }}
+                                    refreshKey={refreshKey}
+                                    initialData={csvDataForComponents.linearityOfMaLoading}
+                                />,
+                            },
+                            {
+                                title: "Linearity Of Time",
+                                component: <LinearityOfTime
+                                    key={`linearity-of-time-${refreshKey}`}
+                                    serviceId={serviceId}
+                                    testId={savedTestIds.LinearityOfTimeForOBI || undefined}
                                     onRefresh={() => { }}
                                     refreshKey={refreshKey}
                                     initialData={csvDataForComponents.linearityOfTime}
@@ -2389,8 +2615,6 @@ const OBIContent: React.FC<OBIProps> = ({ serviceId, csvFileUrl, qaTestDate }) =
                                 },
                             ]
                             : []),
-
-                    // Linearity Test — Conditional
 
                     {
                         title: "Tube Housing Leakage",
