@@ -878,6 +878,13 @@ const ViewServiceReportRadiographyMobile: React.FC = () => {
               </div>
             )}
 
+          </div>
+          </div>
+        </ReportPage>
+
+        <ReportPage>
+          <div className="report-pdf-main test-section" style={{ width: "100%" }}>
+          <div className="max-w-5xl mx-auto print:max-w-none" style={{ width: '100%', maxWidth: 'none', flex: 1 }}>
 
             {/* 1. Accuracy of Irradiation Time */}
             {testData.accuracyOfIrradiationTime && (
@@ -1021,6 +1028,14 @@ const ViewServiceReportRadiographyMobile: React.FC = () => {
                 )}
               </div>
             )}
+
+          </div>
+          </div>
+        </ReportPage>
+
+        <ReportPage>
+          <div className="report-pdf-main test-section" style={{ width: "100%" }}>
+          <div className="max-w-5xl mx-auto print:max-w-none" style={{ width: '100%', maxWidth: 'none', flex: 1 }}>
 
             {/* 2.5. Total Filtration (standalone section when totalFilteration exists, matching Fixed) */}
             {testData.totalFilteration && (
@@ -1248,6 +1263,14 @@ const ViewServiceReportRadiographyMobile: React.FC = () => {
                 </div>
               );
             })()}
+
+          </div>
+          </div>
+        </ReportPage>
+
+        <ReportPage>
+          <div className="report-pdf-main test-section" style={{ width: "100%" }}>
+          <div className="max-w-5xl mx-auto print:max-w-none" style={{ width: '100%', maxWidth: 'none', flex: 1 }}>
 
             {/* 7. Output Consistency */}
             {testData.outputConsistency && (

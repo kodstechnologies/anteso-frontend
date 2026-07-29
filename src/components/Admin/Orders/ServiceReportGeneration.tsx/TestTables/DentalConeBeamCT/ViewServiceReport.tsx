@@ -4,7 +4,7 @@ import { useSearchParams } from "react-router-dom";
 import { getDetails, getReportHeaderForCBCT, getRadiationProtectionSurveyByServiceIdForCBCT, getTools } from "../../../../../../api";
 import { estimateReportPages, generatePDF } from "../../../../../../utils/generatePDF";
 import MainTestTableForDentalConeBeamCT from "./MainTestTableForDentalConeBeamCT";
-import { ReportPdfPageHeader } from "../RadiographyFixed/component/Header";
+import { ReportPdfPageHeader, type ReportPdfPageHeaderData } from "../RadiographyFixed/component/Header";
 import { ReportPdfPageFooter } from "../RadiographyFixed/component/Footer";
 import { ReportPdfPageFooterEnd } from "../RadiographyFixed/component/FooterEnd";
 import { ReportPdfPageNoteQR } from "../RadiographyFixed/component/NoteQR";
@@ -585,11 +585,16 @@ const ViewServiceReportCBCT: React.FC = () => {
   };
   const customerCity = extractCity(report?.location || "") || extractCity(report?.address || "") || "-";
   const placeValue = report?.city && String(report.city).trim() !== "" ? String(report.city).trim() : customerCity;
+  const headerReport: ReportPdfPageHeaderData = {
+    srfNumber: report.srfNumber ?? "",
+    srfDate: report.srfDate != null ? String(report.srfDate) : "",
+    reportULRNumber: report.reportULRNumber,
+  };
   const ReportPage: React.FC<{ isLast?: boolean; children: React.ReactNode }> = ({ isLast, children }) => (
     <div
       className={`bg-white shadow-2xl print:shadow-none ${isLast ? "report-pdf-last-page-shell" : "report-pdf-page-shell"}`}
       style={{
-        pageBreakAfter: isLast ? "auto" : "always",
+        pageBreakAfter: "always",
         display: "flex",
         flexDirection: "column",
         width: "210mm",
@@ -599,7 +604,7 @@ const ViewServiceReportCBCT: React.FC = () => {
         padding: "15mm 20mm",
       }}
     >
-      <ReportPdfPageHeader report={report as any} formatDate={formatDate} />
+      <ReportPdfPageHeader report={headerReport} formatDate={formatDate} />
       <div style={{ flex: 1, display: "flex", flexDirection: "column", width: "100%" }}>
         {children}
       </div>
@@ -1010,6 +1015,11 @@ const ViewServiceReportCBCT: React.FC = () => {
               </div>
             )} */}
 
+          </div>
+        </ReportPage>
+
+        <ReportPage>
+          <div className="max-w-5xl mx-auto print:max-w-none" style={{ width: "100%", maxWidth: "none" }}>
   {/* 4. Linearity of mAs Loading */}
             {testData.linearityOfMaLoading?.table2Rows?.length > 0 && (() => {
               const rows = testData.linearityOfMaLoading.table2Rows;
@@ -1307,6 +1317,11 @@ const ViewServiceReportCBCT: React.FC = () => {
           
 
 
+          </div>
+        </ReportPage>
+
+        <ReportPage>
+          <div className="max-w-5xl mx-auto print:max-w-none" style={{ width: "100%", maxWidth: "none" }}>
             {/* 6. Radiation Leakage Test */}
             {testData.radiationLeakage?.leakageRows?.length > 0 && (
               <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
@@ -1522,6 +1537,11 @@ const ViewServiceReportCBCT: React.FC = () => {
               </div>
             )}
 
+          </div>
+        </ReportPage>
+
+        <ReportPage>
+          <div className="max-w-5xl mx-auto print:max-w-none" style={{ width: "100%", maxWidth: "none" }}>
             {/* 6. Radiation Protection Survey */}
             {testData.radiationSurvey?.locations?.length > 0 && (
               <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
