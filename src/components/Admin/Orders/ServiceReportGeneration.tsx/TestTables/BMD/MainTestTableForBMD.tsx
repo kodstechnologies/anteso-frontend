@@ -1,5 +1,6 @@
 // src/components/reports/TestTables/BMD/MainTestTableForBMD.tsx
 import React from "react";
+import { evaluateTotalFiltrationPassFail } from "../totalFiltrationPassFail";
 
 interface MainTestTableProps {
   testData: any;
@@ -235,9 +236,6 @@ const MainTestTableForBMD: React.FC<MainTestTableProps> = ({ testData, hasTimer 
       const measuredDisplay = measuredStr !== "" && measuredStr != null ? String(measuredStr) : "-";
 
       if (atKvp !== "-" || measuredDisplay !== "-") {
-        const kvp = parseFloat(String(atKvpRaw));
-        const measuredVal = parseFloat(String(measuredStr));
-
         const ft = tfRoot.filtrationTolerance || {
           forKvGreaterThan70: "1.5",
           forKvBetween70And100: "2.0",
@@ -246,32 +244,14 @@ const MainTestTableForBMD: React.FC<MainTestTableProps> = ({ testData, hasTimer 
           kvThreshold2: "100",
         };
 
-        const threshold1 = parseFloat(ft.kvThreshold1);
-        const threshold2 = parseFloat(ft.kvThreshold2);
-
-        let isPass = false;
-        if (!isNaN(kvp) && !isNaN(measuredVal)) {
-          let requiredTolerance: number;
-          if (kvp < threshold1) {
-            requiredTolerance = parseFloat(ft.forKvGreaterThan70);
-          } else if (kvp >= threshold1 && kvp <= threshold2) {
-            requiredTolerance = parseFloat(ft.forKvBetween70And100);
-          } else {
-            requiredTolerance = parseFloat(ft.forKvGreaterThan100);
-          }
-
-          if (!isNaN(requiredTolerance)) {
-            isPass = measuredVal >= requiredTolerance;
-          }
-        }
-
-        const toleranceStr = "1.5 mm Al for kV <= 70; 2.0 mm Al for 70 ? kV ? 100; 2.5 mm Al for kV > 100";
+        const { remark, requiredMmAl } = evaluateTotalFiltrationPassFail(atKvp, measuredDisplay, ft);
+        const isPass = remark === "PASS";
 
         addRowsForTest("Total Filtration", [
           {
             specified: atKvp !== "-" ? `${atKvp} kVp` : "-",
             measured: measuredDisplay !== "-" ? `${measuredDisplay} mm Al` : "-",
-            tolerance: toleranceStr,
+            tolerance: !isNaN(requiredMmAl) ? `= ${requiredMmAl} mm Al` : "-",
             remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
           },
         ]);

@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { Plus, Trash2, Save, Edit3, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
+import { evaluateTotalFiltrationPassFail } from "../totalFiltrationPassFail";
 import {
     addAccuracyOfOperatingPotentialForOBI,
     getAccuracyOfOperatingPotentialByServiceIdForOBI,
@@ -466,27 +467,8 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
 
     // Calculate PASS/FAIL for Total Filtration based on tolerance table
     const getFiltrationRemark = (): "PASS" | "FAIL" | "-" => {
-        const kvp = parseFloat(totalFiltration.atKvp);
-        const measured = parseFloat(totalFiltration.required);
-        const threshold1 = parseFloat(filtrationTolerance.kvThreshold1);
-        const threshold2 = parseFloat(filtrationTolerance.kvThreshold2);
-
-        if (isNaN(kvp) || isNaN(measured)) return "-";
-
-        let requiredTolerance: number;
-
-        if (kvp < threshold1) {
-            requiredTolerance = parseFloat(filtrationTolerance.forKvGreaterThan70);
-        } else if (kvp >= threshold1 && kvp <= threshold2) {
-            requiredTolerance = parseFloat(filtrationTolerance.forKvBetween70And100);
-        } else {
-            requiredTolerance = parseFloat(filtrationTolerance.forKvGreaterThan100);
-        }
-
-        if (isNaN(requiredTolerance)) return "-";
-
-        // PASS if measured value is greater than or equal to the required tolerance
-        return measured >= requiredTolerance ? "PASS" : "FAIL";
+        const measuredMmAl = totalFiltration.required || totalFiltration.measured || "";
+        return evaluateTotalFiltrationPassFail(totalFiltration.atKvp, measuredMmAl, filtrationTolerance).remark;
     };
 
 

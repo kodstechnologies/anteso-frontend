@@ -1,5 +1,6 @@
 ﻿// src/components/reports/TestTables/RadiographyMobile/MainTestTableForRadiographyMobile.tsx
 import React from "react";
+import { evaluateTotalFiltrationPassFail } from "../totalFiltrationPassFail";
 
 interface MainTestTableProps {
   testData: any;
@@ -225,22 +226,15 @@ const MainTestTableForRadiographyMobile: React.FC<MainTestTableProps> = ({ testD
   // 2.5. Total Filtration (from totalFilteration like Fixed, or from accuracyOfOperatingPotential.totalFiltration)
   if (testData.totalFilteration?.totalFiltration) {
     const tf = testData.totalFilteration.totalFiltration;
-    const measuredStr = tf.required || tf.measured || "-";
+    const measuredStr = String(tf.required ?? tf.measured ?? "-");
     const atKvp = tf.atKvp || "-";
-    const measuredVal = parseFloat(measuredStr);
-    const kvp = parseFloat(atKvp);
     const ft = testData.totalFilteration.filtrationTolerance || { forKvGreaterThan70: "1.5", forKvBetween70And100: "2.0", forKvGreaterThan100: "2.5", kvThreshold1: "70", kvThreshold2: "100" };
-    const threshold1 = parseFloat(ft.kvThreshold1);
-    const threshold2 = parseFloat(ft.kvThreshold2);
-    let requiredTol = NaN;
-    if (!isNaN(kvp)) {
-      requiredTol = kvp < threshold1 ? parseFloat(ft.forKvGreaterThan70) : kvp >= threshold1 && kvp <= threshold2 ? parseFloat(ft.forKvBetween70And100) : parseFloat(ft.forKvGreaterThan100);
-    }
-    const isPass = !isNaN(measuredVal) && !isNaN(requiredTol) ? measuredVal >= requiredTol : false;
+    const { remark, requiredMmAl } = evaluateTotalFiltrationPassFail(atKvp, measuredStr, ft);
+    const isPass = remark === "PASS";
     addRowsForTest("Total Filtration", [{
       specified: atKvp !== "-" ? `${atKvp} kVp` : "-",
       measured: measuredStr !== "-" ? `${measuredStr} mm Al` : "-",
-      tolerance: !isNaN(requiredTol) ? ` ${requiredTol} mm Al` : "-",
+      tolerance: !isNaN(requiredMmAl) ? `= ${requiredMmAl} mm Al` : "-",
       remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
     }]);
   } else if (testData.accuracyOfOperatingPotential?.totalFiltration && (testData.accuracyOfOperatingPotential.totalFiltration.atKvp || testData.accuracyOfOperatingPotential.totalFiltration.required)) {
@@ -248,19 +242,12 @@ const MainTestTableForRadiographyMobile: React.FC<MainTestTableProps> = ({ testD
     const ft = testData.accuracyOfOperatingPotential.filtrationTolerance || { forKvGreaterThan70: "1.5", forKvBetween70And100: "2.0", forKvGreaterThan100: "2.5", kvThreshold1: "70", kvThreshold2: "100" };
     const measuredStr = String(tf.required ?? tf.measured ?? "-");
     const atKvp = String(tf.atKvp ?? "-");
-    const measuredVal = parseFloat(measuredStr);
-    const kvp = parseFloat(atKvp);
-    const threshold1 = parseFloat(ft.kvThreshold1 ?? "70");
-    const threshold2 = parseFloat(ft.kvThreshold2 ?? "100");
-    let requiredTol = NaN;
-    if (!isNaN(kvp)) {
-      requiredTol = kvp < threshold1 ? parseFloat(ft.forKvGreaterThan70 ?? "1.5") : kvp >= threshold1 && kvp <= threshold2 ? parseFloat(ft.forKvBetween70And100 ?? "2.0") : parseFloat(ft.forKvGreaterThan100 ?? "2.5");
-    }
-    const isPass = !isNaN(measuredVal) && !isNaN(requiredTol) ? measuredVal >= requiredTol : false;
+    const { remark, requiredMmAl } = evaluateTotalFiltrationPassFail(atKvp, measuredStr, ft);
+    const isPass = remark === "PASS";
     addRowsForTest("Total Filtration", [{
       specified: atKvp !== "-" ? `${atKvp} kVp` : "-",
       measured: measuredStr !== "-" ? `${measuredStr} mm Al` : "-",
-      tolerance: !isNaN(requiredTol) ? `${requiredTol} mm Al` : "-",
+      tolerance: !isNaN(requiredMmAl) ? `= ${requiredMmAl} mm Al` : "-",
       remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
     }]);
   }

@@ -8,6 +8,7 @@ import {
     getTotalFiltrationByServiceIdForRadiographyFixed,
     updateTotalFiltrationForRadiographyFixed,
 } from "../../../../../../api";
+import { evaluateTotalFiltrationPassFail } from "./totalFiltrationPassFail";
 interface RowData {
     id: string;
     appliedKvp: string;
@@ -407,38 +408,14 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
         }));
     };
 
-    // Calculate PASS/FAIL for Total Filtration based on tolerance table
+    // PASS only if measured mm Al equals the band value (1.5 / 2.0 / 2.5); greater or less → FAIL
     const getFiltrationRemark = (): "PASS" | "FAIL" | "-" => {
-        const kvp = parseFloat(totalFiltration.atKvp);
-        const measured = parseFloat(totalFiltration.required);
-        const threshold1 = parseFloat(filtrationTolerance.kvThreshold1);
-        const threshold2 = parseFloat(filtrationTolerance.kvThreshold2);
-
-        if (isNaN(kvp) || isNaN(measured)) return "-";
-
-        let requiredTolerance: number;
-
-        // Determine which tolerance range applies based on kVp value
-        // Logic according to requirements:
-        // 1. If kV < threshold1 (e.g., < 70): measured must be >= forKvGreaterThan70 (e.g., >= 1.5) to PASS
-        // 2. If threshold1 <= kV <= threshold2 (e.g., 70 <= kV <= 100): measured must be >= forKvBetween70And100 (e.g., >= 2.0) to PASS
-        // 3. If kV > threshold2 (e.g., > 100): measured must be >= forKvGreaterThan100 (e.g., >= 2.5) to PASS
-
-        if (kvp < threshold1) {
-            // kV < threshold1 (e.g., < 70) - measured must be >= forKvGreaterThan70 (e.g., >= 1.5)
-            requiredTolerance = parseFloat(filtrationTolerance.forKvGreaterThan70);
-        } else if (kvp >= threshold1 && kvp <= threshold2) {
-            // threshold1 <= kV <= threshold2 (e.g., 70 <= kV <= 100) - measured must be >= forKvBetween70And100 (e.g., >= 2.0)
-            requiredTolerance = parseFloat(filtrationTolerance.forKvBetween70And100);
-        } else {
-            // kV > threshold2 (e.g., > 100) - measured must be >= forKvGreaterThan100 (e.g., >= 2.5)
-            requiredTolerance = parseFloat(filtrationTolerance.forKvGreaterThan100);
-        }
-
-        if (isNaN(requiredTolerance)) return "-";
-
-        // PASS if measured value is greater than or equal to the required tolerance
-        return measured >= requiredTolerance ? "PASS" : "FAIL";
+        const measuredMmAl = totalFiltration.required || totalFiltration.measured;
+        return evaluateTotalFiltrationPassFail(
+            totalFiltration.atKvp,
+            measuredMmAl,
+            filtrationTolerance
+        ).remark;
     };
 
     if (isLoading) {
@@ -739,7 +716,7 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
                             disabled={isSaved}
                             className={`w-16 px-2 py-1 text-center border rounded font-bold ${isSaved ? 'border-gray-300 bg-gray-50 text-gray-500 cursor-not-allowed' : 'border-amber-600 text-amber-900 bg-white'}`}
                         />
-                        <span>≤ kV ≤</span>
+                        <span>&lt; kV ≤</span>
                         <input
                             type="number"
                             step="1"

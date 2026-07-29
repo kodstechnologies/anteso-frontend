@@ -9,6 +9,7 @@ import { ReportPdfPageFooter } from "../RadiographyFixed/component/Footer";
 import { ReportPdfPageFooterEnd } from "../RadiographyFixed/component/FooterEnd";
 import { ReportPdfPageNoteQR } from "../RadiographyFixed/component/NoteQR";
 import { ReportPdfPageDeclaration } from "../RadiographyFixed/component/Declaration";
+import { evaluateTotalFiltrationPassFail } from "../totalFiltrationPassFail";
 
 interface Tool {
   slNumber: string;
@@ -1068,17 +1069,12 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
               const tf = aop.totalFiltration || {};
               if (!(tf.atKvp || tf.required || tf.measured)) return null;
               const ft = aop.filtrationTolerance || {};
-              const kvp = parseFloat(tf.atKvp ?? "");
-              const measured = parseFloat(tf.required ?? "");
-              const t1 = parseFloat(ft.kvThreshold1 ?? "70");
-              const t2 = parseFloat(ft.kvThreshold2 ?? "100");
-              let reqTol = NaN;
-              if (!isNaN(kvp)) {
-                if (kvp < t1) reqTol = parseFloat(ft.forKvGreaterThan70 ?? "1.5");
-                else if (kvp <= t2) reqTol = parseFloat(ft.forKvBetween70And100 ?? "2.0");
-                else reqTol = parseFloat(ft.forKvGreaterThan100 ?? "2.5");
-              }
-              const filtRemark = (!isNaN(measured) && !isNaN(reqTol)) ? (measured >= reqTol ? "PASS" : "FAIL") : "-";
+              const measuredStr = String(tf.required ?? tf.measured ?? "");
+              const { remark: filtRemark, requiredMmAl: reqTol } = evaluateTotalFiltrationPassFail(
+                tf.atKvp,
+                measuredStr,
+                ft
+              );
               return (
                 <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: "8px" }}>
                   <div style={{ marginTop: "6px" }}>
@@ -1088,7 +1084,7 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
                         {[
                           ["At kVp", `${tf.atKvp || "-"} kVp`],
                           ["Measured Total Filtration", `${tf.required || "-"} mm Al`],
-                          ["Required (Tolerance)", !isNaN(reqTol) ? `≥ ${reqTol} mm Al` : "-"],
+                          ["Required (Tolerance)", !isNaN(reqTol) ? `= ${reqTol} mm Al` : "-"],
                           ["Result", filtRemark],
                         ].map(([label, val]) => (
                           <tr key={label}>
@@ -1108,7 +1104,7 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
                     </table>
                     <p style={{ fontSize: "10px", marginTop: "3px", color: "#444" }}>
                       <strong>Tolerance criteria: </strong>
-                      {ft.forKvGreaterThan70 ?? "1.5"} mm Al for kV ≤ {ft.kvThreshold1 ?? "70"} | {ft.forKvBetween70And100 ?? "2.0"} mm Al for {ft.kvThreshold1 ?? "70"} ≤ kV ≤ {ft.kvThreshold2 ?? "100"} | {ft.forKvGreaterThan100 ?? "2.5"} mm Al for kV &gt; {ft.kvThreshold2 ?? "100"}
+                      {ft.forKvGreaterThan70 ?? "1.5"} mm Al for kV ≤ {ft.kvThreshold1 ?? "70"} | {ft.forKvBetween70And100 ?? "2.0"} mm Al for {ft.kvThreshold1 ?? "70"} &lt; kV ≤ {ft.kvThreshold2 ?? "100"} | {ft.forKvGreaterThan100 ?? "2.5"} mm Al for kV &gt; {ft.kvThreshold2 ?? "100"}
                     </p>
                   </div>
                 </div>

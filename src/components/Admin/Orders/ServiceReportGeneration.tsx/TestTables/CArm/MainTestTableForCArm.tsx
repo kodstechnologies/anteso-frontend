@@ -1,5 +1,6 @@
 // src/components/reports/TestTables/CArm/MainTestTableForCArm.tsx
 import React from "react";
+import { evaluateTotalFiltrationPassFail } from "../totalFiltrationPassFail";
 
 interface MainTestTableProps {
   testData: any;
@@ -294,9 +295,6 @@ const MainTestTableForCArm: React.FC<MainTestTableProps> = ({ testData, hasTimer
           ? String(tf.required).trim()
           : "-";
 
-    const kvp = parseFloat(atKvpStr);
-    const measuredVal = parseFloat(String(measuredStr === "-" ? "" : measuredStr));
-
     const ft = tfRoot.filtrationTolerance || {
       forKvGreaterThan70: "1.5",
       forKvBetween70And100: "2.0",
@@ -305,30 +303,14 @@ const MainTestTableForCArm: React.FC<MainTestTableProps> = ({ testData, hasTimer
       kvThreshold2: "100",
     };
 
-    const threshold1 = parseFloat(String(ft.kvThreshold1 ?? "70"));
-    const threshold2 = parseFloat(String(ft.kvThreshold2 ?? "100"));
-
-    let isPass = false;
-    if (!isNaN(kvp) && !isNaN(measuredVal) && !isNaN(threshold1) && !isNaN(threshold2)) {
-      let requiredTolerance: number;
-      const lowBand =
-        parseFloat(String(ft.forKvLessThan70 ?? ft.forKvGreaterThan70 ?? "1.5"));
-      const midBand = parseFloat(String(ft.forKvBetween70And100 ?? "2.0"));
-      const highBand = parseFloat(String(ft.forKvGreaterThan100 ?? "2.5"));
-      if (kvp < threshold1) requiredTolerance = lowBand;
-      else if (kvp >= threshold1 && kvp <= threshold2) requiredTolerance = midBand;
-      else requiredTolerance = highBand;
-
-      if (!isNaN(requiredTolerance)) isPass = measuredVal >= requiredTolerance;
-    }
-
-    const toleranceStr = "1.5 mm Al for kV <= 70; 2.0 mm Al for 70 ? kV ? 100; 2.5 mm Al for kV > 100";
+    const { remark, requiredMmAl } = evaluateTotalFiltrationPassFail(atKvpStr, measuredStr === "-" ? "" : measuredStr, ft);
+    const isPass = remark === "PASS";
 
     addRowsForTest("Total Filtration", [
       {
         specified: atKvpStr !== "" ? `${atKvpStr} kVp` : "-",
         measured: measuredStr !== "-" && measuredStr !== "" ? `${measuredStr} mm Al` : "-",
-        tolerance: toleranceStr,
+        tolerance: !isNaN(requiredMmAl) ? `= ${requiredMmAl} mm Al` : "-",
         remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
       },
     ]);

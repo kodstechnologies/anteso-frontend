@@ -9,6 +9,7 @@ import { ReportPdfPageFooter } from "../RadiographyFixed/component/Footer";
 import { ReportPdfPageFooterEnd } from "../RadiographyFixed/component/FooterEnd";
 import { ReportPdfPageNoteQR } from "../RadiographyFixed/component/NoteQR";
 import { ReportPdfPageDeclaration } from "../RadiographyFixed/component/Declaration";
+import { evaluateTotalFiltrationPassFail } from "../totalFiltrationPassFail";
 // Removed individual test API imports as we are now using aggregated header
 
 
@@ -989,7 +990,7 @@ const ViewServiceReportBMD: React.FC = () => {
                       <div style={{ marginTop: '4px', fontSize: '10px', color: '#555' }}>
                         <span className="font-semibold">Tolerance criteria: </span>
                         {ft.forKvGreaterThan70 ?? "1.5"} mm Al for kV ≤ {ft.kvThreshold1 ?? "70"} |&nbsp;
-                        {ft.forKvBetween70And100 ?? "2.0"} mm Al for {ft.kvThreshold1 ?? "70"} ≤ kV ≤ {ft.kvThreshold2 ?? "100"} |&nbsp;
+                        {ft.forKvBetween70And100 ?? "2.0"} mm Al for {ft.kvThreshold1 ?? "70"} &lt; kV ≤ {ft.kvThreshold2 ?? "100"} |&nbsp;
                         {ft.forKvGreaterThan100 ?? "2.5"} mm Al for kV &gt; {ft.kvThreshold2 ?? "100"}
                       </div>
                     </div>
@@ -1051,23 +1052,13 @@ const ViewServiceReportBMD: React.FC = () => {
                 {testData.totalFiltration.totalFiltration && (() => {
                   const tf = testData.totalFiltration.totalFiltration;
                   const ft = testData.totalFiltration.filtrationTolerance || {};
-                  const kvp = parseFloat(tf.atKvp ?? "");
                   // NOTE: the UI stores the measured HVL value in 'required' field (not 'measured')
-                  const measuredVal = tf.required ?? tf.measured ?? "";
-                  const measured = parseFloat(measuredVal);
-                  const threshold1 = parseFloat(ft.kvThreshold1 ?? "70");
-                  const threshold2 = parseFloat(ft.kvThreshold2 ?? "100");
-
-                  let requiredTol = NaN;
-                  if (!isNaN(kvp)) {
-                    if (kvp < threshold1) requiredTol = parseFloat(ft.forKvGreaterThan70 ?? "1.5");
-                    else if (kvp <= threshold2) requiredTol = parseFloat(ft.forKvBetween70And100 ?? "2.0");
-                    else requiredTol = parseFloat(ft.forKvGreaterThan100 ?? "2.5");
-                  }
-
-                  const filtrationRemark = (!isNaN(measured) && !isNaN(requiredTol))
-                    ? (measured >= requiredTol ? "PASS" : "FAIL")
-                    : "-";
+                  const measuredStr = String(tf.required ?? tf.measured ?? "");
+                  const { remark: filtrationRemark, requiredMmAl: requiredTol } = evaluateTotalFiltrationPassFail(
+                    tf.atKvp,
+                    measuredStr,
+                    ft
+                  );
 
                   return (
                     <div className="mb-4 print:mb-1" style={{ marginBottom: '4px' }}>
@@ -1081,12 +1072,12 @@ const ViewServiceReportBMD: React.FC = () => {
                             </tr>
                             <tr>
                               <td className="border border-black font-semibold bg-gray-50 text-left" style={{ padding: '0px 4px', fontSize: '11px' }}>Measured Total Filtration</td>
-                              <td className="border border-black text-center" style={{ padding: '0px 4px', fontSize: '11px' }}>{measuredVal || "-"} mm Al</td>
+                              <td className="border border-black text-center" style={{ padding: '0px 4px', fontSize: '11px' }}>{measuredStr || "-"} mm Al</td>
                             </tr>
                             <tr>
                               <td className="border border-black font-semibold bg-gray-50 text-left" style={{ padding: '0px 4px', fontSize: '11px' }}>Required (Tolerance)</td>
                               <td className="border border-black text-center" style={{ padding: '0px 4px', fontSize: '11px' }}>
-                                {!isNaN(requiredTol) ? ` ${requiredTol} mm Al` : "-"}
+                                {!isNaN(requiredTol) ? `= ${requiredTol} mm Al` : "-"}
                               </td>
                             </tr>
                             <tr>
@@ -1102,7 +1093,7 @@ const ViewServiceReportBMD: React.FC = () => {
                         <div style={{ marginTop: '4px', fontSize: '10px', color: '#555' }}>
                           <span className="font-semibold">Tolerance criteria: </span>
                           {ft.forKvGreaterThan70 ?? "1.5"} mm Al for kV ≤ {ft.kvThreshold1 ?? "70"} |&nbsp;
-                          {ft.forKvBetween70And100 ?? "2.0"} mm Al for {ft.kvThreshold1 ?? "70"}  kV  {ft.kvThreshold2 ?? "100"} |&nbsp;
+                          {ft.forKvBetween70And100 ?? "2.0"} mm Al for {ft.kvThreshold1 ?? "70"} &lt; kV ≤ {ft.kvThreshold2 ?? "100"} |&nbsp;
                           {ft.forKvGreaterThan100 ?? "2.5"} mm Al for kV &gt; {ft.kvThreshold2 ?? "100"}
                         </div>
                       </div>

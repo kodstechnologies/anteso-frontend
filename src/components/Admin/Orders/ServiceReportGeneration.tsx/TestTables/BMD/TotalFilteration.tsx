@@ -9,6 +9,7 @@ import {
     updateTotalFiltrationForBMD,
 } from "../../../../../../api";
 import { useRegisterTestExport } from "../shared/TestExportRegistry";
+import { evaluateTotalFiltrationPassFail } from "../totalFiltrationPassFail";
 interface RowData {
     id: string;
     appliedKvp: string;
@@ -456,36 +457,8 @@ const TotalFilterationForInventionalRadiology: React.FC<TotalFilterationForInven
 
     // Calculate PASS/FAIL for Total Filtration based on tolerance table
     const getFiltrationRemark = (): "PASS" | "FAIL" | "-" => {
-        const kvp = parseFloat(totalFiltration.atKvp);
-        const measured = parseFloat(totalFiltration.required);
-        const threshold1 = parseFloat(filtrationTolerance.kvThreshold1);
-        const threshold2 = parseFloat(filtrationTolerance.kvThreshold2);
-
-        if (isNaN(kvp) || isNaN(measured)) return "-";
-
-        let requiredTolerance: number;
-
-        // Determine which tolerance range applies based on kVp value
-        // Logic according to requirements:
-        // 1. If kV < threshold1 (e.g., < 70): measured must be >= forKvGreaterThan70 (e.g., >= 1.5) to PASS
-        // 2. If threshold1 <= kV <= threshold2 (e.g., 70 <= kV <= 100): measured must be >= forKvBetween70And100 (e.g., >= 2.0) to PASS
-        // 3. If kV > threshold2 (e.g., > 100): measured must be >= forKvGreaterThan100 (e.g., >= 2.5) to PASS
-
-        if (kvp < threshold1) {
-            // kV < threshold1 (e.g., < 70) - measured must be >= forKvGreaterThan70 (e.g., >= 1.5)
-            requiredTolerance = parseFloat(filtrationTolerance.forKvGreaterThan70);
-        } else if (kvp >= threshold1 && kvp <= threshold2) {
-            // threshold1 <= kV <= threshold2 (e.g., 70 <= kV <= 100) - measured must be >= forKvBetween70And100 (e.g., >= 2.0)
-            requiredTolerance = parseFloat(filtrationTolerance.forKvBetween70And100);
-        } else {
-            // kV > threshold2 (e.g., > 100) - measured must be >= forKvGreaterThan100 (e.g., >= 2.5)
-            requiredTolerance = parseFloat(filtrationTolerance.forKvGreaterThan100);
-        }
-
-        if (isNaN(requiredTolerance)) return "-";
-
-        // PASS if measured value is greater than or equal to the required tolerance
-        return measured >= requiredTolerance ? "PASS" : "FAIL";
+        const measuredMmAl = totalFiltration.required || totalFiltration.measured || "";
+        return evaluateTotalFiltrationPassFail(totalFiltration.atKvp, measuredMmAl, filtrationTolerance).remark;
     };
 
     const getExportData = useCallback(() => {

@@ -9,6 +9,7 @@ import {
     updateAccuracyOfOperatingPotentialForDentalIntra,
 } from "../../../../../../api";
 import { useRegisterTestExport } from "../shared/TestExportRegistry";
+import { evaluateTotalFiltrationPassFail } from "../totalFiltrationPassFail";
 interface RowData {
     id: string;
     appliedKvp: string;
@@ -526,27 +527,8 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
     }, [toleranceSign, toleranceValue]);
 
     const getFiltrationRemark = (): "PASS" | "FAIL" | "-" => {
-        const m = parseFloat(totalFiltration.measured);
-        const kvp = parseFloat(totalFiltration.atKvp);
-
-        if (isNaN(m) || isNaN(kvp)) return "-";
-
-        const threshold1 = parseFloat(filtrationTolerance.kvThreshold1);
-        const threshold2 = parseFloat(filtrationTolerance.kvThreshold2);
-
-        let requiredTolerance: number;
-
-        if (kvp < threshold1) {
-            requiredTolerance = parseFloat(filtrationTolerance.forKvGreaterThan70);
-        } else if (kvp >= threshold1 && kvp <= threshold2) {
-            requiredTolerance = parseFloat(filtrationTolerance.forKvBetween70And100);
-        } else {
-            requiredTolerance = parseFloat(filtrationTolerance.forKvGreaterThan100);
-        }
-
-        if (isNaN(requiredTolerance)) return "-";
-
-        return m >= requiredTolerance ? "PASS" : "FAIL";
+        const measuredMmAl = totalFiltration.required || totalFiltration.measured || "";
+        return evaluateTotalFiltrationPassFail(totalFiltration.atKvp, measuredMmAl, filtrationTolerance).remark;
     };
 
     const getExportData = useCallback(() => {

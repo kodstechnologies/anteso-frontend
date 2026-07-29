@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { Plus, Trash2, Save, Edit3, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
+import { evaluateTotalFiltrationPassFail } from "../totalFiltrationPassFail";
 import {
   addAccuracyOfOperatingPotentialForRadiographyMobile,
   getAccuracyOfOperatingPotentialByServiceIdForRadiographyMobile,
@@ -251,18 +252,9 @@ const AccuracyOfOperatingPotential: React.FC<Props> = ({
   }, [serviceId, refreshKey, csvDataVersion]);
 
   const getFiltrationRemark = (): "PASS" | "FAIL" | "-" => {
-    const kvp = parseFloat(totalFiltration.atKvp);
-    const measured = parseFloat(totalFiltration.required);
-    if (isNaN(kvp) || isNaN(measured)) return "-";
-    const threshold1 = parseFloat(filtrationTolerance.kvThreshold1);
-    const threshold2 = parseFloat(filtrationTolerance.kvThreshold2);
-    let required: number;
-    if (kvp < threshold1) required = parseFloat(filtrationTolerance.forKvGreaterThan70);
-    else if (kvp >= threshold1 && kvp <= threshold2) required = parseFloat(filtrationTolerance.forKvBetween70And100);
-    else required = parseFloat(filtrationTolerance.forKvGreaterThan100);
-    if (isNaN(required)) return "-";
-    return measured >= required ? "PASS" : "FAIL";
-  };
+        const measuredMmAl = totalFiltration.required || totalFiltration.measured || "";
+        return evaluateTotalFiltrationPassFail(totalFiltration.atKvp, measuredMmAl, filtrationTolerance).remark;
+    };
 
   const saveTest = async () => {
     setIsSaving(true);

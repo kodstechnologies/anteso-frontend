@@ -1,5 +1,6 @@
 // src/components/reports/TestTables/RadiographyPortable/MainTestTableForRadiographyPortable.tsx
 import React from "react";
+import { evaluateTotalFiltrationPassFail } from "../totalFiltrationPassFail";
 
 interface MainTestTableProps {
   testData: any;
@@ -245,23 +246,22 @@ const MainTestTableForRadiographyPortable: React.FC<MainTestTableProps> = ({ tes
   // 2b. Total Filtration (when stored in AOP document)
   const tf = testData.accuracyOfOperatingPotential?.totalFiltration;
   if (tf && (tf.required !== '' || tf.atKvp !== '')) {
-    const kvp = parseFloat(tf.atKvp);
-    const measured = parseFloat(tf.required);
-    const ft = testData.accuracyOfOperatingPotential?.filtrationTolerance;
-    let requiredMin = '';
-    if (ft && !isNaN(kvp)) {
-      const t1 = parseFloat(ft.kvThreshold1 ?? '70');
-      const t2 = parseFloat(ft.kvThreshold2 ?? '100');
-      if (kvp < t1) requiredMin = `${ft.forKvGreaterThan70 ?? '1.5'} mm Al`;
-      else if (kvp >= t1 && kvp <= t2) requiredMin = `${ft.forKvBetween70And100 ?? '2.0'} mm Al`;
-      else requiredMin = `${ft.forKvGreaterThan100 ?? '2.5'} mm Al`;
-    }
-    const isPass = !isNaN(measured) && requiredMin !== '' ? measured >= parseFloat(requiredMin) : undefined;
+    const measuredStr = String(tf.required ?? tf.measured ?? "");
+    const atKvp = tf.atKvp ?? "";
+    const ft = testData.accuracyOfOperatingPotential?.filtrationTolerance || {
+      forKvGreaterThan70: "1.5",
+      forKvBetween70And100: "2.0",
+      forKvGreaterThan100: "2.5",
+      kvThreshold1: "70",
+      kvThreshold2: "100",
+    };
+    const { remark, requiredMmAl } = evaluateTotalFiltrationPassFail(atKvp, measuredStr, ft);
+    const isPass = remark === "PASS";
     addRowsForTest("Total Filtration", [{
-      specified: tf.atKvp ? `${tf.atKvp} kVp` : '-',
-      measured: measured ? `${tf.required} mm Al` : '-',
-      tolerance: "1.5 mm Al for kV <= 70; 2.0 mm Al for 70 <= kV <= 100; 2.5 mm Al for kV > 100",
-      remarks: (isPass === true ? "Pass" : isPass === false ? "Fail" : "Pass") as "Pass" | "Fail",
+      specified: atKvp ? `${atKvp} kVp` : '-',
+      measured: measuredStr ? `${measuredStr} mm Al` : '-',
+      tolerance: !isNaN(requiredMmAl) ? `= ${requiredMmAl} mm Al` : "-",
+      remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
     }]);
   }
 

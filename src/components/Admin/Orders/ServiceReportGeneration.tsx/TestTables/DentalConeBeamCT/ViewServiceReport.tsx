@@ -9,6 +9,7 @@ import { ReportPdfPageFooter } from "../RadiographyFixed/component/Footer";
 import { ReportPdfPageFooterEnd } from "../RadiographyFixed/component/FooterEnd";
 import { ReportPdfPageNoteQR } from "../RadiographyFixed/component/NoteQR";
 import { ReportPdfPageDeclaration } from "../RadiographyFixed/component/Declaration";
+import { evaluateTotalFiltrationPassFail } from "../totalFiltrationPassFail";
 
 interface Tool {
   slNumber: string;
@@ -909,6 +910,7 @@ const ViewServiceReportCBCT: React.FC = () => {
             {/* 5. Total Filtration */}
             {testData.totalFiltration && (() => {
               const tf = testData.totalFiltration;
+              const ft = tf.filtrationTolerance || {};
               const specifiedAtKvp =
                 tf.atKvp ||
                 tf.appliedKvp ||
@@ -932,19 +934,12 @@ const ViewServiceReportCBCT: React.FC = () => {
                 tf.totalFiltration?.required ||
                 "-";
 
-              const kvp = parseFloat(specifiedAtKvp);
-              const measured = parseFloat(measuredTfValue);
-
-              let requiredTol = 2.5; // Default for CBCT/General
-              if (!isNaN(kvp)) {
-                if (kvp < 70) requiredTol = 1.5;
-                else if (kvp <= 100) requiredTol = 2.0;
-                else requiredTol = 2.5;
-              }
-
-              const filtrationRemark = (!isNaN(measured))
-                ? (measured >= requiredTol ? "PASS" : "FAIL")
-                : "-";
+              const measuredStr = String(measuredTfValue === "-" ? "" : measuredTfValue);
+              const { remark: filtrationRemark, requiredMmAl: requiredTol } = evaluateTotalFiltrationPassFail(
+                specifiedAtKvp === "-" ? "" : specifiedAtKvp,
+                measuredStr,
+                ft
+              );
 
               return (
                 <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
@@ -967,7 +962,7 @@ const ViewServiceReportCBCT: React.FC = () => {
                         <tr>
                           <td className="border border-black font-semibold bg-gray-50 p-2 text-left" style={{ padding: '4px 8px' }}>Required (Tolerance)</td>
                           <td className="border border-black text-center p-2" style={{ padding: '4px 8px' }}>
-                            ≥ {requiredTol} mm Al
+                            {!isNaN(requiredTol) ? `= ${requiredTol} mm Al` : "-"}
                           </td>
                         </tr>
                         <tr>
@@ -981,9 +976,12 @@ const ViewServiceReportCBCT: React.FC = () => {
                       </tbody>
                     </table>
                   </div>
-                  {/* <div className="mt-2 text-[10px] text-gray-600 italic">
-                    Tolerance criteria: ≥ 2.5 mm Al (for applied potential over 70 kVp) as per AERB guidelines.
-                  </div> */}
+                  <div style={{ marginTop: '4px', fontSize: '10px', color: '#555' }}>
+                    <span className="font-semibold">Tolerance criteria: </span>
+                    {ft.forKvGreaterThan70 ?? "1.5"} mm Al for kV ≤ {ft.kvThreshold1 ?? "70"} |&nbsp;
+                    {ft.forKvBetween70And100 ?? "2.0"} mm Al for {ft.kvThreshold1 ?? "70"} &lt; kV ≤ {ft.kvThreshold2 ?? "100"} |&nbsp;
+                    {ft.forKvGreaterThan100 ?? "2.5"} mm Al for kV &gt; {ft.kvThreshold2 ?? "100"}
+                  </div>
                 </div>
               );
             })()}

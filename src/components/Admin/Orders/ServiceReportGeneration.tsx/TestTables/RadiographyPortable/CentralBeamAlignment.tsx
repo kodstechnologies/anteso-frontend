@@ -109,10 +109,21 @@ const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, 
       if (tolData) {
         setToleranceValue(tolData.Value);
       }
-      const tolOpData = csvData.find((row: any) => row['Field Name'] === 'Tolerance_Operator');
+      const tolOpData = csvData.find(
+        (row: any) =>
+          row['Field Name'] === 'Tolerance_Operator' ||
+          row['Field Name'] === 'Tolerance_operator'
+      );
       if (tolOpData) {
-        const op = tolOpData.Value;
-        setToleranceOperator(op === '>' ? '>' : op === '<' ? '<' : '=');
+        const raw = String(tolOpData.Value ?? '').trim();
+        // Normalize Excel operators to the generate-page select options
+        const op =
+          raw === '>' || raw === '>=' || /^greater/i.test(raw)
+            ? '>'
+            : raw === '<' || raw === '<=' || /^less/i.test(raw)
+              ? '<'
+              : '=';
+        setToleranceOperator(op);
       }
 
       setIsEditing(true);

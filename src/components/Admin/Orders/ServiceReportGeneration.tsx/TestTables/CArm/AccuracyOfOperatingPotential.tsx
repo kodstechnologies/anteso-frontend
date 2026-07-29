@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Plus, Trash2, Save, Edit3, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
+import { evaluateTotalFiltrationPassFail } from "../totalFiltrationPassFail";
 import {
   addAccuracyOfOperatingPotentialForCBCT,
   getAccuracyOfOperatingPotentialByServiceIdForCBCT,
@@ -235,11 +236,9 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
   }, [toleranceSign, toleranceValue]);
 
   const getFiltrationRemark = (): "PASS" | "FAIL" | "-" => {
-    const m = parseFloat(totalFiltration.measured);
-    const r = parseFloat(totalFiltration.required);
-    if (isNaN(m) || isNaN(r)) return "-";
-    return m >= r ? "PASS" : "FAIL";
-  };
+        const measuredMmAl = totalFiltration.required || totalFiltration.measured || "";
+        return evaluateTotalFiltrationPassFail(totalFiltration.atKvp, measuredMmAl, filtrationTolerance).remark;
+    };
 
   if (isLoading) {
     return (

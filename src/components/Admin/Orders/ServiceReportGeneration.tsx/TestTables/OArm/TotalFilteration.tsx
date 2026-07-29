@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { Plus, Trash2, Save, Edit3, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
+import { evaluateTotalFiltrationPassFail } from "../totalFiltrationPassFail";
 import {
     createTotalFilterationForOArm,
     getTotalFilterationForOArm,
@@ -351,21 +352,8 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
 
     // Same as RadiographyFixed: one mm Al value (required), atKvp picks threshold from filtrationTolerance
     const getFiltrationRemark = (): "PASS" | "FAIL" | "-" => {
-        const kvp = parseFloat(totalFiltration.atKvp);
-        const value = parseFloat(totalFiltration.required);
-        const threshold1 = parseFloat(filtrationTolerance.kvThreshold1);
-        const threshold2 = parseFloat(filtrationTolerance.kvThreshold2);
-        if (isNaN(kvp) || isNaN(value)) return "-";
-        let requiredTolerance: number;
-        if (kvp < threshold1) {
-            requiredTolerance = parseFloat(filtrationTolerance.forKvGreaterThan70);
-        } else if (kvp >= threshold1 && kvp <= threshold2) {
-            requiredTolerance = parseFloat(filtrationTolerance.forKvBetween70And100);
-        } else {
-            requiredTolerance = parseFloat(filtrationTolerance.forKvGreaterThan100);
-        }
-        if (isNaN(requiredTolerance)) return "-";
-        return value >= requiredTolerance ? "PASS" : "FAIL";
+        const measuredMmAl = totalFiltration.required || totalFiltration.measured || "";
+        return evaluateTotalFiltrationPassFail(totalFiltration.atKvp, measuredMmAl, filtrationTolerance).remark;
     };
 
     if (isLoading) {

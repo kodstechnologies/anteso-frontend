@@ -1,5 +1,6 @@
 // src/components/reports/TestTables/OBI/MainTestTableForOBI.tsx
 import React from "react";
+import { evaluateTotalFiltrationPassFail } from "../totalFiltrationPassFail";
 
 interface MainTestTableProps {
   testData: any;
@@ -235,10 +236,8 @@ export const generateOBISummaryRows = (testData: any, hasTimer: boolean = false)
   // Total Filtration — RadiographyFixed (nested under operatingPotential for OBI)
   if (opData?.totalFiltration) {
     const tf = opData.totalFiltration;
-    const measuredStr = tf.required ?? tf.measured ?? "-";
+    const measuredStr = String(tf.required ?? tf.measured ?? "-");
     const atKvp = tf.atKvp || "-";
-    const kvp = parseFloat(atKvp);
-    const measuredVal = parseFloat(String(measuredStr));
 
     const ft = opData.filtrationTolerance || testData.totalFilteration?.filtrationTolerance || {
       forKvGreaterThan70: "1.5",
@@ -248,27 +247,14 @@ export const generateOBISummaryRows = (testData: any, hasTimer: boolean = false)
       kvThreshold2: "100",
     };
 
-    const threshold1 = parseFloat(String(ft.kvThreshold1 ?? "70"));
-    const threshold2 = parseFloat(String(ft.kvThreshold2 ?? "100"));
-
-    let isPass = false;
-    if (!isNaN(kvp) && !isNaN(measuredVal) && !isNaN(threshold1) && !isNaN(threshold2)) {
-      let requiredTolerance: number;
-      if (kvp < threshold1) requiredTolerance = parseFloat(String(ft.forKvGreaterThan70 ?? "1.5"));
-      else if (kvp >= threshold1 && kvp <= threshold2)
-        requiredTolerance = parseFloat(String(ft.forKvBetween70And100 ?? "2.0"));
-      else requiredTolerance = parseFloat(String(ft.forKvGreaterThan100 ?? "2.5"));
-
-      if (!isNaN(requiredTolerance)) isPass = measuredVal >= requiredTolerance;
-    }
-
-    const toleranceStr = "1.5 mm Al for kV <= 70; 2.0 mm Al for 70 ? kV ? 100; 2.5 mm Al for kV > 100";
+    const { remark, requiredMmAl } = evaluateTotalFiltrationPassFail(atKvp, measuredStr, ft);
+    const isPass = remark === "PASS";
 
     addRowsForTest("Total Filtration", [
       {
         specified: atKvp !== "-" ? `${atKvp} kVp` : "-",
         measured: measuredStr !== "-" && measuredStr !== "" ? `${measuredStr} mm Al` : "-",
-        tolerance: toleranceStr,
+        tolerance: !isNaN(requiredMmAl) ? `= ${requiredMmAl} mm Al` : "-",
         remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
       },
     ]);

@@ -420,8 +420,13 @@ const RadiographyPortableContent: React.FC<RadiographyPortableProps> = ({ servic
         'Tolerance (cm)': 'Tolerance_Value', 'Remarks': 'Table2_remarks'
       },
       'Central Beam Alignment': {
-        'FCD (cm)': 'Table1_fcd', 'kV': 'Table1_kv', 'mAs': 'Table1_mas',
-        'Observed Tilt (deg)': 'Table2_observedTilt', 'Tolerance (deg)': 'Tolerance_Value', 'Remarks': 'Table2_remarks'
+        'FCD (cm)': 'Table1_fcd', 'FFD (cm)': 'Table1_fcd', 'kV': 'Table1_kv', 'mAs': 'Table1_mas',
+        'Observed Tilt (deg)': 'Table2_observedTilt', 'Observed Tilt (cm)': 'Table2_observedTilt',
+        'Observed Tilt': 'Table2_observedTilt',
+        'Tolerance Operator': 'Tolerance_operator', 'Tolerance Sign': 'Tolerance_operator',
+        'Tolerance (deg)': 'Tolerance_Value', 'Tolerance (cm)': 'Tolerance_Value',
+        'Tolerance Value (cm)': 'Tolerance_Value', 'Tolerance Value (deg)': 'Tolerance_Value',
+        'Remarks': 'Table2_remarks'
       },
       'Effective Focal Spot': {
         'FCD (cm)': 'Table1_fcd', 'Focus Type': 'Table2_focusType',

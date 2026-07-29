@@ -21,6 +21,7 @@ import { ReportPdfPageFooter } from "../RadiographyFixed/component/Footer";
 import { ReportPdfPageFooterEnd } from "../RadiographyFixed/component/FooterEnd";
 import { ReportPdfPageNoteQR } from "../RadiographyFixed/component/NoteQR";
 import { ReportPdfPageDeclaration } from "../RadiographyFixed/component/Declaration";
+import { evaluateTotalFiltrationPassFail } from "../totalFiltrationPassFail";
 
 interface Tool {
   slNumber: string;
@@ -968,65 +969,11 @@ const ViewServiceReportDentalHandHeld: React.FC = () => {
                     if (typeof v === "object" && "value" in v) return (v as any).value ?? "";
                     return v;
                   };
-                  const toNum = (v: any): number => {
-                    const raw = primitive(v);
-                    if (raw == null || raw === "") return NaN;
-                    if (typeof raw === "number") return Number.isFinite(raw) ? raw : NaN;
-                    const s = String(raw).trim();
-                    const direct = Number(s);
-                    if (Number.isFinite(direct)) return direct;
-                    const m = s.match(/-?\d+(\.\d+)?/);
-                    return m ? Number(m[0]) : NaN;
-                  };
-                  const tfAtKvp = tf.atKvp ?? tf.kvp ?? tf.kV ?? "";
-                  const tfMeasured1 = tf.measured1 ?? tf.measured ?? tf.measuredValue ?? "";
-                  const tfMeasured2 = tf.measured2 ?? tf.required ?? tf.requiredValue ?? "";
-                  const kvpNum = toNum(tfAtKvp);
-                  const measured1 = toNum(tfMeasured1);
-                  const measured2 = toNum(tfMeasured2);
-                  const measuredForDecision = !isNaN(measured1) ? measured1 : (!isNaN(measured2) ? measured2 : NaN);
-
-                  const k1 = toNum(ft.kvp1 ?? ft.kvThreshold1);
-                  const k2 = toNum(ft.kvp2 ?? ft.kvThreshold2);
-                  let reqVal = ft.value3 ?? ft.forKvGreaterThan100;
-                  let reqOp = ft.operator3 || ">=";
-                  if (!isNaN(kvpNum) && !isNaN(k1) && kvpNum < k1) {
-                    reqVal = ft.value1 ?? ft.forKvGreaterThan70;
-                    reqOp = ft.operator1 || ">=";
-                  } else if (!isNaN(kvpNum) && !isNaN(k1) && !isNaN(k2) && kvpNum >= k1 && kvpNum <= k2) {
-                    reqVal = ft.value2 ?? ft.forKvBetween70And100;
-                    reqOp = ft.operator2 || ">=";
-                  }
-
-                  const normalizedOp =
-                    reqOp === "≤" ? "<=" :
-                      reqOp === "≥" ? ">=" :
-                        String(reqOp).toLowerCase() === "less than or equal to" ? "<=" :
-                          String(reqOp).toLowerCase() === "greater than or equal to" ? ">=" :
-                            String(reqOp).toLowerCase() === "less than" ? "<" :
-                              String(reqOp).toLowerCase() === "greater than" ? ">" :
-                                reqOp === "=" ? "==" : reqOp;
-                  let reqNum = toNum(reqVal);
-                  if (isNaN(reqNum)) {
-                    const candidates = [
-                      ft.value1, ft.value2, ft.value3,
-                      ft.forKvGreaterThan70, ft.forKvBetween70And100, ft.forKvGreaterThan100
-                    ].map(toNum).filter((n: number) => !isNaN(n));
-                    reqNum = candidates.length > 0 ? candidates[0] : NaN;
-                  }
-                  // Legacy payload fallback: measured2 often stores required tolerance value.
-                  if (isNaN(reqNum)) {
-                    const legacyRequired = toNum(tfMeasured2);
-                    if (!isNaN(legacyRequired)) {
-                      reqNum = legacyRequired;
-                    }
-                  }
-                  let remark = "-";
-                  if (!isNaN(measuredForDecision) && !isNaN(reqNum)) {
-                    if (normalizedOp === ">=" || normalizedOp === ">") remark = measuredForDecision >= reqNum ? "PASS" : "FAIL";
-                    else if (normalizedOp === "<=" || normalizedOp === "<") remark = measuredForDecision <= reqNum ? "PASS" : "FAIL";
-                    else remark = measuredForDecision >= reqNum ? "PASS" : "FAIL";
-                  }
+                  const tfAtKvp = primitive(tf.atKvp ?? tf.kvp ?? tf.kV ?? "");
+                  const tfMeasured1 = primitive(tf.measured1 ?? tf.measured ?? tf.measuredValue ?? "");
+                  const tfMeasured2 = primitive(tf.measured2 ?? tf.required ?? tf.requiredValue ?? "");
+                  const measuredStr = String(tfMeasured1 || tfMeasured2 || "");
+                  const { remark, requiredMmAl: reqNum } = evaluateTotalFiltrationPassFail(tfAtKvp, measuredStr, ft);
 
                   return (
                     <div className="border border-black rounded" style={{ padding: '4px 6px', marginTop: '4px' }}>
@@ -1047,7 +994,7 @@ const ViewServiceReportDentalHandHeld: React.FC = () => {
                           <tr>
                             <td className="border border-black font-medium" style={{ padding: '0px 4px', fontSize: '11px' }}>Required (Tolerance)</td>
                             <td className="border border-black text-center" style={{ padding: '0px 4px', fontSize: '11px' }}>
-                              {!isNaN(reqNum) ? `${normalizedOp === "==" ? "=" : (normalizedOp || ">=")} ${reqNum} mm Al` : "-"}
+                              {!isNaN(reqNum) ? `= ${reqNum} mm Al` : "-"}
                             </td>
                           </tr>
                           <tr>
@@ -1061,7 +1008,7 @@ const ViewServiceReportDentalHandHeld: React.FC = () => {
                       <div style={{ marginTop: '4px', fontSize: '10px', color: '#555' }}>
                         <span className="font-semibold">Tolerance criteria: </span>
                         {displayValue(ft.value1 ?? ft.forKvGreaterThan70)} mm Al for kV ≤ {displayValue(ft.kvp1 ?? ft.kvThreshold1)} |&nbsp;
-                        {displayValue(ft.value2 ?? ft.forKvBetween70And100)} mm Al for {displayValue(ft.kvp1 ?? ft.kvThreshold1)} ≤ kV ≤ {displayValue(ft.kvp2 ?? ft.kvThreshold2)} |&nbsp;
+                        {displayValue(ft.value2 ?? ft.forKvBetween70And100)} mm Al for {displayValue(ft.kvp1 ?? ft.kvThreshold1)} &lt; kV ≤ {displayValue(ft.kvp2 ?? ft.kvThreshold2)} |&nbsp;
                         {displayValue(ft.value3 ?? ft.forKvGreaterThan100)} mm Al for kV &gt; {displayValue(ft.kvp2 ?? ft.kvThreshold2)}
                       </div>
                     </div>

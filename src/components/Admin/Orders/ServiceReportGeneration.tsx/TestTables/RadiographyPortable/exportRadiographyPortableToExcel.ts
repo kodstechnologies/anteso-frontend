@@ -35,7 +35,8 @@ export const buildPortableTemplateRows = (hasTimer: boolean): any[][] => {
   sec("CENTRAL BEAM ALIGNMENT", [
     ["FFD (cm)", "100", "kV", "80", "mAs", "10"],
     ["Observed Tilt (cm)", "0.5"],
-    ["Tolerance (cm)", "1.5"],
+    ["Tolerance Operator", "="],
+    ["Tolerance Value (cm)", "1.5"],
   ]);
 
   sec("EFFECTIVE FOCAL SPOT", [
@@ -146,13 +147,22 @@ export const createRadiographyPortableUploadableExcel = (
 
   const central = unwrap(data.centralBeamAlignment);
   if (central) {
-    const settings = first(central.table1 ?? central.settings);
+    const settings = first(central.table1 ?? central.settings ?? central.techniqueFactors);
     const measurements = list(central.table2, central.measurements, central.readings);
+    const obsTilt = central.observedTilt || first(measurements);
+    const observedValue =
+      value(obsTilt?.value, obsTilt?.observedTilt, obsTilt?.measured, obsTilt?.measuredValue) ||
+      (measurements[0]
+        ? value(measurements[0].observedTilt, measurements[0].measured, measurements[0].measuredValue, measurements[0].value)
+        : "");
     section("CENTRAL BEAM ALIGNMENT", [
       ["FCD (cm)", value(settings.fcd, settings.ffd), "kV", value(settings.kv, settings.kvp), "mAs", settings.mas],
-      ["Observed Tilt (deg)", "Remarks"],
-      ...measurements.map((item: any) => [value(item.observedTilt, item.measured, item.measuredValue), value(item.remarks, item.remark)]),
-      ["Tolerance (deg)", value(central.toleranceValue, central.tolerance?.value, central.tolerance)],
+      ["Observed Tilt (cm)", observedValue],
+      ["Tolerance Operator", value(central.tolerance?.operator, central.toleranceOperator, "=")],
+      [
+        "Tolerance Value (cm)",
+        value(central.tolerance?.value, central.toleranceValue, central.tolerance, "1.5"),
+      ],
     ]);
   }
 

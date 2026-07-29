@@ -163,11 +163,30 @@ export const parsePortableTableCSV = (text: string): PortableParsedRow[] => {
       if (cond[1]) pushRow(rows, testName, "Table1_fcd", cond[1], 0);
       if (cond[3]) pushRow(rows, testName, "Table1_kv", cond[3], 0);
       if (cond[5]) pushRow(rows, testName, "Table1_mas", cond[5], 0);
-      const obs = splitLine(lines[i + 2] || "");
-      if (obs[1]) pushRow(rows, testName, "Table2_observedTilt", obs[1], 0);
-      const tol = splitLine(lines[i + 3] || "");
-      if (tol[1]) pushRow(rows, testName, "Tolerance_Value", tol[1], 0);
-      i += 4;
+
+      let j = i + 2;
+      while (j < lines.length) {
+        const l = lines[j].trim();
+        if (!l || l.startsWith("TEST:")) break;
+        const cells = splitLine(l);
+        const label = (cells[0] || "").trim();
+        const val = (cells[1] || "").trim();
+        const labelL = label.toLowerCase();
+        if (!val) {
+          j++;
+          continue;
+        }
+        if (labelL.startsWith("observed tilt")) {
+          pushRow(rows, testName, "Table2_observedTilt", val, 0);
+        } else if (labelL === "tolerance operator" || labelL === "tolerance sign") {
+          pushRow(rows, testName, "Tolerance_operator", val, 0);
+          pushRow(rows, testName, "Tolerance_Operator", val, 0);
+        } else if (labelL.startsWith("tolerance")) {
+          pushRow(rows, testName, "Tolerance_Value", val, 0);
+        }
+        j++;
+      }
+      i = j;
       continue;
     }
 

@@ -1,5 +1,6 @@
 // src/components/reports/TestTables/DentalIntra/MainTestTableForDentalIntra.tsx
 import React from "react";
+import { evaluateTotalFiltrationPassFail } from "../totalFiltrationPassFail";
 
 interface MainTestTableProps {
   testData: any;
@@ -171,29 +172,16 @@ const MainTestTableForDentalIntra: React.FC<MainTestTableProps> = ({ testData })
     };
     const measuredStr = String(tf.measured1 ?? tf.measured ?? "-");
     const atKvp = tf.atKvp ?? "-";
-    const kvp = parseFloat(atKvp);
-    const measuredVal = parseFloat(measuredStr);
 
-    const threshold1 = parseFloat(ft.kvThreshold1 ?? "70");
-    const threshold2 = parseFloat(ft.kvThreshold2 ?? "100");
-
-    let isPass = false;
-    if (!isNaN(kvp) && !isNaN(measuredVal)) {
-      let requiredTolerance: number;
-      if (kvp < threshold1) requiredTolerance = parseFloat(ft.forKvGreaterThan70 ?? "1.5");
-      else if (kvp >= threshold1 && kvp <= threshold2) requiredTolerance = parseFloat(ft.forKvBetween70And100 ?? "2.0");
-      else requiredTolerance = parseFloat(ft.forKvGreaterThan100 ?? "2.5");
-      if (!isNaN(requiredTolerance)) isPass = measuredVal >= requiredTolerance;
-    }
-
-    const toleranceStr = "1.5 mm Al for kV <= 70; 2.0 mm Al for 70 ? kV ? 100; 2.5 mm Al for kV > 100";
+    const { remark, requiredMmAl } = evaluateTotalFiltrationPassFail(atKvp, measuredStr, ft);
+    const isPass = remark === "PASS";
 
     addRowsForTest("Total Filtration", [
       {
         specified: atKvp !== "-" ? `${atKvp} kVp` : "-",
         measured:
           measuredStr !== "-" && !Number.isNaN(parseFloat(measuredStr)) ? `${measuredStr} mm Al` : "-",
-        tolerance: toleranceStr,
+        tolerance: !isNaN(requiredMmAl) ? `= ${requiredMmAl} mm Al` : "-",
         remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
       },
     ]);

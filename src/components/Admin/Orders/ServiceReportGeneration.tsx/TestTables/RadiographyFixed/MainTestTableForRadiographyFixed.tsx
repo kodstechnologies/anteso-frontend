@@ -1,5 +1,6 @@
 // src/components/reports/TestTables/RadiographyFixed/MainTestTableForRadiographyFixed.tsx
 import React from "react";
+import { evaluateTotalFiltrationPassFail } from "./totalFiltrationPassFail";
 
 interface MainTestTableProps {
   testData: any;
@@ -230,8 +231,6 @@ export const generateRadiographySummaryRows = (testData: any, hasTimer: boolean 
   if (tfSource) {
     const measuredStr = String(tfSource.required ?? tfSource.measured ?? "-");
     const atKvp = String(tfSource.atKvp ?? "-");
-    const measuredVal = parseFloat(measuredStr);
-    const kvp = parseFloat(atKvp);
     const ft =
       (hasFixedTfData ? testData.totalFilteration?.filtrationTolerance : testData.accuracyOfOperatingPotential?.filtrationTolerance) || {
         forKvGreaterThan70: "1.5",
@@ -240,22 +239,12 @@ export const generateRadiographySummaryRows = (testData: any, hasTimer: boolean 
         kvThreshold1: "70",
         kvThreshold2: "100",
       };
-    const threshold1 = parseFloat(ft.kvThreshold1 ?? "70");
-    const threshold2 = parseFloat(ft.kvThreshold2 ?? "100");
-    let requiredTolerance = NaN;
-    if (!isNaN(kvp)) {
-      requiredTolerance =
-        kvp < threshold1
-          ? parseFloat(ft.forKvGreaterThan70 ?? "1.5")
-          : kvp >= threshold1 && kvp <= threshold2
-            ? parseFloat(ft.forKvBetween70And100 ?? "2.0")
-            : parseFloat(ft.forKvGreaterThan100 ?? "2.5");
-    }
-    const isPass = !isNaN(measuredVal) && !isNaN(requiredTolerance) ? measuredVal >= requiredTolerance : false;
+    const { remark, requiredMmAl } = evaluateTotalFiltrationPassFail(atKvp, measuredStr, ft);
+    const isPass = remark === "PASS";
     addRowsForTest("Total Filtration", [{
       specified: atKvp !== "-" ? `${atKvp} kVp` : "-",
       measured: measuredStr !== "-" ? `${measuredStr} mm Al` : "-",
-      tolerance: !isNaN(requiredTolerance) ? `≥ ${requiredTolerance} mm Al` : "-",
+      tolerance: !isNaN(requiredMmAl) ? `= ${requiredMmAl} mm Al` : "-",
       remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
     }], false, false);
   }

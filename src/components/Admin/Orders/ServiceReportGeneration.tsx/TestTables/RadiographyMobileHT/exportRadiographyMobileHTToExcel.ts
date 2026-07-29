@@ -68,20 +68,29 @@ export const createRadiographyMobileHTUploadableExcel = (
     addBlank();
   }
 
-  // 3. Effective Focal Spot
+  // 3. Effective Focal Spot (2 columns — same as Radiography Mobile)
   const efs = unwrap(data.effectiveFocalSpot);
   if (efs?.focalSpots?.length) {
     allData.push(["TEST: EFFECTIVE FOCAL SPOT"]);
     allData.push(["FFD (cm)", efs.fcd ?? ""]);
-    allData.push(["Focus Type", "Stated Width", "Stated Height", "Measured Width", "Measured Height", "Remark"]);
+    allData.push(["Focus Type", "Stated Focal Spot of Tube (f)", "Measured Focal Spot (Nominal)"]);
     efs.focalSpots.forEach((s: any) => {
+      const statedFromLegacy =
+        s.statedNominal != null && String(s.statedNominal).trim() !== ""
+          ? s.statedNominal
+          : s.statedWidth != null && s.statedHeight != null
+            ? (Number(s.statedWidth) + Number(s.statedHeight)) / 2
+            : s.statedWidth ?? s.statedHeight ?? "";
+      const measuredFromLegacy =
+        s.measuredNominal != null && String(s.measuredNominal).trim() !== ""
+          ? s.measuredNominal
+          : s.measuredWidth != null && s.measuredHeight != null
+            ? (Number(s.measuredWidth) + Number(s.measuredHeight)) / 2
+            : s.measuredWidth ?? s.measuredHeight ?? "";
       allData.push([
         s.focusType ?? "",
-        s.statedWidth ?? "",
-        s.statedHeight ?? "",
-        s.measuredWidth ?? "",
-        s.measuredHeight ?? "",
-        s.remark ?? "",
+        statedFromLegacy,
+        measuredFromLegacy,
       ]);
     });
     addBlank();

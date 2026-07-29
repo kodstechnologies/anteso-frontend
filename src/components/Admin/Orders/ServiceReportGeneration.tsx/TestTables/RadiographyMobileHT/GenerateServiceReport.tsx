@@ -578,26 +578,80 @@ const RadiographyMobileHTContent: React.FC<RadiographyMobileHTProps> = ({ servic
         }
       } else if (title.includes("EFFECTIVE FOCAL SPOT")) {
         const testName = "Effective Focal Spot";
-        sectionRows.forEach((r, idx) => {
-          if (idx === 0) pushRow("FCD", r[colIdx(header, "FFD", "FCD", "FDD")] ?? "", 0, testName);
-          const focusType = r[colIdx(header, "Focus Type", "Focus")] ?? "";
-          if (focusType) pushRow("FocalSpot_FocusType", focusType, idx, testName);
-          const sW = r[colIdx(header, "Stated Width", "Stated")] ?? "";
-          const sH = r[colIdx(header, "Stated Height")] ?? "";
-          const mW = r[colIdx(header, "Measured Width", "Measured")] ?? "";
-          const mH = r[colIdx(header, "Measured Height")] ?? "";
-          if (sW) pushRow("FocalSpot_StatedWidth", sW, idx, testName);
-          if (sH) pushRow("FocalSpot_StatedHeight", sH, idx, testName);
-          const statedNom1 = toNum(sW);
-          const statedNom2 = toNum(sH);
-          const statedNominal = statedNom1 != null && statedNom2 != null ? (statedNom1 + statedNom2) / 2 : (statedNom1 ?? statedNom2);
-          if (statedNominal != null) pushRow("FocalSpot_StatedNominal", String(statedNominal), idx, testName);
-          if (mW) pushRow("FocalSpot_MeasuredWidth", mW, idx, testName);
-          if (mH) pushRow("FocalSpot_MeasuredHeight", mH, idx, testName);
-          const measuredNom1 = toNum(mW);
-          const measuredNom2 = toNum(mH);
-          const measuredNominal = measuredNom1 != null && measuredNom2 != null ? (measuredNom1 + measuredNom2) / 2 : (measuredNom1 ?? measuredNom2);
-          if (measuredNominal != null) pushRow("FocalSpot_MeasuredNominal", String(measuredNominal), idx, testName);
+        // Radiography Mobile style: FFD row, then 2-col header (Stated/Measured Nominal), then data.
+        // Legacy HT: single header with Width/Height columns (and optional FFD on data rows).
+        const headerJoined = header.map((h) => String(h || "").trim().toLowerCase()).join(" ");
+        const headerIsFfdOnly =
+          /^(ffd|fcd|fdd)/i.test(String(header[0] || "").trim()) &&
+          !/focus|stated|measured/i.test(headerJoined);
+
+        let colHeader = header;
+        let dataRows = sectionRows;
+        if (headerIsFfdOnly) {
+          const fcd = String(header[1] ?? "").trim();
+          if (fcd) pushRow("FCD", fcd, 0, testName);
+          if (sectionRows.length > 0) {
+            colHeader = sectionRows[0];
+            dataRows = sectionRows.slice(1);
+          }
+        }
+
+        const idxFocus = colIdx(colHeader, "Focus Type", "Focus");
+        const idxStatedNom = colIdx(
+          colHeader,
+          "Stated Focal Spot of Tube (f)",
+          "Stated Focal Spot",
+          "Stated Nominal",
+        );
+        const idxMeasNom = colIdx(
+          colHeader,
+          "Measured Focal Spot (Nominal)",
+          "Measured Focal Spot",
+          "Measured Nominal",
+        );
+        const idxStatedW = colIdx(colHeader, "Stated Width");
+        const idxStatedH = colIdx(colHeader, "Stated Height");
+        const idxMeasW = colIdx(colHeader, "Measured Width");
+        const idxMeasH = colIdx(colHeader, "Measured Height");
+        const useNominal = idxStatedNom >= 0 && idxMeasNom >= 0;
+
+        dataRows.forEach((r, idx) => {
+          if (!headerIsFfdOnly && idx === 0) {
+            const fcdEmbedded = r[colIdx(colHeader, "FFD", "FCD", "FDD")] ?? "";
+            if (fcdEmbedded) pushRow("FCD", fcdEmbedded, 0, testName);
+          }
+          const focusType = (idxFocus >= 0 ? r[idxFocus] : r[0]) ?? "";
+          if (!String(focusType).trim() || /focus\s*type/i.test(String(focusType))) return;
+          pushRow("FocalSpot_FocusType", focusType, idx, testName);
+          if (useNominal) {
+            const statedNom = r[idxStatedNom] ?? "";
+            const measuredNom = r[idxMeasNom] ?? "";
+            if (statedNom) pushRow("FocalSpot_StatedNominal", statedNom, idx, testName);
+            if (measuredNom) pushRow("FocalSpot_MeasuredNominal", measuredNom, idx, testName);
+          } else {
+            const sW = (idxStatedW >= 0 ? r[idxStatedW] : r[1]) ?? "";
+            const sH = (idxStatedH >= 0 ? r[idxStatedH] : r[2]) ?? "";
+            const mW = (idxMeasW >= 0 ? r[idxMeasW] : r[3]) ?? "";
+            const mH = (idxMeasH >= 0 ? r[idxMeasH] : r[4]) ?? "";
+            if (sW) pushRow("FocalSpot_StatedWidth", sW, idx, testName);
+            if (sH) pushRow("FocalSpot_StatedHeight", sH, idx, testName);
+            if (mW) pushRow("FocalSpot_MeasuredWidth", mW, idx, testName);
+            if (mH) pushRow("FocalSpot_MeasuredHeight", mH, idx, testName);
+            const statedNom1 = toNum(String(sW));
+            const statedNom2 = toNum(String(sH));
+            const statedNominal =
+              statedNom1 != null && statedNom2 != null
+                ? (statedNom1 + statedNom2) / 2
+                : (statedNom1 ?? statedNom2);
+            if (statedNominal != null) pushRow("FocalSpot_StatedNominal", String(statedNominal), idx, testName);
+            const measuredNom1 = toNum(String(mW));
+            const measuredNom2 = toNum(String(mH));
+            const measuredNominal =
+              measuredNom1 != null && measuredNom2 != null
+                ? (measuredNom1 + measuredNom2) / 2
+                : (measuredNom1 ?? measuredNom2);
+            if (measuredNominal != null) pushRow("FocalSpot_MeasuredNominal", String(measuredNominal), idx, testName);
+          }
         });
       } else if (title.includes("ACCURACY OF IRRADIATION TIME")) {
         const testName = "Accuracy of Irradiation Time";
@@ -833,45 +887,72 @@ const RadiographyMobileHTContent: React.FC<RadiographyMobileHTProps> = ({ servic
           continue;
         }
 
-        // 3) EFFECTIVE FOCAL SPOT
+        // 3) EFFECTIVE FOCAL SPOT (2 columns like Radiography Mobile; legacy 4-col still supported)
         if (label === "EFFECTIVE FOCAL SPOT") {
           const testName = "Effective Focal Spot";
           const cond = (lines[i + 1] || "").split(",");
           const fcd = cond[1] || "";
           if (fcd) pushRow(testName, "FCD", fcd, 0);
 
+          const header = (lines[i + 2] || "").split(",").map((h) => (h || "").trim().toLowerCase());
+          const colIndex = (predicates: ((h: string) => boolean)[]) =>
+            header.findIndex((h) => predicates.some((p) => p(h)));
+          const idxFocus = colIndex([(h) => h.includes("focus")]);
+          const idxStatedNom = colIndex([
+            (h) => h.includes("stated focal") || h.includes("stated nominal"),
+          ]);
+          const idxMeasNom = colIndex([
+            (h) => h.includes("measured focal") || (h.includes("measured") && h.includes("nominal")),
+          ]);
+          const idxStatedW = colIndex([(h) => h.includes("stated width")]);
+          const idxStatedH = colIndex([(h) => h.includes("stated height")]);
+          const idxMeasW = colIndex([(h) => h.includes("measured width")]);
+          const idxMeasH = colIndex([(h) => h.includes("measured height")]);
+          const useNominal = idxStatedNom >= 0 && idxMeasNom >= 0;
+
           let rowIdx = 0;
-          let j = i + 3; // skip header
+          let j = i + 3;
           while (j < lines.length) {
             const l = lines[j].trim();
             if (!l || l.startsWith("TEST:")) break;
             const cells = l.split(",");
-            const focusType = (cells[0] || "").trim();
-            if (focusType) {
-              const sW = (cells[1] || "").trim();
-              const sH = (cells[2] || "").trim();
-              const mW = (cells[3] || "").trim();
-              const mH = (cells[4] || "").trim();
-              pushRow(testName, "FocalSpot_FocusType", focusType, rowIdx);
-              if (sW) pushRow(testName, "FocalSpot_StatedWidth", sW, rowIdx);
-              if (sH) pushRow(testName, "FocalSpot_StatedHeight", sH, rowIdx);
-              // Also populate nominal values for the new template fields.
-              const toNum = (v: string) => {
-                const n = parseFloat(v);
-                return isNaN(n) ? null : n;
-              };
-              const statedNom1 = toNum(sW);
-              const statedNom2 = toNum(sH);
-              const statedNominal =
-                statedNom1 != null && statedNom2 != null ? (statedNom1 + statedNom2) / 2 : (statedNom1 ?? statedNom2);
-              if (statedNominal != null) pushRow(testName, "FocalSpot_StatedNominal", String(statedNominal), rowIdx);
-              if (mW) pushRow(testName, "FocalSpot_MeasuredWidth", mW, rowIdx);
-              if (mH) pushRow(testName, "FocalSpot_MeasuredHeight", mH, rowIdx);
-              const measuredNom1 = toNum(mW);
-              const measuredNom2 = toNum(mH);
-              const measuredNominal =
-                measuredNom1 != null && measuredNom2 != null ? (measuredNom1 + measuredNom2) / 2 : (measuredNom1 ?? measuredNom2);
-              if (measuredNominal != null) pushRow(testName, "FocalSpot_MeasuredNominal", String(measuredNominal), rowIdx);
+            const get = (idx: number) => (idx >= 0 ? (cells[idx] || "").trim() : "");
+            const fType = get(idxFocus >= 0 ? idxFocus : 0);
+            if (fType && !/^focus\s*type$/i.test(fType)) {
+              pushRow(testName, "FocalSpot_FocusType", fType, rowIdx);
+              if (useNominal) {
+                const statedNom = get(idxStatedNom);
+                const measuredNom = get(idxMeasNom);
+                if (statedNom) pushRow(testName, "FocalSpot_StatedNominal", statedNom, rowIdx);
+                if (measuredNom) pushRow(testName, "FocalSpot_MeasuredNominal", measuredNom, rowIdx);
+              } else {
+                const sW = get(idxStatedW >= 0 ? idxStatedW : 1);
+                const sH = get(idxStatedH >= 0 ? idxStatedH : 2);
+                const mW = get(idxMeasW >= 0 ? idxMeasW : 3);
+                const mH = get(idxMeasH >= 0 ? idxMeasH : 4);
+                if (sW) pushRow(testName, "FocalSpot_StatedWidth", sW, rowIdx);
+                if (sH) pushRow(testName, "FocalSpot_StatedHeight", sH, rowIdx);
+                if (mW) pushRow(testName, "FocalSpot_MeasuredWidth", mW, rowIdx);
+                if (mH) pushRow(testName, "FocalSpot_MeasuredHeight", mH, rowIdx);
+                const toN = (v: string) => {
+                  const n = parseFloat(v);
+                  return isNaN(n) ? null : n;
+                };
+                const statedNom1 = toN(sW);
+                const statedNom2 = toN(sH);
+                const statedNominal =
+                  statedNom1 != null && statedNom2 != null
+                    ? (statedNom1 + statedNom2) / 2
+                    : (statedNom1 ?? statedNom2);
+                if (statedNominal != null) pushRow(testName, "FocalSpot_StatedNominal", String(statedNominal), rowIdx);
+                const measuredNom1 = toN(mW);
+                const measuredNom2 = toN(mH);
+                const measuredNominal =
+                  measuredNom1 != null && measuredNom2 != null
+                    ? (measuredNom1 + measuredNom2) / 2
+                    : (measuredNom1 ?? measuredNom2);
+                if (measuredNominal != null) pushRow(testName, "FocalSpot_MeasuredNominal", String(measuredNominal), rowIdx);
+              }
               rowIdx++;
             }
             j++;

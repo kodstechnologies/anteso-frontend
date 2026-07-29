@@ -9,6 +9,7 @@ import { ReportPdfPageFooter } from "../RadiographyFixed/component/Footer";
 import { ReportPdfPageFooterEnd } from "../RadiographyFixed/component/FooterEnd";
 import { ReportPdfPageNoteQR } from "../RadiographyFixed/component/NoteQR";
 import { ReportPdfPageDeclaration } from "../RadiographyFixed/component/Declaration";
+import { evaluateTotalFiltrationPassFail } from "../totalFiltrationPassFail";
 
 interface Tool {
   slNumber: string;
@@ -1466,22 +1467,12 @@ const ViewServiceReportOBI: React.FC = () => {
                       const tf = testData.operatingPotential.totalFiltration;
                       const ft = testData.operatingPotential.filtrationTolerance || {};
                       // UI stores the measured HVL in 'required' field (same pattern as BMD)
-                      const measuredVal = tf.required ?? tf.measured ?? "";
-                      const measuredNum = parseFloat(measuredVal);
-                      const kvpNum = parseFloat(tf.atKvp ?? "");
-                      const k1 = parseFloat(ft.kvThreshold1 ?? "70");
-                      const k2 = parseFloat(ft.kvThreshold2 ?? "100");
-                      let requiredTol = NaN;
-                      if (!isNaN(kvpNum)) {
-                        if (kvpNum < k1) requiredTol = parseFloat(ft.forKvGreaterThan70 ?? "1.5");
-                        else if (kvpNum <= k2) requiredTol = parseFloat(ft.forKvBetween70And100 ?? "2.0");
-                        else requiredTol = parseFloat(ft.forKvGreaterThan100 ?? "2.5");
-                      }
-                      // Fallback: use a fixed required value if no kVp-based threshold available
-                      if (isNaN(requiredTol)) requiredTol = parseFloat(ft.forKvGreaterThan100 ?? "2.5");
-                      const filtrationRemark = (!isNaN(measuredNum) && !isNaN(requiredTol))
-                        ? (measuredNum >= requiredTol ? "PASS" : "FAIL")
-                        : "-";
+                      const measuredStr = String(tf.required ?? tf.measured ?? "");
+                      const { remark: filtrationRemark, requiredMmAl: requiredTol } = evaluateTotalFiltrationPassFail(
+                        tf.atKvp,
+                        measuredStr,
+                        ft
+                      );
                       return (
                         <div className="border border-black rounded" style={{ padding: '4px 6px', marginTop: '4px' }}>
                           <h4 className="font-semibold mb-2" style={{ fontSize: '11px', marginBottom: '4px' }}>6. Total Filtration</h4>
@@ -1495,12 +1486,12 @@ const ViewServiceReportOBI: React.FC = () => {
                               )}
                               <tr>
                                 <td className="border border-black font-medium" style={{ padding: '0px 4px', fontSize: '11px' }}>Measured Total Filtration</td>
-                                <td className="border border-black text-center" style={{ padding: '0px 4px', fontSize: '11px' }}>{measuredVal || "-"} mm Al</td>
+                                <td className="border border-black text-center" style={{ padding: '0px 4px', fontSize: '11px' }}>{measuredStr || "-"} mm Al</td>
                               </tr>
                               <tr>
                                 <td className="border border-black font-medium" style={{ padding: '0px 4px', fontSize: '11px' }}>Required (Tolerance)</td>
                                 <td className="border border-black text-center" style={{ padding: '0px 4px', fontSize: '11px' }}>
-                                  {!isNaN(requiredTol) ? ` ${requiredTol} mm Al` : "-"}
+                                  {!isNaN(requiredTol) ? `= ${requiredTol} mm Al` : "-"}
                                 </td>
                               </tr>
                               <tr>
@@ -1515,7 +1506,7 @@ const ViewServiceReportOBI: React.FC = () => {
                             <div style={{ marginTop: '4px', fontSize: '10px', color: '#555' }}>
                               <span className="font-semibold">Tolerance criteria: </span>
                               {ft.forKvGreaterThan70 ?? "1.5"} mm Al for kV ≤ {ft.kvThreshold1 ?? "70"} |&nbsp;
-                              {ft.forKvBetween70And100 ?? "2.0"} mm Al for {ft.kvThreshold1 ?? "70"} kV  {ft.kvThreshold2 ?? "100"} |&nbsp;
+                              {ft.forKvBetween70And100 ?? "2.0"} mm Al for {ft.kvThreshold1 ?? "70"} &lt; kV ≤ {ft.kvThreshold2 ?? "100"} |&nbsp;
                               {ft.forKvGreaterThan100 ?? "2.5"} mm Al for kV &gt; {ft.kvThreshold2 ?? "100"}
                             </div>
                           )}
