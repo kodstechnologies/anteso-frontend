@@ -1923,27 +1923,121 @@ const ViewServiceReport: React.FC = () => {
         </ReportPage>
 
         {/* PAGE 3+ - DETAILED TEST RESULTS */}
+        {isDoubleTube ? (
+          /* Double-tube: render all sections in one block per tube */
+          <ReportPage>
+            <div className="max-w-5xl mx-auto print:max-w-none" style={{ width: '100%', maxWidth: 'none' }}>
+              {[
+                { key: "frontal", title: "DETAILED TEST RESULTS - TUBE FRONTAL", data: testDataFrontal },
+                { key: "lateral", title: "DETAILED TEST RESULTS - TUBE LATERAL", data: testDataLateral },
+              ].map((pass) => (
+                <div key={pass.key} className={pass.key === "lateral" ? "mt-12 print:mt-6" : undefined}>
+                  <h2 className="font-bold text-center underline mb-4" style={{ fontSize: "16px" }}>{pass.title}</h2>
+                  {renderDetailedTestSectionsForData(pass.data)}
+                </div>
+              ))}
+            </div>
+          </ReportPage>
+        ) : (
+          /* Single-tube: each group of sections gets its own ReportPage */
+          <>
+            {/* Page 3a: sections 1–3 */}
+            <ReportPage>
+              <div className="max-w-5xl mx-auto print:max-w-none" style={{ width: '100%', maxWidth: 'none' }}>
+                <h2 className="font-bold text-center underline mb-4" style={{ fontSize: "16px" }}>DETAILED TEST RESULTS</h2>
+                {testData.centralBeamAlignment && (
+                  <div className="mb-4 test-section print:mb-2 print:break-inside-avoid" style={{ marginBottom: "8px" }}>
+                    <h3 className="font-bold mb-2" style={{ fontSize: "12px" }}>1. Central Beam Alignment</h3>
+                    {renderCentralBeamAlignmentDetail(testData.centralBeamAlignment)}
+                  </div>
+                )}
+                {testData.effectiveFocalSpot && (
+                  <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
+                    <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>2. Effective Focal Spot Size</h3>
+                    {renderDetailedTestSectionsForData({ effectiveFocalSpot: testData.effectiveFocalSpot })}
+                  </div>
+                )}
+                {testData.accuracyOfIrradiationTime && (
+                  <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
+                    <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>3. Accuracy of Irradiation Time</h3>
+                    {renderDetailedTestSectionsForData({ accuracyOfIrradiationTime: testData.accuracyOfIrradiationTime })}
+                  </div>
+                )}
+              </div>
+            </ReportPage>
+
+            {/* Page 3b: sections 4–6 */}
+            <ReportPage>
+              <div className="max-w-5xl mx-auto print:max-w-none" style={{ width: '100%', maxWidth: 'none' }}>
+                {testData.totalFilteration && (
+                  <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
+                    <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>4. Accuracy Of Operating Potential</h3>
+                    {renderFullTotalFiltrationSection(testData.totalFilteration)}
+                  </div>
+                )}
+                {testData.accuracyOfOperatingPotential && (
+                  <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
+                    <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>4. Accuracy of Operating Potential</h3>
+                    {renderDetailedTestSectionsForData({ accuracyOfOperatingPotential: testData.accuracyOfOperatingPotential })}
+                  </div>
+                )}
+                {hasMaLinearityRows(testData.measurementOfMaLinearity) && (
+                  <div className="mb-16 print:mb-12 test-section" style={{ marginBottom: "8px" }}>
+                    <h3 className="text-lg font-bold mb-4 print:mb-1 print:text-sm" style={{ fontSize: "14px", marginBottom: "4px" }}>
+                      6. {getLinearityLoadingTitle(testData.measurementOfMaLinearity)}
+                    </h3>
+                    {renderMeasurementOfMaLinearityLikeRadiographyFixed(testData.measurementOfMaLinearity)}
+                  </div>
+                )}
+              </div>
+            </ReportPage>
+
+            {/* Page 3c: sections 7–9 */}
+            <ReportPage>
+              <div className="max-w-5xl mx-auto print:max-w-none" style={{ width: '100%', maxWidth: 'none' }}>
+                {testData.consistencyOfRadiationOutput && (
+                  <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
+                    <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>7. Consistency of Radiation Output</h3>
+                    {renderConsistencyOfRadiationOutput(testData.consistencyOfRadiationOutput)}
+                  </div>
+                )}
+                {testData.lowContrastResolution && (
+                  <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
+                    <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>8. Low Contrast Resolution</h3>
+                    {renderLowContrastTable(testData.lowContrastResolution)}
+                  </div>
+                )}
+                {testData.highContrastResolution && (
+                  <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
+                    <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>9. High Contrast Resolution</h3>
+                    {renderHighContrastTable(testData.highContrastResolution)}
+                  </div>
+                )}
+              </div>
+            </ReportPage>
+
+            {/* Page 3d: sections 10–11 */}
+            <ReportPage>
+              <div className="max-w-5xl mx-auto print:max-w-none" style={{ width: '100%', maxWidth: 'none' }}>
+                {testData.exposureRateTableTop && (
+                  <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
+                    <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>10. Exposure Rate at Table Top</h3>
+                    {renderDetailedTestSectionsForData({ exposureRateTableTop: testData.exposureRateTableTop })}
+                  </div>
+                )}
+                {hasTubeHousingLeakageData(testData.tubeHousingLeakage) && (
+                  <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
+                    <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>11. Tube Housing Leakage</h3>
+                    {renderTubeHousingLeakageTable(testData.tubeHousingLeakage)}
+                  </div>
+                )}
+              </div>
+            </ReportPage>
+          </>
+        )}
+
         <ReportPage>
           <div className="max-w-5xl mx-auto print:max-w-none" style={{ width: '100%', maxWidth: 'none' }}>
-            {isDoubleTube ? (
-              <>
-                {[
-                  { key: "frontal", title: "DETAILED TEST RESULTS - TUBE FRONTAL", data: testDataFrontal },
-                  { key: "lateral", title: "DETAILED TEST RESULTS - TUBE LATERAL", data: testDataLateral },
-                ].map((pass) => (
-                  <div key={pass.key} className={pass.key === "lateral" ? "mt-12 print:mt-6" : undefined}>
-                    <h2 className="font-bold text-center underline mb-4" style={{ fontSize: "16px" }}>{pass.title}</h2>
-                    {renderDetailedTestSectionsForData(pass.data)}
-                  </div>
-                ))}
-              </>
-            ) : (
-              <>
-                <h2 className="font-bold text-center underline mb-4" style={{ fontSize: "16px" }}>DETAILED TEST RESULTS</h2>
-                {renderDetailedTestSectionsForData(testData)}
-              </>
-            )}
-
             {/* 11. Radiation Protection Survey Report */}
             {testData.radiationProtectionSurvey && (
               <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>

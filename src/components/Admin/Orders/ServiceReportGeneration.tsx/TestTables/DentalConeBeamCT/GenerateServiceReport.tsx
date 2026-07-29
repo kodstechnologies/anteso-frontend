@@ -1275,17 +1275,6 @@ const DentalConeBeamCTContent: React.FC<{ serviceId: string; qaTestDate?: string
             <div className="mt-12">
                 <h2 className="text-2xl font-bold text-gray-800 mb-6">QA Tests</h2>
                 {[
-                    {
-                        title: "Accuracy Of Operating Potential",
-                        component: <AccuracyOfOperatingPotential
-                            serviceId={serviceId}
-                            testId={savedTestIds.AccuracyOfOperatingPotentialCBCT || null}
-                            onTestSaved={(id) => setSavedTestIds(prev => ({ ...prev, AccuracyOfOperatingPotentialCBCT: id }))}
-                            csvData={csvData?.accuracyOfOperatingPotential}
-                        />
-                    },
-                    // { title: "Total Filteration", component: <TotalFilteration /> },
-
                     // Timer Test — Only if user said YES
                     ...(hasTimer === true
                         ? [
@@ -1300,6 +1289,16 @@ const DentalConeBeamCTContent: React.FC<{ serviceId: string; qaTestDate?: string
                             },
                         ]
                         : []),
+                    {
+                        title: "Accuracy Of Operating Potential",
+                        component: <AccuracyOfOperatingPotential
+                            serviceId={serviceId}
+                            testId={savedTestIds.AccuracyOfOperatingPotentialCBCT || null}
+                            onTestSaved={(id) => setSavedTestIds(prev => ({ ...prev, AccuracyOfOperatingPotentialCBCT: id }))}
+                            csvData={csvData?.accuracyOfOperatingPotential}
+                        />
+                    },
+                    // { title: "Total Filteration", component: <TotalFilteration /> },
 
                     // Linearity Test — Conditional
                     ...(hasTimer === true

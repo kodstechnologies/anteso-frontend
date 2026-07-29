@@ -2167,8 +2167,6 @@ const GenerateReportMammographyContent: React.FC<{ serviceId: string; csvFileUrl
                 <h2 className="text-2xl font-bold text-gray-800 mb-6">QA Tests</h2>
 
                 {[
-                    { title: "Accuracy of Operating Potential (kVp)", component: <AccuracyOfOperatingPotential key={refreshKey} serviceId={serviceId} refreshKey={refreshKey} initialData={csvDataForComponents.accuracyOfOperatingPotential} /> },
-
                     // Timer Test — Only if user said YES
                     ...(hasTimer === true
                         ? [
@@ -2179,31 +2177,33 @@ const GenerateReportMammographyContent: React.FC<{ serviceId: string; csvFileUrl
                         ]
                         : []),
 
-                    { title: "Total Filtration & Aluminium Equivalence", component: <TotalFiltrationAndAluminium key={refreshKey} serviceId={serviceId} refreshKey={refreshKey} initialData={csvDataForComponents.totalFiltration} /> },
+                    { title: "Accuracy of Operating Potential (kVp)", component: <AccuracyOfOperatingPotential key={refreshKey} serviceId={serviceId} refreshKey={refreshKey} initialData={csvDataForComponents.accuracyOfOperatingPotential} /> },
 
                     // Linearity Test — Conditional
-                    ...(hasTimer === true
+                    ...(hasTimer === false
                         ? [
                             {
-                                title: "Linearity Of mA Loading",
-                                component: <LinearityOfMaLoadingStations key={refreshKey} serviceId={serviceId} refreshKey={refreshKey} initialData={csvDataForComponents.linearityOfMaLoadingStations} />,
+                                title: "Linearity Of mAs Loading (Across mAs Ranges)",
+                                component: (
+                                    <LinearityOfMasLoadingAcrossRanges
+                                        key={refreshKey}
+                                        serviceId={serviceId}
+                                        refreshKey={refreshKey}
+                                        initialData={csvDataForComponents.linearityOfMasLoading}
+                                    />
+                                ),
                             },
                         ]
-                        : hasTimer === false
+                        : hasTimer === true
                             ? [
                                 {
-                                    title: "Linearity Of mAs Loading (Across mAs Ranges)",
-                                    component: (
-                                        <LinearityOfMasLoadingAcrossRanges
-                                            key={refreshKey}
-                                            serviceId={serviceId}
-                                            refreshKey={refreshKey}
-                                            initialData={csvDataForComponents.linearityOfMasLoading}
-                                        />
-                                    ),
+                                    title: "Linearity Of mA Loading",
+                                    component: <LinearityOfMaLoadingStations key={refreshKey} serviceId={serviceId} refreshKey={refreshKey} initialData={csvDataForComponents.linearityOfMaLoadingStations} />,
                                 },
                             ]
                             : []),
+
+                    { title: "Total Filtration & Aluminium Equivalence", component: <TotalFiltrationAndAluminium key={refreshKey} serviceId={serviceId} refreshKey={refreshKey} initialData={csvDataForComponents.totalFiltration} /> },
 
                     { title: "Reproducibility of Radiation Output", component: <ReproducibilityOfOutput key={refreshKey} serviceId={serviceId} refreshKey={refreshKey} initialData={csvDataForComponents.reproducibilityOfOutput} /> },
                     { title: "Radiation Leakage Level (5 cm from Tube Housing)", component: <RadiationLeakageLevel key={refreshKey} serviceId={serviceId} refreshKey={refreshKey} initialData={csvDataForComponents.radiationLeakageLevel} /> },

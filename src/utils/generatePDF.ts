@@ -367,8 +367,8 @@ export const generatePDF = async ({
               clonedShell.style.boxShadow = 'none';
               clonedShell.style.width = '210mm';
               clonedShell.style.height = 'auto';
-              // Avoid forced A4 min-height so leftover whitespace isn't sliced into blank pages
-              clonedShell.style.minHeight = '0';
+              // Keep A4 min-height so flex pushes footer to page bottom
+              clonedShell.style.minHeight = '297mm';
               clonedShell.style.maxHeight = 'none';
               clonedShell.style.overflow = 'visible';
 

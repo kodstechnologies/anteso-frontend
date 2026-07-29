@@ -1530,7 +1530,7 @@ const CArmContent: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
             }]
             : []),
           {
-            title: "Total Filtration",
+            title: "Accuracy of Operating Potential",
             component: <TotalFilteration
               key={`total-filtration-${refreshKey}`}
               serviceId={serviceId}

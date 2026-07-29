@@ -1734,16 +1734,6 @@ const InventionalRadiologyContent: React.FC<InventionalRadiologyProps> = ({ serv
 
         {(tubeType === 'single' ? [
           {
-            title: "Accuracy of Irradiation Time",
-            component: (
-              <AccuracyOfIrradiationTime
-                serviceId={serviceId}
-                tubeId={null}
-                csvData={csvDataForComponents['Accuracy Of Irradiation Time']}
-              />
-            ),
-          },
-          {
             title: "Central Beam Alignment",
             component: (
               <CentralBeamAlignment
@@ -1764,6 +1754,16 @@ const InventionalRadiologyContent: React.FC<InventionalRadiologyProps> = ({ serv
             ),
           },
           {
+            title: "Accuracy of Irradiation Time",
+            component: (
+              <AccuracyOfIrradiationTime
+                serviceId={serviceId}
+                tubeId={null}
+                csvData={csvDataForComponents['Accuracy Of Irradiation Time']}
+              />
+            ),
+          },
+          {
             title: "Accuracy of Operating Potential",
             component: (
               <TotalFilteration
@@ -1775,22 +1775,22 @@ const InventionalRadiologyContent: React.FC<InventionalRadiologyProps> = ({ serv
             ),
           },
           {
-            title: "Consistency of Radiation Output",
-            component: (
-              <ConsistencyOfRadiationOutput
-                serviceId={serviceId}
-                tubeId={null}
-                csvData={csvDataForComponents['Consistency Of Radiation Output']}
-              />
-            ),
-          },
-          {
             title: "Measurement of mA Linearity",
             component: (
               <MeasurementOfMaLinearity
                 serviceId={serviceId}
                 tubeId={null}
                 csvData={csvDataForComponents['Measurement of mA Linearity']}
+              />
+            ),
+          },
+          {
+            title: "Consistency of Radiation Output",
+            component: (
+              <ConsistencyOfRadiationOutput
+                serviceId={serviceId}
+                tubeId={null}
+                csvData={csvDataForComponents['Consistency Of Radiation Output']}
               />
             ),
           },
@@ -1848,10 +1848,6 @@ const InventionalRadiologyContent: React.FC<InventionalRadiologyProps> = ({ serv
         ] : [
           // ===== FRONTAL TUBE TESTS =====
           {
-            title: "Accuracy of Irradiation Time - Frontal",
-            component: <AccuracyOfIrradiationTime serviceId={serviceId} tubeId="frontal" csvData={csvDataForComponents['Accuracy Of Irradiation Time - Frontal']} />,
-          },
-          {
             title: "Central Beam Alignment - Frontal",
             component: <CentralBeamAlignment serviceId={serviceId} tubeId="frontal" csvData={csvDataForComponents['Central Beam Alignment - Frontal']} />,
           },
@@ -1860,16 +1856,20 @@ const InventionalRadiologyContent: React.FC<InventionalRadiologyProps> = ({ serv
             component: <EffectiveFocalspotMeasurement serviceId={serviceId} tubeId="frontal" csvData={csvDataForComponents['Effective Focal Spot Size - Frontal']} />,
           },
           {
+            title: "Accuracy of Irradiation Time - Frontal",
+            component: <AccuracyOfIrradiationTime serviceId={serviceId} tubeId="frontal" csvData={csvDataForComponents['Accuracy Of Irradiation Time - Frontal']} />,
+          },
+          {
             title: "Accuracy of Operating Potential - Frontal",
             component: <TotalFilteration key={`total-filtration-frontal-${refreshKey}`} serviceId={serviceId} tubeId="frontal" csvData={mergeCsvSections('Accuracy Of Operating Potential - Frontal', 'Total Filtration - Frontal')} />,
           },
           {
-            title: "Consistency of Radiation Output - Frontal",
-            component: <ConsistencyOfRadiationOutput serviceId={serviceId} tubeId="frontal" csvData={csvDataForComponents['Consistency Of Radiation Output - Frontal']} />,
-          },
-          {
             title: "Measurement of mA Linearity - Frontal",
             component: <MeasurementOfMaLinearity serviceId={serviceId} tubeId="frontal" csvData={csvDataForComponents['Measurement of mA Linearity - Frontal']} />,
+          },
+          {
+            title: "Consistency of Radiation Output - Frontal",
+            component: <ConsistencyOfRadiationOutput serviceId={serviceId} tubeId="frontal" csvData={csvDataForComponents['Consistency Of Radiation Output - Frontal']} />,
           },
           {
             title: "Low Contrast Resolution - Frontal",
@@ -1890,10 +1890,6 @@ const InventionalRadiologyContent: React.FC<InventionalRadiologyProps> = ({ serv
 
           // ===== LATERAL TUBE TESTS =====
           {
-            title: "Accuracy of Irradiation Time - Lateral",
-            component: <AccuracyOfIrradiationTime serviceId={serviceId} tubeId="lateral" csvData={csvDataForComponents['Accuracy Of Irradiation Time - Lateral']} />,
-          },
-          {
             title: "Central Beam Alignment - Lateral",
             component: <CentralBeamAlignment serviceId={serviceId} tubeId="lateral" csvData={csvDataForComponents['Central Beam Alignment - Lateral']} />,
           },
@@ -1902,16 +1898,20 @@ const InventionalRadiologyContent: React.FC<InventionalRadiologyProps> = ({ serv
             component: <EffectiveFocalspotMeasurement serviceId={serviceId} tubeId="lateral" csvData={csvDataForComponents['Effective Focal Spot Size - Lateral']} />,
           },
           {
+            title: "Accuracy of Irradiation Time - Lateral",
+            component: <AccuracyOfIrradiationTime serviceId={serviceId} tubeId="lateral" csvData={csvDataForComponents['Accuracy Of Irradiation Time - Lateral']} />,
+          },
+          {
             title: "Accuracy of Operating Potential - Lateral",
             component: <TotalFilteration key={`total-filtration-lateral-${refreshKey}`} serviceId={serviceId} tubeId="lateral" csvData={mergeCsvSections('Accuracy Of Operating Potential - Lateral', 'Total Filtration - Lateral')} />,
           },
           {
-            title: "Consistency of Radiation Output - Lateral",
-            component: <ConsistencyOfRadiationOutput serviceId={serviceId} tubeId="lateral" csvData={csvDataForComponents['Consistency Of Radiation Output - Lateral']} />,
-          },
-          {
             title: "Measurement of mA Linearity - Lateral",
             component: <MeasurementOfMaLinearity serviceId={serviceId} tubeId="lateral" csvData={csvDataForComponents['Measurement of mA Linearity - Lateral']} />,
+          },
+          {
+            title: "Consistency of Radiation Output - Lateral",
+            component: <ConsistencyOfRadiationOutput serviceId={serviceId} tubeId="lateral" csvData={csvDataForComponents['Consistency Of Radiation Output - Lateral']} />,
           },
           {
             title: "Low Contrast Resolution - Lateral",

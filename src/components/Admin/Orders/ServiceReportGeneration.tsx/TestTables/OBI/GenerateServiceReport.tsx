@@ -2550,19 +2550,6 @@ const OBIContent: React.FC<OBIProps> = ({ serviceId, csvFileUrl, qaTestDate }) =
                         />
                     },
                     {
-                        title: "High Contrast Sensitivity",
-                        component: <HighContrastSensitivity
-                            key={`high-contrast-${refreshKey}`}
-                            serviceId={serviceId}
-                            testId={savedTestIds.HighContrastSensitivityOBI || undefined}
-                            onTestSaved={(id) => {
-                                setSavedTestIds(prev => ({ ...prev, HighContrastSensitivityOBI: id }));
-                            }}
-                            refreshKey={refreshKey}
-                            initialData={csvDataForComponents.highContrastSensitivity}
-                        />
-                    },
-                    {
                         title: "Low Contrast Sensitivity",
                         component: <LowContrastSensitivity
                             key={`low-contrast-${refreshKey}`}
@@ -2573,6 +2560,19 @@ const OBIContent: React.FC<OBIProps> = ({ serviceId, csvFileUrl, qaTestDate }) =
                             }}
                             refreshKey={refreshKey}
                             initialData={csvDataForComponents.lowContrastSensitivity}
+                        />
+                    },
+                    {
+                        title: "High Contrast Sensitivity",
+                        component: <HighContrastSensitivity
+                            key={`high-contrast-${refreshKey}`}
+                            serviceId={serviceId}
+                            testId={savedTestIds.HighContrastSensitivityOBI || undefined}
+                            onTestSaved={(id) => {
+                                setSavedTestIds(prev => ({ ...prev, HighContrastSensitivityOBI: id }));
+                            }}
+                            refreshKey={refreshKey}
+                            initialData={csvDataForComponents.highContrastSensitivity}
                         />
                     },
                     ...(hasTimer === true

@@ -1339,15 +1339,6 @@ const GenerateReportForDentalHandHeldContent: React.FC<DentalProps> = ({ service
                 <h2 className="text-2xl font-bold text-gray-800 mb-6">QA Tests</h2>
 
                 {[
-                    {
-                        title: "Accuracy Of Operating Potential",
-                        component: <AccuracyOfOperatingPotential
-                            serviceId={serviceId}
-                            testId={savedTestIds.AccuracyOfOperatingPotentialAndTimeDentalHandHeld || null}
-                            onTestSaved={(id: string) => setSavedTestIds(prev => ({ ...prev, AccuracyOfOperatingPotentialAndTimeDentalHandHeld: id }))}
-                            csvData={csvDataForComponents['accuracyOfOperatingPotential']}
-                        />
-                    },
                     // Timer Test — Only if user said YES
                     ...(hasTimer === true
                         ? [
@@ -1362,6 +1353,15 @@ const GenerateReportForDentalHandHeldContent: React.FC<DentalProps> = ({ service
                             },
                         ]
                         : []),
+                    {
+                        title: "Accuracy Of Operating Potential",
+                        component: <AccuracyOfOperatingPotential
+                            serviceId={serviceId}
+                            testId={savedTestIds.AccuracyOfOperatingPotentialAndTimeDentalHandHeld || null}
+                            onTestSaved={(id: string) => setSavedTestIds(prev => ({ ...prev, AccuracyOfOperatingPotentialAndTimeDentalHandHeld: id }))}
+                            csvData={csvDataForComponents['accuracyOfOperatingPotential']}
+                        />
+                    },
                     // Linearity Test — Conditional
                     ...(hasTimer === true
                         ? [
