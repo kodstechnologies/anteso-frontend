@@ -2031,70 +2031,88 @@ const ViewServiceReportCTScan: React.FC = () => {
         </ReportPage>
 
         {/* PAGE 3+ - DETAILED TEST RESULTS */}
-        <ReportPage>
-          <div className="report-pdf-last-main" style={{ width: "100%", flex: 1 }}>
             {isDoubleTube ? (
               <>
                 {tubePasses.map((pass) => (
                   <React.Fragment key={pass.key}>
-                    <h2 className="font-bold text-center underline mb-4" style={{ fontSize: "16px" }}>
-                      {pass.title}
-                    </h2>
-                    {/* 1. Radiation Profile Width / Slice Thickness */}
-                    {pass.data.radiationProfile && (
-                      <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
-                        <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>1. Radiation Profile Width / Slice Thickness</h3>
-                        {renderRadiationProfileSection(pass.data.radiationProfile)}
+                    <ReportPage>
+                      <div className="report-pdf-last-main" style={{ width: "100%", flex: 1 }}>
+                        <h2 className="font-bold text-center underline mb-4" style={{ fontSize: "16px" }}>
+                          {pass.title}
+                        </h2>
+                        {/* 1. Radiation Profile Width / Slice Thickness */}
+                        {pass.data.radiationProfile && (
+                          <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
+                            <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>1. Radiation Profile Width / Slice Thickness</h3>
+                            {renderRadiationProfileSection(pass.data.radiationProfile)}
+                          </div>
+                        )}
+                        {/* 2. Measurement of Operating Potential */}
+                        {pass.data.operatingPotential && (
+                          <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
+                            <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>2. Measurement of Operating Potential (kVp Accuracy)</h3>
+                            {renderOperatingPotentialSection(pass.data.operatingPotential)}
+                          </div>
+                        )}
+                        {/* 3. Measurement of mA Linearity */}
+                        {pass.data.maLinearity && (
+                          <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
+                            <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>3. Measurement of mA Linearity</h3>
+                            {renderMaLinearityTable(pass.data.maLinearity)}
+                          </div>
+                        )}
                       </div>
-                    )}
-                    {/* 2. Measurement of Operating Potential */}
-                    {pass.data.operatingPotential && (
-                      <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
-                        <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>2. Measurement of Operating Potential (kVp Accuracy)</h3>
-                        {renderOperatingPotentialSection(pass.data.operatingPotential)}
+                    </ReportPage>
+                    <ReportPage>
+                      <div className="report-pdf-last-main" style={{ width: "100%", flex: 1 }}>
+                        {/* 4. Output Consistency */}
+                        {pass.data.outputConsistency && (
+                          <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
+                            <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>4. Output Consistency</h3>
+                            {renderOutputConsistencySection(pass.data.outputConsistency)}
+                          </div>
+                        )}
+                        {/* 5. High Contrast Resolution */}
+                        {pass.data.highContrastResolution && (
+                          <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
+                            <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>5. High Contrast Resolution</h3>
+                            {renderHighContrastContent(pass.data.highContrastResolution)}
+                          </div>
+                        )}
+                        {/* 6. Radiation Leakage Level */}
+                        {pass.data.leakage && (
+                          <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
+                            <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>6. Radiation Leakage Level from X-Ray Tube House</h3>
+                            {renderLeakageSection(pass.data.leakage)}
+                          </div>
+                        )}
                       </div>
-                    )}
-                    {/* 3. Measurement of mA Linearity */}
-                    {pass.data.maLinearity && (
-                      <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
-                        <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>3. Measurement of mA Linearity</h3>
-                        {renderMaLinearityTable(pass.data.maLinearity)}
+                    </ReportPage>
+                    <ReportPage>
+                      <div className="report-pdf-last-main" style={{ width: "100%", flex: 1 }}>
+                        {/* 7-11. Per-tube tests: Timer Accuracy, CTDI, Low Contrast Resolution, Total Filtration, Measure Max Radiation Level */}
+                        {renderAdditionalTubeTests(pass.data)}
                       </div>
-                    )}
-                    {/* 4. Output Consistency */}
-                    {pass.data.outputConsistency && (
-                      <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
-                        <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>4. Output Consistency</h3>
-                        {renderOutputConsistencySection(pass.data.outputConsistency)}
-                      </div>
-                    )}
-                    {/* 5. High Contrast Resolution */}
-                    {pass.data.highContrastResolution && (
-                      <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
-                        <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>5. High Contrast Resolution</h3>
-                        {renderHighContrastContent(pass.data.highContrastResolution)}
-                      </div>
-                    )}
-                    {/* 6. Radiation Leakage Level */}
-                    {pass.data.leakage && (
-                      <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
-                        <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>6. Radiation Leakage Level from X-Ray Tube House</h3>
-                        {renderLeakageSection(pass.data.leakage)}
-                      </div>
-                    )}
-                    {/* 7-11. Per-tube tests: Timer Accuracy, CTDI, Low Contrast Resolution, Total Filtration, Measure Max Radiation Level */}
-                    {renderAdditionalTubeTests(pass.data)}
+                    </ReportPage>
                   </React.Fragment>
                 ))}
 
-                {/* Common/mechanical tests, rendered once after both Tube A and Tube B passes */}
-                <h2 className="font-bold text-center underline mb-4" style={{ fontSize: "16px" }}>
-                  COMMON TEST RESULTS
-                </h2>
-                {renderCommonMechanicalTests()}
+                <ReportPage>
+                  <div className="report-pdf-last-main" style={{ width: "100%", flex: 1 }}>
+                    {/* Common/mechanical tests, rendered once after both Tube A and Tube B passes */}
+                    <h2 className="font-bold text-center underline mb-4" style={{ fontSize: "16px" }}>
+                      COMMON TEST RESULTS
+                    </h2>
+                    {renderCommonMechanicalTests()}
+                  </div>
+                </ReportPage>
               </>
             ) : (
               <>
+        {/* DETAILED TEST RESULTS (PART 1) - Tests 1-3 */}
+        <ReportPage>
+          <div className="report-pdf-last-main" style={{ width: "100%", flex: 1 }}>
+
                 <h2 className="font-bold text-center underline mb-4" style={{ fontSize: "16px" }}>
                   DETAILED TEST RESULTS
                 </h2>
@@ -2594,6 +2612,12 @@ const ViewServiceReportCTScan: React.FC = () => {
               </div>
             )}
 
+          </div>
+        </ReportPage>
+
+        {/* DETAILED TEST RESULTS (PART 2) - Tests 4-5 */}
+        <ReportPage>
+          <div className="report-pdf-last-main" style={{ width: "100%", flex: 1 }}>
             {/* 3. Measurement of mA Linearity */}
             {((isDoubleTube && (testDataTubeA.maLinearity || testDataTubeB.maLinearity)) || (!isDoubleTube && testData.maLinearity)) && (
               <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
@@ -2957,6 +2981,12 @@ const ViewServiceReportCTScan: React.FC = () => {
               </div>
             )}
 
+          </div>
+        </ReportPage>
+
+        {/* DETAILED TEST RESULTS (PART 3) - Tests 6-8 */}
+        <ReportPage>
+          <div className="report-pdf-last-main" style={{ width: "100%", flex: 1 }}>
             {/* 5. Measurement of CTDI */}
             {testData.ctdi && (
               <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
@@ -3127,6 +3157,12 @@ const ViewServiceReportCTScan: React.FC = () => {
               </div>
             )}
 
+          </div>
+        </ReportPage>
+
+        {/* DETAILED TEST RESULTS (PART 4) - Tests 9-10 */}
+        <ReportPage>
+          <div className="report-pdf-last-main" style={{ width: "100%", flex: 1 }}>
             {/* 6. Total Filtration */}
             {testData.totalFiltration && (
               <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
@@ -3192,6 +3228,12 @@ const ViewServiceReportCTScan: React.FC = () => {
             )}
 
 
+          </div>
+        </ReportPage>
+
+        {/* DETAILED TEST RESULTS (PART 5) - Tests 11-13 */}
+        <ReportPage>
+          <div className="report-pdf-last-main" style={{ width: "100%", flex: 1 }}>
             {/* 11. Table Position */}
             {testData.tablePosition && (
               <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
@@ -3325,6 +3367,12 @@ const ViewServiceReportCTScan: React.FC = () => {
                 )}
               </div>
             )}
+          </div>
+        </ReportPage>
+
+        {/* DETAILED TEST RESULTS (PART 6) - Survey & Alignment */}
+        <ReportPage>
+          <div className="report-pdf-last-main" style={{ width: "100%", flex: 1 }}>
             {/* 14. Radiation Protection Survey Report */}
             {(testData.radiationProtectionSurvey || testDataTubeA.radiationProtectionSurvey || testDataTubeB.radiationProtectionSurvey) && (() => {
               const survey = testData.radiationProtectionSurvey || testDataTubeA.radiationProtectionSurvey || testDataTubeB.radiationProtectionSurvey;
@@ -3527,8 +3575,7 @@ const ViewServiceReportCTScan: React.FC = () => {
                 </div>
               </div>
             )}
-              </>
-            )}
+
             {/* No data fallback */}
             {Object.values(testData).every(v => !v) && (
               <p className="text-center text-xl text-gray-500 mt-32 print:mt-8 print:text-sm">
@@ -3537,6 +3584,8 @@ const ViewServiceReportCTScan: React.FC = () => {
             )}
           </div>
         </ReportPage>
+              </>
+            )}
 
         {/* PAGE - Declaration + Engineer Verification QR */}
         <ReportPage isLast>

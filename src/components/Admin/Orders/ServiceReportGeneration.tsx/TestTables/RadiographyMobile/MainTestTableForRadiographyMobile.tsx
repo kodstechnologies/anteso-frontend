@@ -391,16 +391,42 @@ const MainTestTableForRadiographyMobile: React.FC<MainTestTableProps> = ({ testD
     const validRows = testData.radiationLeakageLevel.leakageMeasurements.filter((row: any) => row.location || row.front || row.back);
     if (validRows.length > 0) {
       const toleranceValue = testData.radiationLeakageLevel.toleranceValue || "1";
+      const toleranceOperator = testData.radiationLeakageLevel.toleranceOperator || "less than or equal to";
+      const maValue = parseFloat(testData.radiationLeakageLevel.ma || testData.radiationLeakageLevel.settings?.ma || "0");
+      const workloadValue = parseFloat(testData.radiationLeakageLevel.workload || "0");
+      const toleranceNum = parseFloat(toleranceValue) || 1;
+      const toleranceSymbol =
+        toleranceOperator === "greater than or equal to"
+          ? ">="
+          : toleranceOperator === "="
+            ? "="
+            : "<=";
+
       const testRows = validRows.map((row: any) => {
-        // Find max value from all directions
+        // Match generate-page logic: convert max exposure (mR/hr) to result (mGy in one hour)
         const values = [row.front, row.back, row.left, row.right, row.top].map(v => parseFloat(v) || 0);
         const max = Math.max(...values);
-        const maxStr = max > 0 ? max.toFixed(2) : "-";
-        const isPass = maxStr !== "-" && parseFloat(maxStr) < parseFloat(toleranceValue);
+        let measured = "-";
+        let computedPass: boolean | null = null;
+
+        if (max > 0 && maValue > 0 && workloadValue > 0) {
+          const resultMR = (workloadValue * max) / (60 * maValue);
+          const resultMGy = resultMR / 114;
+          measured = `${resultMGy.toFixed(4)} mGy in one hour`;
+
+          if (toleranceOperator === "less than or equal to") computedPass = resultMGy <= toleranceNum;
+          if (toleranceOperator === "greater than or equal to") computedPass = resultMGy >= toleranceNum;
+          if (toleranceOperator === "=") computedPass = Math.abs(resultMGy - toleranceNum) < 0.01;
+        }
+
+        const rowRemark = String(row.remark || "").toLowerCase();
+        const hasStoredRemark = rowRemark === "pass" || rowRemark === "fail";
+        const isPass = hasStoredRemark ? rowRemark === "pass" : computedPass === true;
+
         return {
           specified: row.location || "-",
-          measured: maxStr !== "-" ? `${maxStr} mGy in one hour` : "-",
-          tolerance: ` ${toleranceValue} mGy in one hour`,
+          measured,
+          tolerance: `${toleranceSymbol} ${toleranceValue} mGy in one hour`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });

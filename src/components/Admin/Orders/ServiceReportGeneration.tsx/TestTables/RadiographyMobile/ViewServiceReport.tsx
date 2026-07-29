@@ -1421,12 +1421,19 @@ const ViewServiceReportRadiographyMobile: React.FC = () => {
                           let calcMR = "-";
                           let calcMGy = "-";
                           let remark: string = row.remark || "-";
+                          const toleranceValue = parseFloat(testData.radiationLeakageLevel.toleranceValue || "1");
+                          const toleranceOperator = testData.radiationLeakageLevel.toleranceOperator || "less than or equal to";
                           if (rowMax > 0 && maValue > 0 && workloadValue > 0) {
                             const resMR = (workloadValue * rowMax) / (60 * maValue);
+                            const resMGy = resMR / 114;
                             calcMR = resMR.toFixed(3);
-                            calcMGy = (resMR / 114).toFixed(4);
+                            calcMGy = resMGy.toFixed(4);
                             if (remark === "-" || !remark) {
-                              remark = (resMR / 114) <= (parseFloat(testData.radiationLeakageLevel.toleranceValue) || 1.0) ? "Pass" : "Fail";
+                              let isPass = false;
+                              if (toleranceOperator === "less than or equal to") isPass = resMGy <= toleranceValue;
+                              if (toleranceOperator === "greater than or equal to") isPass = resMGy >= toleranceValue;
+                              if (toleranceOperator === "=") isPass = Math.abs(resMGy - toleranceValue) < 0.01;
+                              remark = isPass ? "Pass" : "Fail";
                             }
                           }
                           return (

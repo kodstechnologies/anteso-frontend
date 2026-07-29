@@ -671,7 +671,7 @@ const ViewServiceReportOArm: React.FC = () => {
           </div>
         </ReportPage>
 
-        {/* PAGE 3+ - DETAILED TEST RESULTS */}
+        {/* DETAILED TEST RESULTS (PART 1) - Tests 1, 2 */}
         <ReportPage>
           <div className="report-pdf-last-main" style={{ width: "100%", flex: 1 }}>
             <h2 className="font-bold text-center underline mb-4" style={{ fontSize: "16px" }}>DETAILED TEST RESULTS</h2>
@@ -877,6 +877,12 @@ const ViewServiceReportOArm: React.FC = () => {
               </div>
             )}
 
+          </div>
+        </ReportPage>
+
+        {/* DETAILED TEST RESULTS (PART 2) - Tests 3, 4, 5 */}
+        <ReportPage>
+          <div className="report-pdf-last-main" style={{ width: "100%", flex: 1 }}>
             {/* 3. Output Consistency — same columns as Generate: parameters + kVp, mA, Meas 1..N, Mean, COV, Remark */}
             {testData.outputConsistency && (
               <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
@@ -1025,6 +1031,12 @@ const ViewServiceReportOArm: React.FC = () => {
               </div>
             )}
 
+          </div>
+        </ReportPage>
+
+        {/* DETAILED TEST RESULTS (PART 3) - Tests 6, 7 */}
+        <ReportPage>
+          <div className="report-pdf-last-main" style={{ width: "100%", flex: 1 }}>
             {/* 6. Exposure Rate at Table Top */}
             {testData.exposureRateTableTop && (
               <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
@@ -1255,6 +1267,12 @@ const ViewServiceReportOArm: React.FC = () => {
               );
             })()}
 
+          </div>
+        </ReportPage>
+
+        {/* DETAILED TEST RESULTS (PART 4) - Test 8 */}
+        <ReportPage>
+          <div className="report-pdf-last-main" style={{ width: "100%", flex: 1 }}>
             {/* 8. Linearity of mA/mAs Loading — table1 (Test Conditions) + table2 with Measured Values like RadiographyFixed */}
             {testData.linearityOfMasLoading && (() => {
               const lin = testData.linearityOfMasLoading;

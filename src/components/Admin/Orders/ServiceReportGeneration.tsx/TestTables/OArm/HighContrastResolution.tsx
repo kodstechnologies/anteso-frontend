@@ -87,7 +87,6 @@ const HighContrastResolutionForOArm: React.FC<Props> = ({
       });
       setIsSaved(false);
       setIsEditing(true);
-      toast.success('High Contrast Resolution: CSV data loaded');
     } catch (err) {
       console.error('HighContrastResolution CSV processing error:', err);
     }

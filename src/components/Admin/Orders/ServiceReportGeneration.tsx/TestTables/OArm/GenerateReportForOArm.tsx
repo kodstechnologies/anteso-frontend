@@ -919,7 +919,6 @@ const OArmContent: React.FC<OArmProps> = ({ serviceId, csvFileUrl }) => {
       setCsvDataForComponents(groupedData);
       setCsvDataVersion(prev => prev + 1);
       setRefreshKey(prev => prev + 1);
-      toast.success('CSV data loaded successfully!');
     } catch (error: any) {
       console.error('Error processing CSV data:', error);
       toast.error('Failed to process CSV data: ' + (error.message || 'Unknown error'));

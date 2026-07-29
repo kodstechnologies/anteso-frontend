@@ -230,7 +230,6 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
                 setToleranceSign(tolSign);
                 setToleranceValue(tolVal);
                 setIsSaved(false);
-                toast.success('Total Filtration: CSV data loaded');
             }
         } catch (err) {
             console.error('TotalFilteration CSV processing error:', err);

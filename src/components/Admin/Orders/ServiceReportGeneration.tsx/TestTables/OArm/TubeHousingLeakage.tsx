@@ -214,7 +214,6 @@ export default function TubeHousingLeakageForOArm({ serviceId, testId: propTestI
 
       setHasSaved(false);
       setIsEditing(true);
-      toast.success('Tube Housing Leakage: CSV data loaded');
     } catch (err) {
       console.error('TubeHousingLeakage CSV processing error:', err);
     }

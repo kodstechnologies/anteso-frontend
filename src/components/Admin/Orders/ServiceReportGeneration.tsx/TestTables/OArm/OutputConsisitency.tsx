@@ -258,7 +258,6 @@ const OutputConsistencyForOArm: React.FC<Props> = ({
         }));
         setOutputRows(normalizedRows);
         setIsSaved(false);
-        toast.success('Output Consistency: CSV data loaded');
       }
     } catch (err) {
       console.error('OutputConsistency CSV processing error:', err);

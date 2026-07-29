@@ -166,7 +166,6 @@ const ExposureRateTableTopForOArm: React.FC<Props> = ({
         setRows(newRows);
         setIsSaved(false);
         setIsEditing(true);
-        toast.success('Exposure Rate: CSV data loaded');
       }
     } catch (err) {
       console.error('ExposureRate CSV processing error:', err);
