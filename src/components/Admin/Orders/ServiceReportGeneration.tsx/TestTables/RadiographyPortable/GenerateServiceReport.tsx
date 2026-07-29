@@ -516,10 +516,15 @@ const RadiographyPortableContent: React.FC<RadiographyPortableProps> = ({ servic
       };
 
       if (isReadingTest && headers.length === 0 && row.some(c => c)) {
+        const isVerticalConditionSection =
+          currentTestNameBase === 'Linearity Of mAs Loading' ||
+          currentTestNameBase === 'Linearity Of mA Loading' ||
+          currentTestNameBase === 'Central Beam Alignment' ||
+          currentTestNameBase === 'Congruence of Radiation';
+
         if (
           currentTestNameBase &&
-          (currentTestNameBase === 'Linearity Of mAs Loading' ||
-            currentTestNameBase === 'Linearity Of mA Loading') &&
+          isVerticalConditionSection &&
           isVerticalExposureHeaderRow(row)
         ) {
           for (let k = 0; k < row.length - 1; k += 2) {
@@ -529,6 +534,7 @@ const RadiographyPortableContent: React.FC<RadiographyPortableProps> = ({ servic
             let field = '';
             if (/^(fdd|fcd|ffd)(\s*\(cm\))?$/.test(lc)) field = 'Table1_fcd';
             else if (lc === 'kv' || lc === 'kvp') field = 'Table1_kv';
+            else if (lc === 'mas') field = 'Table1_mas';
             else if (/^time/.test(lc)) field = 'Table1_time';
             if (field) {
               data.push({
@@ -539,7 +545,14 @@ const RadiographyPortableContent: React.FC<RadiographyPortableProps> = ({ servic
               });
             }
           }
-          // Keep headers empty so the next row (mAs/mA Applied, Meas 1, ...) becomes the real header
+          // For Linearity: keep headers empty so next row becomes the real header
+          // For Central Beam / Congruence: subsequent rows are key-value, mark headers as done
+          if (
+            currentTestNameBase !== 'Linearity Of mAs Loading' &&
+            currentTestNameBase !== 'Linearity Of mA Loading'
+          ) {
+            headers = ['__vertical_kv__']; // sentinel so we don't re-enter this block
+          }
           continue;
         }
         headers = row;
@@ -594,6 +607,28 @@ const RadiographyPortableContent: React.FC<RadiographyPortableProps> = ({ servic
 
       if (isReadingTest && currentTestName && currentTestNameBase && headers.length > 0) {
         const firstCell = (row[0] || '').trim();
+
+        // Central Beam vertical key-value rows (after condition row was parsed)
+        if (currentTestNameBase === 'Central Beam Alignment' && headers[0] === '__vertical_kv__') {
+          const valCell = (row[1] || '').trim();
+          if (valCell) {
+            const label = firstCell.toLowerCase();
+            let field = '';
+            if (label.startsWith('observed tilt')) field = 'Table2_observedTilt';
+            else if (/^tolerance\s*operator$/i.test(firstCell) || /^tolerance\s*sign$/i.test(firstCell)) {
+              field = 'Tolerance_operator';
+            } else if (/^tolerance/i.test(firstCell)) field = 'Tolerance_Value';
+            if (field) {
+              data.push({ 'Field Name': field, 'Value': valCell, 'Row Index': 0, 'Test Name': currentTestName });
+              // Also push capital-O alias for operator
+              if (field === 'Tolerance_operator') {
+                data.push({ 'Field Name': 'Tolerance_Operator', 'Value': valCell, 'Row Index': 0, 'Test Name': currentTestName });
+              }
+            }
+          }
+          continue;
+        }
+
         // Footer rows: "Tolerance Operator", "Tolerance (CoL)", etc. — key/value, not table data
         if (/^tolerance\b/i.test(firstCell)) {
           const valCell = (row[1] || '').trim();

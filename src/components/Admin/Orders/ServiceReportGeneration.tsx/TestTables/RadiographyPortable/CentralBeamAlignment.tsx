@@ -138,7 +138,7 @@ const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, 
         setIsLoading(false);
         return;
       }
-      if (csvData && csvData.length > 0) return;
+      if (csvData && csvData.length > 0) { setIsLoading(false); return; }
       try {
         const res = await getCentralBeamAlignmentByServiceIdForRadiographyPortable(serviceId);
         const data = res?.data;
