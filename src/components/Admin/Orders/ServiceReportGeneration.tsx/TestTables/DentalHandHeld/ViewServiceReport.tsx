@@ -614,7 +614,7 @@ const ViewServiceReportDentalHandHeld: React.FC = () => {
     <div
       className={`bg-white shadow-2xl print:shadow-none ${isLast ? "report-pdf-last-page-shell" : "report-pdf-page-shell"} ${className}`}
       style={{
-        pageBreakAfter: "always",
+        pageBreakAfter: isLast ? "auto" : "always",
         display: "flex",
         flexDirection: "column",
         width: "210mm",
@@ -640,6 +640,22 @@ const ViewServiceReportDentalHandHeld: React.FC = () => {
       {title}
     </h2>
   );
+
+
+  const hasIrradiationTime = !testData._isNoTimerMode && testData.accuracyOfIrradiationTime?.irradiationTimes?.some(
+    (r: any) => String(r?.setTime ?? "").trim() !== "" || String(r?.measuredTime ?? "").trim() !== ""
+  );
+  const hasOperatingPotential = !!(testData.accuracyOfOperatingPotential?.measurements?.length > 0);
+  const hasTotalFiltration = !!testData.totalFilteration?.totalFiltration;
+  const hasLinearityOfTime = !testData._isNoTimerMode && !!(testData.linearityOfTime?.table2?.length > 0);
+  const hasMaLinearity = !testData._isNoTimerMode && !!(testData.linearityOfmALoading?.table2?.length > 0);
+  const hasMasLinearity = !!(testData.linearityOfMasLoading?.table2?.length > 0);
+  const hasConsistency = !!testData.consistencyOfRadiationOutput;
+  const hasTubeLeakage = !!(testData.tubeHousingLeakage?.leakageMeasurements?.length > 0);
+  const hasSurvey = !!testData.radiationProtectionSurvey;
+  const hasPart1 = hasIrradiationTime || hasOperatingPotential || hasTotalFiltration;
+  const hasLinearity = hasLinearityOfTime || hasMaLinearity || hasMasLinearity;
+  const hasAnyDetailed = hasPart1 || hasLinearity || hasConsistency || hasTubeLeakage || hasSurvey;
 
   return (
     <>
@@ -769,8 +785,8 @@ const ViewServiceReportDentalHandHeld: React.FC = () => {
         </ReportPage>
 
         {/* PAGE 2+ - SUMMARY TABLE */}
-        <ReportPage className="test-section">
-          <div className="max-w-5xl mx-auto print:max-w-none" style={{ width: '100%', maxWidth: 'none' }}>
+        <ReportPage>
+          <div style={{ width: "100%", flex: 1 }}>
             <MainTestTableForDentalHandHeld
               testData={testData}
               hasTimer={
@@ -790,10 +806,12 @@ const ViewServiceReportDentalHandHeld: React.FC = () => {
           </div>
         </ReportPage>
 
-        {/* PAGE 3+ - DETAILED TEST RESULTS */}
-        <ReportPage className="test-section">
-          <div className="report-pdf-last-main max-w-5xl mx-auto print:max-w-none" style={{ width: '100%', maxWidth: 'none' }}>
+        {/* PAGE 3 - DETAILED TEST RESULTS (PART 1) */}
+        {hasPart1 && (
+        <ReportPage>
+          <div style={{ width: "100%", flex: 1 }}>
             <h2 className="font-bold text-center underline mb-4" style={{ fontSize: "16px" }}>DETAILED TEST RESULTS</h2>
+
 
 
             {/* 2. Accuracy of Irradiation Time — timer mode only */}
@@ -1015,6 +1033,18 @@ const ViewServiceReportDentalHandHeld: React.FC = () => {
                   );
                 })()}
               </div>
+            )}
+
+          </div>
+        </ReportPage>
+        )}
+
+        {/* PAGE 4 - DETAILED TEST RESULTS (PART 2) - Linearity */}
+        {hasLinearity && (
+        <ReportPage>
+          <div style={{ width: "100%", flex: 1 }}>
+            {!hasPart1 && (
+              <h2 className="font-bold text-center underline mb-4" style={{ fontSize: "16px" }}>DETAILED TEST RESULTS</h2>
             )}
 
             {/* 3. Linearity of Time — timer mode only */}
@@ -1305,6 +1335,15 @@ const ViewServiceReportDentalHandHeld: React.FC = () => {
               );
             })()}
 
+          </div>
+        </ReportPage>
+        )}
+
+        {/* PAGE 5 - DETAILED TEST RESULTS (PART 3) - Consistency */}
+        {hasConsistency && (
+        <ReportPage>
+          <div style={{ width: "100%", flex: 1 }}>
+
             {/* 6. Consistency of Radiation Output */}
             {testData.consistencyOfRadiationOutput && (
               <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
@@ -1424,6 +1463,15 @@ const ViewServiceReportDentalHandHeld: React.FC = () => {
                 )}
               </div>
             )}
+
+          </div>
+        </ReportPage>
+        )}
+
+        {/* PAGE 6 - DETAILED TEST RESULTS (PART 4) - Tube Housing Leakage */}
+        {hasTubeLeakage && (
+        <ReportPage>
+          <div style={{ width: "100%", flex: 1 }}>
 
             {/* 7. Tube Housing Leakage */}
             {testData.tubeHousingLeakage?.leakageMeasurements?.length > 0 && (() => {
@@ -1653,7 +1701,14 @@ const ViewServiceReportDentalHandHeld: React.FC = () => {
               );
             })()}
 
-            {/* 8. Radiation Protection Survey */}
+          </div>
+        </ReportPage>
+        )}
+
+        {/* PAGE 7 - Radiation Protection Survey (Sections 1-3) */}
+        {hasSurvey && (
+        <ReportPage>
+          <div style={{ width: "100%", flex: 1 }}>
             {testData.radiationProtectionSurvey && (
               <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
                 <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>7. Details of Radiation Protection Survey</h3>
@@ -1740,7 +1795,18 @@ const ViewServiceReportDentalHandHeld: React.FC = () => {
                     </div>
                   </div>
                 )}
+              </div>
+            )}
+          </div>
+        </ReportPage>
+        )}
 
+        {/* PAGE 8 - Radiation Protection Survey (Sections 4-6) */}
+        {hasSurvey && (
+        <ReportPage>
+          <div style={{ width: "100%", flex: 1 }}>
+            {testData.radiationProtectionSurvey && (
+              <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
                 {/* 4. Calculation Formula */}
                 <div className="mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
                   <h4 className="text-lg font-semibold mb-4 print:mb-1 print:text-xs" style={{ marginBottom: '4px', fontSize: '10px' }}>4. Calculation Formula</h4>
@@ -1867,17 +1933,25 @@ const ViewServiceReportDentalHandHeld: React.FC = () => {
                 </div>
               </div>
             )}
-
-            {/* No data fallback */}
-            {Object.values(testData).every(v => !v) && (
-              <p className="text-center text-xl text-gray-500 mt-32">
-                No detailed test results available for this report.
-              </p>
-            )}
           </div>
         </ReportPage>
+        )}
+
+        {/* Empty fallback */}
+        {!hasAnyDetailed && (
+        <ReportPage>
+          <div style={{ width: "100%", flex: 1 }}>
+            <h2 className="font-bold text-center underline mb-4" style={{ fontSize: "16px" }}>DETAILED TEST RESULTS</h2>
+            <p className="text-center text-xl text-gray-500 mt-32">
+              No detailed test results available for this report.
+            </p>
+          </div>
+        </ReportPage>
+        )}
+
         <ReportPage isLast>
-          <ReportPdfPageDeclaration
+          <div style={{ width: "100%", flex: 1 }}>
+            <ReportPdfPageDeclaration
               todayDate={todayDate}
               customerCity={placeValue}
               qrCode={report.qrCode}
@@ -1885,6 +1959,7 @@ const ViewServiceReportDentalHandHeld: React.FC = () => {
               authorizedSignatoryName={report.authorizedSignatoryName}
               authorizedSignatorySignature={report.authorizedSignatorySignature}
             />
+          </div>
         </ReportPage>
       </div>
 

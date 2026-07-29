@@ -692,19 +692,7 @@ const ConsistencyOfRadiationOutput: React.FC<ConsistencyOfRadiationOutputProps> 
                     />
                 </div>
 
-                <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-700">Final Result:</span>
-                    <span
-                        className={`inline-flex px-4 py-2 text-sm font-semibold rounded-full ${remark === 'Pass'
-                            ? 'bg-green-100 text-green-800'
-                            : remark === 'Fail'
-                                ? 'bg-red-100 text-red-800'
-                                : 'bg-gray-100 text-gray-500'
-                            }`}
-                    >
-                        {remark || '—'}
-                    </span>
-                </div>
+            
             </div>
 
             <div className="flex justify-end mt-6">

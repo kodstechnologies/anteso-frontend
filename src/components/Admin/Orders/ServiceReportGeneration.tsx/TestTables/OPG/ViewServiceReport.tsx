@@ -2,9 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { getDetails, getReportHeaderForOPG, getTools } from "../../../../../../api";
-import html2canvas from "html2canvas";
-import jsPDF from "jspdf";
-import { applyEmbeddedImagesToClone, prepareImagesForPdfCapture } from "../../../../../../utils/generatePDF";
+import { generatePDF } from "../../../../../../utils/generatePDF";
 import MainTestTableForOPG from "./MainTestTableForOPG";
 import { ReportPdfPageHeader } from "../RadiographyFixed/component/Header";
 import { ReportPdfPageFooter } from "../RadiographyFixed/component/Footer";
@@ -571,114 +569,14 @@ const ViewServiceReportOPG: React.FC = () => {
   const formatDate = (dateStr: string) => (!dateStr ? "-" : new Date(dateStr).toLocaleDateString("en-GB"));
 
   const downloadPDF = async () => {
-    const element = document.getElementById("report-content");
-    if (!element) return;
-
-    const btn = document.querySelector(".download-pdf-btn") as HTMLButtonElement;
-    if (btn) {
-      btn.textContent = "Generating PDF...";
-      btn.disabled = true;
-    }
-
     try {
-      await new Promise(resolve => setTimeout(resolve, 100));
-
-      const { imageDataUrlMap, restore: restoreImages } = await prepareImagesForPdfCapture(element);
-
-      try {
-      const canvas = await html2canvas(element, {
-        scale: 1.5, // Reduced from 3 to 1.5 - still good quality but much smaller file size
-        useCORS: true,
-        logging: false,
-        backgroundColor: '#ffffff',
-        allowTaint: true,
-        imageTimeout: 15000,
-        removeContainer: true,
-        windowWidth: element.scrollWidth,
-        windowHeight: element.scrollHeight,
-        onclone: (clonedDoc) => {
-          applyEmbeddedImagesToClone(clonedDoc, imageDataUrlMap);
-
-          const clonedElement = clonedDoc.getElementById("report-content");
-          if (clonedElement) {
-            clonedElement.style.width = '210mm';
-            clonedElement.style.maxWidth = 'none';
-            clonedElement.style.margin = '0';
-            clonedElement.style.padding = '20px';
-
-            const nestedContainers = clonedElement.querySelectorAll<HTMLElement>('div');
-            nestedContainers.forEach((div) => {
-              if (div.style.maxWidth || div.classList.contains('max-w-5xl') || div.classList.contains('max-w-7xl')) {
-                div.style.maxWidth = 'none';
-                div.style.width = '100%';
-              }
-              if (div.classList.contains('p-8') || div.classList.contains('p-10')) {
-                div.style.padding = '20px';
-              }
-            });
-
-            const tables = clonedElement.querySelectorAll('table');
-            tables.forEach((table: HTMLElement) => {
-              table.style.breakInside = 'avoid';
-              table.style.width = '100%';
-              table.style.borderCollapse = 'collapse';
-              table.style.tableLayout = 'auto';
-
-              const cells = table.querySelectorAll<HTMLElement>('td, th');
-              cells.forEach((cell) => {
-                cell.style.breakInside = 'avoid';
-                cell.style.wordWrap = 'break-word';
-                cell.style.overflowWrap = 'break-word';
-                cell.style.verticalAlign = 'top';
-              });
-            });
-
-            const sections = clonedElement.querySelectorAll<HTMLElement>('section, div.mb-6, div.mb-8');
-            sections.forEach((section) => {
-              section.style.breakInside = 'avoid';
-            });
-
-            const buttons = clonedElement.querySelectorAll('button, .print\\:hidden');
-            buttons.forEach((btn) => {
-              (btn as HTMLElement).style.display = 'none';
-            });
-          }
-        }
+      await generatePDF({
+        elementId: "report-content",
+        filename: `OPG-Report-${report?.testReportNumber || "report"}.pdf`,
+        buttonSelector: ".download-pdf-btn",
       });
-
-      // Convert to JPEG with compression for much smaller file size
-      const imgData = canvas.toDataURL("image/jpeg", 0.85); // JPEG at 85% quality - good balance
-      const pdf = new jsPDF("p", "mm", "a4");
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-      const imgWidth = pdfWidth;
-      const imgHeight = (canvas.height * pdfWidth) / canvas.width;
-
-      let heightLeft = imgHeight;
-      let position = 0;
-
-      pdf.addImage(imgData, "JPEG", 0, position, imgWidth, imgHeight);
-      heightLeft -= pdfHeight;
-
-      while (heightLeft >= 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, "JPEG", 0, position, imgWidth, imgHeight);
-        heightLeft -= pdfHeight;
-      }
-
-      pdf.save(`OPG-Report-${report?.testReportNumber || "report"}.pdf`);
-      } finally {
-        restoreImages();
-      }
     } catch (error) {
       console.error("PDF Error:", error);
-      alert("Failed to generate PDF. Please try again.");
-    } finally {
-      if (btn) {
-        btn.textContent = "Download PDF";
-        btn.disabled = false;
-      }
     }
   };
 
@@ -797,6 +695,25 @@ const ViewServiceReportOPG: React.FC = () => {
     let sectionNumber = 1;
     return () => sectionNumber++;
   })();
+
+  const hasIrradiationTime = !!(testData.irradiationTime?.irradiationTimes?.length > 0);
+  const hasOperatingPotential = !!(
+    testData.operatingPotential?.rows?.length > 0 || testData.operatingPotential?.totalFiltration
+  );
+  const hasLinearity = !!(testData.linearityOfMaLoading?.table2Rows?.length > 0);
+  const hasOutputConsistency = !!(testData.outputConsistency?.outputRows?.length > 0);
+  const hasRadiationLeakage = !!(
+    testData.radiationLeakage &&
+    (testData.radiationLeakage.leakageMeasurements?.length > 0 || testData.radiationLeakage.fcd)
+  );
+  const hasSurvey = !!radiationProtectionSurveyView;
+  const hasAnyDetailed =
+    hasIrradiationTime ||
+    hasOperatingPotential ||
+    hasLinearity ||
+    hasOutputConsistency ||
+    hasRadiationLeakage ||
+    hasSurvey;
 
   return (
     <>
@@ -925,13 +842,14 @@ const ViewServiceReportOPG: React.FC = () => {
 
         {/* PAGE 2+ - SUMMARY TABLE */}
         <ReportPage>
-          <div className="max-w-5xl mx-auto print:max-w-none" style={{ width: '100%', maxWidth: 'none' }}>
+          <div style={{ width: "100%", flex: 1 }}>
             <MainTestTableForOPG testData={testData} />
           </div>
         </ReportPage>
-        {/* PAGE 3+ - DETAILED TEST RESULTS */}
+        {/* PAGE 3 - DETAILED TEST RESULTS (PART 1) - Irradiation Time + Operating Potential */}
+        {(hasIrradiationTime || hasOperatingPotential) && (
         <ReportPage>
-          <div className="max-w-5xl mx-auto print:max-w-none" style={{ width: '100%', maxWidth: 'none' }}>
+          <div style={{ width: "100%", flex: 1 }}>
             <h2 className="font-bold text-center underline mb-4" style={{ fontSize: "16px" }}>DETAILED TEST RESULTS</h2>
 
             {/* 1. Accuracy of Irradiation Time */}
@@ -1124,7 +1042,14 @@ const ViewServiceReportOPG: React.FC = () => {
               </div>
             )}
 
-           
+          </div>
+        </ReportPage>
+        )}
+
+        {/* PAGE 4 - DETAILED TEST RESULTS (PART 2) - Linearity */}
+        {hasLinearity && (
+        <ReportPage>
+          <div style={{ width: "100%", flex: 1 }}>
             {/* 4. Linearity of mA / mAs Loading */}
             {testData.linearityOfMaLoading?.table2Rows?.length > 0 && (() => {
               const rows = testData.linearityOfMaLoading.table2Rows || [];
@@ -1268,7 +1193,14 @@ const ViewServiceReportOPG: React.FC = () => {
                 </div>
               </div>
             )})()}
+          </div>
+        </ReportPage>
+        )}
 
+        {/* PAGE 5 - DETAILED TEST RESULTS (PART 3) - Output Consistency */}
+        {hasOutputConsistency && (
+        <ReportPage>
+          <div style={{ width: "100%", flex: 1 }}>
  {/* 3. Output Consistency */}
             {testData.outputConsistency?.outputRows?.length > 0 && (() => {
               const ocRows = testData.outputConsistency.outputRows || [];
@@ -1402,8 +1334,14 @@ const ViewServiceReportOPG: React.FC = () => {
               </div>
             );
             })()}
+          </div>
+        </ReportPage>
+        )}
 
-
+        {/* PAGE 6 - DETAILED TEST RESULTS (PART 4) - Tube Housing Leakage */}
+        {hasRadiationLeakage && (
+        <ReportPage>
+          <div style={{ width: "100%", flex: 1 }}>
             {/* 6. Tube Housing Leakage — layout aligned with RadiographyFixed ViewServiceReport */}
             {testData.radiationLeakage && (testData.radiationLeakage.leakageMeasurements?.length > 0 || testData.radiationLeakage.fcd) && (
               <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: "8px" }}>
@@ -1621,10 +1559,16 @@ const ViewServiceReportOPG: React.FC = () => {
                 })()}
               </div>
             )}
+          </div>
+        </ReportPage>
+        )}
 
-            {/* 7. Details of Radiation Protection Survey — layout aligned with RadiographyFixed ViewServiceReport */}
+        {/* PAGE 7 - DETAILED TEST RESULTS (PART 5) - Radiation Protection Survey (Details & Measured Levels) */}
+        {hasSurvey && (
+        <ReportPage>
+          <div style={{ width: "100%", flex: 1 }}>
             {radiationProtectionSurveyView && (
-              <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: "8px" }}>
+              <div className="mb-4 test-section" style={{ marginBottom: "8px" }}>
                 <h3 className="text-xl font-bold mb-2 print:text-sm" style={{ fontSize: "12px" }}>
                   {nextDetailedSectionNumber()}. Details of Radiation Protection Survey
                 </h3>
@@ -1701,6 +1645,18 @@ const ViewServiceReportOPG: React.FC = () => {
                     </table>
                   </div>
                 )}
+              </div>
+            )}
+          </div>
+        </ReportPage>
+        )}
+
+        {/* PAGE 8 - DETAILED TEST RESULTS (PART 6) - Radiation Protection Survey (Summary) */}
+        {hasSurvey && (
+        <ReportPage>
+          <div style={{ width: "100%", flex: 1 }}>
+            {radiationProtectionSurveyView && (
+              <div className="mb-4 test-section" style={{ marginBottom: "8px" }}>
                 <div style={{ marginBottom: "4px" }}>
                   <p style={{ fontSize: "10px", fontWeight: "bold", marginBottom: "2px" }}>4. Calculation Formula</p>
                   <table style={tableStyle} className="compact-table">
@@ -1809,17 +1765,22 @@ const ViewServiceReportOPG: React.FC = () => {
                 </div>
               </div>
             )}
-
-            {/* No data fallback */}
-            {
-              Object.values(testData).every(v => !v) && (
-                <p className="text-center text-xl text-gray-500 mt-32">
-                  No test results available yet.
-                </p>
-              )
-            }
-          </div >
+          </div>
         </ReportPage>
+        )}
+
+        {!hasAnyDetailed && (
+        <ReportPage>
+          <div style={{ width: "100%", flex: 1 }}>
+            <h2 className="font-bold text-center underline mb-4" style={{ fontSize: "16px" }}>DETAILED TEST RESULTS</h2>
+            <p className="text-center text-xl text-gray-500 mt-32">
+              No test results available yet.
+            </p>
+          </div>
+        </ReportPage>
+        )}
+
+        {/* PAGE - Declaration + Final Signatures */}
         <ReportPage isLast>
           <div style={{ width: "100%", flex: 1 }}>
             <ReportPdfPageDeclaration
@@ -1832,7 +1793,7 @@ const ViewServiceReportOPG: React.FC = () => {
             />
           </div>
         </ReportPage>
-      </div >
+      </div>
 
       <style>{`
         .fixed-report-pdf {
