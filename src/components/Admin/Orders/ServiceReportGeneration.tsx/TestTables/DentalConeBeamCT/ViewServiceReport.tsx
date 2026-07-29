@@ -1113,26 +1113,41 @@ const ViewServiceReportCBCT: React.FC = () => {
                   </div>
 
                   <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
-                    <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', borderCollapse: 'collapse', borderSpacing: '0' }}>
+                    <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table pdf-safe-header-table" style={{ fontSize: '11px', borderCollapse: 'collapse', borderSpacing: '0' }}>
                       <thead className="bg-gray-100">
-                        <tr>
-                          <th rowSpan={2} className="border border-black p-2 print:p-1 text-center align-middle" style={{ padding: '0px 4px', fontSize: '11px', borderColor: '#000000', textAlign: 'center', verticalAlign: 'middle' }}>
-                            {isMasLinearity ? "mAs Range" : "mA Applied"}
+                        <tr style={{ height: '20px' }}>
+                          <th className="border border-black text-center align-middle" style={{ borderBottom: 'none', padding: '0', fontSize: '11px', borderColor: '#000000', backgroundColor: '#f3f4f6' }}>
+                            <div className="header-cell-simulated" style={{ fontWeight: 700, padding: '4px 2px' }}>
+                              {isMasLinearity ? "mAs Range" : "mA Applied"}
+                            </div>
                           </th>
-                          <th colSpan={Math.max(measCount, 1)} className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 4px', fontSize: '11px', borderColor: '#000000', textAlign: 'center' }}>
-                            Output (mGy)
+                          <th colSpan={Math.max(measCount, 1)} className="border border-black text-center" style={{ padding: '0', fontSize: '11px', borderColor: '#000000', backgroundColor: '#f3f4f6' }}>
+                            <div style={{ padding: '4px 2px', fontWeight: 700 }}>Output (mGy)</div>
                           </th>
-                          <th rowSpan={2} className="border border-black p-2 print:p-1 text-center align-middle" style={{ padding: '0px 4px', fontSize: '11px', borderColor: '#000000', textAlign: 'center', verticalAlign: 'middle' }}>Avg. Output (mGy)</th>
-                          <th rowSpan={2} className="border border-black p-2 print:p-1 text-center font-bold bg-blue-50 align-middle" style={{ padding: '0px 4px', fontSize: '11px', borderColor: '#000000', textAlign: 'center', verticalAlign: 'middle' }}>X ({xUnitLabel})</th>
-                          <th rowSpan={2} className="border border-black p-2 print:p-1 text-center font-bold bg-yellow-50 align-middle" style={{ padding: '0px 4px', fontSize: '11px', borderColor: '#000000', textAlign: 'center', verticalAlign: 'middle' }}>CoL</th>
-                          <th rowSpan={2} className="border border-black p-2 print:p-1 text-center font-bold bg-green-50 align-middle" style={{ padding: '0px 4px', fontSize: '11px', borderColor: '#000000', textAlign: 'center', verticalAlign: 'middle' }}>Remarks</th>
+                          <th className="border border-black text-center align-middle" style={{ borderBottom: 'none', padding: '0', fontSize: '11px', borderColor: '#000000', backgroundColor: '#f3f4f6' }}>
+                            <div className="header-cell-simulated" style={{ fontWeight: 700, padding: '4px 2px' }}>Avg. Output (mGy)</div>
+                          </th>
+                          <th className="border border-black text-center font-bold bg-blue-50 align-middle" style={{ borderBottom: 'none', padding: '0', fontSize: '11px', borderColor: '#000000' }}>
+                            <div className="header-cell-simulated" style={{ fontWeight: 700, padding: '4px 2px' }}>X ({xUnitLabel})</div>
+                          </th>
+                          <th className="border border-black text-center font-bold bg-yellow-50 align-middle" style={{ borderBottom: 'none', padding: '0', fontSize: '11px', borderColor: '#000000' }}>
+                            <div className="header-cell-simulated" style={{ fontWeight: 700, padding: '4px 2px' }}>CoL</div>
+                          </th>
+                          <th className="border border-black text-center font-bold bg-green-50 align-middle" style={{ borderBottom: 'none', padding: '0', fontSize: '11px', borderColor: '#000000' }}>
+                            <div className="header-cell-simulated" style={{ fontWeight: 700, padding: '4px 2px' }}>Remarks</div>
+                          </th>
                         </tr>
-                        <tr>
+                        <tr style={{ height: '20px' }}>
+                          <th className="border border-black" style={{ borderTop: 'none', padding: '0', backgroundColor: '#f3f4f6', borderColor: '#000000' }}></th>
                           {measHeaders.map((h: string, idx: number) => (
-                            <th key={idx} className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 4px', fontSize: '11px', borderColor: '#000000', textAlign: 'center' }}>
-                              {h || `Meas ${idx + 1}`}
+                            <th key={idx} className="border border-black text-center" style={{ padding: '0', fontSize: '11px', borderColor: '#000000', backgroundColor: '#f3f4f6' }}>
+                              <div style={{ padding: '4px 2px', fontWeight: 700 }}>{h || `Meas ${idx + 1}`}</div>
                             </th>
                           ))}
+                          <th className="border border-black" style={{ borderTop: 'none', padding: '0', backgroundColor: '#f3f4f6', borderColor: '#000000' }}></th>
+                          <th className="border border-black bg-blue-50" style={{ borderTop: 'none', padding: '0', borderColor: '#000000' }}></th>
+                          <th className="border border-black bg-yellow-50" style={{ borderTop: 'none', padding: '0', borderColor: '#000000' }}></th>
+                          <th className="border border-black bg-green-50" style={{ borderTop: 'none', padding: '0', borderColor: '#000000' }}></th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1150,18 +1165,14 @@ const ViewServiceReportCBCT: React.FC = () => {
                             ))}
                             <td className="border border-black p-2 print:p-1 text-center font-semibold" style={{ padding: '0px 4px', fontSize: '11px', borderColor: '#000000' }}>{res.avg > 0 ? res.avg.toFixed(3) : "-"}</td>
                             <td className="border border-black p-2 print:p-1 text-center font-bold" style={{ padding: '0px 4px', fontSize: '11px', borderColor: '#000000' }}>{res.x > 0 ? res.x.toFixed(4) : "-"}</td>
-                            {i === 0 && (
-                              <td rowSpan={rows.length} className="border border-black p-2 print:p-1 text-center font-bold align-middle bg-yellow-50" style={{ padding: '0px 4px', fontSize: '12px', borderColor: '#000000', verticalAlign: 'middle' }}>
-                                {col > 0 ? col.toFixed(3) : "-"}
-                              </td>
-                            )}
-                            {i === 0 && (
-                              <td rowSpan={rows.length} className="border border-black p-2 print:p-1 text-center font-bold align-middle bg-green-50" style={{ padding: '0px 4px', fontSize: '11px', borderColor: '#000000', verticalAlign: 'middle' }}>
-                                <span className={isPassOverall ? "text-green-600" : "text-red-600"}>
-                                  {isPassOverall ? "Pass" : "Fail"}
-                                </span>
-                              </td>
-                            )}
+                            <td className="border border-black p-2 print:p-1 text-center font-bold align-middle bg-yellow-50" style={{ padding: '0px 4px', fontSize: '12px', borderColor: '#000000', verticalAlign: 'middle' }}>
+                              {col > 0 ? col.toFixed(3) : "-"}
+                            </td>
+                            <td className="border border-black p-2 print:p-1 text-center font-bold align-middle bg-green-50" style={{ padding: '0px 4px', fontSize: '11px', borderColor: '#000000', verticalAlign: 'middle' }}>
+                              <span className={isPassOverall ? "text-green-600" : "text-red-600"}>
+                                {isPassOverall ? "Pass" : "Fail"}
+                              </span>
+                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -1233,24 +1244,39 @@ const ViewServiceReportCBCT: React.FC = () => {
                   </div>
                 )}
                 <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
-                  <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
+                  <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table pdf-safe-header-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
                     <thead className="bg-gray-100">
-                      <tr>
-                        <th rowSpan={2} className="border border-black p-2 print:p-1 text-center align-middle" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center', verticalAlign: 'middle' }}>Applied kV</th>
-                        <th rowSpan={2} className="border border-black p-2 print:p-1 text-center align-middle" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center', verticalAlign: 'middle' }}>mAs</th>
-                        <th colSpan={measHeaders.length} className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>
-                          Radiation Output mGy
+                      <tr style={{ height: '20px' }}>
+                        <th className="border border-black text-center align-middle" style={{ borderBottom: 'none', padding: '0', fontSize: '11px', borderColor: '#000000', backgroundColor: '#f3f4f6' }}>
+                          <div className="header-cell-simulated" style={{ fontWeight: 700, padding: '4px 2px' }}>Applied kV</div>
                         </th>
-                        <th rowSpan={2} className="border border-black p-2 print:p-1 text-center align-middle" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center', verticalAlign: 'middle' }}>Avg. (X)</th>
-                        <th rowSpan={2} className="border border-black p-2 print:p-1 text-center align-middle" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center', verticalAlign: 'middle' }}>Coefficient of Variation CoV</th>
-                        <th rowSpan={2} className="border border-black p-2 print:p-1 text-center align-middle" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center', verticalAlign: 'middle' }}>Remarks</th>
+                        <th className="border border-black text-center align-middle" style={{ borderBottom: 'none', padding: '0', fontSize: '11px', borderColor: '#000000', backgroundColor: '#f3f4f6' }}>
+                          <div className="header-cell-simulated" style={{ fontWeight: 700, padding: '4px 2px' }}>mAs</div>
+                        </th>
+                        <th colSpan={measHeaders.length} className="border border-black text-center" style={{ padding: '0', fontSize: '11px', borderColor: '#000000', backgroundColor: '#f3f4f6' }}>
+                          <div style={{ padding: '4px 2px', fontWeight: 700 }}>Radiation Output mGy</div>
+                        </th>
+                        <th className="border border-black text-center align-middle" style={{ borderBottom: 'none', padding: '0', fontSize: '11px', borderColor: '#000000', backgroundColor: '#f3f4f6' }}>
+                          <div className="header-cell-simulated" style={{ fontWeight: 700, padding: '4px 2px' }}>Avg. (X)</div>
+                        </th>
+                        <th className="border border-black text-center align-middle" style={{ borderBottom: 'none', padding: '0', fontSize: '11px', borderColor: '#000000', backgroundColor: '#f3f4f6' }}>
+                          <div className="header-cell-simulated" style={{ fontWeight: 700, padding: '4px 2px' }}>Coefficient of Variation CoV</div>
+                        </th>
+                        <th className="border border-black text-center align-middle" style={{ borderBottom: 'none', padding: '0', fontSize: '11px', borderColor: '#000000', backgroundColor: '#f3f4f6' }}>
+                          <div className="header-cell-simulated" style={{ fontWeight: 700, padding: '4px 2px' }}>Remarks</div>
+                        </th>
                       </tr>
-                      <tr>
+                      <tr style={{ height: '20px' }}>
+                        <th className="border border-black" style={{ borderTop: 'none', padding: '0', backgroundColor: '#f3f4f6', borderColor: '#000000' }}></th>
+                        <th className="border border-black" style={{ borderTop: 'none', padding: '0', backgroundColor: '#f3f4f6', borderColor: '#000000' }}></th>
                         {measHeaders.map((h: string, idx: number) => (
-                          <th key={idx} className="border border-black p-1 print:p-0.5 text-xs text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>
-                            {h || `Meas ${idx + 1}`}
+                          <th key={idx} className="border border-black text-center" style={{ padding: '0', fontSize: '11px', borderColor: '#000000', backgroundColor: '#f3f4f6' }}>
+                            <div style={{ padding: '4px 2px', fontWeight: 700 }}>{h || `Meas ${idx + 1}`}</div>
                           </th>
                         ))}
+                        <th className="border border-black" style={{ borderTop: 'none', padding: '0', backgroundColor: '#f3f4f6', borderColor: '#000000' }}></th>
+                        <th className="border border-black" style={{ borderTop: 'none', padding: '0', backgroundColor: '#f3f4f6', borderColor: '#000000' }}></th>
+                        <th className="border border-black" style={{ borderTop: 'none', padding: '0', backgroundColor: '#f3f4f6', borderColor: '#000000' }}></th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1329,22 +1355,51 @@ const ViewServiceReportCBCT: React.FC = () => {
                 
                 {/* Table Layout */}
                 <div className="overflow-x-auto mb-4 print:mb-1" style={{ marginBottom: '4px' }}>
-                  <table className="w-full border-2 border-black text-sm print:text-[8px] compact-table" style={{ fontSize: '10px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
-                    <thead className="bg-gray-100">
-                      <tr className="bg-blue-50">
-                        <th rowSpan={2} className="border border-black p-1 text-center font-bold" style={{ width: '15%', padding: '0px 2px', fontSize: '10px' }}>Location</th>
-                        <th colSpan={5} className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>Exposure Level (mGy)</th>
-                        <th rowSpan={2} className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>Max</th>
-                        <th rowSpan={2} className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>Result (mR in one hour)</th>
-                        <th rowSpan={2} className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>Result (mGy in one hour)</th>
-                        <th rowSpan={2} className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>Remarks</th>
+                  <table className="w-full border-2 border-black text-sm print:text-[8px] compact-table leakage-measurements-table pdf-safe-header-table" style={{ fontSize: '10px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0', width: '100%' }}>
+                    <colgroup>
+                      <col style={{ width: '15%' }} />
+                      <col style={{ width: '8%' }} />
+                      <col style={{ width: '8%' }} />
+                      <col style={{ width: '8%' }} />
+                      <col style={{ width: '8%' }} />
+                      <col style={{ width: '8%' }} />
+                      <col style={{ width: '8%' }} />
+                      <col style={{ width: '13%' }} />
+                      <col style={{ width: '13%' }} />
+                      <col style={{ width: '11%' }} />
+                    </colgroup>
+                    <thead>
+                      <tr style={{ height: '20px' }}>
+                        <th className="border border-black text-center font-bold" style={{ borderBottom: 'none', backgroundColor: '#f9f9f9', color: '#000', padding: '0', fontSize: '10px' }}>
+                          <div className="header-cell-simulated" style={{ fontWeight: 700 }}>Location</div>
+                        </th>
+                        <th colSpan={5} className="border border-black text-center font-bold" style={{ backgroundColor: '#f9f9f9', color: '#000', padding: '0', fontSize: '10px' }}>
+                          <div style={{ padding: '4px 2px', fontWeight: 700 }}>Exposure Level (mGy)</div>
+                        </th>
+                        <th className="border border-black text-center font-bold" style={{ borderBottom: 'none', backgroundColor: '#f9f9f9', color: '#000', padding: '0', fontSize: '10px' }}>
+                          <div className="header-cell-simulated" style={{ fontWeight: 700 }}>Max</div>
+                        </th>
+                        <th className="border border-black text-center font-bold" style={{ borderBottom: 'none', backgroundColor: '#f9f9f9', color: '#000', padding: '0', fontSize: '10px' }}>
+                          <div className="header-cell-simulated" style={{ fontWeight: 700 }}>Result (mR in one hour)</div>
+                        </th>
+                        <th className="border border-black text-center font-bold" style={{ borderBottom: 'none', backgroundColor: '#f9f9f9', color: '#000', padding: '0', fontSize: '10px' }}>
+                          <div className="header-cell-simulated" style={{ fontWeight: 700 }}>Result (mGy in one hour)</div>
+                        </th>
+                        <th className="border border-black text-center font-bold" style={{ borderBottom: 'none', backgroundColor: '#f9f9f9', color: '#000', padding: '0', fontSize: '10px' }}>
+                          <div className="header-cell-simulated" style={{ fontWeight: 700 }}>Remarks</div>
+                        </th>
                       </tr>
-                      <tr className="bg-gray-50">
-                        <th className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>Left</th>
-                        <th className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>Right</th>
-                        <th className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>Top</th>
-                        <th className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>Up</th>
-                        <th className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>Down</th>
+                      <tr style={{ height: '20px' }}>
+                        <th className="border border-black" style={{ borderTop: 'none', backgroundColor: '#f9f9f9', padding: '0' }}></th>
+                        {['Left', 'Right', 'Top', 'Up', 'Down'].map((h) => (
+                          <th key={h} className="border border-black text-center font-bold" style={{ backgroundColor: '#f9f9f9', color: '#000', padding: '0', fontSize: '10px' }}>
+                            <div style={{ padding: '4px 2px' }}>{h}</div>
+                          </th>
+                        ))}
+                        <th className="border border-black" style={{ borderTop: 'none', backgroundColor: '#f9f9f9', padding: '0' }}></th>
+                        <th className="border border-black" style={{ borderTop: 'none', backgroundColor: '#f9f9f9', padding: '0' }}></th>
+                        <th className="border border-black" style={{ borderTop: 'none', backgroundColor: '#f9f9f9', padding: '0' }}></th>
+                        <th className="border border-black" style={{ borderTop: 'none', backgroundColor: '#f9f9f9', padding: '0' }}></th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1812,6 +1867,29 @@ const ViewServiceReportCBCT: React.FC = () => {
         .is-generating-pdf th {
           padding-top: 4px !important;
           padding-bottom: 12px !important;
+        }
+        .header-cell-simulated {
+          padding-top: 5px;
+          padding-bottom: 0px;
+        }
+        .is-generating-pdf .header-cell-simulated {
+          padding-top: 0px;
+        }
+        .is-generating-pdf .pdf-safe-header-table th,
+        .is-generating-pdf .leakage-measurements-table th {
+          padding-top: 0 !important;
+          padding-bottom: 0 !important;
+          vertical-align: middle !important;
+          overflow: visible !important;
+        }
+        .is-generating-pdf .pdf-safe-header-table th .header-cell-simulated,
+        .is-generating-pdf .pdf-safe-header-table th > div,
+        .is-generating-pdf .leakage-measurements-table th .header-cell-simulated,
+        .is-generating-pdf .leakage-measurements-table th > div {
+          position: relative;
+          z-index: 1;
+          line-height: 1.2;
+          white-space: normal;
         }
         .fixed-report-pdf .report-pdf-page-shell,
         .fixed-report-pdf .report-pdf-last-page-shell {

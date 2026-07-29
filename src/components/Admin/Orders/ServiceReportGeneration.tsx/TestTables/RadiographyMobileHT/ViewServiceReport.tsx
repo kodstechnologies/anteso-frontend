@@ -1287,24 +1287,49 @@ const ViewServiceReportRadiographyMobileHT: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Exposure Level Table */}
+                {/* Exposure Level Table — Fixed-style simulated headers (avoids PDF white patches on rowspan th) */}
                 {testData.radiationLeakageLevel.leakageMeasurements?.length > 0 && (
                   <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
-                    <table className="w-full border-2 border-black text-sm print:text-[8px] compact-table" style={{ fontSize: '10px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
-                      <thead className="bg-gray-100">
-                        <tr className="bg-blue-50">
-                          <th rowSpan={2} className="border border-black p-1 text-center font-bold" style={{ width: '15%', padding: '0px 2px', fontSize: '10px' }}>Location</th>
-                          <th colSpan={5} className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>Exposure Level (mR/hr)</th>
-                          <th rowSpan={2} className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>Result (mR in 1 hr)</th>
-                          <th rowSpan={2} className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>Result (mGy in 1 hr)</th>
-                          <th rowSpan={2} className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>Remarks</th>
+                    <table className="w-full border-2 border-black text-sm print:text-[8px] compact-table leakage-measurements-table" style={{ fontSize: '10px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0', width: '100%' }}>
+                      <colgroup>
+                        <col style={{ width: '15%' }} />
+                        <col style={{ width: '8%' }} />
+                        <col style={{ width: '8%' }} />
+                        <col style={{ width: '8%' }} />
+                        <col style={{ width: '8%' }} />
+                        <col style={{ width: '8%' }} />
+                        <col style={{ width: '15%' }} />
+                        <col style={{ width: '15%' }} />
+                        <col style={{ width: '15%' }} />
+                      </colgroup>
+                      <thead>
+                        <tr style={{ height: '20px' }}>
+                          <th className="border border-black text-center font-bold" style={{ borderBottom: 'none', backgroundColor: '#f9f9f9', color: '#000', padding: '0', fontSize: '10px' }}>
+                            <div className="header-cell-simulated" style={{ fontWeight: 700 }}>Location</div>
+                          </th>
+                          <th colSpan={5} className="border border-black text-center font-bold" style={{ backgroundColor: '#f9f9f9', color: '#000', padding: '0', fontSize: '10px' }}>
+                            <div style={{ padding: '4px 2px', fontWeight: 700 }}>Exposure Level (mR/hr)</div>
+                          </th>
+                          <th className="border border-black text-center font-bold" style={{ borderBottom: 'none', backgroundColor: '#f9f9f9', color: '#000', padding: '0', fontSize: '10px' }}>
+                            <div className="header-cell-simulated" style={{ fontWeight: 700 }}>Result (mR in 1 hr)</div>
+                          </th>
+                          <th className="border border-black text-center font-bold" style={{ borderBottom: 'none', backgroundColor: '#f9f9f9', color: '#000', padding: '0', fontSize: '10px' }}>
+                            <div className="header-cell-simulated" style={{ fontWeight: 700 }}>Result (mGy in 1 hr)</div>
+                          </th>
+                          <th className="border border-black text-center font-bold" style={{ borderBottom: 'none', backgroundColor: '#f9f9f9', color: '#000', padding: '0', fontSize: '10px' }}>
+                            <div className="header-cell-simulated" style={{ fontWeight: 700 }}>Remarks</div>
+                          </th>
                         </tr>
-                        <tr className="bg-gray-50">
-                          <th className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>Left</th>
-                          <th className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>Right</th>
-                          <th className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>Front</th>
-                          <th className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>Back</th>
-                          <th className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>Top</th>
+                        <tr style={{ height: '20px' }}>
+                          <th className="border border-black" style={{ borderTop: 'none', backgroundColor: '#f9f9f9', padding: '0' }}></th>
+                          {['Left', 'Right', 'Front', 'Back', 'Top'].map((h) => (
+                            <th key={h} className="border border-black text-center font-bold" style={{ backgroundColor: '#f9f9f9', color: '#000', padding: '0', fontSize: '10px' }}>
+                              <div style={{ padding: '4px 2px' }}>{h}</div>
+                            </th>
+                          ))}
+                          <th className="border border-black" style={{ borderTop: 'none', backgroundColor: '#f9f9f9', padding: '0' }}></th>
+                          <th className="border border-black" style={{ borderTop: 'none', backgroundColor: '#f9f9f9', padding: '0' }}></th>
+                          <th className="border border-black" style={{ borderTop: 'none', backgroundColor: '#f9f9f9', padding: '0' }}></th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1705,7 +1730,21 @@ const ViewServiceReportRadiographyMobileHT: React.FC = () => {
           padding-bottom: 0px;
         }
         .is-generating-pdf .header-cell-simulated {
-          padding-top: 0px;
+          padding-top: 0px; /* Pushed up in PDF — html2canvas sinks text */
+        }
+        /* Keep leakage simulated headers readable in PDF (override asymmetric th padding) */
+        .is-generating-pdf .leakage-measurements-table th {
+          padding-top: 0 !important;
+          padding-bottom: 0 !important;
+          vertical-align: middle !important;
+          overflow: visible !important;
+        }
+        .is-generating-pdf .leakage-measurements-table th .header-cell-simulated,
+        .is-generating-pdf .leakage-measurements-table th > div {
+          position: relative;
+          z-index: 1;
+          line-height: 1.2;
+          white-space: normal;
         }
         .fixed-report-pdf .report-pdf-page-shell,
         .fixed-report-pdf .report-pdf-last-page-shell {
