@@ -26,7 +26,7 @@ import {
     FiVideo,
 } from 'react-icons/fi';
 import { RiMoneyRupeeCircleLine } from "react-icons/ri";
-import Logo from '../../assets/logo/logo.png';
+import Logo from '../../assets/logo/anteso-logo2.png';
 import IconMenuFontIcons from '../Icon/Menu/IconMenuFontIcons';
 import IconBook from '../Icon/IconBook';
 import IconBox from '../Icon/IconBox';

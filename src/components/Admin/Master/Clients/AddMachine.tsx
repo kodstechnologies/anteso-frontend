@@ -6,6 +6,27 @@ import { useState } from "react"
 import FullScreenLoader from "../../../common/FullScreenLoader"
 import { addMachine } from "../../../../api"
 
+const machineTypeOptions = [
+    "Radiography (Fixed)",
+    "Radiography (Mobile)",
+    "Radiography (Portable)",
+    "Radiography and Fluoroscopy",
+    "Interventional Radiology",
+    "C-Arm",
+    "O-Arm",
+    "Computed Tomography",
+    "Mammography",
+    "Dental Cone Beam CT",
+    "Ortho Pantomography (OPG)",
+    "Dental (Intra Oral)",
+    "Dental (Hand-held)",
+    "Bone Densitometer (BMD)",
+    "KV Imaging (OBI)",
+    "Radiography (Mobile) with HT",
+    "Lead Apron/Thyroid Shield/Gonad Shield",
+    "Others",
+]
+
 const AddMachine = () => {
     const navigate = useNavigate()
     const { clientId, hospitalId } = useParams()
@@ -94,26 +115,11 @@ const AddMachine = () => {
                                     <label htmlFor="machineType">Machine Type</label>
                                     <Field as="select" name="machineType" id="machineType" className="form-select">
                                         <option value="">Select Machine Type</option>
-                                        <option value="Fixed X-Ray">Fixed X-Ray</option>
-                                        <option value="Mobile X-Ray">Mobile X-Ray</option>
-                                        <option value="C-Arm">C-Arm</option>
-                                        <option value="Cath Lab/Interventional Radiology">Cath Lab/Interventional Radiology</option>
-                                        <option value="Mammography">Mammography</option>
-                                        <option value="CT Scan">CT Scan</option>
-                                        <option value="PET CT">PET CT</option>
-                                        <option value="CT Simulator">CT Simulator</option>
-                                        <option value="OPG">OPG</option>
-                                        <option value="CBCT">CBCT</option>
-                                        <option value="BMD/DEXA">BMD/DEXA</option>
-                                        <option value="Dental IOPA">Dental IOPA</option>
-                                        <option value="Dental Hand Held">Dental Hand Held</option>
-                                        <option value="O Arm">O Arm</option>
-                                        <option value="KV Imaging (OBI)">KV Imaging (OBI)</option>
-                                        <option value="Lead Apron Test">Lead Apron Test</option>
-                                        <option value="Thyroid Shield Test">Thyroid Shield Test</option>
-                                        <option value="Gonad Shield Test">Gonad Shield Test</option>
-                                        <option value="Radiation Survey of Radiation Facility">Radiation Survey of Radiation Facility</option>
-                                        <option value="Others">Others</option>
+                                        {machineTypeOptions.map((option) => (
+                                            <option key={option} value={option}>
+                                                {option}
+                                            </option>
+                                        ))}
                                     </Field>
                                     {submitCount && errors.machineType ? <div className="text-danger mt-1">{errors.machineType as string}</div> : null}
                                 </div>

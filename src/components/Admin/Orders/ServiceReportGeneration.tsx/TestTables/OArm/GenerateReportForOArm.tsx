@@ -549,6 +549,9 @@ const OArmContent: React.FC<OArmProps> = ({ serviceId, csvFileUrl }) => {
 
     const testMarkerToInternalName: { [key: string]: string } = {
       'TOTAL FILTRATION': 'Total Filtration',
+      'ACCURACY OF OPERATING POTENTIAL': 'Total Filtration',
+      'ACCURACY OF KVP AT DIFFERENT MA STATIONS': 'Total Filtration',
+      'ACCURACY OF KVP AT DIFFERENT MA STATION': 'Total Filtration',
       'OUTPUT CONSISTENCY': 'Output Consistency',
       'HIGH CONTRAST RESOLUTION': 'High Contrast Resolution',
       'LOW CONTRAST RESOLUTION': 'Low Contrast Resolution',
@@ -566,8 +569,11 @@ const OArmContent: React.FC<OArmProps> = ({ serviceId, csvFileUrl }) => {
       'Total Filtration': {
         'Tolerance Sign': 'Tolerance_Sign',
         'Tolerance Value': 'Tolerance_Value',
+        'Tolerance Value (kVp)': 'Tolerance_Value',
         'Total Filtration At kVp': 'TotalFiltration_AtKvp',
         'Total Filtration (mm Al)': 'TotalFiltration_Required',
+        'Total Filtration Required (mm Al)': 'TotalFiltration_Required',
+        'Total Filtration Measured (mm Al)': 'TotalFiltration_Measured',
         'Applied KVp': 'Table2_AppliedKvp',
         'Applied kVp': 'Table2_AppliedKvp',
         'Applied kV': 'Table2_AppliedKvp',
@@ -655,6 +661,10 @@ const OArmContent: React.FC<OArmProps> = ({ serviceId, csvFileUrl }) => {
       const label = (row[0] || '').trim();
       return /^mAs(\s*Range)?$/i.test(label) || /^mA\s*Applied$/i.test(label) || /^mA$/i.test(label);
     };
+    const isTotalFiltrationConfigRow = (row: string[]) => {
+      const label = (row[0] || '').trim();
+      return /^(Tolerance\s*Sign|Tolerance\s*Value(\s*\(kVp\))?|Total\s*Filtration(\s*(At\s*kVp|Required\s*\(mm\s*Al\)|Measured\s*\(mm\s*Al\)))?|mAs?\s*Station\s*\d+)$/i.test(label);
+    };
 
     const measFieldPrefixByTest: Record<string, string> = {
       'Total Filtration': 'Table2_Meas_',
@@ -707,6 +717,44 @@ const OArmContent: React.FC<OArmProps> = ({ serviceId, csvFileUrl }) => {
 
       if (isReadingTest && headers.length === 0 && row.some(c => c)) {
         const map = headerMap[currentTestNameBase] || {};
+
+        // O-Arm Total Filtration export places key-value rows before the data table header.
+        // Parse these rows first and wait for the actual header row (Applied kVp ...).
+        if (currentTestNameBase === 'Total Filtration') {
+          const firstLabel = (row[0] || '').trim();
+          const isAppliedHeader = /^Applied\s*kV(p)?$/i.test(firstLabel);
+          if (!isAppliedHeader && isTotalFiltrationConfigRow(row)) {
+            if (/^mAs?\s*Station\s*(\d+)$/i.test(firstLabel)) {
+              const match = firstLabel.match(/^mAs?\s*Station\s*(\d+)$/i);
+              const stationIndex = match ? parseInt(match[1], 10) : NaN;
+              const stationValue = row[1];
+              if (!Number.isNaN(stationIndex) && stationValue !== undefined && stationValue !== null && String(stationValue).trim() !== '') {
+                data.push({
+                  'Field Name': `Header_${stationIndex}`,
+                  'Value': String(stationValue).trim(),
+                  'Row Index': 0,
+                  'Test Name': currentTestName,
+                });
+              }
+              continue;
+            }
+
+            const field = map[firstLabel];
+            const val = row[1];
+            if (field && val !== undefined && val !== null && String(val).trim() !== '') {
+              const normalizedValue = field === 'Tolerance_Sign'
+                ? normalizeCsvComparisonOperator(String(val))
+                : String(val).trim();
+              data.push({
+                'Field Name': field,
+                'Value': normalizedValue,
+                'Row Index': 0,
+                'Test Name': currentTestName,
+              });
+            }
+            continue;
+          }
+        }
 
         // Radiography-style layout: first rows are FDD/kV/Time conditions — not column headers
         if (
@@ -1235,7 +1283,7 @@ const OArmContent: React.FC<OArmProps> = ({ serviceId, csvFileUrl }) => {
 
         {[
           ...(hasTimer ? [{ title: "Accuracy of Irradiation Time", component: <AccuracyOfIrradiationTimeOArm serviceId={serviceId} csvData={csvDataForComponents['Accuracy of Irradiation Time']} /> }] : []),
-          { title: "Total Filteration", component: <TotalFilteration key={`total-filtration-${refreshKey}`} serviceId={serviceId} csvData={csvDataForComponents['Total Filtration']} csvDataVersion={csvDataVersion} /> },
+          { title: "Accuracy of Operating Potential", component: <TotalFilteration key={`total-filtration-${refreshKey}`} serviceId={serviceId} csvData={csvDataForComponents['Total Filtration']} csvDataVersion={csvDataVersion} /> },
           { title: "Consistency Of Radiation Output", component: <OutputConsisitency key={`output-consistency-${refreshKey}`} serviceId={serviceId} csvData={csvDataForComponents['Output Consistency']} /> },
           { title: "High Contrast Resolution", component: <HighContrastResolution key={`high-contrast-${refreshKey}`} serviceId={serviceId} csvData={csvDataForComponents['High Contrast Resolution']} /> },
           { title: "Low Contrast Resolution", component: <LowContrastResolution key={`low-contrast-${refreshKey}`} serviceId={serviceId} csvData={csvDataForComponents['Low Contrast Resolution']} /> },

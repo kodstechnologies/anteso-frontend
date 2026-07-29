@@ -105,7 +105,7 @@ const mapTotalFiltration = (ctx: MapperCtx, lines: string[], startIdx: number): 
   for (; j < lines.length; j++) {
     const l = lines[j].trim();
     if (!l) continue;
-    if (/^mA\s*Station/i.test(l)) break;
+    if (/^mA(?:s)?\s*Station/i.test(l)) break;
     if (l.startsWith("TEST:")) return j;
     const cells = splitLine(l);
     const label = cells[0] || "";
@@ -128,7 +128,7 @@ const mapTotalFiltration = (ctx: MapperCtx, lines: string[], startIdx: number): 
     const cells = splitLine(l);
     const label = cells[0] || "";
     const val = cells[1] || "";
-    if (/^mA\s*Station/i.test(label) && val) {
+    if (/^mA(?:s)?\s*Station/i.test(label) && val) {
       maStations.push(formatMaStation(val));
       if (ctx.device === "carm") push(ctx, testName, "mAStations", formatMaStation(val), 0);
       else push(ctx, testName, `Header_${maStations.length}`, formatMaStation(val), 0);

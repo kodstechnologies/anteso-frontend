@@ -26,7 +26,7 @@ import IconMenuDatatables from '../Icon/Menu/IconMenuDatatables';
 import IconMenuForms from '../Icon/Menu/IconMenuForms';
 import IconMenuPages from '../Icon/Menu/IconMenuPages';
 import IconMenuMore from '../Icon/Menu/IconMenuMore';
-import Logo from '../../assets/logo/logo.png';
+import Logo from '../../assets/logo/anteso-logo2.png';
 import { resetUser } from '../../store/userConfigSlice';
 import { logoutUser } from '../../api';
 import Cookies from 'js-cookie';
