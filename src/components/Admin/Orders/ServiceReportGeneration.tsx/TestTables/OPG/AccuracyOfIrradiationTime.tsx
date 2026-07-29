@@ -126,7 +126,13 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
         const data = res?.data;
         if (data) {
           setTestId(data._id || null);
-          setTable1Row(data.testConditions || { id: "1", fcd: "", kv: "", ma: "" });
+          const cond = data.testConditions || data.table1 || {};
+          setTable1Row({
+            id: "1",
+            fcd: String(cond.fcd ?? cond.ffd ?? cond.fdd ?? cond.FDD ?? ""),
+            kv: String(cond.kv ?? cond.kV ?? cond.kvp ?? cond.kVp ?? ""),
+            ma: String(cond.ma ?? cond.mA ?? ""),
+          });
           setTable2Rows(
             data.irradiationTimes && data.irradiationTimes.length > 0
               ? data.irradiationTimes.map((t: any, i: number) => ({
@@ -155,61 +161,89 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
     fetchData();
   }, [serviceId]);
 
-  // CSV Data Injection
+  // CSV Data Injection — Excel uses labels like "FDD (cm)", "kV", "mA"
   useEffect(() => {
-    if (csvData && csvData.length > 0) {
-      let newTable2Rows: Table2Row[] = [];
-      let foundSettings = false;
+    if (loading || !csvData || csvData.length === 0) return;
 
-      csvData.forEach((row, idx) => {
-        const firstCell = row[0]?.toString()?.trim();
+    const cellText = (c: any) => String(c ?? "").trim();
+    const isFddLabel = (c: any) => /^(fdd|fcd|ffd)(\s*\(.*\))?$/i.test(cellText(c));
+    const isKvLabel = (c: any) => /^(kv|kvp)(\s*\(.*\))?$/i.test(cellText(c));
+    // Match bare mA only (not "Measured Time", "mAs Station", etc.)
+    const isMaLabel = (c: any) => /^(ma|mA|MA)$/.test(cellText(c));
+    const valueAfter = (row: any[], pred: (c: any) => boolean) => {
+      const idx = row.findIndex(pred);
+      if (idx === -1) return "";
+      return cellText(row[idx + 1]);
+    };
 
-        // Tolerance from CSV (same as RadiographyFixed: operator and value)
-        if (firstCell && (firstCell === "Tolerance" || firstCell === "Tolerance Value" || firstCell === "Tolerance_Value" || firstCell === "% Error")) {
-          const val = row[1]?.toString()?.trim();
-          if (val) setToleranceValue(val);
-        }
-        if (firstCell && (firstCell === "Tolerance Operator" || firstCell === "Tolerance_Operator" || firstCell === "Error Operator")) {
-          const op = row[1]?.toString()?.trim();
-          if (op) setToleranceOperator(op === ">" || op === "<" || op === ">=" || op === "<=" || op === "=" ? op : "<=");
-        }
+    let newTable2Rows: Table2Row[] = [];
+    let foundSettings = false;
+    let nextTable1: Table1Row | null = null;
+    let nextTolOp: string | null = null;
+    let nextTolVal: string | null = null;
 
-        // 1. Parameter Row: FCD, 100, kV, 70, mA, 10
-        if (row.some((c: any) => ['FCD', 'fcd', 'FDD', 'fdd', 'FFD', 'ffd'].includes(c?.toString()?.trim())) && row.some((c: any) => ['kV', 'kv', 'kVp', 'kvp'].includes(c?.toString()?.trim()))) {
-          const fIndex = row.findIndex((c: any) => ['FCD', 'fcd', 'FDD', 'fdd', 'FFD', 'ffd'].includes(c?.toString()?.trim()));
-          const kIndex = row.findIndex((c: any) => ['kV', 'kv', 'kVp', 'kvp'].includes(c?.toString()?.trim()));
-          const mIndex = row.findIndex((c: any) => ['mA', 'ma', 'MA'].includes(c?.toString()?.trim()));
+    csvData.forEach((row, idx) => {
+      const firstCell = cellText(row[0]);
 
-          setTable1Row({
-            id: "1",
-            fcd: fIndex !== -1 ? row[fIndex + 1]?.toString() || '' : '',
-            kv: kIndex !== -1 ? row[kIndex + 1]?.toString() || '' : '',
-            ma: mIndex !== -1 ? row[mIndex + 1]?.toString() || '' : ''
-          });
-          foundSettings = true;
-        }
-        // 2. Data Rows
-        else if (firstCell && !isNaN(parseFloat(firstCell))) {
-          // Format in Template: Set Time, Measured Time
-          // Format in Export: Set Time, Measured Time, % Error, Remarks
-          const setTime = row[0]?.toString() || '';
-          const meas = row[1]?.toString() || '';
-
-          newTable2Rows.push({
-            id: String(idx + 1),
-            setTime,
-            measuredTime: meas,
-          });
-        }
-      });
-
-      if (newTable2Rows.length > 0) {
-        setTable2Rows(newTable2Rows);
+      // Tolerance from CSV
+      if (
+        firstCell &&
+        (firstCell === "Tolerance" ||
+          firstCell === "Tolerance Value" ||
+          firstCell === "Tolerance_Value" ||
+          /^tolerance value/i.test(firstCell) ||
+          firstCell === "% Error")
+      ) {
+        const val = cellText(row[1]);
+        if (val) nextTolVal = val;
+      }
+      if (
+        firstCell &&
+        (firstCell === "Tolerance Operator" ||
+          firstCell === "Tolerance_Operator" ||
+          firstCell === "Error Operator")
+      ) {
+        const op = cellText(row[1]);
+        if (op === ">" || op === "<" || op === ">=" || op === "<=" || op === "=") nextTolOp = op;
       }
 
-      if (!testId && (newTable2Rows.length > 0 || foundSettings)) setIsEditing(true);
+      // 1. Parameter Row: FDD (cm), 100, kV, 70, mA, 10
+      if (row.some(isFddLabel) && row.some(isKvLabel)) {
+        nextTable1 = {
+          id: "1",
+          fcd: valueAfter(row, isFddLabel),
+          kv: valueAfter(row, isKvLabel),
+          ma: valueAfter(row, isMaLabel),
+        };
+        foundSettings = true;
+        return;
+      }
+
+      // Skip header rows
+      if (/^set time/i.test(firstCell) || /^measured time/i.test(firstCell)) {
+        return;
+      }
+
+      // 2. Data Rows
+      if (firstCell && !isNaN(parseFloat(firstCell))) {
+        newTable2Rows.push({
+          id: String(idx + 1),
+          setTime: cellText(row[0]),
+          measuredTime: cellText(row[1]),
+        });
+      }
+    });
+
+    if (nextTable1) setTable1Row(nextTable1);
+    if (nextTolOp) setToleranceOperator(nextTolOp);
+    if (nextTolVal) setToleranceValue(nextTolVal);
+    if (newTable2Rows.length > 0) setTable2Rows(newTable2Rows);
+
+    if (!testId && (newTable2Rows.length > 0 || foundSettings)) {
+      setIsEditing(true);
+      setIsSaved(false);
     }
-  }, [csvData]);
+  }, [csvData, loading, testId]);
 
   // Save / Update
   const handleSave = async () => {
