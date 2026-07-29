@@ -47,7 +47,7 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
 
   const [toleranceSign, setToleranceSign] = useState<"+" | "-" | "±">("±");
   const [toleranceValue, setToleranceValue] = useState("2.0");
-  const [totalFiltration, setTotalFiltration] = useState({ measured: "", required: "" });
+  const [totalFiltration, setTotalFiltration] = useState({ measured: "", required: "", atKvp: "" });
 
   // Load existing test data
   useEffect(() => {
@@ -75,6 +75,7 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
           setTotalFiltration({
             measured: data.totalFiltration?.measured || "",
             required: data.totalFiltration?.required || "",
+            atKvp: data.totalFiltration?.atKvp || "",
           });
           setIsSaved(true);
           setIsEditing(false);
@@ -237,7 +238,7 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
 
   const getFiltrationRemark = (): "PASS" | "FAIL" | "-" => {
         const measuredMmAl = totalFiltration.required || totalFiltration.measured || "";
-        return evaluateTotalFiltrationPassFail(totalFiltration.atKvp, measuredMmAl, filtrationTolerance).remark;
+        return evaluateTotalFiltrationPassFail(totalFiltration.atKvp, measuredMmAl).remark;
     };
 
   if (isLoading) {
@@ -409,33 +410,45 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
       {/* Total Filtration */}
       <div className="bg-white shadow-lg rounded-lg border border-gray-300 p-8">
         <h3 className="text-xl font-bold text-green-800 mb-6">Total Filtration</h3>
-        <div className="flex items-center justify-center gap-12">
-          <span className="text-xl font-medium text-gray-700">Total Filtration is</span>
-          <div className="flex items-center gap-6">
-            <div className="text-center">
-              <input
-                type="number"
-                step="0.01"
-                value={totalFiltration.measured}
-                onChange={(e) => { setTotalFiltration({ ...totalFiltration, measured: e.target.value }); }}
-                disabled={isViewMode}
-                className={`w-32 px-4 py-3 text-2xl font-bold text-center border-2 border-gray-400 rounded-lg focus:border-green-500 focus:ring-4 focus:ring-green-200 ${isViewMode ? 'bg-gray-100 border-gray-300 text-gray-500 cursor-not-allowed' : ''}`}
-                placeholder="2.35"
-              />
-              <p className="text-sm text-gray-600 mt-1">Measured</p>
-            </div>
-            <span className="text-3xl font-bold text-gray-800">mm Al</span>
-            <div className="text-center">
-              <input
-                type="number"
-                step="0.01"
-                value={totalFiltration.required}
-                onChange={(e) => { setTotalFiltration({ ...totalFiltration, required: e.target.value }); }}
-                disabled={isViewMode}
-                className={`w-32 px-4 py-3 text-2xl font-bold text-center border-2 border-gray-400 rounded-lg focus:border-blue-500 focus:ring-4 focus:ring-blue-200 ${isViewMode ? 'bg-gray-100 border-gray-300 text-gray-500 cursor-not-allowed' : ''}`}
-                placeholder="2.50"
-              />
-              <p className="text-sm text-gray-600 mt-1">Required</p>
+        <div className="flex flex-col items-center justify-center gap-6">
+          <div className="flex items-center justify-center gap-4 flex-wrap">
+            <span className="text-xl font-medium text-gray-700">Total Filtration is (at</span>
+            <input
+              type="number"
+              step="1"
+              value={totalFiltration.atKvp}
+              onChange={(e) => { setTotalFiltration({ ...totalFiltration, atKvp: e.target.value }); }}
+              disabled={isViewMode}
+              className={`w-24 px-3 py-2 text-lg font-bold text-center border-2 rounded-lg ${isViewMode ? "border-gray-300 bg-gray-50 text-gray-500 cursor-not-allowed" : "border-gray-400 focus:border-green-500 focus:ring-4 focus:ring-green-200"}`}
+              placeholder="80"
+            />
+            <span className="text-xl font-medium text-gray-700">kVp)</span>
+            <div className="flex items-center gap-6">
+              <div className="text-center">
+                <input
+                  type="number"
+                  step="0.01"
+                  value={totalFiltration.measured}
+                  onChange={(e) => { setTotalFiltration({ ...totalFiltration, measured: e.target.value }); }}
+                  disabled={isViewMode}
+                  className={`w-32 px-4 py-3 text-2xl font-bold text-center border-2 border-gray-400 rounded-lg focus:border-green-500 focus:ring-4 focus:ring-green-200 ${isViewMode ? 'bg-gray-100 border-gray-300 text-gray-500 cursor-not-allowed' : ''}`}
+                  placeholder="2.35"
+                />
+                <p className="text-sm text-gray-600 mt-1">Measured</p>
+              </div>
+              <span className="text-3xl font-bold text-gray-800">mm Al</span>
+              <div className="text-center">
+                <input
+                  type="number"
+                  step="0.01"
+                  value={totalFiltration.required}
+                  onChange={(e) => { setTotalFiltration({ ...totalFiltration, required: e.target.value }); }}
+                  disabled={isViewMode}
+                  className={`w-32 px-4 py-3 text-2xl font-bold text-center border-2 border-gray-400 rounded-lg focus:border-blue-500 focus:ring-4 focus:ring-blue-200 ${isViewMode ? 'bg-gray-100 border-gray-300 text-gray-500 cursor-not-allowed' : ''}`}
+                  placeholder="2.50"
+                />
+                <p className="text-sm text-gray-600 mt-1">Required</p>
+              </div>
             </div>
           </div>
           <span className={`text-5xl font-bold ${getFiltrationRemark() === "PASS" ? "text-green-600" : getFiltrationRemark() === "FAIL" ? "text-red-600" : "text-gray-400"}`}>
