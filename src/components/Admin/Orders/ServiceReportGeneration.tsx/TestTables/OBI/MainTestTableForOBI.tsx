@@ -1,6 +1,7 @@
 // src/components/reports/TestTables/OBI/MainTestTableForOBI.tsx
 import React from "react";
 import { evaluateTotalFiltrationPassFail } from "../totalFiltrationPassFail";
+import { normalizeComparisonOperator, normalizePlusMinusSign } from "./normalizeOBISigns";
 
 interface MainTestTableProps {
   testData: any;
@@ -79,7 +80,7 @@ export const generateOBISummaryRows = (testData: any, hasTimer: boolean = false)
   // Central Beam Alignment
   if (testData.centralBeamAlignment?.observedTilt) {
     const tiltValue = testData.centralBeamAlignment.observedTilt.value || "-";
-    const toleranceOperator = testData.centralBeamAlignment.tolerance?.operator || "<=";
+    const toleranceOperator = normalizeComparisonOperator(testData.centralBeamAlignment.tolerance?.operator || "<=");
     const toleranceValue = testData.centralBeamAlignment.tolerance?.value || "5";
 
     let isPass = false;
@@ -169,7 +170,7 @@ export const generateOBISummaryRows = (testData: any, hasTimer: boolean = false)
   if (irrBlock?.irradiationTimes && Array.isArray(irrBlock.irradiationTimes)) {
     const validRows = irrBlock.irradiationTimes.filter((row: any) => row.setTime || row.measuredTime);
     if (validRows.length > 0) {
-      const toleranceOperator = irrBlock.tolerance?.operator || "<=";
+      const toleranceOperator = normalizeComparisonOperator(irrBlock.tolerance?.operator || "<=");
       const toleranceValue = irrBlock.tolerance?.value || "10";
       const testRows = validRows.map((row: any) => {
         const setTime = parseFloat(row.setTime);
@@ -204,8 +205,9 @@ export const generateOBISummaryRows = (testData: any, hasTimer: boolean = false)
     if (Array.isArray(rowsToProcess)) {
       const validRows = rowsToProcess.filter((row: any) => row.appliedKvp || row.averageKvp || row.setKV || row.avgKvp);
       if (validRows.length > 0) {
-        const toleranceSign =
-          opData.tolerance?.sign || opData.toleranceSign || testData.accuracyOfOperatingPotential?.tolerance?.sign || "±";
+        const toleranceSign = normalizePlusMinusSign(
+          opData.tolerance?.sign || opData.toleranceSign || testData.accuracyOfOperatingPotential?.tolerance?.sign || "±"
+        );
         const toleranceValue =
           opData.tolerance?.value || opData.toleranceValue || testData.accuracyOfOperatingPotential?.tolerance?.value || "2.0";
         const testRows = validRows.map((row: any) => {
@@ -269,7 +271,7 @@ export const generateOBISummaryRows = (testData: any, hasTimer: boolean = false)
     const validRows = testData.linearityOfMasLoading.table2.filter((row: any) => row.mAsApplied);
     if (validRows.length > 0) {
       const tolerance = testData.linearityOfMasLoading.tolerance || "0.1";
-      const toleranceOperator = testData.linearityOfMasLoading.toleranceOperator || "<=";
+      const toleranceOperator = normalizeComparisonOperator(testData.linearityOfMasLoading.toleranceOperator || "<=");
 
       const getVal = (o: any): number => {
         if (o == null) return NaN;
@@ -350,7 +352,7 @@ export const generateOBISummaryRows = (testData: any, hasTimer: boolean = false)
     );
 
     if (validRows.length > 0) {
-      const toleranceOperator = testData.outputConsistency.tolerance?.operator || "<=";
+      const toleranceOperator = normalizeComparisonOperator(testData.outputConsistency.tolerance?.operator || "<=");
       const toleranceValue = testData.outputConsistency.tolerance?.value || "0.05";
 
       const getVal = (o: any): number => {
@@ -584,7 +586,7 @@ export const generateOBISummaryRows = (testData: any, hasTimer: boolean = false)
     );
     if (validRows.length > 0) {
       const tolerance = testData.linearityOfTime.tolerance || "0.1";
-      const op = testData.linearityOfTime.toleranceOperator || "<=";
+      const op = normalizeComparisonOperator(testData.linearityOfTime.toleranceOperator || "<=");
       const col =
         testData.linearityOfTime.coefficientOfLinearity ||
         testData.linearityOfTime.col ||

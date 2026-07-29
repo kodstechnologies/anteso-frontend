@@ -10,6 +10,7 @@ import { ReportPdfPageFooterEnd } from "../RadiographyFixed/component/FooterEnd"
 import { ReportPdfPageNoteQR } from "../RadiographyFixed/component/NoteQR";
 import { ReportPdfPageDeclaration } from "../RadiographyFixed/component/Declaration";
 import { evaluateTotalFiltrationPassFail } from "../totalFiltrationPassFail";
+import { normalizeComparisonOperator, normalizePlusMinusSign } from "./normalizeOBISigns";
 
 interface Tool {
   slNumber: string;
@@ -432,7 +433,13 @@ const ViewServiceReportOBI: React.FC = () => {
             if (typeof atData === 'string') return null;
             const testRows = Array.isArray(atData.testRows) ? atData.testRows : [];
             if (testRows.length === 0) return null;
-            return { ...atData, testRows };
+            return {
+              ...atData,
+              testRows: testRows.map((row: any) => ({
+                ...row,
+                sign: normalizeComparisonOperator(row?.sign || "<="),
+              })),
+            };
           };
 
           const transformOperatingPotential = (opData: any) => {
@@ -454,8 +461,8 @@ const ViewServiceReportOBI: React.FC = () => {
                 mAStations: opData.mAStations || [],
                 totalFiltration: opData.totalFiltration || { measured: "", required: "" },
                 ffd: opData.ffd || "",
-                toleranceSign: opData.tolerance?.sign || "±",
-                toleranceValue: opData.tolerance?.value || "2.0",
+                toleranceSign: normalizePlusMinusSign(opData.tolerance?.sign || opData.toleranceSign || "±"),
+                toleranceValue: opData.tolerance?.value || opData.toleranceValue || "2.0",
               };
             }
 
@@ -465,7 +472,7 @@ const ViewServiceReportOBI: React.FC = () => {
             return {
               ...opData,
               table2,
-              toleranceSign: opData.tolerance?.sign || opData.toleranceSign || "±",
+              toleranceSign: normalizePlusMinusSign(opData.tolerance?.sign || opData.toleranceSign || "±"),
               toleranceValue: opData.tolerance?.value || opData.toleranceValue || "2.0",
             };
           };
@@ -475,11 +482,16 @@ const ViewServiceReportOBI: React.FC = () => {
             if (typeof ttData === 'string') return null;
             const irradiationTimes = Array.isArray(ttData.irradiationTimes) ? ttData.irradiationTimes : [];
             if (irradiationTimes.length === 0) return null;
+            const tol = ttData.tolerance || { operator: "<=", value: "10" };
             return {
               ...ttData,
               irradiationTimes,
               testConditions: ttData.testConditions || {},
-              tolerance: ttData.tolerance || { operator: "<=", value: "10" },
+              tolerance: {
+                ...tol,
+                operator: normalizeComparisonOperator(tol.operator || "<="),
+                value: tol.value || "10",
+              },
             };
           };
 
@@ -512,7 +524,14 @@ const ViewServiceReportOBI: React.FC = () => {
           const transformCentralBeamAlignment = (cbaData: any) => {
             if (!cbaData || typeof cbaData !== 'object') return null;
             if (typeof cbaData === 'string') return null;
-            return cbaData;
+            if (!cbaData.tolerance) return cbaData;
+            return {
+              ...cbaData,
+              tolerance: {
+                ...cbaData.tolerance,
+                operator: normalizeComparisonOperator(cbaData.tolerance?.operator || "<="),
+              },
+            };
           };
 
           const transformCongruenceOfRadiation = (corData: any) => {
@@ -1519,7 +1538,7 @@ const ViewServiceReportOBI: React.FC = () => {
                     <tbody>
                       <tr style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
                         <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{testData.centralBeamAlignment.observedTilt?.value ? `${testData.centralBeamAlignment.observedTilt.value}°` : "-"}</td>
-                        <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{testData.centralBeamAlignment.tolerance?.operator } {testData.centralBeamAlignment.tolerance?.value ? `${testData.centralBeamAlignment.tolerance.value}°` : "-"}</td>
+                        <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{normalizeComparisonOperator(testData.centralBeamAlignment.tolerance?.operator)} {testData.centralBeamAlignment.tolerance?.value ? `${testData.centralBeamAlignment.tolerance.value}°` : "-"}</td>
                         <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>
                           <span className={testData.centralBeamAlignment.finalResult === "Pass" || testData.centralBeamAlignment.observedTilt?.remark === "Pass" ? "text-green-600 font-semibold" : testData.centralBeamAlignment.finalResult === "Fail" || testData.centralBeamAlignment.observedTilt?.remark === "Fail" ? "text-red-600 font-semibold" : ""}>
                             {testData.centralBeamAlignment.finalResult || testData.centralBeamAlignment.observedTilt?.remark || "-"}
@@ -1684,7 +1703,7 @@ const ViewServiceReportOBI: React.FC = () => {
                 {testData.timerTest.tolerance && (
                   <div className="bg-gray-50 p-4 print:p-1 rounded border" style={{ padding: '2px 4px', marginTop: '4px' }}>
                     <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
-                      <strong>Tolerance:</strong> Error {testData.timerTest.tolerance.operator || "<="} {testData.timerTest.tolerance.value || "10"}%
+                      <strong>Tolerance:</strong> Error {normalizeComparisonOperator(testData.timerTest.tolerance.operator || "<=")} {testData.timerTest.tolerance.value || "10"}%
                     </p>
                   </div>
                 )}
@@ -1714,26 +1733,26 @@ const ViewServiceReportOBI: React.FC = () => {
                     )}
 
                     <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
-                      <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
-                        <thead className="bg-gray-100">
+                      <table style={tableStyle} className="compact-table">
+                        <thead>
                           <tr>
-                            <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Applied kVp</th>
+                            <th style={cellStyle({ fontWeight: 700, border: "0.1px solid #666" })}>Applied kVp</th>
                             {testData.operatingPotential.mAStations?.map((s: string) => (
-                              <th key={s} className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{s}</th>
+                              <th key={s} style={cellStyle({ fontWeight: 700, border: "0.1px solid #666" })}>{s}</th>
                             ))}
-                            <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Average kVp</th>
-                            <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Remarks</th>
+                            <th style={cellStyle({ fontWeight: 700, border: "0.1px solid #666" })}>Average kVp</th>
+                            <th style={cellStyle({ fontWeight: 700, border: "0.1px solid #666" })}>Remarks</th>
                           </tr>
                         </thead>
                         <tbody>
                           {testData.operatingPotential.rows.map((row: any, i: number) => (
-                            <tr key={i} style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
-                              <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.appliedKvp || "-"}</td>
+                            <tr key={i}>
+                              <td style={cellStyle({ border: "0.1px solid #666" })}>{row.appliedKvp || "-"}</td>
                               {row.measuredValues?.map((val: string, idx: number) => (
-                                <td key={idx} className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{val || "-"}</td>
+                                <td key={idx} style={cellStyle({ border: "0.1px solid #666" })}>{val || "-"}</td>
                               ))}
-                              <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.averageKvp || "-"}</td>
-                              <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>
+                              <td style={cellStyle({ border: "0.1px solid #666" })}>{row.averageKvp || "-"}</td>
+                              <td style={cellStyle({ border: "0.1px solid #666" })}>
                                 <span className={row.remarks === "PASS" || row.remarks === "Pass" ? "text-green-600 font-semibold" : row.remarks === "FAIL" || row.remarks === "Fail" ? "text-red-600 font-semibold" : ""}>
                                   {row.remarks || "-"}
                                 </span>
@@ -1743,10 +1762,10 @@ const ViewServiceReportOBI: React.FC = () => {
                         </tbody>
                       </table>
                     </div>
-                    {/* Tolerance */}
-                    <div className="bg-gray-50 p-4 print:p-1 rounded border mb-4" style={{ padding: '2px 4px', marginTop: '4px', marginBottom: '4px' }}>
+                    {/* Tolerance — same format as Mammography */}
+                    <div className="bg-gray-50 p-4 print:p-1 rounded border" style={{ padding: '2px 4px', marginTop: '4px' }}>
                       <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
-                        <strong>Tolerance:</strong> {testData.operatingPotential.toleranceSign } {testData.operatingPotential.toleranceValue || "2.0"}kVp
+                        <strong>Tolerance:</strong> {normalizePlusMinusSign(testData.operatingPotential.toleranceSign)} {testData.operatingPotential.toleranceValue || "2.0"} kVp
                       </p>
                     </div>
 
@@ -1793,8 +1812,8 @@ const ViewServiceReportOBI: React.FC = () => {
                           {Object.keys(ft).length > 0 && (
                             <div style={{ marginTop: '4px', fontSize: '10px', color: '#555' }}>
                               <span className="font-semibold">Tolerance criteria: </span>
-                              {ft.forKvGreaterThan70 ?? "1.5"} mm Al for kV ≤ {ft.kvThreshold1 ?? "70"} |&nbsp;
-                              {ft.forKvBetween70And100 ?? "2.0"} mm Al for {ft.kvThreshold1 ?? "70"} &lt; kV ≤ {ft.kvThreshold2 ?? "100"} |&nbsp;
+                              {ft.forKvGreaterThan70 ?? "1.5"} mm Al for kV {"<="} {ft.kvThreshold1 ?? "70"} |&nbsp;
+                              {ft.forKvBetween70And100 ?? "2.0"} mm Al for {ft.kvThreshold1 ?? "70"} &lt; kV {"<="} {ft.kvThreshold2 ?? "100"} |&nbsp;
                               {ft.forKvGreaterThan100 ?? "2.5"} mm Al for kV &gt; {ft.kvThreshold2 ?? "100"}
                             </div>
                           )}
@@ -1835,10 +1854,10 @@ const ViewServiceReportOBI: React.FC = () => {
                         </tbody>
                       </table>
                     </div>
-                    {/* Tolerance */}
+                    {/* Tolerance — same format as Mammography */}
                     <div className="bg-gray-50 p-4 print:p-1 rounded border" style={{ padding: '2px 4px', marginTop: '4px' }}>
                       <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
-                        <strong>Tolerance:</strong> {testData.operatingPotential.toleranceSign } {testData.operatingPotential.toleranceValue || "2.0"}%
+                        <strong>Tolerance:</strong> {normalizePlusMinusSign(testData.operatingPotential.toleranceSign)} {testData.operatingPotential.toleranceValue || "2.0"} kVp
                       </p>
                     </div>
                   </>
@@ -2288,11 +2307,7 @@ const ViewServiceReportOBI: React.FC = () => {
                 <div className="bg-gray-50 p-4 print:p-1 rounded border" style={{ padding: "2px 4px", marginTop: "4px" }}>
                   <p className="text-sm print:text-[10px]" style={{ fontSize: "10px", margin: "2px 0" }}>
                     <strong>Tolerance (CoL):</strong>{" "}
-                    {testData.linearityOfMaLoading.toleranceOperator === "<="
-                      ? ""
-                      : testData.linearityOfMaLoading.toleranceOperator === ">="
-                        ? ""
-                        : testData.linearityOfMaLoading.toleranceOperator || ""}{" "}
+                    {normalizeComparisonOperator(testData.linearityOfMaLoading.toleranceOperator || "<=")}{" "}
                     {testData.linearityOfMaLoading.tolerance || "0.1"}
                   </p>
                 </div>
@@ -2460,7 +2475,7 @@ const ViewServiceReportOBI: React.FC = () => {
                 <div className="bg-gray-50 p-4 print:p-1 rounded border" style={{ padding: "2px 4px", marginTop: "4px" }}>
                   <p className="text-sm print:text-[10px]" style={{ fontSize: "10px", margin: "2px 0" }}>
                     <strong>Tolerance (CoL):</strong>{" "}
-                    {testData.linearityOfTime.toleranceOperator || "<="}{" "}
+                    {normalizeComparisonOperator(testData.linearityOfTime.toleranceOperator || "<=")}{" "}
                     {testData.linearityOfTime.tolerance || "0.1"}
                   </p>
                 </div>
@@ -2535,11 +2550,7 @@ const ViewServiceReportOBI: React.FC = () => {
                 <div className="bg-gray-50 p-4 print:p-1 rounded border" style={{ padding: '2px 4px', marginTop: '4px' }}>
                   <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
                     <strong>Tolerance (CoL):</strong>{" "}
-                    {testData.linearityOfMasLoading.toleranceOperator === "<="
-                      ? "="
-                      : testData.linearityOfMasLoading.toleranceOperator === ">="
-                        ? "="
-                        : testData.linearityOfMasLoading.toleranceOperator || "="}{" "}
+                    {normalizeComparisonOperator(testData.linearityOfMasLoading.toleranceOperator || "<=")}{" "}
                     {testData.linearityOfMasLoading.tolerance || "0.1"}
                   </p>
                 </div>
@@ -2827,7 +2838,7 @@ const ViewServiceReportOBI: React.FC = () => {
                       {testData.alignmentTest.testRows.map((row: any, idx: number) => (
                         <tr key={idx} className="text-center" style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
                           <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.testName || "-"}</td>
-                          <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.sign} {row.value || "-"}</td>
+                          <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{normalizeComparisonOperator(row.sign)} {row.value || "-"}</td>
                         </tr>
                       ))}
                     </tbody>

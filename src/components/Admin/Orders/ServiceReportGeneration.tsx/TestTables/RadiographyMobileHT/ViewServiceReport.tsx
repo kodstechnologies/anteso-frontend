@@ -4,7 +4,7 @@ import { useSearchParams } from "react-router-dom";
 import { getReportHeaderForRadiographyMobileHT, getDetails, getTools } from "../../../../../../api";
 import { generatePDF } from "../../../../../../utils/generatePDF";
 import MainTestTableForRadiographyMobileHT from "./MainTestTableForRadiographyMobileHT";
-import { normalizeCsvComparisonOperator } from "../shared/parseRadiographyStyleTableFormat";
+import { normalizeCsvComparisonOperator, normalizePlusMinusSign } from "../shared/parseRadiographyStyleTableFormat";
 import { ReportPdfPageHeader } from "../RadiographyFixed/component/Header";
 import { ReportPdfPageFooter } from "../RadiographyFixed/component/Footer";
 import { ReportPdfPageFooterEnd } from "../RadiographyFixed/component/FooterEnd";
@@ -340,7 +340,7 @@ const ViewServiceReportRadiographyMobileHT: React.FC = () => {
     <div
       className={`bg-white shadow-2xl print:shadow-none ${isLast ? "report-pdf-last-page-shell" : "report-pdf-page-shell"} ${className}`}
       style={{
-        pageBreakAfter: "always",
+        pageBreakAfter: isLast ? "auto" : "always",
         display: "flex",
         flexDirection: "column",
         width: "210mm",
@@ -496,7 +496,8 @@ const ViewServiceReportRadiographyMobileHT: React.FC = () => {
             <MainTestTableForRadiographyMobileHT testData={testData} hasTimer={hasTimer} />
           </div>
         </ReportPage>
-        {/* PAGE 3+ - DETAILED TEST RESULTS */}
+        {/* PAGE 3+ - DETAILED TEST RESULTS (PART 1) */}
+        {(testData.congruence || testData.centralBeamAlignment || testData.effectiveFocalSpot) && (
         <ReportPage className="test-section">
           <div className="report-pdf-last-main max-w-5xl mx-auto print:max-w-none" style={{ width: '100%', maxWidth: 'none' }}>
             <h2 className="font-bold text-center underline mb-4" style={{ fontSize: "16px" }}>DETAILED TEST RESULTS</h2>
@@ -622,7 +623,7 @@ const ViewServiceReportRadiographyMobileHT: React.FC = () => {
                               {testData.centralBeamAlignment.observedTilt.value && testData.centralBeamAlignment.observedTilt.value !== "-" ? "°" : ""}
                             </td>
                             <td className="border border-black p-3 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>
-                              {testData.centralBeamAlignment.tolerance?.operator || "="} {testData.centralBeamAlignment.tolerance?.value || "1.5"}°
+                              {normalizeCsvComparisonOperator(testData.centralBeamAlignment.tolerance?.operator || "=")} {testData.centralBeamAlignment.tolerance?.value || "1.5"}°
                             </td>
                           </tr>
                         </tbody>
@@ -711,6 +712,15 @@ const ViewServiceReportRadiographyMobileHT: React.FC = () => {
               </div>
             )}
 
+          </div>
+        </ReportPage>
+        )}
+
+        {/* DETAILED TEST RESULTS (PART 2) — Irradiation Time + Operating Potential */}
+        {(testData.accuracyOfIrradiationTime || testData.accuracyOfOperatingPotential) && (
+        <ReportPage className="test-section">
+          <div className="report-pdf-last-main max-w-5xl mx-auto print:max-w-none" style={{ width: '100%', maxWidth: 'none' }}>
+
             {/* 1. Accuracy of Irradiation Time */}
             {testData.accuracyOfIrradiationTime && (
               <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
@@ -793,7 +803,7 @@ const ViewServiceReportRadiographyMobileHT: React.FC = () => {
                 {testData.accuracyOfIrradiationTime.tolerance && (
                   <div className="bg-gray-50 p-4 print:p-1 rounded border" style={{ padding: '2px 4px', marginTop: '4px' }}>
                     <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
-                      <strong>Tolerance:</strong> Error {testData.accuracyOfIrradiationTime.tolerance.operator || "<="} {testData.accuracyOfIrradiationTime.tolerance.value || "10"}%
+                      <strong>Tolerance:</strong> Error {normalizeCsvComparisonOperator(testData.accuracyOfIrradiationTime.tolerance.operator || "<=")} {testData.accuracyOfIrradiationTime.tolerance.value || "10"}%
                     </p>
                   </div>
                 )}
@@ -837,6 +847,16 @@ const ViewServiceReportRadiographyMobileHT: React.FC = () => {
                 )}
               </div>
             )}
+
+          </div>
+        </ReportPage>
+        )}
+
+        {/* DETAILED TEST RESULTS (PART 3) — Operating Potential (Total Filtration) + Linearity */}
+        {(testData.totalFilteration || testData.linearityOfMasLoading) && (
+        <ReportPage className="test-section">
+          <div className="report-pdf-last-main max-w-5xl mx-auto print:max-w-none" style={{ width: '100%', maxWidth: 'none' }}>
+
             {/* 2.5. Total Filtration */}
             {testData.totalFilteration && (
               <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
@@ -875,11 +895,11 @@ const ViewServiceReportRadiographyMobileHT: React.FC = () => {
                         </tbody>
                       </table>
                     </div>
-                    {/* Tolerance */}
+                    {/* Tolerance — same format as Mammography */}
                     {testData.totalFilteration.tolerance && (
                       <div className="bg-gray-50 p-4 print:p-1 rounded border" style={{ padding: '2px 4px', marginTop: '4px' }}>
                         <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
-                          <strong>Tolerance:</strong> {testData.totalFilteration.tolerance.sign || "±"} {testData.totalFilteration.tolerance.value || "-"}%
+                          <strong>Tolerance:</strong> {normalizePlusMinusSign(testData.totalFilteration.tolerance.sign)} {testData.totalFilteration.tolerance.value || "-"} kVp
                         </p>
                       </div>
                     )}
@@ -931,8 +951,8 @@ const ViewServiceReportRadiographyMobileHT: React.FC = () => {
                       {/* Filtration Tolerance Reference */}
                       <div style={{ marginTop: '4px', fontSize: '10px', color: '#555' }}>
                         <span className="font-semibold">Tolerance criteria: </span>
-                        {ft.forKvGreaterThan70 ?? "1.5"} mm Al for kV ≤ {ft.kvThreshold1 ?? "70"} |&nbsp;
-                        {ft.forKvBetween70And100 ?? "2.0"} mm Al for {ft.kvThreshold1 ?? "70"} &lt; kV ≤ {ft.kvThreshold2 ?? "100"} |&nbsp;
+                        {ft.forKvGreaterThan70 ?? "1.5"} mm Al for kV {"<="} {ft.kvThreshold1 ?? "70"} |&nbsp;
+                        {ft.forKvBetween70And100 ?? "2.0"} mm Al for {ft.kvThreshold1 ?? "70"} &lt; kV {"<="} {ft.kvThreshold2 ?? "100"} |&nbsp;
                         {ft.forKvGreaterThan100 ?? "2.5"} mm Al for kV &gt; {ft.kvThreshold2 ?? "100"}
                       </div>
                     </div>
@@ -941,8 +961,6 @@ const ViewServiceReportRadiographyMobileHT: React.FC = () => {
               </div>
             )}
 
-           
-        
             {/* 6. Linearity of mAs Loading */}
             {testData.linearityOfMasLoading && (
               <div className="mb-16 print:mb-12 test-section">
@@ -1012,7 +1030,7 @@ const ViewServiceReportRadiographyMobileHT: React.FC = () => {
                         {(() => {
                           const rows = testData.linearityOfMasLoading.table2;
                           const tolVal = parseFloat(testData.linearityOfMasLoading.tolerance ?? '0.1') || 0.1;
-                          const tolOp = testData.linearityOfMasLoading.toleranceOperator ?? '<';
+                          const tolOp = normalizeCsvComparisonOperator(testData.linearityOfMasLoading.toleranceOperator ?? '<=');
 
                           const formatV = (val: any) => {
                             if (val === undefined || val === null) return '-';
@@ -1098,12 +1116,22 @@ const ViewServiceReportRadiographyMobileHT: React.FC = () => {
                 {testData.linearityOfMasLoading.tolerance && (
                   <div className="bg-gray-50 p-4 print:p-1 rounded border">
                     <p className="text-sm print:text-[10px]" style={{ fontSize: '10px' }}>
-                      <strong>Tolerance (CoL):</strong> {testData.linearityOfMasLoading.toleranceOperator || "≤"} {testData.linearityOfMasLoading.tolerance || "0.1"}
+                      <strong>Tolerance (CoL):</strong> {normalizeCsvComparisonOperator(testData.linearityOfMasLoading.toleranceOperator || "<=")} {testData.linearityOfMasLoading.tolerance || "0.1"}
                     </p>
                   </div>
                 )}
               </div>
             )}
+
+          </div>
+        </ReportPage>
+        )}
+
+        {/* DETAILED TEST RESULTS (PART 4) — Output Consistency */}
+        {testData.outputConsistency && (
+        <ReportPage className="test-section">
+          <div className="report-pdf-last-main max-w-5xl mx-auto print:max-w-none" style={{ width: '100%', maxWidth: 'none' }}>
+
             {/* 7. Output Consistency */}
             {testData.outputConsistency && (
               <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
@@ -1205,12 +1233,22 @@ const ViewServiceReportRadiographyMobileHT: React.FC = () => {
                 {testData.outputConsistency.tolerance && (
                   <div className="bg-gray-50 p-4 print:p-1 rounded border" style={{ padding: '2px 4px', marginTop: '4px' }}>
                     <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
-                      <strong>Acceptance Criteria:</strong> CoV {testData.outputConsistency.tolerance.operator || "<="} {testData.outputConsistency.tolerance.value || "0.05"}
+                      <strong>Acceptance Criteria:</strong> CoV {normalizeCsvComparisonOperator(testData.outputConsistency.tolerance.operator || "<=")} {testData.outputConsistency.tolerance.value || "0.05"}
                     </p>
                   </div>
                 )}
               </div>
             )}
+
+          </div>
+        </ReportPage>
+        )}
+
+        {/* DETAILED TEST RESULTS (PART 5) — Tube Housing Leakage */}
+        {testData.radiationLeakageLevel && (testData.radiationLeakageLevel.leakageMeasurements?.length > 0 || testData.radiationLeakageLevel.fcd) && (
+        <ReportPage className="test-section">
+          <div className="report-pdf-last-main max-w-5xl mx-auto print:max-w-none" style={{ width: '100%', maxWidth: 'none' }}>
+
             {/* 8. Radiation Leakage Level */}
             {testData.radiationLeakageLevel && (testData.radiationLeakageLevel.leakageMeasurements?.length > 0 || testData.radiationLeakageLevel.fcd) && (
               <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
@@ -1363,79 +1401,102 @@ const ViewServiceReportRadiographyMobileHT: React.FC = () => {
                 })()}
               </div>
             )}
-            {/* 9. Radiation Protection Survey */}
-            {testData.radiationProtectionSurvey && (
-              <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
-                <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>10. Details of Radiation Protection Survey</h3>
-                {/* 1. Survey Details */}
-                {(testData.radiationProtectionSurvey.surveyDate || testData.radiationProtectionSurvey.hasValidCalibration) && (
-                  <div className="mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
-                    <h4 className="text-lg font-semibold mb-4 print:mb-1 print:text-xs" style={{ marginBottom: '4px', fontSize: '10px' }}>1. Survey Details</h4>
-                    <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
-                      <table className="w-full border-2 border-black text-sm compact-table" style={{ fontSize: '11px', borderCollapse: 'collapse', borderSpacing: '0' }}>
-                        <tbody>
-                          <tr style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
-                            <td className="border border-black p-3 print:p-1 font-semibold w-1/2" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000' }}>Date of Radiation Protection Survey</td>
-                            <td className="border border-black p-3 print:p-1" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000' }}>{testData.radiationProtectionSurvey.surveyDate ? formatDate(testData.radiationProtectionSurvey.surveyDate) : "-"}</td>
-                          </tr>
-                          <tr style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
-                            <td className="border border-black p-3 print:p-1 font-semibold" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000' }}>Whether Radiation Survey Meter used for the Survey has Valid Calibration Certificate</td>
-                            <td className="border border-black p-3 print:p-1 font-semibold" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000' }}>{testData.radiationProtectionSurvey.hasValidCalibration || "-"}</td>
-                          </tr>
-                        </tbody>
-                      </table>
-                    </div>
+            {/* No data fallback */}
+            {Object.values(testData).every(v => !v) && (
+              <p className="text-center text-xl text-gray-500 mt-32 print:mt-8 print:text-sm">
+                No detailed test results available for this report.
+              </p>
+            )}
+          </div>
+        </ReportPage>
+        )}
+
+        {/* Radiation Protection Survey Part 1 — Mammography-style page split */}
+        {testData.radiationProtectionSurvey && (
+          <ReportPage className="test-section">
+            <div className="report-pdf-last-main" style={{ width: "100%", flex: 1 }}>
+              <div className="mb-4 test-section" style={{ marginBottom: "8px" }}>
+                <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: "4px", fontSize: "12px" }}>
+                  10. Details of Radiation Protection Survey
+                </h3>
+
+                <div className="mb-6 print:mb-1" style={{ marginBottom: "4px" }}>
+                  <h4 className="text-lg font-semibold mb-4 print:mb-1 print:text-xs" style={{ marginBottom: "4px", fontSize: "10px" }}>
+                    1. Survey Details
+                  </h4>
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-2 border-black text-sm print:text-[10px] compact-table" style={{ fontSize: "11px", borderCollapse: "collapse", borderSpacing: "0" }}>
+                      <tbody>
+                        <tr style={{ height: "auto", minHeight: "0", lineHeight: "1.0", padding: "0", margin: "0" }}>
+                          <td className="border border-black p-3 print:p-1 font-semibold w-1/2" style={{ padding: "0px 1px", fontSize: "11px", borderColor: "#000000", textAlign: "left" }}>
+                            Date of Radiation Protection Survey
+                          </td>
+                          <td className="border border-black p-3 print:p-1" style={{ padding: "0px 1px", fontSize: "11px", borderColor: "#000000" }}>
+                            {testData.radiationProtectionSurvey.surveyDate ? formatDate(testData.radiationProtectionSurvey.surveyDate) : "-"}
+                          </td>
+                        </tr>
+                        <tr style={{ height: "auto", minHeight: "0", lineHeight: "1.0", padding: "0", margin: "0" }}>
+                          <td className="border border-black p-3 print:p-1 font-semibold" style={{ padding: "0px 1px", fontSize: "11px", borderColor: "#000000", textAlign: "left" }}>
+                            Whether Radiation Survey Meter used for the Survey has Valid Calibration Certificate
+                          </td>
+                          <td className="border border-black p-3 print:p-1 font-semibold" style={{ padding: "0px 1px", fontSize: "11px", borderColor: "#000000" }}>
+                            {testData.radiationProtectionSurvey.hasValidCalibration || "-"}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
                   </div>
-                )}
-                {/* 2. Equipment Setting */}
-                {(testData.radiationProtectionSurvey.appliedCurrent || testData.radiationProtectionSurvey.appliedVoltage || testData.radiationProtectionSurvey.exposureTime || testData.radiationProtectionSurvey.workload) && (
-                  <div className="mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
-                    <h4 className="text-lg font-semibold mb-4 print:mb-1 print:text-xs" style={{ marginBottom: '4px', fontSize: '10px' }}>2. Equipment Setting</h4>
-                    <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
-                      <table className="w-full border-2 border-black text-sm compact-table" style={{ fontSize: '11px', borderCollapse: 'collapse', borderSpacing: '0' }}>
-                        <tbody>
-                          <tr style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
-                            <td className="border border-black p-3 print:p-1 font-semibold w-1/2" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000' }}>Applied Current (mA)</td>
-                            <td className="border border-black p-3 print:p-1" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000' }}>{testData.radiationProtectionSurvey.appliedCurrent || "-"}</td>
+                </div>
+
+                <div className="mb-6 print:mb-1" style={{ marginBottom: "4px" }}>
+                  <h4 className="text-lg font-semibold mb-4 print:mb-1 print:text-xs" style={{ marginBottom: "4px", fontSize: "10px" }}>
+                    2. Equipment Setting
+                  </h4>
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-2 border-black text-sm print:text-[10px] compact-table" style={{ fontSize: "11px", borderCollapse: "collapse", borderSpacing: "0" }}>
+                      <tbody>
+                        {[
+                          ["Applied Current (mA)", testData.radiationProtectionSurvey.appliedCurrent],
+                          ["Applied Voltage (kV)", testData.radiationProtectionSurvey.appliedVoltage],
+                          ["Exposure Time (s)", testData.radiationProtectionSurvey.exposureTime],
+                          ["Workload (mA min/week)", testData.radiationProtectionSurvey.workload],
+                        ].map(([label, value]) => (
+                          <tr key={label as string} style={{ height: "auto", minHeight: "0", lineHeight: "1.0", padding: "0", margin: "0" }}>
+                            <td className="border border-black p-3 print:p-1 font-semibold w-1/2" style={{ padding: "0px 1px", fontSize: "11px", borderColor: "#000000", textAlign: "left" }}>
+                              {label}
+                            </td>
+                            <td className="border border-black p-3 print:p-1" style={{ padding: "0px 1px", fontSize: "11px", borderColor: "#000000" }}>
+                              {value || "-"}
+                            </td>
                           </tr>
-                          <tr style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
-                            <td className="border border-black p-3 print:p-1 font-semibold" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000' }}>Applied Voltage (kV)</td>
-                            <td className="border border-black p-3 print:p-1" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000' }}>{testData.radiationProtectionSurvey.appliedVoltage || "-"}</td>
-                          </tr>
-                          <tr style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
-                            <td className="border border-black p-3 print:p-1 font-semibold" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000' }}>Exposure Time(s)</td>
-                            <td className="border border-black p-3 print:p-1" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000' }}>{testData.radiationProtectionSurvey.exposureTime || "-"}</td>
-                          </tr>
-                          <tr style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
-                            <td className="border border-black p-3 print:p-1 font-semibold" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000' }}>Workload (mA min/week)</td>
-                            <td className="border border-black p-3 print:p-1" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000' }}>{testData.radiationProtectionSurvey.workload || "-"}</td>
-                          </tr>
-                        </tbody>
-                      </table>
-                    </div>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
-                )}
-                {/* 3. Measured Maximum Radiation Levels */}
+                </div>
+
                 {testData.radiationProtectionSurvey.locations?.length > 0 && (
-                  <div className="mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
-                    <h4 className="text-lg font-semibold mb-4 print:mb-1 print:text-xs" style={{ marginBottom: '4px', fontSize: '10px' }}>3. Measured Maximum Radiation Levels (mR/hr) at different Locations</h4>
-                    <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
-                      <table className="w-full border-2 border-black text-sm compact-table" style={{ fontSize: '11px', borderCollapse: 'collapse', borderSpacing: '0' }}>
+                  <div className="mb-6 print:mb-1">
+                    <h4 className="text-lg print:text-sm font-semibold mb-4 print:mb-1" style={{ fontSize: "11px", marginBottom: "4px" }}>
+                      3. Measured Maximum Radiation Levels (mR/hr) at different Locations
+                    </h4>
+                    <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: "4px" }}>
+                      <table className="w-full border-2 border-black text-sm print:text-[10px] compact-table" style={{ fontSize: "11px", borderCollapse: "collapse", borderSpacing: "0" }}>
                         <thead className="bg-gray-100">
                           <tr>
-                            <th className="border border-black p-3 print:p-1 text-left" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000' }}>Location</th>
-                            <th className="border border-black p-3 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Max. Radiation Level</th>
-                            <th className="border border-black p-3 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Result</th>
-                            <th className="border border-black p-3 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Remarks</th>
+                            <th className="border border-black p-2 print:p-1 text-left" style={{ padding: "0px 4px", fontSize: "11px", lineHeight: "1.0", borderColor: "#000000" }}>Location</th>
+                            <th className="border border-black p-2 print:p-1 text-center" style={{ padding: "0px 4px", fontSize: "11px", lineHeight: "1.0", borderColor: "#000000", textAlign: "center" }}>Max. Radiation Level</th>
+                            <th className="border border-black p-2 print:p-1 text-center" style={{ padding: "0px 4px", fontSize: "11px", lineHeight: "1.0", borderColor: "#000000", textAlign: "center" }}>Result (mR/week)</th>
+                            <th className="border border-black p-2 print:p-1 text-center" style={{ padding: "0px 4px", fontSize: "11px", lineHeight: "1.0", borderColor: "#000000", textAlign: "center" }}>Remarks</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {testData.radiationProtectionSurvey.locations.map((loc: any, i: number) => (
-                            <tr key={i} className="text-center" style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
-                              <td className="border border-black p-3 print:p-1 text-left" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000' }}>{loc.location || "-"}</td>
-                              <td className="border border-black p-3 print:p-1" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000' }}>{loc.mRPerHr ? `${loc.mRPerHr} mR/hr` : "-"}</td>
-                              <td className="border border-black p-3 print:p-1" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000' }}>{loc.mRPerWeek ? `${loc.mRPerWeek} mR/week` : "-"}</td>
-                              <td className="border border-black p-3 print:p-1" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000' }}>
+                          {testData.radiationProtectionSurvey.locations.map((loc: any, idx: number) => (
+                            <tr key={idx} className="text-center font-medium" style={{ height: "auto", minHeight: "0", lineHeight: "1.0", padding: "0", margin: "0" }}>
+                              <td className="border border-black p-2 print:p-1 text-left" style={{ padding: "0px 4px", fontSize: "11px", borderColor: "#000000" }}>{loc.location || "-"}</td>
+                              <td className="border border-black p-2 print:p-1 text-center" style={{ padding: "0px 4px", fontSize: "11px", borderColor: "#000000" }}>{loc.mRPerHr ? `${loc.mRPerHr} mR/hr` : "-"}</td>
+                              <td className="border border-black p-2 print:p-1 text-center" style={{ padding: "0px 4px", fontSize: "11px", borderColor: "#000000" }}>{loc.mRPerWeek ? `${loc.mRPerWeek} mR/week` : "-"}</td>
+                              <td className="border border-black p-2 print:p-1 text-center font-bold" style={{ padding: "0px 4px", fontSize: "11px", borderColor: "#000000" }}>
                                 <span className={loc.result === "PASS" || loc.result === "Pass" ? "text-green-600 font-semibold" : loc.result === "FAIL" || loc.result === "Fail" ? "text-red-600 font-semibold" : ""}>
                                   {loc.result || "-"}
                                 </span>
@@ -1447,14 +1508,25 @@ const ViewServiceReportRadiographyMobileHT: React.FC = () => {
                     </div>
                   </div>
                 )}
-                {/* 4. Calculation Formula */}
-                <div className="mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
-                  <h4 className="text-lg font-semibold mb-4 print:mb-1 print:text-xs" style={{ marginBottom: '4px', fontSize: '10px' }}>4. Calculation Formula</h4>
-                  <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
-                    <table className="w-full border-2 border-black text-sm compact-table" style={{ fontSize: '11px', borderCollapse: 'collapse', borderSpacing: '0' }}>
+              </div>
+            </div>
+          </ReportPage>
+        )}
+
+        {/* Radiation Protection Survey Part 2 */}
+        {testData.radiationProtectionSurvey && (
+          <ReportPage className="test-section">
+            <div className="report-pdf-last-main" style={{ width: "100%", flex: 1 }}>
+              <div className="mb-4 test-section" style={{ marginBottom: "8px" }}>
+                <div className="mb-6 print:mb-1" style={{ marginBottom: "4px" }}>
+                  <h4 className="text-lg font-semibold mb-4 print:mb-1 print:text-xs" style={{ marginBottom: "4px", fontSize: "10px" }}>
+                    4. Calculation Formula
+                  </h4>
+                  <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: "4px" }}>
+                    <table className="w-full border-2 border-black text-sm compact-table" style={{ fontSize: "11px", borderCollapse: "collapse", borderSpacing: "0" }}>
                       <tbody>
-                        <tr style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
-                          <td className="border border-black p-3 print:p-1 bg-gray-50" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000' }}>
+                        <tr style={{ height: "auto", minHeight: "0", lineHeight: "1.2", padding: "0", margin: "0" }}>
+                          <td className="border border-black p-3 print:p-1 bg-gray-50 text-center" style={{ padding: "4px", fontSize: "11px", borderColor: "#000000", textAlign: "center" }}>
                             <strong>Maximum Radiation level/week (mR/wk) = Work Load X Max. Radiation Level (mR/hr) / (60 X mA used for measurement)</strong>
                           </td>
                         </tr>
@@ -1462,85 +1534,118 @@ const ViewServiceReportRadiographyMobileHT: React.FC = () => {
                     </table>
                   </div>
                 </div>
-                {/* 5. Summary of Maximum Radiation Level/week */}
+
                 {testData.radiationProtectionSurvey.locations?.length > 0 && (() => {
-                  const workerLocs = testData.radiationProtectionSurvey.locations.filter((loc: any) => loc.category === "worker");
-                  const publicLocs = testData.radiationProtectionSurvey.locations.filter((loc: any) => loc.category === "public");
+                  const survey = testData.radiationProtectionSurvey;
+                  const workerLocs = (survey.locations || []).filter((loc: any) => loc.category === "worker");
+                  const publicLocs = (survey.locations || []).filter((loc: any) => loc.category === "public");
                   const maxWorkerLocation = workerLocs.reduce((max: any, loc: any) => {
-                    return (parseFloat(loc.mRPerWeek) || 0) > (parseFloat(max?.mRPerWeek) || 0) ? loc : max;
-                  }, workerLocs[0] || { mRPerHr: '', location: '' });
+                    const maxVal = parseFloat(max.mRPerWeek) || 0;
+                    const locVal = parseFloat(loc.mRPerWeek) || 0;
+                    return locVal > maxVal ? loc : max;
+                  }, workerLocs[0] || { mRPerHr: "", location: "", mRPerWeek: "0" });
                   const maxPublicLocation = publicLocs.reduce((max: any, loc: any) => {
-                    return (parseFloat(loc.mRPerWeek) || 0) > (parseFloat(max?.mRPerWeek) || 0) ? loc : max;
-                  }, publicLocs[0] || { mRPerHr: '', location: '' });
+                    const maxVal = parseFloat(max.mRPerWeek) || 0;
+                    const locVal = parseFloat(loc.mRPerWeek) || 0;
+                    return locVal > maxVal ? loc : max;
+                  }, publicLocs[0] || { mRPerHr: "", location: "", mRPerWeek: "0" });
                   const maxWorkerWeekly = Math.max(...workerLocs.map((r: any) => parseFloat(r.mRPerWeek) || 0), 0).toFixed(3);
                   const maxPublicWeekly = Math.max(...publicLocs.map((r: any) => parseFloat(r.mRPerWeek) || 0), 0).toFixed(3);
-                  const workerResult = parseFloat(maxWorkerWeekly) > 0 && parseFloat(maxWorkerWeekly) <= 40 ? "Pass" : parseFloat(maxWorkerWeekly) > 40 ? "Fail" : "";
-                  const publicResult = parseFloat(maxPublicWeekly) > 0 && parseFloat(maxPublicWeekly) <= 2 ? "Pass" : parseFloat(maxPublicWeekly) > 2 ? "Fail" : "";
+
                   return (
-                    <div className="mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
-                      <h4 className="text-lg font-semibold mb-4 print:mb-1 print:text-xs" style={{ marginBottom: '4px', fontSize: '10px' }}>5. Summary of Maximum Radiation Level/week (mR/wk)</h4>
-                      <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
-                        <table className="w-full border-2 border-black text-sm compact-table" style={{ fontSize: '11px', borderCollapse: 'collapse', borderSpacing: '0' }}>
-                          <thead className="bg-gray-100">
-                            <tr>
-                              <th className="border border-black p-3 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Category</th>
-                              <th className="border border-black p-3 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Result</th>
-                              <th className="border border-black p-3 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Remarks</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            <tr className="text-center" style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
-                              <td className="border border-black p-3 print:p-1 font-semibold" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000' }}>For Radiation Worker</td>
-                              <td className="border border-black p-3 print:p-1" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000' }}>{maxWorkerWeekly || "0.000"} mR/week</td>
-                              <td className="border border-black p-3 print:p-1" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000' }}>
-                                <span className={workerResult === "Pass" ? "text-green-600 font-semibold" : workerResult === "Fail" ? "text-red-600 font-semibold" : ""}>{workerResult || "-"}</span>
-                              </td>
-                            </tr>
-                            <tr className="text-center" style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
-                              <td className="border border-black p-3 print:p-1 font-semibold" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000' }}>For Public</td>
-                              <td className="border border-black p-3 print:p-1" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000' }}>{maxPublicWeekly || "0.000"} mR/week</td>
-                              <td className="border border-black p-3 print:p-1" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000' }}>
-                                <span className={publicResult === "Pass" ? "text-green-600 font-semibold" : publicResult === "Fail" ? "text-red-600 font-semibold" : ""}>{publicResult || "-"}</span>
-                              </td>
-                            </tr>
-                          </tbody>
-                        </table>
+                    <>
+                      <h4 className="text-lg font-semibold mb-4 print:mb-1 print:text-xs" style={{ marginBottom: "4px", fontSize: "11px" }}>
+                        5. Summary of Maximum Radiation Level/week
+                      </h4>
+                      <div className="grid grid-cols-2 gap-4 mb-6 print:mb-1" style={{ marginBottom: "4px" }}>
+                        <div className="bg-blue-50/50 p-4 print:p-1 rounded border border-blue-100 flex items-center justify-between" style={{ padding: "4px 6px" }}>
+                          <span className="text-sm font-semibold print:text-[8px]" style={{ fontSize: "10px" }}>Max. for Radiation Worker:</span>
+                          <span className="text-lg font-bold text-blue-700 print:text-[9px]" style={{ fontSize: "12px" }}>{maxWorkerWeekly} mR/wk</span>
+                        </div>
+                        <div className="bg-indigo-50/50 p-4 print:p-1 rounded border border-indigo-100 flex items-center justify-between" style={{ padding: "4px 6px" }}>
+                          <span className="text-sm font-semibold print:text-[8px]" style={{ fontSize: "10px" }}>Max. for Public:</span>
+                          <span className="text-lg font-bold text-indigo-700 print:text-[9px]" style={{ fontSize: "12px" }}>{maxPublicWeekly} mR/wk</span>
+                        </div>
                       </div>
-                      <div className="mt-4 print:mt-1 space-y-3 print:space-y-1">
-                        {maxWorkerLocation?.mRPerHr && parseFloat(maxWorkerLocation.mRPerHr) > 0 && (
-                          <div className="bg-gray-50 p-4 print:p-1 rounded border" style={{ padding: '2px 4px', marginTop: '4px' }}>
-                            <p className="text-sm print:text-[9px] font-semibold mb-2 print:mb-0.5" style={{ fontSize: '11px', margin: '2px 0', fontWeight: 'bold' }}>Calculation for Maximum Radiation Level/week (For Radiation Worker):</p>
-                            <p className="text-xs print:text-[8px] mb-1 print:mb-0.5" style={{ fontSize: '10px', margin: '2px 0' }}><strong>Location:</strong> {maxWorkerLocation.location}</p>
-                            <p className="text-xs print:text-[8px]" style={{ fontSize: '10px', margin: '2px 0' }}>
-                              <strong>Formula:</strong> ({testData.radiationProtectionSurvey.workload || '—'} mAmin/week × {maxWorkerLocation.mRPerHr || '—'} mR/hr) / (60 × {testData.radiationProtectionSurvey.appliedCurrent || '—'} mA)
+
+                      <div className="mt-4 print:mt-1 grid grid-cols-1 gap-2 mb-6" style={{ marginBottom: "4px" }}>
+                        {maxWorkerLocation.mRPerHr && parseFloat(maxWorkerLocation.mRPerHr) > 0 && (
+                          <div className="bg-blue-50/30 border border-blue-100 p-3 print:p-1 rounded">
+                            <p className="text-[11px] print:text-[8px] font-bold text-blue-800 mb-1">Calculation for Max. Radiation Level/week (Radiation Worker):</p>
+                            <p className="text-[10px] print:text-[7px] text-gray-700">
+                              Location: <strong>{maxWorkerLocation.location}</strong> | Max. Level: {maxWorkerLocation.mRPerHr} mR/hr
                             </p>
-                            <p className="text-xs print:text-[8px] mt-1 print:mt-0.5" style={{ fontSize: '10px', margin: '2px 0' }}><strong>Result:</strong> {maxWorkerWeekly} mR/week</p>
+                            <p className="text-[10px] print:text-[7px] text-gray-700 mt-1">
+                              Result: ({survey.workload || "0"} mA·min/wk × {maxWorkerLocation.mRPerHr}) / (60 × {survey.appliedCurrent || "0"} mA) ={" "}
+                              <span className="font-bold">{maxWorkerWeekly} mR/week</span>
+                            </p>
                           </div>
                         )}
-                        {maxPublicLocation?.mRPerHr && parseFloat(maxPublicLocation.mRPerHr) > 0 && (
-                          <div className="bg-gray-50 p-4 print:p-1 rounded border" style={{ padding: '2px 4px', marginTop: '4px' }}>
-                            <p className="text-sm print:text-[9px] font-semibold mb-2 print:mb-0.5" style={{ fontSize: '11px', margin: '2px 0', fontWeight: 'bold' }}>Calculation for Maximum Radiation Level/week (For Public):</p>
-                            <p className="text-xs print:text-[8px] mb-1 print:mb-0.5" style={{ fontSize: '10px', margin: '2px 0' }}><strong>Location:</strong> {maxPublicLocation.location}</p>
-                            <p className="text-xs print:text-[8px]" style={{ fontSize: '10px', margin: '2px 0' }}>
-                              <strong>Formula:</strong> ({testData.radiationProtectionSurvey.workload || '—'} mAmin/week × {maxPublicLocation.mRPerHr || '—'} mR/hr) / (60 × {testData.radiationProtectionSurvey.appliedCurrent || '—'} mA)
+                        {maxPublicLocation.mRPerHr && parseFloat(maxPublicLocation.mRPerHr) > 0 && (
+                          <div className="bg-indigo-50/30 border border-indigo-100 p-3 print:p-1 rounded">
+                            <p className="text-[11px] print:text-[8px] font-bold text-indigo-800 mb-1">Calculation for Max. Radiation Level/week (Public):</p>
+                            <p className="text-[10px] print:text-[7px] text-gray-700">
+                              Location: <strong>{maxPublicLocation.location}</strong> | Max. Level: {maxPublicLocation.mRPerHr} mR/hr
                             </p>
-                            <p className="text-xs print:text-[8px] mt-1 print:mt-0.5" style={{ fontSize: '10px', margin: '2px 0' }}><strong>Result:</strong> {maxPublicWeekly} mR/week</p>
+                            <p className="text-[10px] print:text-[7px] text-gray-700 mt-1">
+                              Result: ({survey.workload || "0"} mA·min/wk × {maxPublicLocation.mRPerHr}) / (60 × {survey.appliedCurrent || "0"} mA) ={" "}
+                              <span className="font-bold">{maxPublicWeekly} mR/week</span>
+                            </p>
                           </div>
                         )}
                       </div>
-                    </div>
+                    </>
                   );
                 })()}
+
+                <div className="mb-6 print:mb-1" style={{ marginBottom: "4px" }}>
+                  <h4 className="text-lg font-semibold mb-4 print:mb-1 print:text-[10px]" style={{ marginBottom: "2px", fontSize: "11px" }}>
+                    6. Permissible Limit
+                  </h4>
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-2 border-black text-sm print:text-[10px] compact-table" style={{ fontSize: "11px", borderCollapse: "collapse", borderSpacing: "0" }}>
+                      <tbody>
+                        <tr style={{ height: "auto", minHeight: "0", lineHeight: "1.0", padding: "0", margin: "0" }}>
+                          <td className="border border-black p-3 print:p-1 font-semibold w-1/2 text-left" style={{ padding: "0px 4px", fontSize: "11px", borderColor: "#000000", textAlign: "left" }}>
+                            For location of Radiation Worker
+                          </td>
+                          <td className="border border-black p-3 print:p-1 text-center" style={{ padding: "0px 4px", fontSize: "11px", borderColor: "#000000", textAlign: "center" }}>
+                            20 mSv in a year (40 mR/week)
+                          </td>
+                        </tr>
+                        <tr style={{ height: "auto", minHeight: "0", lineHeight: "1.0", padding: "0", margin: "0" }}>
+                          <td className="border border-black p-3 print:p-1 font-semibold text-left" style={{ padding: "0px 4px", fontSize: "11px", borderColor: "#000000", textAlign: "left" }}>
+                            For Location of Member of Public
+                          </td>
+                          <td className="border border-black p-3 print:p-1 text-center" style={{ padding: "0px 4px", fontSize: "11px", borderColor: "#000000", textAlign: "center" }}>
+                            1 mSv in a year (2mR/week)
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {testData.radiationProtectionSurvey.locations?.length > 0 && (
+                  <div className="border border-green-200 rounded p-4 print:p-1 bg-green-50/30" style={{ padding: "4px 6px" }}>
+                    <p className="font-bold text-sm print:text-[9px] text-green-800 mb-2" style={{ fontSize: "11px", marginBottom: "4px" }}>
+                      Acceptance Criteria:
+                    </p>
+                    <div className="text-[11px] print:text-[8px] space-y-1">
+                      <p>
+                        The maximum radiation level per week shall not exceed <strong>40 mR</strong> for <strong>Radiation Worker</strong> and <strong>2 mR</strong> for the <strong>Public</strong>.
+                      </p>
+                      <p className="mt-2 pt-2 border-t border-green-100 font-bold italic">
+                        Result: The measured maximum radiation levels are within AERB regulatory limits.
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
-            )}
-            {/* No data fallback */}
-            {Object.values(testData).every(v => !v) && (
-              <p className="text-center text-xl text-gray-500 mt-32 print:mt-8 print:text-sm">
-                No detailed test results available for this report.
-              </p>
-            )}
-          </div>
-        </ReportPage>
+            </div>
+          </ReportPage>
+        )}
+
         <ReportPage isLast>
           <ReportPdfPageDeclaration
               todayDate={todayDate}

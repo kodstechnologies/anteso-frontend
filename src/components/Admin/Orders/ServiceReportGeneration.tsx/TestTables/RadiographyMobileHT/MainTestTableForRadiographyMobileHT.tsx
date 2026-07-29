@@ -1,6 +1,7 @@
 // src/components/reports/TestTables/RadiographyMobileHT/MainTestTableForRadiographyMobileHT.tsx
 import React from "react";
 import { evaluateTotalFiltrationPassFail } from "../totalFiltrationPassFail";
+import { normalizeCsvComparisonOperator, normalizePlusMinusSign } from "../shared/parseRadiographyStyleTableFormat";
 
 interface MainTestTableProps {
   testData: any;
@@ -73,7 +74,7 @@ const MainTestTableForRadiographyMobileHT: React.FC<MainTestTableProps> = ({ tes
   // Central Beam Alignment — RadiographyFixed
   if (testData.centralBeamAlignment?.observedTilt) {
     const tiltValue = testData.centralBeamAlignment.observedTilt.value || "-";
-    const toleranceOperator = testData.centralBeamAlignment.tolerance?.operator || "=";
+    const toleranceOperator = normalizeCsvComparisonOperator(testData.centralBeamAlignment.tolerance?.operator || "=");
     const toleranceValue = testData.centralBeamAlignment.tolerance?.value || "1.5";
 
     let isPass = false;
@@ -152,7 +153,7 @@ const MainTestTableForRadiographyMobileHT: React.FC<MainTestTableProps> = ({ tes
   if (testData.accuracyOfIrradiationTime?.irradiationTimes && Array.isArray(testData.accuracyOfIrradiationTime.irradiationTimes)) {
     const validRows = testData.accuracyOfIrradiationTime.irradiationTimes.filter((row: any) => row.setTime || row.measuredTime);
     if (validRows.length > 0) {
-      const toleranceOperator = testData.accuracyOfIrradiationTime.tolerance?.operator || "<=";
+      const toleranceOperator = normalizeCsvComparisonOperator(testData.accuracyOfIrradiationTime.tolerance?.operator || "<=");
       const toleranceValue = testData.accuracyOfIrradiationTime.tolerance?.value || "5";
       const testRows = validRows.map((row: any) => {
         const setTime = parseFloat(row.setTime);
@@ -184,9 +185,10 @@ const MainTestTableForRadiographyMobileHT: React.FC<MainTestTableProps> = ({ tes
   if (testData.accuracyOfOperatingPotential?.table2 && Array.isArray(testData.accuracyOfOperatingPotential.table2)) {
     const validRows = testData.accuracyOfOperatingPotential.table2.filter((row: any) => row.setKV || row.avgKvp);
     if (validRows.length > 0) {
-      const toleranceSign =
+      const toleranceSign = normalizePlusMinusSign(
         testData.accuracyOfOperatingPotential.tolerance?.sign ||
-        testData.accuracyOfOperatingPotential.toleranceSign || "±";
+        testData.accuracyOfOperatingPotential.toleranceSign || "±"
+      );
       const toleranceValue =
         testData.accuracyOfOperatingPotential.tolerance?.value ||
         testData.accuracyOfOperatingPotential.toleranceValue ||
@@ -221,7 +223,7 @@ const MainTestTableForRadiographyMobileHT: React.FC<MainTestTableProps> = ({ tes
       (row: any) => row.appliedKvp || row.averageKvp || row.measuredValues
     );
     if (validRows.length > 0) {
-      const toleranceSign = testData.totalFilteration.tolerance?.sign || "±";
+      const toleranceSign = normalizePlusMinusSign(testData.totalFilteration.tolerance?.sign || "±");
       const toleranceValue = testData.totalFilteration.tolerance?.value || "2.0";
       const testRows = validRows.map((row: any) => {
         let avgKvpNum: number | null = null;
@@ -304,7 +306,7 @@ const MainTestTableForRadiographyMobileHT: React.FC<MainTestTableProps> = ({ tes
     const validRows = testData.linearityOfMasLoading.table2.filter((row: any) => row.mAsApplied);
     if (validRows.length > 0) {
       const tolerance = testData.linearityOfMasLoading.tolerance || "0.1";
-      const toleranceOperator = testData.linearityOfMasLoading.toleranceOperator || "<";
+      const toleranceOperator = normalizeCsvComparisonOperator(testData.linearityOfMasLoading.toleranceOperator || "<");
 
       const getVal = (o: any): number => {
         if (o == null) return NaN;
@@ -398,7 +400,7 @@ const MainTestTableForRadiographyMobileHT: React.FC<MainTestTableProps> = ({ tes
     );
 
     if (validRows.length > 0) {
-      const toleranceOperator = testData.outputConsistency.tolerance?.operator || "<=";
+      const toleranceOperator = normalizeCsvComparisonOperator(testData.outputConsistency.tolerance?.operator || "<=");
       const toleranceValue = testData.outputConsistency.tolerance?.value || "0.05";
 
       const getVal = (o: any): number => {

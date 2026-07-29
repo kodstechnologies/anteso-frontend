@@ -14,20 +14,30 @@ export type StyleParsedRow = {
 const splitLine = (line: string) => line.split(",").map((c) => (c || "").trim());
 
 const normalizeCsvToleranceSign = (raw: unknown): string => {
-  const v = String(raw ?? "").trim();
+  const v = String(raw ?? "")
+    .trim()
+    .replace(/\uFFFD/g, "")
+    .replace(/Â±/g, "±")
+    .replace(/\u00b1/g, "±");
   if (!v) return "±";
-  if (/^\+-?$|^±$/.test(v)) return "±";
-  if (v === "+") return "+";
-  if (v === "-") return "-";
-  return v;
+  if (/^\+-?$|^±$/i.test(v) || /^both$/i.test(v) || /^plus[\s/_-]*minus$/i.test(v)) return "±";
+  if (v === "+" || /^plus$/i.test(v)) return "+";
+  if (v === "-" || /^minus$/i.test(v)) return "-";
+  return "±";
 };
 
+/** Display-safe ± / + / - (fixes corrupted DB signs like �). */
+export const normalizePlusMinusSign = (raw: unknown): "+" | "-" | "±" =>
+  normalizeCsvToleranceSign(raw) as "+" | "-" | "±";
+
 export const normalizeCsvComparisonOperator = (raw: unknown): string => {
-  const original = String(raw ?? "").trim();
+  const original = String(raw ?? "")
+    .trim()
+    .replace(/\uFFFD/g, "");
   // Normalize common Unicode symbols Excel may insert
   const unicodeNormalized = original
-    .replace(/≤|⩽/g, "<=")
-    .replace(/≥|⩾/g, ">=")
+    .replace(/≤|⩽|â‰¤/g, "<=")
+    .replace(/≥|⩾|â‰¥/g, ">=")
     .replace(/≠/g, "!=")
     .replace(/＝/g, "=");
   const v = unicodeNormalized.toLowerCase().replace(/\s+/g, " ").trim();
@@ -41,7 +51,8 @@ export const normalizeCsvComparisonOperator = (raw: unknown): string => {
   if (["<", ">", "<=", ">=", "="].includes(unicodeNormalized.trim())) {
     return unicodeNormalized.trim();
   }
-  return unicodeNormalized.trim() || "<=";
+  // Corrupted / unknown → safe default for tolerance display
+  return "<=";
 };
 
 const formatMaStation = (val: string): string => {
