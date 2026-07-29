@@ -1,5 +1,5 @@
 TEST: ACCURACY OF OPERATING POTENTIAL,,,,,,,,,,,
-Tolerance Sign,Â±,,,,,,,,,,
+Tolerance Sign,±,,,,,,,,,,
 Tolerance Value (kVp),5,,,,,,,,,,
 Applied kVp,mA 1,mA 2,Average kVp,Remarks,,,,,,,
 60,60.2,60.5,,,,,,,,,

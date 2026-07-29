@@ -535,6 +535,17 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
         return true;
     };
 
+    /** QA Test is only enabled after an engineer is assigned on the QA Raw row for the same machine. */
+    const isQARawEngineerAssigned = (parentService: MachineData) => {
+        const qaRaw = parentService.workTypes.find((wt) => wt.name === "QA Raw");
+        if (!qaRaw) return false;
+        return !!(
+            qaRaw.assignedTechnicianId ||
+            assignments[qaRaw.id]?.employeeId ||
+            (assignments[qaRaw.id]?.isAssigned && !assignments[qaRaw.id]?.isReassigned)
+        );
+    };
+
     const fetchMachineData = async () => {
         if (!orderId) {
             setError("Order ID is required");
@@ -1376,6 +1387,11 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
             const parentService = machineData.find((service) => service.workTypes.some((wt) => wt.id === workTypeId))
             if (!parentService) throw new Error("Parent service not found")
 
+            if (workType.name === "QA Test" && !isQARawEngineerAssigned(parentService)) {
+                showMessage("Assign an engineer in QA Raw first before enabling QA Test.", 'warning')
+                return
+            }
+
             const serviceId = workType.id.split("-")[0]
             const workTypeName = parentService.workTypeName || "Unknown Work Type";
 
@@ -1701,6 +1717,10 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
             if (!workType) throw new Error("Work type not found")
             const parentService = machineData.find((service) => service.workTypes.some((wt) => wt.id === workTypeId))
             if (!parentService) throw new Error("Parent service not found")
+            if (workType.name === "QA Test" && !isQARawEngineerAssigned(parentService)) {
+                showMessage("Assign an engineer in QA Raw first before enabling QA Test.", 'warning')
+                return
+            }
             const serviceId = workType.id.split("-")[0]
             const workTypeName = parentService.workTypeName || "Unknown Work Type";
             const isQATestService = parentService.workTypeName === "Quality Assurance Test"
@@ -2909,8 +2929,12 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                     </div>
                                                 )}
                                                 {workType.name === "QA Test" && service.workTypeName === "Quality Assurance Test" && (
-                                                    <div className="space-y-4">
-                                                        {!assignments[workType.id]?.isAssigned ? (
+                                                    <div className={`space-y-4 ${!isQARawEngineerAssigned(service) ? "opacity-60 pointer-events-none" : ""}`}>
+                                                        {!isQARawEngineerAssigned(service) ? (
+                                                            <div className="p-3 bg-amber-50 rounded-md border border-amber-200 text-sm text-amber-800 pointer-events-auto">
+                                                                Assign an engineer in <strong>QA Raw</strong> first to enable QA Test.
+                                                            </div>
+                                                        ) : !assignments[workType.id]?.isAssigned ? (
                                                             canAssignQATest(workType) ? (
                                                                 <div className="space-y-3">
                                                                     <label className="block text-sm font-medium text-gray-700">Assign Staff & Status</label>

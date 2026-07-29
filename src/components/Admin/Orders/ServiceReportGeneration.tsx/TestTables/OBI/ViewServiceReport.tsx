@@ -4,7 +4,7 @@ import { useSearchParams } from "react-router-dom";
 import { getReportHeaderForOBI, getDetails, getTools } from "../../../../../../api";
 import { generatePDF } from "../../../../../../utils/generatePDF";
 import MainTestTableForOBI, { generateOBISummaryRows } from "./MainTestTableForOBI";
-import { ReportPdfPageHeader } from "../RadiographyFixed/component/Header";
+import { ReportPdfPageHeader, type ReportPdfPageHeaderData } from "../RadiographyFixed/component/Header";
 import { ReportPdfPageFooter } from "../RadiographyFixed/component/Footer";
 import { ReportPdfPageFooterEnd } from "../RadiographyFixed/component/FooterEnd";
 import { ReportPdfPageNoteQR } from "../RadiographyFixed/component/NoteQR";
@@ -843,6 +843,12 @@ const ViewServiceReportOBI: React.FC = () => {
   const customerCity = extractCity(report?.location || "") || extractCity(report?.address || "") || "-";
   const placeValue = report?.city && String(report.city).trim() !== "" ? String(report.city).trim() : customerCity;
 
+  const headerReport: ReportPdfPageHeaderData = {
+    srfNumber: report.srfNumber ?? "",
+    srfDate: report.srfDate != null ? String(report.srfDate) : "",
+    reportULRNumber: report.reportULRNumber,
+  };
+
   const ReportPage: React.FC<{
     isLast?: boolean;
     children: React.ReactNode;
@@ -860,7 +866,7 @@ const ViewServiceReportOBI: React.FC = () => {
         padding: "15mm 20mm",
       }}
     >
-      <ReportPdfPageHeader report={report!} formatDate={formatDate} />
+      <ReportPdfPageHeader report={headerReport} formatDate={formatDate} />
       <div style={{ flex: 1, display: "flex", flexDirection: "column", width: "100%" }}>
         {children}
       </div>
