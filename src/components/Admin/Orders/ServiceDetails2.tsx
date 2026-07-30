@@ -98,14 +98,14 @@ const getViewGeneratedReportPath = (machineType: string): string | null => {
     return VIEW_GENERATED_REPORT_ROUTES[machineType] || null;
 };
 
-/** Prefer QA Raw Available Files (upload + view) that are xlsx/xls/csv for report prefill. */
-const getAvailableSpreadsheetFileUrl = (qaRawWorkType?: {
+/** Collect all QA Raw Available Files (upload + view) that are xlsx/xls/csv for report prefill. */
+const getAvailableSpreadsheetFileUrls = (qaRawWorkType?: {
     backendFields?: {
         uploadFile?: string;
         fileUrl?: string;
         viewFile?: string[];
     };
-} | null, fallbackUrls: Array<string | null | undefined> = []): string | null => {
+} | null, fallbackUrls: Array<string | null | undefined> = []): string[] => {
     const candidates: string[] = [];
     const fields = qaRawWorkType?.backendFields;
 
@@ -118,8 +118,27 @@ const getAvailableSpreadsheetFileUrl = (qaRawWorkType?: {
         if (url) candidates.push(url);
     }
 
-    const spreadsheet = candidates.find(isSpreadsheetFileUrl);
-    return spreadsheet || null;
+    const seen = new Set<string>();
+    const spreadsheets: string[] = [];
+    for (const url of candidates) {
+        if (!isSpreadsheetFileUrl(url)) continue;
+        const key = String(url).split("?")[0].split("#")[0].toLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+        spreadsheets.push(url);
+    }
+    return spreadsheets;
+};
+
+/** Prefer first spreadsheet URL from QA Raw Available Files (legacy single-url callers). */
+const getAvailableSpreadsheetFileUrl = (qaRawWorkType?: {
+    backendFields?: {
+        uploadFile?: string;
+        fileUrl?: string;
+        viewFile?: string[];
+    };
+} | null, fallbackUrls: Array<string | null | undefined> = []): string | null => {
+    return getAvailableSpreadsheetFileUrls(qaRawWorkType, fallbackUrls)[0] || null;
 };
 
 const MACHINES_USING_SPREADSHEET_PREFILL = [
@@ -1841,18 +1860,21 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                 const createdAt = workType.qaTestSubmittedAt || firstQATest?.backendFields?.createdAt || null;
                 const ulrNumber = reportNumbers[parentService.id]?.qatest?.reportULRNumber || firstQATest?.backendFields?.reportURLNumber || null;
 
-                const csvFileUrl = getAvailableSpreadsheetFileUrl(firstQATest, [
+                // Pass every QA Raw spreadsheet; report pages try each and soft-skip if format doesn't match
+                const csvFileUrls = getAvailableSpreadsheetFileUrls(firstQATest, [
                     response?.data?.fileUrl,
                     response?.data?.uploadedFileUrl,
                     response?.data?.linkedReport?.fileUrl,
                     response?.data?.linkedReport?.report,
                     reportNumbers[parentService.id]?.qatest?.reportUrl,
                 ]);
+                const csvFileUrl = csvFileUrls[0] || null;
 
                 console.log('ServiceDetails2: Auto-navigating to report:', {
                     machineType: parentService.machineType,
                     serviceId: cleanId,
-                    csvFileUrl: csvFileUrl || null,
+                    csvFileUrl,
+                    csvFileUrls,
                 });
 
                 setTimeout(() => {
@@ -1864,6 +1886,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                             createdAt: createdAt,
                             ulrNumber: ulrNumber,
                             csvFileUrl,
+                            csvFileUrls,
                         },
                     });
                 }, 100);
@@ -3137,10 +3160,13 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                                                     null;
 
                                                                                                 let csvFileUrl: string | null = null;
+                                                                                                let csvFileUrls: string[] = [];
                                                                                                 if (MACHINES_USING_SPREADSHEET_PREFILL.includes(service.machineType as typeof MACHINES_USING_SPREADSHEET_PREFILL[number])) {
-                                                                                                    csvFileUrl = getAvailableSpreadsheetFileUrl(firstQATest, [
+                                                                                                    // All QA Raw spreadsheets — report tries each; unmatched formats soft-skip (no error)
+                                                                                                    csvFileUrls = getAvailableSpreadsheetFileUrls(firstQATest, [
                                                                                                         reportNumbers[service.id]?.qatest?.reportUrl,
                                                                                                     ]);
+                                                                                                    csvFileUrl = csvFileUrls[0] || null;
                                                                                                 }
 
                                                                                                 navigate("/admin/orders/generic-service-table", {
@@ -3151,6 +3177,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                                                         createdAt: createdAt,
                                                                                                         ulrNumber: ulrNumber,
                                                                                                         csvFileUrl,
+                                                                                                        csvFileUrls,
                                                                                                     },
                                                                                                 });
                                                                                             }}

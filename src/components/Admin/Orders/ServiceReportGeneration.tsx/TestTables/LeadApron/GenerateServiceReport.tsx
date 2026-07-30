@@ -9,7 +9,7 @@ import * as XLSX from "xlsx";
 import { saveReportHeaderForLeadApron, getReportHeaderForLeadApron, proxyFile } from "../../../../../../api";
 import { getDetails, getTools } from "../../../../../../api";
 import { createLeadApronUploadableExcel, LeadApronExportData } from "./exportLeadApronToExcel";
-import { isExcelFileUrl } from "../../../../../../utils/spreadsheetFile";
+import { isExcelFileUrl, resolvePrefillSpreadsheetUrls } from "../../../../../../utils/spreadsheetFile";
 
 import Standards from "../../Standards";
 import Notes from "../../Notes";
@@ -41,7 +41,7 @@ interface DetailsResponse {
     qaTests: Array<{ createdAt: string; qaTestReportNumber: string }>;
 }
 
-const LeadApron: React.FC<{ serviceId: string; qaTestDate?: string | null; createdAt?: string | null; ulrNumber?: string | null; csvFileUrl?: string | null }> = ({ serviceId, qaTestDate, createdAt, ulrNumber, csvFileUrl }) => {
+const LeadApron: React.FC<{ serviceId: string; qaTestDate?: string | null; createdAt?: string | null; ulrNumber?: string | null; csvFileUrl?: string | null; csvFileUrls?: string[] }> = ({ serviceId, qaTestDate, createdAt, ulrNumber, csvFileUrl, csvFileUrls }) => {
     const navigate = useNavigate();
 
     const [loading, setLoading] = useState(true);
@@ -414,61 +414,64 @@ const LeadApron: React.FC<{ serviceId: string; qaTestDate?: string | null; creat
         }
     };
 
-    // Fetch and process CSV/Excel file from URL
+    // Fetch and process CSV/Excel file from URL(s). Soft-fail if format doesn't match.
     useEffect(() => {
         const fetchAndProcessFile = async () => {
-            if (!csvFileUrl) {
-                console.log('Lead Apron: No csvFileUrl provided, skipping file fetch');
+            const urls = resolvePrefillSpreadsheetUrls(csvFileUrl, csvFileUrls);
+            if (!urls.length) {
+                console.log('Lead Apron: No csvFileUrl(s) provided, skipping file fetch');
                 return;
             }
 
-            console.log('Lead Apron: Fetching file from URL:', csvFileUrl);
+            const TOAST_ID = 'csv-loading';
+            setCsvUploading(true);
+            toast.loading('Loading Excel data from file...', { id: TOAST_ID });
 
-            try {
-                setCsvUploading(true);
+            let matched = false;
+            for (const url of urls) {
+                try {
+                    console.log('Lead Apron: Fetching file from URL:', url);
+                    const isExcel = isExcelFileUrl(url);
+                    let csvData: any[] = [];
 
-                const isExcel = isExcelFileUrl(csvFileUrl);
+                    if (isExcel) {
+                        const response = await proxyFile(url);
+                        const blob = response.data instanceof Blob ? response.data : new Blob([response.data]);
+                        const arrayBuffer = await blob.arrayBuffer();
+                        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+                        csvData = parseExcelToCSVFormat(workbook);
+                    } else {
+                        const response = await proxyFile(url);
+                        const blob = response.data instanceof Blob ? response.data : new Blob([response.data]);
+                        const text = await blob.text();
+                        csvData = parseCSV(text);
+                    }
 
-                let csvData: any[] = [];
+                    const hasTestRows = csvData.some((row) => String(row?.['Test Name'] || '').trim());
+                    if (!hasTestRows) {
+                        console.warn('Lead Apron: Spreadsheet has no Test Name rows, trying next URL if any:', url);
+                        continue;
+                    }
 
-                if (isExcel) {
-                    console.log('Lead Apron: Detected Excel file, fetching through proxy...');
-                    toast.loading('Loading Excel data from file...', { id: 'csv-loading' });
-
-                    const response = await proxyFile(csvFileUrl);
-                    const blob = response.data instanceof Blob ? response.data : new Blob([response.data]);
-                    const arrayBuffer = await blob.arrayBuffer();
-                    const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-
-                    console.log('Lead Apron: Excel file parsed, sheets:', workbook.SheetNames);
-
-                    csvData = parseExcelToCSVFormat(workbook);
-                    console.log('Lead Apron: Converted Excel to CSV format, rows:', csvData.length);
-                } else {
-                    console.log('Lead Apron: Detected CSV file, fetching through proxy...');
-                    toast.loading('Loading CSV data from file...', { id: 'csv-loading' });
-
-                    const response = await proxyFile(csvFileUrl);
-                    const blob = response.data instanceof Blob ? response.data : new Blob([response.data]);
-                    const text = await blob.text();
-                    console.log('Lead Apron: CSV file fetched, length:', text.length);
-
-                    csvData = parseCSV(text);
+                    await processCSVData(csvData);
+                    toast.success('File loaded successfully!', { id: TOAST_ID });
+                    matched = true;
+                    break;
+                } catch (error: any) {
+                    console.warn('Lead Apron: Failed to load/parse spreadsheet URL (will try next if any):', url, error);
                 }
-
-                console.log('Lead Apron: Processed CSV data, total rows:', csvData.length);
-                await processCSVData(csvData);
-                toast.success('File loaded successfully!', { id: 'csv-loading' });
-            } catch (error: any) {
-                console.error('Lead Apron: Error fetching/processing file:', error);
-                toast.error('Failed to load file: ' + (error.message || 'Unknown error'), { id: 'csv-loading' });
-            } finally {
-                setCsvUploading(false);
             }
+
+            if (!matched) {
+                console.warn('QA Raw spreadsheet format not matched; opening empty report for manual creation.');
+                toast.dismiss(TOAST_ID);
+            }
+
+            setCsvUploading(false);
         };
 
         fetchAndProcessFile();
-    }, [csvFileUrl]);
+    }, [csvFileUrl, csvFileUrls]);
 
     // Export saved data to Excel with proper table structures
     const handleExportToExcel = async () => {

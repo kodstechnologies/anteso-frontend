@@ -32,6 +32,7 @@ import { mergeWithRadiographyVerticalParse } from "../shared/mergeRadiographyVer
 import { enrichParsedRowsWithMatrixMeasHeaders } from "../shared/enrichMeasHeadersFromMatrix";
 import { coerceMasRangeLabel, normalizeCsvComparisonOperator } from "../shared/parseRadiographyStyleTableFormat";
 import { TestExportRegistryProvider, useTestExportRegistry } from "../shared/TestExportRegistry";
+import { resolvePrefillSpreadsheetUrls } from "../../../../../../utils/spreadsheetFile";
 
 // Test-table imports (unchanged)
 import AccuracyOfIrradiationTime from "./AccuracyOfIrradiationTime";
@@ -98,9 +99,10 @@ interface CArmProps {
   serviceId: string;
   qaTestDate?: string | null;
   csvFileUrl?: string | null;
+  csvFileUrls?: string[];
 }
 
-const CArmContent: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
+const CArmContent: React.FC<CArmProps> = ({ serviceId, csvFileUrl, csvFileUrls }) => {
   const exportRegistry = useTestExportRegistry();
   const navigate = useNavigate();
 
@@ -110,6 +112,7 @@ const CArmContent: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
   const [error, setError] = useState<string | null>(null);
   const [hasTimer, setHasTimer] = useState<boolean | null>(null);
   const [showTimerModal, setShowTimerModal] = useState(false); // Will be set based on localStorage
+  const [awaitingExcelConfig, setAwaitingExcelConfig] = useState(Boolean(csvFileUrl || (csvFileUrls && csvFileUrls.length)));
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -224,10 +227,10 @@ const CArmContent: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
     fetchAll();
   }, [serviceId]);
 
-  // Check localStorage for timer preference on mount. When csvFileUrl is provided (redirect from ServiceDetails2), skip modal — config will be set from Excel in processCSVData.
+  // Check localStorage for timer preference on mount. When csvFileUrl(s) provided (redirect from ServiceDetails2), skip modal — config will be set from Excel in processCSVData.
   useEffect(() => {
     if (!serviceId) return;
-    if (csvFileUrl) {
+    if (csvFileUrl || (csvFileUrls && csvFileUrls.length)) {
       setShowTimerModal(false);
       return;
     }
@@ -236,12 +239,12 @@ const CArmContent: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
       setHasTimer(JSON.parse(stored));
       setShowTimerModal(false);
     }
-  }, [serviceId, csvFileUrl]);
+  }, [serviceId, csvFileUrl, csvFileUrls]);
 
   useEffect(() => {
     const loadReportHeader = async () => {
       if (!serviceId) return;
-      if (csvFileUrl) return; // Timer/config will be set from Excel in processCSVData
+      if (csvFileUrl || (csvFileUrls && csvFileUrls.length)) return; // Timer/config will be set from Excel in processCSVData
       try {
         const res = await getReportHeaderForCArm(serviceId);
         if (res?.exists && res?.data) {
@@ -316,7 +319,7 @@ const CArmContent: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
       }
     };
     loadReportHeader();
-  }, [serviceId, csvFileUrl]);
+  }, [serviceId, csvFileUrl, csvFileUrls]);
 
   const formatDate = (iso: string) => iso.split("T")[0];
   const [savedTestIds, setSavedTestIds] = useState<Record<string, string>>({});
@@ -1046,37 +1049,60 @@ const CArmContent: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
     reader.readAsBinaryString(file);
   };
 
-  // Auto-load Excel from URL when csvFileUrl is passed (e.g. after complete status / Generate Report from ServiceDetails2)
+  // Auto-load Excel from URL(s) when passed from ServiceDetails2. Soft-fail if format doesn't match.
   // Uses proxyFile so the request is authenticated and avoids CORS/401 redirect to login
   useEffect(() => {
-    if (!csvFileUrl) return;
-
     const loadFromUrl = async () => {
-      try {
-        setCsvUploading(true);
-        toast.loading("Loading Excel data from file...", { id: "carm-csv-load" });
-        const response = await proxyFile(csvFileUrl);
-        const blob = response.data instanceof Blob ? response.data : new Blob([response.data]);
-        const arrayBuffer = await blob.arrayBuffer();
-        const workbook = XLSX.read(arrayBuffer, { type: "array" });
-        const parsedData = parseExcelToCSVFormat(workbook);
-        if (parsedData.length > 0) {
+      const urls = resolvePrefillSpreadsheetUrls(csvFileUrl, csvFileUrls);
+      if (!urls.length) {
+        if (csvFileUrl || (csvFileUrls && csvFileUrls.length)) {
+          console.warn('QA Raw spreadsheet format not matched; opening empty report for manual creation.');
+          setShowTimerModal(true);
+          setAwaitingExcelConfig(false);
+        }
+        return;
+      }
+
+      const TOAST_ID = "carm-csv-load";
+      setCsvUploading(true);
+      toast.loading("Loading Excel data from file...", { id: TOAST_ID });
+
+      let matched = false;
+      for (const url of urls) {
+        try {
+          const response = await proxyFile(url);
+          const blob = response.data instanceof Blob ? response.data : new Blob([response.data]);
+          const arrayBuffer = await blob.arrayBuffer();
+          const workbook = XLSX.read(arrayBuffer, { type: "array" });
+          const parsedData = parseExcelToCSVFormat(workbook);
+          const hasTestRows = parsedData.some((row) => String(row?.['Test Name'] || '').trim());
+          if (!hasTestRows) {
+            console.warn('C-Arm: Spreadsheet has no Test Name rows, trying next URL if any:', url);
+            continue;
+          }
           await processCSVData(parsedData, true);
           setRefreshKey((prev) => prev + 1);
-          toast.success("Excel data loaded from file", { id: "carm-csv-load" });
-        } else {
-          toast.error("No valid test data found in the file", { id: "carm-csv-load" });
+          toast.success("Excel data loaded from file", { id: TOAST_ID });
+          setAwaitingExcelConfig(false);
+          matched = true;
+          break;
+        } catch (err: any) {
+          console.warn('C-Arm: Failed to load/parse spreadsheet URL (will try next if any):', url, err);
         }
-      } catch (err: any) {
-        console.error("C-Arm: Error loading file from URL", err);
-        toast.error(err?.message || "Failed to load Excel from file", { id: "carm-csv-load" });
-      } finally {
-        setCsvUploading(false);
       }
+
+      if (!matched) {
+        console.warn('QA Raw spreadsheet format not matched; opening empty report for manual creation.');
+        toast.dismiss(TOAST_ID);
+        setShowTimerModal(true);
+        setAwaitingExcelConfig(false);
+      }
+
+      setCsvUploading(false);
     };
 
     loadFromUrl();
-  }, [csvFileUrl]);
+  }, [csvFileUrl, csvFileUrls]);
 
   // When applyConfigFromExcel is true (file from ServiceDetails2 redirect), infer hasTimer from Excel and skip timer modal.
   const processCSVData = async (csvData: any[], applyConfigFromExcel?: boolean) => {
@@ -1282,7 +1308,7 @@ const CArmContent: React.FC<CArmProps> = ({ serviceId, csvFileUrl }) => {
   }
 
   // When Excel is loading from URL, show loading until timer config is inferred
-  if (csvFileUrl && hasTimer === null) {
+  if (awaitingExcelConfig && hasTimer === null) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-xl font-medium text-gray-700">

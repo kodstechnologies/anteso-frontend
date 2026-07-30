@@ -28,7 +28,7 @@ import RadiationLeakageLevel from "./RadiationLeakageLevel";
 import DetailsOfRadiationProtection from "./DetailsOfRadiationProtection";
 
 import { createDentalIntraUploadableExcel, DentalIntraExportData } from "./exportDentalIntraToExcel";
-import { isExcelFileUrl } from "../../../../../../utils/spreadsheetFile";
+import { isExcelFileUrl, resolvePrefillSpreadsheetUrls } from "../../../../../../utils/spreadsheetFile";
 import { normalizeCsvComparisonOperator } from "../shared/parseRadiographyStyleTableFormat";
 import { TestExportRegistryProvider, useTestExportRegistry } from "../shared/TestExportRegistry";
 import {
@@ -94,9 +94,10 @@ interface DentalProps {
     serviceId: string;
     qaTestDate?: string | null;
     csvFileUrl?: string | null;
+    csvFileUrls?: string[];
 }
 
-const GenerateReportForDentalContent: React.FC<DentalProps> = ({ serviceId, qaTestDate, csvFileUrl }) => {
+const GenerateReportForDentalContent: React.FC<DentalProps> = ({ serviceId, qaTestDate, csvFileUrl, csvFileUrls }) => {
     const exportRegistry = useTestExportRegistry();
     const navigate = useNavigate();
 
@@ -111,6 +112,7 @@ const GenerateReportForDentalContent: React.FC<DentalProps> = ({ serviceId, qaTe
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [showTimerModal, setShowTimerModal] = useState(false);
     const [hasTimer, setHasTimer] = useState<boolean | null>(null);
+    const [awaitingExcelConfig, setAwaitingExcelConfig] = useState(Boolean(csvFileUrl || csvFileUrls?.length));
 
     // State to store CSV data for components
     const [csvDataForComponents, setCsvDataForComponents] = useState<any>({});
@@ -835,59 +837,65 @@ const GenerateReportForDentalContent: React.FC<DentalProps> = ({ serviceId, qaTe
         console.log('DentalIntra: Processed CSV data for components:', grouped);
     };
 
-    // Fetch and process CSV/Excel file from URL (passed from ServiceDetails2)
+    // Fetch and process CSV/Excel file from URL(s) (passed from ServiceDetails2). Soft-fail if format doesn't match.
     useEffect(() => {
         const fetchAndProcessFile = async () => {
-            if (!csvFileUrl) {
-                console.log('DentalIntra: No csvFileUrl provided, skipping file fetch');
+            const urls = resolvePrefillSpreadsheetUrls(csvFileUrl, csvFileUrls);
+            if (!urls.length) {
+                console.log('DentalIntra: No csvFileUrl(s) provided, skipping file fetch');
                 return;
             }
 
-            console.log('DentalIntra: Fetching file from URL:', csvFileUrl);
+            const TOAST_ID = 'csv-loading';
+            setCsvUploading(true);
+            toast.loading('Loading Excel data from file...', { id: TOAST_ID });
 
-            try {
-                setCsvUploading(true);
+            let matched = false;
+            for (const url of urls) {
+                try {
+                    console.log('DentalIntra: Fetching file from URL:', url);
+                    const isExcel = isExcelFileUrl(url);
+                    let csvData: any[] = [];
 
-                const isExcel = isExcelFileUrl(csvFileUrl);
+                    if (isExcel) {
+                        const response = await proxyFile(url);
+                        const arrayBuffer = await response.data.arrayBuffer();
+                        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+                        csvData = parseExcelToCSVFormat(workbook);
+                    } else {
+                        const response = await proxyFile(url);
+                        const text = await response.data.text();
+                        csvData = parseCSV(text);
+                    }
 
-                let csvData: any[] = [];
+                    const hasTestRows = csvData.some((row) => String(row?.['Test Name'] || '').trim());
+                    if (!hasTestRows) {
+                        console.warn('DentalIntra: Spreadsheet has no Test Name rows, trying next URL if any:', url);
+                        continue;
+                    }
 
-                if (isExcel) {
-                    console.log('DentalIntra: Detected Excel file, fetching through proxy...');
-                    toast.loading('Loading Excel data from file...', { id: 'csv-loading' });
-
-                    const response = await proxyFile(csvFileUrl);
-                    const arrayBuffer = await response.data.arrayBuffer();
-                    const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-
-                    console.log('DentalIntra: Excel file parsed, sheets:', workbook.SheetNames);
-
-                    csvData = parseExcelToCSVFormat(workbook);
-                    console.log('DentalIntra: Converted Excel to CSV format, rows:', csvData.length);
-                } else {
-                    console.log('DentalIntra: Detected CSV file, fetching through proxy...');
-                    toast.loading('Loading CSV data from file...', { id: 'csv-loading' });
-
-                    const response = await proxyFile(csvFileUrl);
-                    const text = await response.data.text();
-                    console.log('DentalIntra: CSV file fetched, length:', text.length);
-
-                    csvData = parseCSV(text);
+                    await processCSVData(csvData, true);
+                    toast.success('File loaded successfully!', { id: TOAST_ID });
+                    setAwaitingExcelConfig(false);
+                    matched = true;
+                    break;
+                } catch (error: any) {
+                    console.warn('DentalIntra: Failed to load/parse spreadsheet URL (will try next if any):', url, error);
                 }
-
-                console.log('DentalIntra: Processed CSV data, total rows:', csvData.length);
-                await processCSVData(csvData, true);
-                toast.success('File loaded successfully!', { id: 'csv-loading' });
-            } catch (error: any) {
-                console.error('DentalIntra: Error fetching/processing file:', error);
-                toast.error('Failed to load file: ' + (error.message || 'Unknown error'), { id: 'csv-loading' });
-            } finally {
-                setCsvUploading(false);
             }
+
+            if (!matched) {
+                console.warn('QA Raw spreadsheet format not matched; opening empty report for manual creation.');
+                toast.dismiss(TOAST_ID);
+                setShowTimerModal(true);
+                setAwaitingExcelConfig(false);
+            }
+
+            setCsvUploading(false);
         };
 
         fetchAndProcessFile();
-    }, [csvFileUrl]);
+    }, [csvFileUrl, csvFileUrls]);
 
     // Handle CSV file upload
     const handleCSVUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -1103,7 +1111,7 @@ const GenerateReportForDentalContent: React.FC<DentalProps> = ({ serviceId, qaTe
     }
 
     // When Excel is loading from URL, show loading until timer config is inferred
-    if (csvFileUrl && hasTimer === null) {
+    if (awaitingExcelConfig && hasTimer === null) {
         return (
             <div className="min-h-screen bg-gray-50 flex items-center justify-center">
                 <div className="text-xl font-medium text-gray-700">

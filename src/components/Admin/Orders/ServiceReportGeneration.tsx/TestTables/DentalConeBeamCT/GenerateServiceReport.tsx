@@ -11,7 +11,7 @@ import { saveReportHeaderForCBCT, getReportHeaderForCBCT, getAccuracyOfOperating
 import { getDetails, getTools } from "../../../../../../api";
 import * as XLSX from 'xlsx';
 import { createCBCTUploadableExcel } from './exportCBCTToExcel';
-import { isExcelFileUrl } from '../../../../../../utils/spreadsheetFile';
+import { isExcelFileUrl, resolvePrefillSpreadsheetUrls } from '../../../../../../utils/spreadsheetFile';
 import { TestExportRegistryProvider, useTestExportRegistry } from "../shared/TestExportRegistry";
 import { coerceMasRangeLabel, sheetRowsFromWorksheet } from "../shared/parseRadiographyStyleTableFormat";
 
@@ -52,7 +52,7 @@ interface DetailsResponse {
     qaTests: Array<{ createdAt: string; qaTestReportNumber: string }>;
 }
 
-const DentalConeBeamCTContent: React.FC<{ serviceId: string; qaTestDate?: string | null; csvFileUrl?: string | null }> = ({ serviceId, qaTestDate, csvFileUrl }) => {
+const DentalConeBeamCTContent: React.FC<{ serviceId: string; qaTestDate?: string | null; csvFileUrl?: string | null; csvFileUrls?: string[] }> = ({ serviceId, qaTestDate, csvFileUrl, csvFileUrls }) => {
     const navigate = useNavigate();
     const exportRegistry = useTestExportRegistry();
 
@@ -65,6 +65,7 @@ const DentalConeBeamCTContent: React.FC<{ serviceId: string; qaTestDate?: string
     const [tools, setTools] = useState<Standard[]>([]);
     const [showTimerModal, setShowTimerModal] = useState(false); // Don't show by default
     const [hasTimer, setHasTimer] = useState<boolean | null>(null); // null = not answered
+    const [awaitingExcelConfig, setAwaitingExcelConfig] = useState(Boolean(csvFileUrl || csvFileUrls?.length));
     const [savedTestIds, setSavedTestIds] = useState<{
         AccuracyOfIrradiationTimeCBCT?: string;
         AccuracyOfOperatingPotentialCBCT?: string;
@@ -689,10 +690,10 @@ const DentalConeBeamCTContent: React.FC<{ serviceId: string; qaTestDate?: string
     }
   }
 
-    // When csvFileUrl is provided (redirect from ServiceDetails2), don't show timer modal — config will be set from Excel in fetchAndProcessFile
+    // When spreadsheet URL(s) provided (redirect from ServiceDetails2), don't show timer modal — config will be set from Excel if format matches
     useEffect(() => {
-        if (csvFileUrl) setShowTimerModal(false);
-    }, [csvFileUrl]);
+        if (csvFileUrl || csvFileUrls?.length) setShowTimerModal(false);
+    }, [csvFileUrl, csvFileUrls]);
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
@@ -798,7 +799,7 @@ const DentalConeBeamCTContent: React.FC<{ serviceId: string; qaTestDate?: string
     useEffect(() => {
         const loadReportHeader = async () => {
             if (!serviceId) return;
-            if (csvFileUrl) return; // Timer/config will be set from Excel in fetchAndProcessFile
+            if (csvFileUrl || csvFileUrls?.length) return; // Timer/config will be set from Excel in fetchAndProcessFile
             try {
                 const res = await getReportHeaderForCBCT(serviceId);
                 if (res?.exists && res?.data) {
@@ -892,75 +893,79 @@ const DentalConeBeamCTContent: React.FC<{ serviceId: string; qaTestDate?: string
             }
         };
         loadReportHeader();
-    }, [serviceId, csvFileUrl]);
+    }, [serviceId, csvFileUrl, csvFileUrls]);
 
-    // Fetch and process file from URL (for auto-fill)
+    // Fetch and process file from URL(s) for auto-fill. Soft-fail if format doesn't match.
     useEffect(() => {
         const fetchAndProcessFile = async () => {
-            if (!csvFileUrl) {
-                console.log('CBCT: No csvFileUrl provided, skipping file fetch');
+            const urls = resolvePrefillSpreadsheetUrls(csvFileUrl, csvFileUrls);
+            if (!urls.length) {
+                console.log('CBCT: No csvFileUrl(s) provided, skipping file fetch');
                 return;
             }
 
-            console.log('CBCT: Fetching file from URL:', csvFileUrl);
+            const TOAST_ID = 'csv-loading';
+            toast.loading('Loading Excel data from file...', { id: TOAST_ID });
 
-            try {
-                toast.loading('Loading Excel data from file...', { id: 'csv-loading' });
+            let matched = false;
+            for (const url of urls) {
+                try {
+                    console.log('CBCT: Fetching file from URL:', url);
+                    const isExcel = isExcelFileUrl(url);
+                    let grouped: Record<string, any[]> = {};
 
-                const isExcel = isExcelFileUrl(csvFileUrl);
-
-                if (isExcel) {
-                    const response = await proxyFile(csvFileUrl);
-                    const blob = response.data instanceof Blob ? response.data : new Blob([response.data]);
-                    const arrayBuffer = await blob.arrayBuffer();
-                    const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-
-                    const wsname = workbook.SheetNames[0];
-                    const worksheet = workbook.Sheets[wsname];
-                    const jsonData = sheetRowsFromWorksheet(worksheet);
-
-                    const parsed = parseHorizontalData(jsonData as any[]);
-                    const grouped = processCSVData(parsed);
-                    setCsvData(grouped);
-                    if (Object.keys(grouped).length > 0) {
-                        const hasTimerSection = !!(grouped['accuracyOfIrradiationTime']?.length);
-                        setHasTimer(hasTimerSection);
-                        setShowTimerModal(false);
-                        if (serviceId) {
-                            localStorage.setItem(`cbct_timer_choice_${serviceId}`, JSON.stringify(hasTimerSection));
-                        try { await saveTimerPreference(serviceId, hasTimerSection); } catch (e) { console.error("Failed to persist timer preference:", e); }
-                        }
+                    if (isExcel) {
+                        const response = await proxyFile(url);
+                        const blob = response.data instanceof Blob ? response.data : new Blob([response.data]);
+                        const arrayBuffer = await blob.arrayBuffer();
+                        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+                        const wsname = workbook.SheetNames[0];
+                        const worksheet = workbook.Sheets[wsname];
+                        const jsonData = sheetRowsFromWorksheet(worksheet);
+                        const parsed = parseHorizontalData(jsonData as any[]);
+                        grouped = processCSVData(parsed);
+                    } else {
+                        const response = await proxyFile(url);
+                        const blob = response.data instanceof Blob ? response.data : new Blob([response.data]);
+                        const text = await blob.text();
+                        const rows = text.split('\n').map((line: any) => line.split(','));
+                        const parsed = parseHorizontalData(rows);
+                        grouped = processCSVData(parsed);
                     }
-                    toast.success('Excel data loaded successfully!', { id: 'csv-loading' });
-                } else {
-                    const response = await proxyFile(csvFileUrl);
-                    const blob = response.data instanceof Blob ? response.data : new Blob([response.data]);
-                    const text = await blob.text();
 
-                    // Simple CSV to array of arrays
-                    const rows = text.split('\n').map((line: any) => line.split(','));
-                    const parsed = parseHorizontalData(rows);
-                    const grouped = processCSVData(parsed);
-                    setCsvData(grouped);
-                    if (Object.keys(grouped).length > 0) {
-                        const hasTimerSection = !!(grouped['accuracyOfIrradiationTime']?.length);
-                        setHasTimer(hasTimerSection);
-                        setShowTimerModal(false);
-                        if (serviceId) {
-                            localStorage.setItem(`cbct_timer_choice_${serviceId}`, JSON.stringify(hasTimerSection));
-                        try { await saveTimerPreference(serviceId, hasTimerSection); } catch (e) { console.error("Failed to persist timer preference:", e); }
-                        }
+                    const hasSections = Object.values(grouped).some((rows) => Array.isArray(rows) && rows.length > 0);
+                    if (!hasSections) {
+                        console.warn('CBCT: Spreadsheet has no matching sections, trying next URL if any:', url);
+                        continue;
                     }
-                    toast.success('CSV data loaded successfully!', { id: 'csv-loading' });
+
+                    setCsvData(grouped);
+                    const hasTimerSection = !!(grouped['accuracyOfIrradiationTime']?.length);
+                    setHasTimer(hasTimerSection);
+                    setShowTimerModal(false);
+                    if (serviceId) {
+                        localStorage.setItem(`cbct_timer_choice_${serviceId}`, JSON.stringify(hasTimerSection));
+                        try { await saveTimerPreference(serviceId, hasTimerSection); } catch (e) { console.error("Failed to persist timer preference:", e); }
+                    }
+                    toast.success('File data loaded successfully!', { id: TOAST_ID });
+                    setAwaitingExcelConfig(false);
+                    matched = true;
+                    break;
+                } catch (error: any) {
+                    console.warn('CBCT: Failed to load/parse spreadsheet URL (will try next if any):', url, error);
                 }
-            } catch (error: any) {
-                console.error('CBCT: Error fetching/processing file:', error);
-                toast.error('Failed to load file: ' + (error.message || 'Unknown error'), { id: 'csv-loading' });
+            }
+
+            if (!matched) {
+                console.warn('QA Raw spreadsheet format not matched; opening empty report for manual creation.');
+                toast.dismiss(TOAST_ID);
+                setShowTimerModal(true);
+                setAwaitingExcelConfig(false);
             }
         };
 
         fetchAndProcessFile();
-    }, [csvFileUrl]);
+    }, [csvFileUrl, csvFileUrls]);
 
     if (loading) {
         return (
@@ -1007,8 +1012,8 @@ const DentalConeBeamCTContent: React.FC<{ serviceId: string; qaTestDate?: string
         );
     }
 
-    // When Excel is loading from URL, show loading until timer config is inferred
-    if (csvFileUrl && hasTimer === null) {
+    // When Excel is loading from URL, show loading until timer config is inferred (or soft-fail clears awaitingExcelConfig)
+    if (awaitingExcelConfig && hasTimer === null) {
         return (
             <div className="min-h-screen bg-gray-50 flex items-center justify-center">
                 <div className="text-xl font-medium text-gray-700">
@@ -1384,7 +1389,7 @@ const DentalConeBeamCTContent: React.FC<{ serviceId: string; qaTestDate?: string
     );
 };
 
-const DentalConeBeamCT: React.FC<{ serviceId: string; qaTestDate?: string | null; csvFileUrl?: string | null }> = (props) => (
+const DentalConeBeamCT: React.FC<{ serviceId: string; qaTestDate?: string | null; csvFileUrl?: string | null; csvFileUrls?: string[] }> = (props) => (
     <TestExportRegistryProvider>
         <DentalConeBeamCTContent {...props} />
     </TestExportRegistryProvider>

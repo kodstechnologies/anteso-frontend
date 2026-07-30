@@ -26,7 +26,7 @@ import {
 } from "../../../../../../api";
 import { createRadiographyMobileHTUploadableExcel, RadiographyMobileHTExportData } from "./exportRadiographyMobileHTToExcel";
 import { TestExportRegistryProvider, useTestExportRegistry } from "../shared/TestExportRegistry";
-import { isExcelFileUrl } from "../../../../../../utils/spreadsheetFile";
+import { isExcelFileUrl, resolvePrefillSpreadsheetUrls } from "../../../../../../utils/spreadsheetFile";
 import { normalizeCsvComparisonOperator } from "../shared/parseRadiographyStyleTableFormat";
 
 import Standards from "../../Standards";
@@ -79,9 +79,9 @@ interface DetailsResponse {
   qaTests: Array<{ createdAt: string; qaTestReportNumber: string }>;
 }
 
-type RadiographyMobileHTProps = { serviceId: string; qaTestDate?: string | null; csvFileUrl?: string | null };
+type RadiographyMobileHTProps = { serviceId: string; qaTestDate?: string | null; csvFileUrl?: string | null; csvFileUrls?: string[] };
 
-const RadiographyMobileHTContent: React.FC<RadiographyMobileHTProps> = ({ serviceId, qaTestDate, csvFileUrl }) => {
+const RadiographyMobileHTContent: React.FC<RadiographyMobileHTProps> = ({ serviceId, qaTestDate, csvFileUrl, csvFileUrls }) => {
   const exportRegistry = useTestExportRegistry();
   const navigate = useNavigate();
 
@@ -94,6 +94,7 @@ const RadiographyMobileHTContent: React.FC<RadiographyMobileHTProps> = ({ servic
   const [tools, setTools] = useState<Standard[]>([]);
   const [hasTimer, setHasTimer] = useState<boolean | null>(null); // null = not answered
   const [showTimerModal, setShowTimerModal] = useState(true); // Will be set based on localStorage
+  const [awaitingExcelConfig, setAwaitingExcelConfig] = useState(Boolean(csvFileUrl || csvFileUrls?.length));
 
   const [csvUploading, setCsvUploading] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
@@ -152,14 +153,14 @@ const RadiographyMobileHTContent: React.FC<RadiographyMobileHTProps> = ({ servic
   ];
   const [notes, setNotes] = useState<string[]>(defaultNotes);
 
-  // Check localStorage for timer preference on mount. When csvFileUrl is provided (redirect from ServiceDetails2), skip modal — config will be set from Excel in processCSVData.
+  // Check localStorage for timer preference on mount. When QA Raw spreadsheet URL(s) are provided, skip modal — config will be set from Excel in processCSVData (or soft-fail restores modal).
   useEffect(() => {
     if (!serviceId) {
       setShowTimerModal(true);
       setHasTimer(null);
       return;
     }
-    if (csvFileUrl) {
+    if (csvFileUrl || csvFileUrls?.length) {
       setShowTimerModal(false);
       return;
     }
@@ -171,7 +172,7 @@ const RadiographyMobileHTContent: React.FC<RadiographyMobileHTProps> = ({ servic
       setShowTimerModal(true);
       setHasTimer(null);
     }
-  }, [serviceId, csvFileUrl]);
+  }, [serviceId, csvFileUrl, csvFileUrls]);
 
   // Close modal and set timer choice
   const handleTimerChoice = async (choice: boolean) => {
@@ -1793,42 +1794,69 @@ const RadiographyMobileHTContent: React.FC<RadiographyMobileHTProps> = ({ servic
 
   useEffect(() => {
     const fetchAndProcess = async () => {
-      if (!csvFileUrl) return;
+      const urls = resolvePrefillSpreadsheetUrls(csvFileUrl, csvFileUrls);
+      if (!urls.length) {
+        setAwaitingExcelConfig(false);
+        return;
+      }
+
+      const looksLikeMobileHTData = (rows: any[]) =>
+        Array.isArray(rows) &&
+        rows.length > 0 &&
+        rows.some((r) => String(r?.["Test Name"] ?? "").trim());
+
       try {
         setCsvUploading(true);
-        const isExcel = isExcelFileUrl(csvFileUrl);
-        let csvData: any[] = [];
-        if (isExcel) {
-          const res = await proxyFile(csvFileUrl);
-          const ab = await (res.data as Blob).arrayBuffer();
-          const wb = XLSX.read(ab, { type: "array" });
-          csvData = parseWorkbookToRows(wb);
-        } else {
-          const res = await proxyFile(csvFileUrl);
-          const text = await (res.data as Blob).text();
-          if (isCArmMobileHTFormat(text)) {
-            csvData = parseHorizontalMobileHTTemplate(parseTextToRows(text));
-          } else {
-            const tableRows = parseTableCSVToRows(text);
-            const horizontalRows = parseCSV(text);
-            csvData = tableRows.length > 0 ? (horizontalRows.length > 0 ? [...tableRows, ...horizontalRows] : tableRows) : horizontalRows;
+        toast.loading("Loading spreadsheet data from file...", { id: "csv-loading" });
+
+        for (const url of urls) {
+          try {
+            let csvData: any[] = [];
+            if (isExcelFileUrl(url)) {
+              const res = await proxyFile(url);
+              const ab = await (res.data as Blob).arrayBuffer();
+              const wb = XLSX.read(ab, { type: "array" });
+              csvData = parseWorkbookToRows(wb);
+            } else {
+              const res = await proxyFile(url);
+              const text = await (res.data as Blob).text();
+              if (isCArmMobileHTFormat(text)) {
+                csvData = parseHorizontalMobileHTTemplate(parseTextToRows(text));
+              } else {
+                const tableRows = parseTableCSVToRows(text);
+                const horizontalRows = parseCSV(text);
+                csvData = tableRows.length > 0 ? (horizontalRows.length > 0 ? [...tableRows, ...horizontalRows] : tableRows) : horizontalRows;
+              }
+            }
+            if (!looksLikeMobileHTData(csvData)) {
+              console.warn("Radiography Mobile HT: Prefill URL did not match expected format:", url);
+              continue;
+            }
+            await processCSVData(csvData, true);
+            toast.success("File data loaded and filled.", { id: "csv-loading" });
+            setAwaitingExcelConfig(false);
+            return;
+          } catch (urlErr) {
+            console.warn("Radiography Mobile HT: Prefill URL failed, trying next if any:", url, urlErr);
           }
         }
-        if (csvData.length > 0) {
-        await processCSVData(csvData, true);
-          toast.success("File data loaded and filled.");
-        } else {
-          toast.error("File is empty or could not be parsed.");
-        }
+
+        console.warn("QA Raw spreadsheet format not matched; opening empty report for manual creation.");
+        toast.dismiss("csv-loading");
+        setShowTimerModal(true);
+        setAwaitingExcelConfig(false);
       } catch (err: any) {
-        toast.error(err?.message ?? "Failed to load file");
+        console.warn("QA Raw spreadsheet format not matched; opening empty report for manual creation.", err);
+        toast.dismiss("csv-loading");
+        setShowTimerModal(true);
+        setAwaitingExcelConfig(false);
       } finally {
         setCsvUploading(false);
       }
     };
     fetchAndProcess();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [csvFileUrl]);
+  }, [csvFileUrl, csvFileUrls]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -2096,8 +2124,8 @@ const RadiographyMobileHTContent: React.FC<RadiographyMobileHTProps> = ({ servic
     );
   }
 
-  // When Excel is loading from URL, show loading until timer config is inferred
-  if (csvFileUrl && hasTimer === null) {
+  // When Excel is loading from URL, show loading until timer config is inferred (or soft-fail clears awaitingExcelConfig)
+  if (awaitingExcelConfig && hasTimer === null) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-xl font-medium text-gray-700">

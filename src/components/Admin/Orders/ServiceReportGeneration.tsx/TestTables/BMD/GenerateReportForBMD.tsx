@@ -26,7 +26,7 @@ import {
 } from "../../../../../../api";
 import { createBMDSavedExcel, BMDSavedExportData } from "./exportBMDSavedToExcel";
 import { TestExportRegistryProvider, useTestExportRegistry } from "../shared/TestExportRegistry";
-import { isExcelFileUrl } from "../../../../../../utils/spreadsheetFile";
+import { isExcelFileUrl, resolvePrefillSpreadsheetUrls } from "../../../../../../utils/spreadsheetFile";
 
 // Test-table imports
 import AccuracyOfIrradiationTime from "./AccuracyOfIrradiationTime";
@@ -94,6 +94,7 @@ interface ToolsResponse {
 interface BMDProps {
   serviceId: string;
   csvFileUrl?: string | null;
+  csvFileUrls?: string[];
   qaTestDate?: string | null;
 }
 
@@ -130,7 +131,7 @@ const mapTotalFiltrationPageToAccuracyOp = (tf: any) => {
   };
 };
 
-const GenerateReportForBMDContent: React.FC<BMDProps> = ({ serviceId, csvFileUrl, qaTestDate }) => {
+const GenerateReportForBMDContent: React.FC<BMDProps> = ({ serviceId, csvFileUrl, csvFileUrls, qaTestDate }) => {
   const exportRegistry = useTestExportRegistry();
   const navigate = useNavigate();
 
@@ -144,6 +145,7 @@ const GenerateReportForBMDContent: React.FC<BMDProps> = ({ serviceId, csvFileUrl
   const [csvUploading, setCsvUploading] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [hasTimer, setHasTimer] = useState<boolean | null>(null);
+  const [awaitingExcelConfig, setAwaitingExcelConfig] = useState(Boolean(csvFileUrl || csvFileUrls?.length));
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // State to store CSV data for components
@@ -1323,97 +1325,67 @@ const GenerateReportForBMDContent: React.FC<BMDProps> = ({ serviceId, csvFileUrl
     return parseHorizontalBmdTemplate(rows);
   };
 
-  // Fetch and process CSV/Excel file from URL (passed from ServiceDetails2)
+  // Fetch and process CSV/Excel file URL(s) from QA Raw (ServiceDetails2).
+  // Try each URL; valid BMD format → auto-fill; no match → soft-fail (no toast.error).
   useEffect(() => {
     const fetchAndProcessFile = async () => {
-      if (!csvFileUrl) {
-        console.log('GenerateReportForBMD: No csvFileUrl provided, skipping file fetch');
+      const urls = resolvePrefillSpreadsheetUrls(csvFileUrl, csvFileUrls);
+      if (!urls.length) {
+        setAwaitingExcelConfig(false);
         return;
       }
 
-      console.log('GenerateReportForBMD: Fetching file from URL:', csvFileUrl);
+      const looksLikeBmdData = (rows: any[]) =>
+        Array.isArray(rows) &&
+        rows.length > 0 &&
+        rows.some((r) => String(r?.["Test Name"] ?? "").trim());
 
       try {
         setCsvUploading(true);
+        toast.loading('Loading spreadsheet data from file...', { id: 'csv-loading' });
 
-        const isExcel = isExcelFileUrl(csvFileUrl);
-
-        let csvData: any[] = [];
-
-        if (isExcel) {
-          console.log('GenerateReportForBMD: Detected Excel file, fetching through proxy...');
-          toast.loading('Loading Excel data from file...', { id: 'csv-loading' });
-
-          // Use proxy endpoint (uses AWS SDK on backend, same as s3Fetch.js)
-          const response = await proxyFile(csvFileUrl);
-          // response.data is a Blob when using responseType: 'blob'
-          const arrayBuffer = await response.data.arrayBuffer();
-          const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-
-          console.log('GenerateReportForBMD: Excel file parsed, sheets:', workbook.SheetNames);
-
-          // Convert Excel to CSV format
-          csvData = parseExcelToCSVFormat(workbook);
-          console.log('GenerateReportForBMD: Converted Excel to CSV format, rows:', csvData.length);
-        } else {
-          console.log('GenerateReportForBMD: Detected CSV file, fetching through proxy...');
-          toast.loading('Loading CSV data from file...', { id: 'csv-loading' });
-
-          // Use proxy endpoint (uses AWS SDK on backend, same as s3Fetch.js)
-          const response = await proxyFile(csvFileUrl);
-          // response.data is a Blob when using responseType: 'blob'
-          const text = await response.data.text();
-          console.log('GenerateReportForBMD: CSV file fetched, length:', text.length);
-          console.log('GenerateReportForBMD: First 500 chars of CSV:', text.substring(0, 500));
-
-          // Parse CSV
-          csvData = parseCSV(text);
-        }
-
-        console.log('GenerateReportForBMD: Parsed data, rows:', csvData.length);
-        console.log('GenerateReportForBMD: First few rows:', csvData.slice(0, 5));
-
-        if (csvData.length > 0) {
-          console.log('GenerateReportForBMD: Processing data...');
-          await processCSVData(csvData);
-          console.log('GenerateReportForBMD: Data processed successfully');
-          toast.success('File data loaded and auto-filled successfully!', { id: 'csv-loading' });
-        } else {
-          console.warn('GenerateReportForBMD: No data found in file');
-          toast.error('File is empty or could not be parsed', { id: 'csv-loading' });
-        }
-      } catch (error: any) {
-        console.error('GenerateReportForBMD: Error fetching or processing file:', error);
-
-        // Try to extract error message from response
-        let errorMessage = 'Unknown error';
-        if (error?.message) {
-          errorMessage = error.message;
-        } else if (error?.response?.data) {
-          // If error response is a JSON blob, try to parse it
-          if (error.response.data instanceof Blob && error.response.data.type === 'application/json') {
-            try {
-              const errorText = await error.response.data.text();
-              const errorJson = JSON.parse(errorText);
-              errorMessage = errorJson.message || errorMessage;
-              if (errorJson.details) {
-                console.error('Error details:', errorJson.details);
-                errorMessage += ` (Key: ${errorJson.details.key}, Bucket: ${errorJson.details.bucket})`;
-              }
-            } catch (parseError) {
-              // If parsing fails, use default message
+        for (const url of urls) {
+          try {
+            let csvData: any[] = [];
+            if (isExcelFileUrl(url)) {
+              const response = await proxyFile(url);
+              const arrayBuffer = await response.data.arrayBuffer();
+              const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+              csvData = parseExcelToCSVFormat(workbook);
+            } else {
+              const response = await proxyFile(url);
+              const text = await response.data.text();
+              csvData = parseCSV(text);
             }
+
+            if (!looksLikeBmdData(csvData)) {
+              console.warn('GenerateReportForBMD: Prefill URL did not match expected format:', url);
+              continue;
+            }
+
+            await processCSVData(csvData);
+            toast.success('File data loaded and auto-filled successfully!', { id: 'csv-loading' });
+            setAwaitingExcelConfig(false);
+            return;
+          } catch (urlErr) {
+            console.warn('GenerateReportForBMD: Prefill URL failed, trying next if any:', url, urlErr);
           }
         }
 
-        toast.error(`Failed to load file: ${errorMessage}`, { id: 'csv-loading' });
+        console.warn('QA Raw spreadsheet format not matched; opening empty report for manual creation.');
+        toast.dismiss('csv-loading');
+        setAwaitingExcelConfig(false);
+      } catch (error: any) {
+        console.warn('QA Raw spreadsheet format not matched; opening empty report for manual creation.', error);
+        toast.dismiss('csv-loading');
+        setAwaitingExcelConfig(false);
       } finally {
         setCsvUploading(false);
       }
     };
 
     fetchAndProcessFile();
-  }, [csvFileUrl]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [csvFileUrl, csvFileUrls]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!serviceId) return;
@@ -1939,15 +1911,14 @@ const GenerateReportForBMDContent: React.FC<BMDProps> = ({ serviceId, csvFileUrl
           {isExporting ? "Exporting..." : "Export Excel"}
         </button>
       </div>
-      {csvFileUrl && (
+      {(awaitingExcelConfig || csvUploading) && (csvFileUrl || (csvFileUrls && csvFileUrls.length > 0)) && (
         <p className="text-sm text-gray-600 text-center mb-6">
-          {csvUploading ? (
-            <span className="text-blue-600">Auto-loading Excel from Service Details...</span>
-          ) : (
-            <>
-              File loaded from: <span className="font-mono text-xs">{csvFileUrl}</span>
-            </>
-          )}
+          <span className="text-blue-600">Auto-loading Excel from Service Details...</span>
+        </p>
+      )}
+      {!awaitingExcelConfig && !csvUploading && csvFileUrl && Object.keys(csvDataForComponents).length > 0 && (
+        <p className="text-sm text-gray-600 text-center mb-6">
+          File loaded from: <span className="font-mono text-xs">{csvFileUrl}</span>
         </p>
       )}
 

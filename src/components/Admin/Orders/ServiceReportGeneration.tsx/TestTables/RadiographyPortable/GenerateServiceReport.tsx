@@ -30,7 +30,7 @@ import {
   parsePortableTableCSV,
   parsePortableTableMatrix,
 } from "./parsePortableTableFormat";
-import { isExcelFileUrl } from "../../../../../../utils/spreadsheetFile";
+import { isExcelFileUrl, resolvePrefillSpreadsheetUrls } from "../../../../../../utils/spreadsheetFile";
 
 import Standards from "../../Standards";
 import Notes from "../../Notes";
@@ -71,9 +71,9 @@ interface DetailsResponse {
 }
 
 
-type RadiographyPortableProps = { serviceId: string; qaTestDate?: string | null; csvFileUrl?: string | null };
+type RadiographyPortableProps = { serviceId: string; qaTestDate?: string | null; csvFileUrl?: string | null; csvFileUrls?: string[] };
 
-const RadiographyPortableContent: React.FC<RadiographyPortableProps> = ({ serviceId, qaTestDate, csvFileUrl }) => {
+const RadiographyPortableContent: React.FC<RadiographyPortableProps> = ({ serviceId, qaTestDate, csvFileUrl, csvFileUrls }) => {
   const exportRegistry = useTestExportRegistry();
   const navigate = useNavigate();
 
@@ -88,6 +88,7 @@ const RadiographyPortableContent: React.FC<RadiographyPortableProps> = ({ servic
   const [tools, setTools] = useState<Standard[]>([]);
   const [hasTimer, setHasTimer] = useState<boolean | null>(null);
   const [showTimerModal, setShowTimerModal] = useState(false); // Will be set based on localStorage
+  const [awaitingExcelConfig, setAwaitingExcelConfig] = useState(Boolean(csvFileUrl || csvFileUrls?.length));
 
   // State to store CSV data for components
   const [csvDataForComponents, setCsvDataForComponents] = useState<any>({});
@@ -130,10 +131,10 @@ const RadiographyPortableContent: React.FC<RadiographyPortableProps> = ({ servic
   ];
   const [notes, setNotes] = useState<string[]>(defaultNotes);
 
-  // Check localStorage for timer preference on mount. When csvFileUrl is provided (redirect from ServiceDetails2), skip modal — config will be set from Excel in processCSVData.
+  // Check localStorage for timer preference on mount. When QA Raw spreadsheet URL(s) are provided, skip modal — config will be set from Excel in processCSVData (or soft-fail restores modal).
   useEffect(() => {
     if (!serviceId) return;
-    if (csvFileUrl) {
+    if (csvFileUrl || csvFileUrls?.length) {
       setShowTimerModal(false);
       return;
     }
@@ -144,7 +145,7 @@ const RadiographyPortableContent: React.FC<RadiographyPortableProps> = ({ servic
     } else {
       setShowTimerModal(true);
     }
-  }, [serviceId, csvFileUrl]);
+  }, [serviceId, csvFileUrl, csvFileUrls]);
 
   // Close modal and set timer choice
   const handleTimerChoice = async (choice: boolean) => {
@@ -1121,61 +1122,72 @@ const RadiographyPortableContent: React.FC<RadiographyPortableProps> = ({ servic
     }
   };
 
-  // When csvFileUrl is provided (e.g. from ServiceDetails2 after "complete" status or "Generate Report"),
-  // fetch the Excel/CSV and auto-fill all test tables so the report is pre-filled.
+  // When csvFileUrl(s) are provided (e.g. from ServiceDetails2 QA Raw), try each spreadsheet;
+  // valid Portable format → auto-fill; no match → soft-fail (no toast.error, restore timer modal).
   useEffect(() => {
     const fetchAndProcessFile = async () => {
-      if (!csvFileUrl) {
+      const urls = resolvePrefillSpreadsheetUrls(csvFileUrl, csvFileUrls);
+      if (!urls.length) {
+        setAwaitingExcelConfig(false);
         return;
       }
 
-      console.log('Radiography Portable: Fetching file from URL (auto-fill from complete status):', csvFileUrl);
+      const looksLikePortableData = (rows: any[]) =>
+        Array.isArray(rows) &&
+        rows.length > 0 &&
+        rows.some((r) => String(r?.["Test Name"] ?? "").trim());
 
       try {
         setCsvUploading(true);
+        toast.loading('Loading spreadsheet data from file...', { id: 'csv-loading' });
 
-        const isExcel = isExcelFileUrl(csvFileUrl);
+        for (const url of urls) {
+          try {
+            console.log('Radiography Portable: Trying prefill URL:', url);
+            let csvData: any[] = [];
+            if (isExcelFileUrl(url)) {
+              const response = await proxyFile(url);
+              const blob = response.data instanceof Blob ? response.data : new Blob([response.data]);
+              const arrayBuffer = await blob.arrayBuffer();
+              const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+              csvData = parseExcelToCSVFormat(workbook);
+            } else {
+              const response = await proxyFile(url);
+              const blob = response.data instanceof Blob ? response.data : new Blob([response.data]);
+              const text = await blob.text();
+              csvData = parseCSV(text);
+            }
 
-        let csvData: any[] = [];
+            if (!looksLikePortableData(csvData)) {
+              console.warn('Radiography Portable: Prefill URL did not match expected format:', url);
+              continue;
+            }
 
-        if (isExcel) {
-          console.log('Radiography Portable: Detected Excel file, fetching through proxy...');
-          toast.loading('Loading Excel data from file...', { id: 'csv-loading' });
-
-          const response = await proxyFile(csvFileUrl);
-          const blob = response.data instanceof Blob ? response.data : new Blob([response.data]);
-          const arrayBuffer = await blob.arrayBuffer();
-          const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-
-          console.log('Radiography Portable: Excel file parsed, sheets:', workbook.SheetNames);
-
-          csvData = parseExcelToCSVFormat(workbook);
-          console.log('Radiography Portable: Converted Excel to CSV format, rows:', csvData.length);
-        } else {
-          console.log('Radiography Portable: Detected CSV file, fetching through proxy...');
-          toast.loading('Loading CSV data from file...', { id: 'csv-loading' });
-
-          const response = await proxyFile(csvFileUrl);
-          const blob = response.data instanceof Blob ? response.data : new Blob([response.data]);
-          const text = await blob.text();
-          console.log('Radiography Portable: CSV file fetched, length:', text.length);
-
-          csvData = parseCSV(text);
+            await processCSVData(csvData, true);
+            toast.success('File loaded successfully!', { id: 'csv-loading' });
+            setAwaitingExcelConfig(false);
+            return;
+          } catch (urlErr) {
+            console.warn('Radiography Portable: Prefill URL failed, trying next if any:', url, urlErr);
+          }
         }
 
-        console.log('Radiography Portable: Processed CSV data, total rows:', csvData.length);
-        await processCSVData(csvData, true);
-        toast.success('File loaded successfully!', { id: 'csv-loading' });
+        console.warn('QA Raw spreadsheet format not matched; opening empty report for manual creation.');
+        toast.dismiss('csv-loading');
+        setShowTimerModal(true);
+        setAwaitingExcelConfig(false);
       } catch (error: any) {
-        console.error('Radiography Portable: Error fetching/processing file:', error);
-        toast.error('Failed to load file: ' + (error.message || 'Unknown error'), { id: 'csv-loading' });
+        console.warn('QA Raw spreadsheet format not matched; opening empty report for manual creation.', error);
+        toast.dismiss('csv-loading');
+        setShowTimerModal(true);
+        setAwaitingExcelConfig(false);
       } finally {
         setCsvUploading(false);
       }
     };
 
     fetchAndProcessFile();
-  }, [csvFileUrl]);
+  }, [csvFileUrl, csvFileUrls]);
 
   // Export saved data to Excel (fetch all test tables from API, same as RadiographyFixed).
   const handleExportToExcel = async () => {
@@ -1312,8 +1324,8 @@ const RadiographyPortableContent: React.FC<RadiographyPortableProps> = ({ servic
     );
   }
 
-  // When Excel is loading from URL, show loading until timer config is inferred
-  if (csvFileUrl && hasTimer === null) {
+  // When Excel is loading from URL, show loading until timer config is inferred (or soft-fail clears awaitingExcelConfig)
+  if (awaitingExcelConfig && hasTimer === null) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-xl font-medium text-gray-700">

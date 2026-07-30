@@ -27,7 +27,7 @@ import {
 } from "../../../../../../api";
 import { getDetails, getTools } from "../../../../../../api";
 import { createCTScanUploadableExcel, CTScanExportData } from "./exportCTScanToExcel";
-import { isExcelFileUrl } from "../../../../../../utils/spreadsheetFile";
+import { isExcelFileUrl, resolvePrefillSpreadsheetUrls } from "../../../../../../utils/spreadsheetFile";
 import { normalizeCsvComparisonOperator } from "../shared/parseRadiographyStyleTableFormat";
 import { TestExportRegistryProvider, useTestExportRegistry } from "../shared/TestExportRegistry";
 
@@ -75,9 +75,9 @@ interface DetailsResponse {
     qaTests: Array<{ createdAt: string; qaTestReportNumber: string }>;
 }
 
-type CTScanReportProps = { serviceId: string; qaTestDate?: string | null; createdAt?: string | null; csvFileUrl?: string | null };
+type CTScanReportProps = { serviceId: string; qaTestDate?: string | null; createdAt?: string | null; csvFileUrl?: string | null; csvFileUrls?: string[] };
 
-const CTScanReportContent: React.FC<CTScanReportProps> = ({ serviceId, qaTestDate, createdAt, csvFileUrl }) => {
+const CTScanReportContent: React.FC<CTScanReportProps> = ({ serviceId, qaTestDate, createdAt, csvFileUrl, csvFileUrls }) => {
     const exportRegistry = useTestExportRegistry();
     const navigate = useNavigate();
 
@@ -96,6 +96,7 @@ const CTScanReportContent: React.FC<CTScanReportProps> = ({ serviceId, qaTestDat
     const [showGantryTiltModal, setShowGantryTiltModal] = useState(false);
     const [hasGantryTilt, setHasGantryTilt] = useState<boolean | null>(null); // null = not answered
     const [tubeType, setTubeType] = useState<'single' | 'double' | null>(null); // null = not selected yet
+    const [awaitingExcelConfig, setAwaitingExcelConfig] = useState(Boolean(csvFileUrl || csvFileUrls?.length));
     const [savedTestIds, setSavedTestIds] = useState<{
         LinearityOfMasLoadingCTScan?: string;
     }>({});
@@ -884,59 +885,66 @@ const CTScanReportContent: React.FC<CTScanReportProps> = ({ serviceId, qaTestDat
         }
     };
 
-    // Fetch and process CSV/Excel file from URL (passed from ServiceDetails2)
+    // Fetch and process CSV/Excel file from URL(s) (passed from ServiceDetails2). Soft-fail if format doesn't match.
     useEffect(() => {
         const fetchAndProcessFile = async () => {
-            if (!csvFileUrl) {
-                console.log('CT Scan: No csvFileUrl provided, skipping file fetch');
+            const urls = resolvePrefillSpreadsheetUrls(csvFileUrl, csvFileUrls);
+            if (!urls.length) {
+                console.log('CT Scan: No csvFileUrl(s) provided, skipping file fetch');
                 return;
             }
 
-            console.log('CT Scan: Fetching file from URL:', csvFileUrl);
+            const TOAST_ID = 'csv-loading';
+            setCsvUploading(true);
+            toast.loading('Loading Excel data from file...', { id: TOAST_ID });
 
-            try {
-                setCsvUploading(true);
+            let matched = false;
+            for (const url of urls) {
+                try {
+                    console.log('CT Scan: Fetching file from URL:', url);
+                    const isExcel = isExcelFileUrl(url);
+                    let csvData: any[] = [];
 
-                const isExcel = isExcelFileUrl(csvFileUrl);
+                    if (isExcel) {
+                        const response = await proxyFile(url);
+                        const arrayBuffer = await response.data.arrayBuffer();
+                        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+                        csvData = parseExcelToCSVFormat(workbook);
+                    } else {
+                        const response = await proxyFile(url);
+                        const text = await response.data.text();
+                        csvData = parseCSV(text);
+                    }
 
-                let csvData: any[] = [];
+                    const hasTestRows = csvData.some((row) => String(row?.['Test Name'] || '').trim());
+                    if (!hasTestRows) {
+                        console.warn('CT Scan: Spreadsheet has no Test Name rows, trying next URL if any:', url);
+                        continue;
+                    }
 
-                if (isExcel) {
-                    console.log('CT Scan: Detected Excel file, fetching through proxy...');
-                    toast.loading('Loading Excel data from file...', { id: 'csv-loading' });
-
-                    const response = await proxyFile(csvFileUrl);
-                    const arrayBuffer = await response.data.arrayBuffer();
-                    const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-
-                    console.log('CT Scan: Excel file parsed, sheets:', workbook.SheetNames);
-
-                    csvData = parseExcelToCSVFormat(workbook);
-                    console.log('CT Scan: Converted Excel to CSV format, rows:', csvData.length);
-                } else {
-                    console.log('CT Scan: Detected CSV file, fetching through proxy...');
-                    toast.loading('Loading CSV data from file...', { id: 'csv-loading' });
-
-                    const response = await proxyFile(csvFileUrl);
-                    const text = await response.data.text();
-                    console.log('CT Scan: CSV file fetched, length:', text.length);
-
-                    csvData = parseCSV(text);
+                    await processCSVData(csvData, true);
+                    toast.success('File loaded successfully!', { id: TOAST_ID });
+                    setAwaitingExcelConfig(false);
+                    matched = true;
+                    break;
+                } catch (error: any) {
+                    console.warn('CT Scan: Failed to load/parse spreadsheet URL (will try next if any):', url, error);
                 }
-
-                console.log('CT Scan: Processed CSV data, total rows:', csvData.length);
-                await processCSVData(csvData, true);
-                toast.success('File loaded successfully!', { id: 'csv-loading' });
-            } catch (error: any) {
-                console.error('CT Scan: Error fetching/processing file:', error);
-                toast.error('Failed to load file: ' + (error.message || 'Unknown error'), { id: 'csv-loading' });
-            } finally {
-                setCsvUploading(false);
             }
+
+            if (!matched) {
+                console.warn('QA Raw spreadsheet format not matched; opening empty report for manual creation.');
+                toast.dismiss(TOAST_ID);
+                setShowTubeModal(true);
+                setShowGantryTiltModal(false);
+                setAwaitingExcelConfig(false);
+            }
+
+            setCsvUploading(false);
         };
 
         fetchAndProcessFile();
-    }, [csvFileUrl]);
+    }, [csvFileUrl, csvFileUrls]);
 
     // Export saved data to Excel with proper table structures
     const handleExportToExcel = async () => {
@@ -1225,7 +1233,7 @@ const CTScanReportContent: React.FC<CTScanReportProps> = ({ serviceId, qaTestDat
     useEffect(() => {
         if (!serviceId) return;
 
-        if (csvFileUrl) {
+        if (csvFileUrl || csvFileUrls?.length) {
             setShowTubeModal(false);
             setShowGantryTiltModal(false);
             return;
@@ -1283,7 +1291,7 @@ const CTScanReportContent: React.FC<CTScanReportProps> = ({ serviceId, qaTestDat
         };
 
         loadPreferences();
-    }, [serviceId, csvFileUrl]);
+    }, [serviceId, csvFileUrl, csvFileUrls]);
 
     if (loading) {
         return (
@@ -1297,6 +1305,17 @@ const CTScanReportContent: React.FC<CTScanReportProps> = ({ serviceId, qaTestDat
         return (
             <div className="min-h-screen bg-gray-50 flex items-center justify-center text-red-600">
                 Failed to load service details. Please try again.
+            </div>
+        );
+    }
+
+    // While Excel prefill is in progress, wait before showing tube/gantry modals
+    if (awaitingExcelConfig && (!tubeType || hasGantryTilt === null)) {
+        return (
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+                <div className="text-xl font-medium text-gray-700">
+                    Loading Excel data and configuring report...
+                </div>
             </div>
         );
     }
@@ -1357,12 +1376,12 @@ const CTScanReportContent: React.FC<CTScanReportProps> = ({ serviceId, qaTestDat
         );
     }
 
-    // Don't show tests until tube type is selected and gantry tilt choice is made (or set from Excel when csvFileUrl is provided)
+    // Don't show tests until tube type is selected and gantry tilt choice is made
     if (!tubeType || hasGantryTilt === null) {
         return (
             <div className="min-h-screen bg-gray-50 flex items-center justify-center">
                 <div className="text-xl font-medium text-gray-700">
-                    {csvFileUrl ? 'Loading Excel data and configuring report...' : 'Loading...'}
+                    Loading...
                 </div>
             </div>
         );
@@ -1401,9 +1420,9 @@ const CTScanReportContent: React.FC<CTScanReportProps> = ({ serviceId, qaTestDat
                     {isExporting ? 'Exporting...' : 'Export Excel'}
                 </button>
             </div>
-            {csvFileUrl && (
+            {awaitingExcelConfig === false && (csvFileUrl || (csvFileUrls && csvFileUrls.length > 0)) && Object.keys(csvDataForComponents).length > 0 && (
                 <p className="text-sm text-gray-600 text-center mb-6">
-                    File loaded from: <span className="font-mono text-xs">{csvFileUrl}</span>
+                    File data loaded from QA Raw Available Files
                 </p>
             )}
 

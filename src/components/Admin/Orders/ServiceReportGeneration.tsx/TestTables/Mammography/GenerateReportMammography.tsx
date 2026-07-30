@@ -30,7 +30,7 @@ import {
 } from "../../../../../../api";
 import * as XLSX from "xlsx";
 import { createMammographySavedExcel, MammographySavedExportData } from "./exportMammographySavedToExcel";
-import { isExcelFileUrl } from "../../../../../../utils/spreadsheetFile";
+import { isExcelFileUrl, resolvePrefillSpreadsheetUrls } from "../../../../../../utils/spreadsheetFile";
 import { TestExportRegistryProvider, useTestExportRegistry } from "../shared/TestExportRegistry";
 
 /** Tests whose CSV columns after fixed fields are dynamic measurement columns (custom headers like "22", "400 mA"). */
@@ -148,7 +148,7 @@ interface DetailsResponse {
     qaTests: Array<{ createdAt: string; qaTestReportNumber: string }>;
 }
 
-const GenerateReportMammographyContent: React.FC<{ serviceId: string; csvFileUrl?: string | null; qaTestDate?: string | null }> = ({ serviceId, csvFileUrl, qaTestDate }) => {
+const GenerateReportMammographyContent: React.FC<{ serviceId: string; csvFileUrl?: string | null; csvFileUrls?: string[]; qaTestDate?: string | null }> = ({ serviceId, csvFileUrl, csvFileUrls, qaTestDate }) => {
     const exportRegistry = useTestExportRegistry();
     const firstNonEmptyString = (...values: any[]): string => {
         for (const value of values) {
@@ -171,6 +171,7 @@ const GenerateReportMammographyContent: React.FC<{ serviceId: string; csvFileUrl
     const [tools, setTools] = useState<Standard[]>([]);
     const [hasTimer, setHasTimer] = useState<boolean | null>(null); // null = not answered
     const [showTimerModal, setShowTimerModal] = useState(false); // Will be set based on localStorage
+    const [awaitingExcelConfig, setAwaitingExcelConfig] = useState(Boolean(csvFileUrl || (csvFileUrls && csvFileUrls.length)));
 
     const [formData, setFormData] = useState({
         customerName: "",
@@ -1453,10 +1454,10 @@ const GenerateReportMammographyContent: React.FC<{ serviceId: string; csvFileUrl
         }
     };
 
-    // Check DB / localStorage for timer preference on mount. When csvFileUrl is provided (redirect from ServiceDetails2), skip modal — config will be set from Excel in processCSVData.
+    // Check DB / localStorage for timer preference on mount. When csvFileUrl(s) provided (redirect from ServiceDetails2), skip modal — config will be set from Excel in processCSVData.
     useEffect(() => {
         if (!serviceId) return;
-        if (csvFileUrl) {
+        if (csvFileUrl || (csvFileUrls && csvFileUrls.length)) {
             setShowTimerModal(false);
             return;
         }
@@ -1487,7 +1488,7 @@ const GenerateReportMammographyContent: React.FC<{ serviceId: string; csvFileUrl
         return () => {
             cancelled = true;
         };
-    }, [serviceId, csvFileUrl]);
+    }, [serviceId, csvFileUrl, csvFileUrls]);
 
     // Close modal and set timer choice
     const handleTimerChoice = async (choice: boolean) => {
@@ -1559,48 +1560,71 @@ const GenerateReportMammographyContent: React.FC<{ serviceId: string; csvFileUrl
     };
 
 
-    // Fetch and process CSV/Excel file from URL (passed from ServiceDetails2 when complete / Generate Report)
+    // Fetch and process CSV/Excel file from URL(s) (passed from ServiceDetails2). Soft-fail if format doesn't match.
     // Uses proxyFile so the request is authenticated and avoids CORS/401 redirect to login
     useEffect(() => {
         const fetchAndProcessFile = async () => {
-            if (!csvFileUrl) return;
-
-            try {
-                console.log('Mammography: Fetching file from URL:', csvFileUrl);
-                setCsvUploading(true);
-                toast.loading('Loading data from file...', { id: 'mammo-csv-load' });
-
-                const response = await proxyFile(csvFileUrl);
-                const blob = response.data instanceof Blob ? response.data : new Blob([response.data]);
-                const isExcel = isExcelFileUrl(csvFileUrl);
-
-                let csvData: any[];
-                if (isExcel) {
-                    const XLSX = await import('xlsx');
-                    const arrayBuffer = await blob.arrayBuffer();
-                    const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-                    csvData = parseExcelToCSVFormat(workbook, null);
-                } else {
-                    const text = await blob.text();
-                    csvData = parseCSVOrHorizontal(text);
+            const urls = resolvePrefillSpreadsheetUrls(csvFileUrl, csvFileUrls);
+            if (!urls.length) {
+                if (csvFileUrl || (csvFileUrls && csvFileUrls.length)) {
+                    console.warn('QA Raw spreadsheet format not matched; opening empty report for manual creation.');
+                    setShowTimerModal(true);
+                    setAwaitingExcelConfig(false);
                 }
-                if (csvData.length > 0) {
-                    await processCSVData(csvData, true);
-                    toast.success('File loaded successfully!', { id: 'mammo-csv-load' });
-                } else {
-                    console.warn('No data found in file');
-                    toast.error('No data found in file', { id: 'mammo-csv-load' });
-                }
-            } catch (error: any) {
-                console.error('Error fetching or processing file:', error);
-                toast.error(error?.message || 'Failed to load file', { id: 'mammo-csv-load' });
-            } finally {
-                setCsvUploading(false);
+                return;
             }
+
+            const TOAST_ID = 'mammo-csv-load';
+            setCsvUploading(true);
+            toast.loading('Loading data from file...', { id: TOAST_ID });
+
+            let matched = false;
+            for (const url of urls) {
+                try {
+                    console.log('Mammography: Fetching file from URL:', url);
+                    const response = await proxyFile(url);
+                    const blob = response.data instanceof Blob ? response.data : new Blob([response.data]);
+                    const isExcel = isExcelFileUrl(url);
+
+                    let csvData: any[];
+                    if (isExcel) {
+                        const XLSX = await import('xlsx');
+                        const arrayBuffer = await blob.arrayBuffer();
+                        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+                        csvData = parseExcelToCSVFormat(workbook, null);
+                    } else {
+                        const text = await blob.text();
+                        csvData = parseCSVOrHorizontal(text);
+                    }
+
+                    const hasTestRows = csvData.some((row) => String(row?.['Test Name'] || '').trim());
+                    if (!hasTestRows) {
+                        console.warn('Mammography: Spreadsheet has no Test Name rows, trying next URL if any:', url);
+                        continue;
+                    }
+
+                    await processCSVData(csvData, true);
+                    toast.success('File loaded successfully!', { id: TOAST_ID });
+                    setAwaitingExcelConfig(false);
+                    matched = true;
+                    break;
+                } catch (error: any) {
+                    console.warn('Mammography: Failed to load/parse spreadsheet URL (will try next if any):', url, error);
+                }
+            }
+
+            if (!matched) {
+                console.warn('QA Raw spreadsheet format not matched; opening empty report for manual creation.');
+                toast.dismiss(TOAST_ID);
+                setShowTimerModal(true);
+                setAwaitingExcelConfig(false);
+            }
+
+            setCsvUploading(false);
         };
 
         fetchAndProcessFile();
-    }, [csvFileUrl]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [csvFileUrl, csvFileUrls]); // eslint-disable-line react-hooks/exhaustive-deps
 
     useEffect(() => {
         const fetchInitialData = async () => {
@@ -1977,7 +2001,7 @@ const GenerateReportMammographyContent: React.FC<{ serviceId: string; csvFileUrl
     }
 
     // When Excel is loading from URL, show loading until timer config is inferred
-    if (csvFileUrl && hasTimer === null) {
+    if (awaitingExcelConfig && hasTimer === null) {
         return (
             <div className="min-h-screen bg-gray-50 flex items-center justify-center">
                 <div className="text-xl font-medium text-gray-700">
@@ -2242,7 +2266,7 @@ const GenerateReportMammographyContent: React.FC<{ serviceId: string; csvFileUrl
     );
 };
 
-const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: string | null; qaTestDate?: string | null }> = (props) => (
+const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: string | null; csvFileUrls?: string[]; qaTestDate?: string | null }> = (props) => (
     <TestExportRegistryProvider>
         <GenerateReportMammographyContent {...props} />
     </TestExportRegistryProvider>

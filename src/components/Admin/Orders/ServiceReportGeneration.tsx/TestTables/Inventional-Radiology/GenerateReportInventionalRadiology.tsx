@@ -47,7 +47,7 @@ import MeasurementOfMaLinearity from "./measurementOfMaLinearity";
 
 import { handleExportToExcel as exportToExcel } from "../../../../../../utils/exportInventionalRadiologyToExcel";
 import { createInventionalRadiologySavedExcel, InventionalRadiologySavedExportData } from "./exportInventionalRadiologySavedToExcel";
-import { isExcelFileUrl } from "../../../../../../utils/spreadsheetFile";
+import { isExcelFileUrl, resolvePrefillSpreadsheetUrls } from "../../../../../../utils/spreadsheetFile";
 import { TestExportRegistryProvider, useTestExportRegistry } from "../shared/TestExportRegistry";
 // import EquipmentSettingForInterventionalRadiology from "./EquipmentSettingForInventionalRadiology";
 // import MaxRadiationLevel from "./MaxRadiationLevel";
@@ -103,9 +103,10 @@ interface InventionalRadiologyProps {
   serviceId: string;
   qaTestDate?: string | null;
   csvFileUrl?: string | null;
+  csvFileUrls?: string[];
 }
 
-const InventionalRadiologyContent: React.FC<InventionalRadiologyProps> = ({ serviceId, qaTestDate, csvFileUrl: csvFileUrlProp }) => {
+const InventionalRadiologyContent: React.FC<InventionalRadiologyProps> = ({ serviceId, qaTestDate, csvFileUrl: csvFileUrlProp, csvFileUrls: csvFileUrlsProp }) => {
   const exportRegistry = useTestExportRegistry();
   const navigate = useNavigate();
   const location = useLocation();
@@ -119,8 +120,10 @@ const InventionalRadiologyContent: React.FC<InventionalRadiologyProps> = ({ serv
   const [csvDataForComponents, setCsvDataForComponents] = useState<{ [key: string]: any[] }>({});
   const [refreshKey, setRefreshKey] = useState(0);
 
-  // Get csvFileUrl from prop (from GenericServiceTable) or location state (passed from ServiceDetails2 when complete / Generate Report)
+  // Get csvFileUrl(s) from prop (from GenericServiceTable) or location state (passed from ServiceDetails2 when complete / Generate Report)
   const csvFileUrl = csvFileUrlProp ?? location.state?.csvFileUrl ?? null;
+  const csvFileUrls = csvFileUrlsProp ?? location.state?.csvFileUrls ?? [];
+  const [awaitingExcelConfig, setAwaitingExcelConfig] = useState(Boolean(csvFileUrl || csvFileUrls?.length));
 
   const [details, setDetails] = useState<DetailsResponse | null>(null);
   const [tools, setTools] = useState<Standard[]>([]);
@@ -1059,41 +1062,61 @@ const InventionalRadiologyContent: React.FC<InventionalRadiologyProps> = ({ serv
     }
   };
 
-  // Auto-fill effect when csvFileUrl is present
+  // Auto-fill effect when spreadsheet URL(s) present. Soft-fail if format doesn't match.
   useEffect(() => {
     const fetchAndProcessFile = async () => {
-      if (!csvFileUrl) return;
+      const urls = resolvePrefillSpreadsheetUrls(csvFileUrl, csvFileUrls);
+      if (!urls.length) return;
 
-      try {
-        setCsvUploading(true);
-        const isExcel = isExcelFileUrl(csvFileUrl);
+      const TOAST_ID = 'csv-loading';
+      setCsvUploading(true);
+      toast.loading('Loading data from file...', { id: TOAST_ID });
 
-        toast.loading('Loading data from file...', { id: 'csv-loading' });
-        const response = await proxyFile(csvFileUrl);
-        const blob = response.data instanceof Blob ? response.data : new Blob([response.data]);
+      let matched = false;
+      for (const url of urls) {
+        try {
+          const isExcel = isExcelFileUrl(url);
+          const response = await proxyFile(url);
+          const blob = response.data instanceof Blob ? response.data : new Blob([response.data]);
 
-        let csvData: any[] = [];
-        if (isExcel) {
-          const arrayBuffer = await blob.arrayBuffer();
-          const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-          csvData = parseExcelToCSVFormat(workbook);
-        } else {
-          const text = await blob.text();
-          csvData = parseCSV(text);
+          let csvData: any[] = [];
+          if (isExcel) {
+            const arrayBuffer = await blob.arrayBuffer();
+            const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+            csvData = parseExcelToCSVFormat(workbook);
+          } else {
+            const text = await blob.text();
+            csvData = parseCSV(text);
+          }
+
+          const hasTestRows = csvData.some((row) => String(row?.['Test Name'] || '').trim());
+          if (!hasTestRows) {
+            console.warn('IR: Spreadsheet has no Test Name rows, trying next URL if any:', url);
+            continue;
+          }
+
+          await processCSVData(csvData, true);
+          toast.success('File loaded successfully!', { id: TOAST_ID });
+          setAwaitingExcelConfig(false);
+          matched = true;
+          break;
+        } catch (error: any) {
+          console.warn('IR: Failed to load/parse spreadsheet URL (will try next if any):', url, error);
         }
-
-        await processCSVData(csvData, true);
-        toast.success('File loaded successfully!', { id: 'csv-loading' });
-      } catch (error: any) {
-        console.error('Error fetching file:', error);
-        toast.error('Failed to load file', { id: 'csv-loading' });
-      } finally {
-        setCsvUploading(false);
       }
+
+      if (!matched) {
+        console.warn('QA Raw spreadsheet format not matched; opening empty report for manual creation.');
+        toast.dismiss(TOAST_ID);
+        setShowTubeModal(true);
+        setAwaitingExcelConfig(false);
+      }
+
+      setCsvUploading(false);
     };
 
     fetchAndProcessFile();
-  }, [csvFileUrl]);
+  }, [csvFileUrl, csvFileUrls]);
   const defaultNotes = [
     "The Test Report relates only to the above item only.",
     "Publication or reproduction of this Certificate in any form other than by complete set of the whole report & in the language written, is not permitted without the written consent of ABPL.",
@@ -1255,11 +1278,11 @@ const InventionalRadiologyContent: React.FC<InventionalRadiologyProps> = ({ serv
     }
   };
 
-  // Load saved tube type on mount (prefer DB, fallback to localStorage). When csvFileUrl is provided, skip modal — config will be set from Excel.
+  // Load saved tube type on mount (prefer DB, fallback to localStorage). When spreadsheet URL(s) provided, skip modal — config will be set from Excel if matched.
   useEffect(() => {
     if (!serviceId) return;
 
-    if (csvFileUrl) {
+    if (csvFileUrl || csvFileUrls?.length) {
       setShowTubeModal(false);
       return;
     }
@@ -1293,7 +1316,7 @@ const InventionalRadiologyContent: React.FC<InventionalRadiologyProps> = ({ serv
     };
 
     loadTubeType();
-  }, [serviceId, csvFileUrl]);
+  }, [serviceId, csvFileUrl, csvFileUrls]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -1458,6 +1481,17 @@ const InventionalRadiologyContent: React.FC<InventionalRadiologyProps> = ({ serv
 
   if (!details) {
     return <div className="max-w-6xl mx-auto p-8">No data received.</div>;
+  }
+
+  // While Excel prefill is in progress, wait before showing tube modal
+  if (awaitingExcelConfig && !tubeType) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-xl font-medium text-gray-700">
+          Loading Excel data and configuring report...
+        </div>
+      </div>
+    );
   }
 
   // TUBE TYPE SELECTION MODAL - Show first

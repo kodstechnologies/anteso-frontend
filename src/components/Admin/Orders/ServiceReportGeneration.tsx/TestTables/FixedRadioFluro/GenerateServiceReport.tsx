@@ -34,7 +34,7 @@ import {
   parseFixedRadioFluroTableCSV,
   parseFixedRadioFluroTableMatrix,
 } from "./parseFixedRadioFluroTableFormat";
-import { isExcelFileUrl } from "../../../../../../utils/spreadsheetFile";
+import { isExcelFileUrl, resolvePrefillSpreadsheetUrls } from "../../../../../../utils/spreadsheetFile";
 
 import Standards from "../../Standards";
 import Notes from "../../Notes";
@@ -83,11 +83,12 @@ interface DetailsResponse {
 interface RadioFluroProps {
     serviceId: string;
     csvFileUrl?: string | null;
+    csvFileUrls?: string[];
     qaTestDate?: string | null;
     createdAt?: string | null;
 }
 
-const RadioFluroContent: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, qaTestDate, createdAt }) => {
+const RadioFluroContent: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, csvFileUrls, qaTestDate, createdAt }) => {
     const exportRegistry = useTestExportRegistry();
     const navigate = useNavigate();
 
@@ -104,6 +105,7 @@ const RadioFluroContent: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, q
     const [radiationProfileTest, setRadiationProfileTest] = useState<any>(null);
     const [showTimerModal, setShowTimerModal] = useState(false); // Don't show by default
     const [hasTimer, setHasTimer] = useState<boolean | null>(null); // null = not answered
+    const [awaitingExcelConfig, setAwaitingExcelConfig] = useState(Boolean(csvFileUrl || csvFileUrls?.length));
     
     // State to store CSV data for components
     const [csvDataForComponents, setCsvDataForComponents] = useState<any>({});
@@ -293,11 +295,11 @@ const RadioFluroContent: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, q
         if (serviceId) load();
     }, [serviceId]);
 
-    // Check for existing timer test and localStorage choice. When csvFileUrl is provided (redirect from ServiceDetails2), skip modal — config will be set from Excel in processCSVData.
+    // Check for existing timer test and localStorage choice. When QA Raw spreadsheet URL(s) are provided, skip modal — config will be set from Excel (or soft-fail restores modal).
     useEffect(() => {
         const checkTimerTest = async () => {
             if (!serviceId) return;
-            if (csvFileUrl) {
+            if (csvFileUrl || csvFileUrls?.length) {
                 setShowTimerModal(false);
                 return;
             }
@@ -333,7 +335,7 @@ const RadioFluroContent: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, q
             }
         };
         checkTimerTest();
-    }, [serviceId, csvFileUrl]);
+    }, [serviceId, csvFileUrl, csvFileUrls]);
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
@@ -1522,73 +1524,71 @@ const RadioFluroContent: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, q
         }
     };
 
-    // Fetch and process CSV/Excel file from URL (passed from ServiceDetails2)
+    // Fetch and process CSV/Excel file URL(s) from QA Raw (ServiceDetails2).
+    // Try each URL; valid format → auto-fill; no match → soft-fail (no toast.error).
     useEffect(() => {
         const fetchAndProcessFile = async () => {
-            if (!csvFileUrl) {
-                console.log('GenerateServiceReport: No csvFileUrl provided, skipping file fetch');
+            const urls = resolvePrefillSpreadsheetUrls(csvFileUrl, csvFileUrls);
+            if (!urls.length) {
+                setAwaitingExcelConfig(false);
                 return;
             }
 
-            console.log('GenerateServiceReport: Fetching file from URL:', csvFileUrl);
+            const looksLikeRadioFluroData = (rows: any[]) =>
+                Array.isArray(rows) &&
+                rows.length > 0 &&
+                rows.some((r) => String(r?.["Test Name"] ?? "").trim());
 
             try {
                 setCsvUploading(true);
+                toast.loading('Loading spreadsheet data from file...', { id: 'csv-loading' });
 
-                const isExcel = isExcelFileUrl(csvFileUrl);
+                for (const url of urls) {
+                    try {
+                        let csvData: any[] = [];
+                        if (isExcelFileUrl(url)) {
+                            const response = await proxyFile(url);
+                            const blob = response.data instanceof Blob ? response.data : new Blob([response.data]);
+                            const arrayBuffer = await blob.arrayBuffer();
+                            const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+                            csvData = parseExcelToCSVFormat(workbook);
+                        } else {
+                            const response = await proxyFile(url);
+                            const blob = response.data instanceof Blob ? response.data : new Blob([response.data]);
+                            const text = await blob.text();
+                            csvData = parseCSV(text);
+                        }
 
-                let csvData: any[] = [];
+                        if (!looksLikeRadioFluroData(csvData)) {
+                            console.warn('Fixed Radio Fluro: Prefill URL did not match expected format:', url);
+                            continue;
+                        }
 
-                if (isExcel) {
-                    console.log('GenerateServiceReport: Detected Excel file, fetching through proxy...');
-                    toast.loading('Loading Excel data from file...', { id: 'csv-loading' });
-
-                    const response = await proxyFile(csvFileUrl);
-                    const blob = response.data instanceof Blob ? response.data : new Blob([response.data]);
-                    const arrayBuffer = await blob.arrayBuffer();
-                    const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-
-                    console.log('GenerateServiceReport: Excel file parsed, sheets:', workbook.SheetNames);
-
-                    csvData = parseExcelToCSVFormat(workbook);
-                    console.log('GenerateServiceReport: Converted Excel to CSV format, rows:', csvData.length);
-                } else {
-                    console.log('GenerateServiceReport: Detected CSV file, fetching through proxy...');
-                    toast.loading('Loading CSV data from file...', { id: 'csv-loading' });
-
-                    const response = await proxyFile(csvFileUrl);
-                    const blob = response.data instanceof Blob ? response.data : new Blob([response.data]);
-                    const text = await blob.text();
-                    console.log('GenerateServiceReport: CSV file fetched, length:', text.length);
-
-                    csvData = parseCSV(text);
+                        await processCSVData(csvData, true);
+                        toast.success('File data loaded and auto-filled successfully!', { id: 'csv-loading' });
+                        setAwaitingExcelConfig(false);
+                        return;
+                    } catch (urlErr) {
+                        console.warn('Fixed Radio Fluro: Prefill URL failed, trying next if any:', url, urlErr);
+                    }
                 }
 
-                console.log('GenerateServiceReport: Parsed data, rows:', csvData.length);
-
-                if (csvData.length > 0) {
-                    console.log('GenerateServiceReport: Processing data...');
-                    await processCSVData(csvData, true);
-                    console.log('GenerateServiceReport: Data processed successfully');
-                    toast.success('File data loaded and auto-filled successfully!', { id: 'csv-loading' });
-                } else {
-                    console.warn('GenerateServiceReport: No data found in file');
-                    toast.error('File is empty or could not be parsed', { id: 'csv-loading' });
-                }
+                console.warn('QA Raw spreadsheet format not matched; opening empty report for manual creation.');
+                toast.dismiss('csv-loading');
+                setShowTimerModal(true);
+                setAwaitingExcelConfig(false);
             } catch (error: any) {
-                console.error('GenerateServiceReport: Error fetching or processing file:', error);
-                let errorMessage = 'Unknown error';
-                if (error?.message) {
-                    errorMessage = error.message;
-                }
-                toast.error(`Failed to load file: ${errorMessage}`, { id: 'csv-loading' });
+                console.warn('QA Raw spreadsheet format not matched; opening empty report for manual creation.', error);
+                toast.dismiss('csv-loading');
+                setShowTimerModal(true);
+                setAwaitingExcelConfig(false);
             } finally {
                 setCsvUploading(false);
             }
         };
 
         fetchAndProcessFile();
-    }, [csvFileUrl]);
+    }, [csvFileUrl, csvFileUrls]);
 
     // In RadioFluro.tsx - handleSaveHeader function
     const handleSaveHeader = async () => {
@@ -1782,8 +1782,8 @@ const RadioFluroContent: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, q
         );
     }
 
-    // When Excel is loading from URL, show loading until timer config is inferred
-    if (csvFileUrl && hasTimer === null) {
+    // When Excel is loading from URL, show loading until timer config is inferred (or soft-fail clears awaitingExcelConfig)
+    if (awaitingExcelConfig && hasTimer === null) {
         return (
             <div className="min-h-screen bg-gray-50 flex items-center justify-center">
                 <div className="text-xl font-medium text-gray-700">

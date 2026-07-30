@@ -10,6 +10,7 @@ import { getRadiationProfileWidthByServiceId, saveReportHeaderForOPG, getReportH
 } from "../../../../../../api";
 import * as XLSX from 'xlsx';
 import { createOPGUploadableExcel } from './exportOPGToExcel';
+import { isExcelFileUrl, resolvePrefillSpreadsheetUrls } from '../../../../../../utils/spreadsheetFile';
 import { TestExportRegistryProvider, useTestExportRegistry } from "../shared/TestExportRegistry";
 
 import Standards from "../../Standards";
@@ -49,7 +50,7 @@ interface DetailsResponse {
     qaTests: Array<{ createdAt: string; qaTestReportNumber: string }>;
 }
 
-const OPGContent: React.FC<{ serviceId: string; qaTestDate?: string | null; csvFileUrl?: string | null }> = ({ serviceId, qaTestDate, csvFileUrl }) => {
+const OPGContent: React.FC<{ serviceId: string; qaTestDate?: string | null; csvFileUrl?: string | null; csvFileUrls?: string[] }> = ({ serviceId, qaTestDate, csvFileUrl, csvFileUrls }) => {
     const navigate = useNavigate();
     const exportRegistry = useTestExportRegistry();
 
@@ -63,6 +64,7 @@ const OPGContent: React.FC<{ serviceId: string; qaTestDate?: string | null; csvF
     const [radiationProfileTest, setRadiationProfileTest] = useState<any>(null);
     const [showTimerModal, setShowTimerModal] = useState(false); // Don't show by default
     const [hasTimer, setHasTimer] = useState<boolean | null>(null); // null = not answered
+    const [awaitingExcelConfig, setAwaitingExcelConfig] = useState(Boolean(csvFileUrl || csvFileUrls?.length));
     const [savedTestIds, setSavedTestIds] = useState<{
         AccuracyOfIrradiationTimeOPG?: string;
         AccuracyOfOperatingPotentialOPG?: string;
@@ -343,10 +345,10 @@ const OPGContent: React.FC<{ serviceId: string; qaTestDate?: string | null; csvF
     }
   }
 
-    // When csvFileUrl is provided (redirect from ServiceDetails2), don't show timer modal — config will be set from Excel in loadFileFromUrl
+    // When spreadsheet URL(s) provided (redirect from ServiceDetails2), don't show timer modal — config will be set from Excel if format matches
     useEffect(() => {
-        if (csvFileUrl) setShowTimerModal(false);
-    }, [csvFileUrl]);
+        if (csvFileUrl || csvFileUrls?.length) setShowTimerModal(false);
+    }, [csvFileUrl, csvFileUrls]);
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
@@ -452,7 +454,7 @@ const OPGContent: React.FC<{ serviceId: string; qaTestDate?: string | null; csvF
     useEffect(() => {
         const loadReportHeader = async () => {
             if (!serviceId) return;
-            if (csvFileUrl) return; // Timer/config will be set from Excel in loadFileFromUrl
+            if (csvFileUrl || csvFileUrls?.length) return; // Timer/config will be set from Excel in loadFileFromUrl
             try {
                 const res = await getReportHeaderForOPG(serviceId);
                 if (res?.exists && res?.data) {
@@ -555,23 +557,35 @@ const OPGContent: React.FC<{ serviceId: string; qaTestDate?: string | null; csvF
         if (serviceId) load();
     }, [serviceId]);
 
-    // Load Excel from URL when navigating from ServiceDetails2 (Complete or Generate Report). Uses proxyFile to avoid 401/login redirect.
+    // Load Excel from URL(s) when navigating from ServiceDetails2. Soft-fail if format doesn't match.
     useEffect(() => {
         const loadFileFromUrl = async () => {
-            if (!csvFileUrl) return;
-            try {
-                toast.loading('Loading Excel data...', { id: 'opg-csv-load' });
-                const response = await proxyFile(csvFileUrl);
-                const blob = response.data instanceof Blob ? response.data : new Blob([response.data]);
-                const arrayBuffer = await blob.arrayBuffer();
-                const wb = XLSX.read(arrayBuffer, { type: 'array' });
-                const wsname = wb.SheetNames[0];
-                const ws = wb.Sheets[wsname];
-                const jsonData = XLSX.utils.sheet_to_json(ws, { header: 1 }) as any[];
-                const parsed = parseHorizontalData(jsonData);
-                setCsvData(parsed);
+            const urls = resolvePrefillSpreadsheetUrls(csvFileUrl, csvFileUrls);
+            if (!urls.length) return;
 
-                if (parsed && Object.keys(parsed).length > 0) {
+            const TOAST_ID = 'opg-csv-load';
+            toast.loading('Loading Excel data...', { id: TOAST_ID });
+
+            let matched = false;
+            for (const url of urls) {
+                try {
+                    const response = await proxyFile(url);
+                    const blob = response.data instanceof Blob ? response.data : new Blob([response.data]);
+                    const arrayBuffer = await blob.arrayBuffer();
+                    const wb = XLSX.read(arrayBuffer, { type: 'array' });
+                    const wsname = wb.SheetNames[0];
+                    const ws = wb.Sheets[wsname];
+                    const jsonData = XLSX.utils.sheet_to_json(ws, { header: 1 }) as any[];
+                    const parsed = parseHorizontalData(jsonData);
+
+                    const hasSections = parsed && Object.values(parsed).some((rows: any) => Array.isArray(rows) && rows.length > 0);
+                    if (!hasSections) {
+                        console.warn('OPG: Spreadsheet has no matching sections, trying next URL if any:', url);
+                        continue;
+                    }
+
+                    setCsvData(parsed);
+
                     const savedChoice = serviceId ? localStorage.getItem(`opg_timer_choice_${serviceId}`) : null;
                     if (savedChoice !== null) {
                         setHasTimer(JSON.parse(savedChoice));
@@ -583,30 +597,39 @@ const OPGContent: React.FC<{ serviceId: string; qaTestDate?: string | null; csvF
                             setHasTimer(true);
                             if (serviceId) {
                                 localStorage.setItem(`opg_timer_choice_${serviceId}`, JSON.stringify(true));
-                            try { await saveTimerPreference(serviceId, true); } catch (e) { console.error("Failed to persist timer preference:", e); }
+                                try { await saveTimerPreference(serviceId, true); } catch (e) { console.error("Failed to persist timer preference:", e); }
                             }
                             setShowTimerModal(false);
                         } else if (hasMasSection && !hasTimerSection) {
                             setHasTimer(false);
                             if (serviceId) {
                                 localStorage.setItem(`opg_timer_choice_${serviceId}`, JSON.stringify(false));
-                            try { await saveTimerPreference(serviceId, false); } catch (e) { console.error("Failed to persist timer preference:", e); }
+                                try { await saveTimerPreference(serviceId, false); } catch (e) { console.error("Failed to persist timer preference:", e); }
                             }
                             setShowTimerModal(false);
                         } else {
                             setShowTimerModal(true);
                         }
                     }
-                }
 
-                toast.success('Excel data loaded.', { id: 'opg-csv-load' });
-            } catch (err: any) {
-                console.error('OPG: Failed to load file from URL', err);
-                toast.error(err?.message || 'Failed to load file', { id: 'opg-csv-load' });
+                    toast.success('Excel data loaded.', { id: TOAST_ID });
+                    setAwaitingExcelConfig(false);
+                    matched = true;
+                    break;
+                } catch (err: any) {
+                    console.warn('OPG: Failed to load/parse spreadsheet URL (will try next if any):', url, err);
+                }
+            }
+
+            if (!matched) {
+                console.warn('QA Raw spreadsheet format not matched; opening empty report for manual creation.');
+                toast.dismiss(TOAST_ID);
+                setShowTimerModal(true);
+                setAwaitingExcelConfig(false);
             }
         };
         loadFileFromUrl();
-    }, [csvFileUrl]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [csvFileUrl, csvFileUrls]); // eslint-disable-line react-hooks/exhaustive-deps
 
     if (loading) {
         return (
@@ -620,6 +643,17 @@ const OPGContent: React.FC<{ serviceId: string; qaTestDate?: string | null; csvF
         return (
             <div className="min-h-screen bg-gray-50 flex items-center justify-center text-red-600">
                 Failed to load service details. Please try again.
+            </div>
+        );
+    }
+
+    // While Excel prefill is in progress, wait before showing timer modal
+    if (awaitingExcelConfig && hasTimer === null && !showTimerModal) {
+        return (
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+                <div className="text-xl font-medium text-gray-700">
+                    Loading Excel data and configuring report...
+                </div>
             </div>
         );
     }
@@ -1038,7 +1072,7 @@ const OPGContent: React.FC<{ serviceId: string; qaTestDate?: string | null; csvF
     );
 };
 
-const OPG: React.FC<{ serviceId: string; qaTestDate?: string | null; csvFileUrl?: string | null }> = (props) => (
+const OPG: React.FC<{ serviceId: string; qaTestDate?: string | null; csvFileUrl?: string | null; csvFileUrls?: string[] }> = (props) => (
     <TestExportRegistryProvider>
         <OPGContent {...props} />
     </TestExportRegistryProvider>

@@ -37,7 +37,7 @@ import {
   normalizeCsvComparisonOperator,
   sheetRowsFromWorksheet,
 } from "../shared/parseRadiographyStyleTableFormat";
-import { isExcelFileUrl } from "../../../../../../utils/spreadsheetFile";
+import { isExcelFileUrl, resolvePrefillSpreadsheetUrls } from "../../../../../../utils/spreadsheetFile";
 
 // Test-table imports
 import TotalFilteration from "./TotalFilteration";
@@ -101,9 +101,10 @@ interface OArmProps {
   serviceId: string;
   qaTestDate?: string | null;
   csvFileUrl?: string | null;
+  csvFileUrls?: string[];
 }
 
-const OArmContent: React.FC<OArmProps> = ({ serviceId, csvFileUrl }) => {
+const OArmContent: React.FC<OArmProps> = ({ serviceId, csvFileUrl, csvFileUrls }) => {
   const exportRegistry = useTestExportRegistry();
   const navigate = useNavigate();
 
@@ -118,6 +119,7 @@ const OArmContent: React.FC<OArmProps> = ({ serviceId, csvFileUrl }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [hasTimer, setHasTimer] = useState<boolean | null>(null);
   const [showTimerModal, setShowTimerModal] = useState(false);
+  const [awaitingExcelConfig, setAwaitingExcelConfig] = useState(Boolean(csvFileUrl || (csvFileUrls && csvFileUrls.length)));
 
   // State to store CSV data for components
   const [csvDataForComponents, setCsvDataForComponents] = useState<any>({});
@@ -228,10 +230,10 @@ const OArmContent: React.FC<OArmProps> = ({ serviceId, csvFileUrl }) => {
     fetchAll();
   }, [serviceId]);
 
-  // Timer preference: when csvFileUrl is provided (redirect from ServiceDetails2), skip modal — config will be set from Excel in processCSVData.
+  // Timer preference: when csvFileUrl(s) provided (redirect from ServiceDetails2), skip modal — config will be set from Excel in processCSVData.
   useEffect(() => {
     if (!serviceId) return;
-    if (csvFileUrl) {
+    if (csvFileUrl || (csvFileUrls && csvFileUrls.length)) {
       setShowTimerModal(false);
       return;
     }
@@ -242,7 +244,7 @@ const OArmContent: React.FC<OArmProps> = ({ serviceId, csvFileUrl }) => {
     } else {
       setShowTimerModal(true);
     }
-  }, [serviceId, csvFileUrl]);
+  }, [serviceId, csvFileUrl, csvFileUrls]);
 
   const handleTimerChoice = async (choice: boolean) => {
     setHasTimer(choice);
@@ -960,40 +962,70 @@ const OArmContent: React.FC<OArmProps> = ({ serviceId, csvFileUrl }) => {
     }
   };
 
-  // Fetch and process CSV/Excel file from URL (passed from ServiceDetails2)
+  // Fetch and process CSV/Excel file from URL(s) (passed from ServiceDetails2). Soft-fail if format doesn't match.
   useEffect(() => {
     const fetchAndProcessFile = async () => {
-      if (!csvFileUrl) return;
-      console.log('O-Arm: Fetching file from URL:', csvFileUrl);
-      try {
-        setCsvUploading(true);
-        const isExcel = isExcelFileUrl(csvFileUrl);
-        let csvData: any[] = [];
-        if (isExcel) {
-          toast.loading('Loading Excel data from file...', { id: 'csv-loading' });
-          const response = await proxyFile(csvFileUrl);
-          const blob = response.data instanceof Blob ? response.data : new Blob([response.data]);
-          const arrayBuffer = await blob.arrayBuffer();
-          const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-          csvData = parseExcelToCSVFormat(workbook, hasTimer);
-        } else {
-          toast.loading('Loading CSV data from file...', { id: 'csv-loading' });
-          const response = await proxyFile(csvFileUrl);
-          const blob = response.data instanceof Blob ? response.data : new Blob([response.data]);
-          const text = await blob.text();
-          csvData = parseCSV(text);
+      const urls = resolvePrefillSpreadsheetUrls(csvFileUrl, csvFileUrls);
+      if (!urls.length) {
+        if (csvFileUrl || (csvFileUrls && csvFileUrls.length)) {
+          console.warn('QA Raw spreadsheet format not matched; opening empty report for manual creation.');
+          setShowTimerModal(true);
+          setAwaitingExcelConfig(false);
         }
-        await processCSVData(csvData, true);
-        toast.success('File loaded successfully!', { id: 'csv-loading' });
-      } catch (error: any) {
-        console.error('O-Arm: Error fetching/processing file:', error);
-        toast.error('Failed to load file: ' + (error.message || 'Unknown error'), { id: 'csv-loading' });
-      } finally {
-        setCsvUploading(false);
+        return;
       }
+
+      const TOAST_ID = 'csv-loading';
+      setCsvUploading(true);
+      toast.loading('Loading Excel data from file...', { id: TOAST_ID });
+
+      let matched = false;
+      for (const url of urls) {
+        try {
+          console.log('O-Arm: Fetching file from URL:', url);
+          const isExcel = isExcelFileUrl(url);
+          let csvData: any[] = [];
+          if (isExcel) {
+            const response = await proxyFile(url);
+            const blob = response.data instanceof Blob ? response.data : new Blob([response.data]);
+            const arrayBuffer = await blob.arrayBuffer();
+            const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+            csvData = parseExcelToCSVFormat(workbook, hasTimer);
+          } else {
+            const response = await proxyFile(url);
+            const blob = response.data instanceof Blob ? response.data : new Blob([response.data]);
+            const text = await blob.text();
+            csvData = parseCSV(text);
+          }
+
+          // Empty parse / no Test Name rows → soft-fail this URL (don't toast.success)
+          const hasTestRows = csvData.some((row) => String(row?.['Test Name'] || '').trim());
+          if (!csvData.length || !hasTestRows) {
+            console.warn('O-Arm: Spreadsheet empty or has no Test Name rows, trying next URL if any:', url);
+            continue;
+          }
+
+          await processCSVData(csvData, true);
+          toast.success('File loaded successfully!', { id: TOAST_ID });
+          setAwaitingExcelConfig(false);
+          matched = true;
+          break;
+        } catch (error: any) {
+          console.warn('O-Arm: Failed to load/parse spreadsheet URL (will try next if any):', url, error);
+        }
+      }
+
+      if (!matched) {
+        console.warn('QA Raw spreadsheet format not matched; opening empty report for manual creation.');
+        toast.dismiss(TOAST_ID);
+        setShowTimerModal(true);
+        setAwaitingExcelConfig(false);
+      }
+
+      setCsvUploading(false);
     };
     fetchAndProcessFile();
-  }, [csvFileUrl]);
+  }, [csvFileUrl, csvFileUrls]);
   if (loading) {
     return (
       <div className="max-w-6xl mx-auto p-8 text-center">
@@ -1047,7 +1079,7 @@ const OArmContent: React.FC<OArmProps> = ({ serviceId, csvFileUrl }) => {
     );
   }
 
-  if (csvFileUrl && hasTimer === null) {
+  if (awaitingExcelConfig && hasTimer === null) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-xl font-medium text-gray-700">

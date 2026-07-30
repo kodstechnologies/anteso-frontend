@@ -28,7 +28,7 @@ import {
 } from "../../../../../../api";
 import { getDetails, getTools } from "../../../../../../api";
 import { createOBISavedExcel, OBISavedExportData } from "./exportOBISavedToExcel";
-import { isExcelFileUrl } from "../../../../../../utils/spreadsheetFile";
+import { isExcelFileUrl, resolvePrefillSpreadsheetUrls } from "../../../../../../utils/spreadsheetFile";
 import { normalizeCsvComparisonOperator } from "../shared/parseRadiographyStyleTableFormat";
 import { TestExportRegistryProvider, useTestExportRegistry } from "../shared/TestExportRegistry";
 
@@ -75,9 +75,9 @@ interface DetailsResponse {
     qaTests: Array<{ createdAt: string; qaTestReportNumber: string }>;
 }
 
-type OBIProps = { serviceId: string; csvFileUrl?: string | null; qaTestDate?: string | null };
+type OBIProps = { serviceId: string; csvFileUrl?: string | null; csvFileUrls?: string[]; qaTestDate?: string | null };
 
-const OBIContent: React.FC<OBIProps> = ({ serviceId, csvFileUrl, qaTestDate }) => {
+const OBIContent: React.FC<OBIProps> = ({ serviceId, csvFileUrl, csvFileUrls, qaTestDate }) => {
     const exportRegistry = useTestExportRegistry();
     const navigate = useNavigate();
 
@@ -91,6 +91,7 @@ const OBIContent: React.FC<OBIProps> = ({ serviceId, csvFileUrl, qaTestDate }) =
     const [originalTools, setOriginalTools] = useState<any[]>([]);
     const [hasTimer, setHasTimer] = useState<boolean | null>(null); // null = not answered
     const [showTimerModal, setShowTimerModal] = useState(false); // Will be set based on localStorage
+    const [awaitingExcelConfig, setAwaitingExcelConfig] = useState(Boolean(csvFileUrl || (csvFileUrls && csvFileUrls.length)));
     const [savedTestIds, setSavedTestIds] = useState<{
         AlignmentTestOBI?: string;
         accuracyOfOperatingPotentialOBI?: string;
@@ -172,10 +173,10 @@ const OBIContent: React.FC<OBIProps> = ({ serviceId, csvFileUrl, qaTestDate }) =
         console.log('csvDataForComponents updated:', csvDataForComponents);
     }, [csvDataForComponents]);
 
-    // Check localStorage for timer preference on mount. When csvFileUrl is provided (redirect from ServiceDetails2), skip modal — config will be set from Excel in processCSVData.
+    // Check localStorage for timer preference on mount. When csvFileUrl(s) provided (redirect from ServiceDetails2), skip modal — config will be set from Excel in processCSVData.
     useEffect(() => {
         if (!serviceId) return;
-        if (csvFileUrl) {
+        if (csvFileUrl || (csvFileUrls && csvFileUrls.length)) {
             setShowTimerModal(false);
             return;
         }
@@ -186,7 +187,7 @@ const OBIContent: React.FC<OBIProps> = ({ serviceId, csvFileUrl, qaTestDate }) =
         } else {
             setShowTimerModal(true);
         }
-    }, [serviceId, csvFileUrl]);
+    }, [serviceId, csvFileUrl, csvFileUrls]);
 
     // Close modal and set timer choice
     const handleTimerChoice = async (choice: boolean) => {
@@ -1926,89 +1927,76 @@ const OBIContent: React.FC<OBIProps> = ({ serviceId, csvFileUrl, qaTestDate }) =
         }
     };
 
-    // Fetch and process CSV/Excel file from URL (passed from ServiceDetails2)
+    // Fetch and process CSV/Excel file from URL(s) (passed from ServiceDetails2). Soft-fail if format doesn't match.
     useEffect(() => {
         const fetchAndProcessFile = async () => {
-            if (!csvFileUrl) return;
-
-            try {
-                console.log('Fetching file from URL:', csvFileUrl);
-                setCsvUploading(true);
-
-                const isExcel = isExcelFileUrl(csvFileUrl);
-
-                let csvData: any[] = [];
-
-                if (isExcel) {
-                    console.log('Detected Excel file, fetching through proxy...');
-                    toast.loading('Loading Excel data from file...', { id: 'csv-loading' });
-
-                    // Use proxy endpoint
-                    const response = await proxyFile(csvFileUrl);
-                    // response.data is a Blob when using responseType: 'blob'
-                    const arrayBuffer = await response.data.arrayBuffer();
-                    const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-
-                    console.log('Excel file parsed, sheets:', workbook.SheetNames);
-
-                    // Convert Excel to CSV format
-                    csvData = parseExcelToCSVFormat(workbook);
-                    console.log('Converted Excel to CSV format, rows:', csvData.length);
-                } else {
-                    console.log('Detected CSV file, fetching through proxy...');
-                    toast.loading('Loading CSV data from file...', { id: 'csv-loading' });
-
-                    // Use proxy endpoint
-                    const response = await proxyFile(csvFileUrl);
-                    // response.data is a Blob when using responseType: 'blob'
-                    const text = await response.data.text();
-                    console.log('CSV file fetched, length:', text.length);
-                    console.log('First 500 chars of CSV:', text.substring(0, 500));
-
-                    // Parse CSV
-                    csvData = parseCSV(text);
+            const urls = resolvePrefillSpreadsheetUrls(csvFileUrl, csvFileUrls);
+            if (!urls.length) {
+                if (csvFileUrl || (csvFileUrls && csvFileUrls.length)) {
+                    console.warn('QA Raw spreadsheet format not matched; opening empty report for manual creation.');
+                    setShowTimerModal(true);
+                    setAwaitingExcelConfig(false);
                 }
+                return;
+            }
 
-                console.log('Parsed data, rows:', csvData.length);
-                console.log('First few rows:', csvData.slice(0, 5));
+            const TOAST_ID = 'csv-loading';
+            setCsvUploading(true);
+            toast.loading('Loading Excel data from file...', { id: TOAST_ID });
 
-                if (csvData.length > 0) {
+            let matched = false;
+            for (const url of urls) {
+                try {
+                    console.log('Fetching file from URL:', url);
+                    const isExcel = isExcelFileUrl(url);
+                    let csvData: any[] = [];
+
+                    if (isExcel) {
+                        console.log('Detected Excel file, fetching through proxy...');
+                        const response = await proxyFile(url);
+                        const arrayBuffer = await response.data.arrayBuffer();
+                        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+                        console.log('Excel file parsed, sheets:', workbook.SheetNames);
+                        csvData = parseExcelToCSVFormat(workbook);
+                        console.log('Converted Excel to CSV format, rows:', csvData.length);
+                    } else {
+                        console.log('Detected CSV file, fetching through proxy...');
+                        const response = await proxyFile(url);
+                        const text = await response.data.text();
+                        console.log('CSV file fetched, length:', text.length);
+                        csvData = parseCSV(text);
+                    }
+
+                    const hasTestRows = csvData.some((row) => String(row?.['Test Name'] || '').trim());
+                    if (!hasTestRows) {
+                        console.warn('OBI: Spreadsheet has no Test Name rows, trying next URL if any:', url);
+                        continue;
+                    }
+
                     console.log('Processing data...');
                     await processCSVData(csvData, true);
                     console.log('Data processed successfully');
-                    toast.success('File data loaded and auto-filled successfully!', { id: 'csv-loading' });
-                } else {
-                    console.warn('No data found in file');
-                    toast.error('File is empty or could not be parsed', { id: 'csv-loading' });
+                    toast.success('File data loaded and auto-filled successfully!', { id: TOAST_ID });
+                    setAwaitingExcelConfig(false);
+                    matched = true;
+                    break;
+                } catch (error: any) {
+                    console.warn('OBI: Failed to load/parse spreadsheet URL (will try next if any):', url, error);
                 }
-            } catch (error: any) {
-                console.error('Error fetching or processing file:', error);
-
-                // Try to extract error message from response
-                let errorMessage = 'Unknown error';
-                if (error?.message) {
-                    errorMessage = error.message;
-                } else if (error?.response?.data) {
-                    // If error response is a JSON blob, try to parse it
-                    if (error.response.data instanceof Blob && error.response.data.type === 'application/json') {
-                        try {
-                            const errorText = await error.response.data.text();
-                            const errorJson = JSON.parse(errorText);
-                            errorMessage = errorJson.message || errorMessage;
-                        } catch (parseError) {
-                            // If parsing fails, use default message
-                        }
-                    }
-                }
-
-                toast.error(`Failed to load file: ${errorMessage}`, { id: 'csv-loading' });
-            } finally {
-                setCsvUploading(false);
             }
+
+            if (!matched) {
+                console.warn('QA Raw spreadsheet format not matched; opening empty report for manual creation.');
+                toast.dismiss(TOAST_ID);
+                setShowTimerModal(true);
+                setAwaitingExcelConfig(false);
+            }
+
+            setCsvUploading(false);
         };
 
         fetchAndProcessFile();
-    }, [csvFileUrl]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [csvFileUrl, csvFileUrls]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const isSaved = (raw: any): boolean => {
         if (raw == null) return false;
@@ -2296,7 +2284,7 @@ const OBIContent: React.FC<OBIProps> = ({ serviceId, csvFileUrl, qaTestDate }) =
     }
 
     // When Excel is loading from URL, show loading until timer config is inferred
-    if (csvFileUrl && hasTimer === null) {
+    if (awaitingExcelConfig && hasTimer === null) {
         return (
             <div className="min-h-screen bg-gray-50 flex items-center justify-center">
                 <div className="text-xl font-medium text-gray-700">

@@ -24,6 +24,7 @@ import {
 } from "../../../../../../api";
 import { createRadiographyMobileUploadableExcel, RadiographyMobileExportData } from "./exportRadiographyMobileToExcel";
 import { TestExportRegistryProvider, useTestExportRegistry } from "../shared/TestExportRegistry";
+import { isExcelFileUrl, resolvePrefillSpreadsheetUrls } from "../../../../../../utils/spreadsheetFile";
 
 import Standards from "../../Standards";
 import Notes from "../../Notes";
@@ -66,9 +67,9 @@ interface DetailsResponse {
   qaTests: Array<{ createdAt: string; qaTestReportNumber: string }>;
 }
 
-type RadiographyMobileProps = { serviceId: string; qaTestDate?: string | null; csvFileUrl?: string | null };
+type RadiographyMobileProps = { serviceId: string; qaTestDate?: string | null; csvFileUrl?: string | null; csvFileUrls?: string[] };
 
-const RadiographyMobileContent: React.FC<RadiographyMobileProps> = ({ serviceId, qaTestDate, csvFileUrl }) => {
+const RadiographyMobileContent: React.FC<RadiographyMobileProps> = ({ serviceId, qaTestDate, csvFileUrl, csvFileUrls }) => {
   const exportRegistry = useTestExportRegistry();
   const navigate = useNavigate();
   const pickRpId = (obj: any): string =>
@@ -83,6 +84,7 @@ const RadiographyMobileContent: React.FC<RadiographyMobileProps> = ({ serviceId,
   const [tools, setTools] = useState<Standard[]>([]);
   const [hasTimer, setHasTimer] = useState<boolean | null>(null);
   const [showTimerModal, setShowTimerModal] = useState(false);
+  const [awaitingExcelConfig, setAwaitingExcelConfig] = useState(Boolean(csvFileUrl || csvFileUrls?.length));
 
   const [excelUploading, setExcelUploading] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
@@ -142,38 +144,74 @@ const RadiographyMobileContent: React.FC<RadiographyMobileProps> = ({ serviceId,
   ];
   const [notes, setNotes] = useState<string[]>(defaultNotes);
 
-  // ── Handle csvFileUrl from prop (when status is complete / Generate Report from ServiceDetails2) ──
-  // Uses proxyFile so the request is authenticated and avoids CORS/401 redirect to login
+  // ── Handle csvFileUrl(s) from prop (QA Raw from ServiceDetails2) ──
+  // Try each URL; valid Mobile format → auto-fill; no match → soft-fail (no toast.error).
   useEffect(() => {
     const handleUrlUpload = async () => {
-      if (!csvFileUrl) return;
+      const urls = resolvePrefillSpreadsheetUrls(csvFileUrl, csvFileUrls);
+      if (!urls.length) {
+        setAwaitingExcelConfig(false);
+        return;
+      }
+
+      const looksLikeMobileData = (rows: any[]) =>
+        Array.isArray(rows) &&
+        rows.length > 0 &&
+        rows.some((r) => String(r?.["Test Name"] ?? "").trim());
 
       try {
         setExcelUploading(true);
         toast.loading("Loading Excel data from file...", { id: "excel-url-load" });
-        const response = await proxyFile(csvFileUrl);
-        const blob = response.data instanceof Blob ? response.data : new Blob([response.data]);
-        const arrayBuffer = await blob.arrayBuffer();
-        const workbook = XLSX.read(arrayBuffer, { type: "array" });
-        const csvData = parseExcelToCSVFormat(workbook);
-        await processExcelData(csvData, true);
-        toast.success("Excel data loaded from file", { id: "excel-url-load" });
+
+        for (const url of urls) {
+          try {
+            const response = await proxyFile(url);
+            let csvData: any[] = [];
+            if (isExcelFileUrl(url)) {
+              const blob = response.data instanceof Blob ? response.data : new Blob([response.data]);
+              const arrayBuffer = await blob.arrayBuffer();
+              const workbook = XLSX.read(arrayBuffer, { type: "array" });
+              csvData = parseExcelToCSVFormat(workbook);
+            } else {
+              const blob = response.data instanceof Blob ? response.data : new Blob([response.data]);
+              const text = await blob.text();
+              csvData = parseTableCSVToRows(text);
+            }
+            if (!looksLikeMobileData(csvData)) {
+              console.warn("Radiography Mobile: Prefill URL did not match expected format:", url);
+              continue;
+            }
+            await processExcelData(csvData, true);
+            toast.success("Excel data loaded from file", { id: "excel-url-load" });
+            setAwaitingExcelConfig(false);
+            return;
+          } catch (urlErr) {
+            console.warn("Radiography Mobile: Prefill URL failed, trying next if any:", url, urlErr);
+          }
+        }
+
+        console.warn("QA Raw spreadsheet format not matched; opening empty report for manual creation.");
+        toast.dismiss("excel-url-load");
+        setShowTimerModal(true);
+        setAwaitingExcelConfig(false);
       } catch (err: any) {
-        console.error("URL Excel upload error:", err);
-        toast.error(err?.message || "Failed to load Excel from URL", { id: "excel-url-load" });
+        console.warn("QA Raw spreadsheet format not matched; opening empty report for manual creation.", err);
+        toast.dismiss("excel-url-load");
+        setShowTimerModal(true);
+        setAwaitingExcelConfig(false);
       } finally {
         setExcelUploading(false);
       }
     };
 
     handleUrlUpload();
-  }, [csvFileUrl]);
+  }, [csvFileUrl, csvFileUrls]);
 
   // ── Timer preference ──────────────────────────────────────────────────────
-  // When csvFileUrl is provided (redirect from ServiceDetails2), skip modal — config will be set from Excel in processExcelData.
+  // When QA Raw spreadsheet URL(s) are provided, skip modal — config will be set from Excel (or soft-fail restores modal).
   useEffect(() => {
     if (!serviceId) return;
-    if (csvFileUrl) {
+    if (csvFileUrl || csvFileUrls?.length) {
       setShowTimerModal(false);
       return;
     }
@@ -184,7 +222,7 @@ const RadiographyMobileContent: React.FC<RadiographyMobileProps> = ({ serviceId,
     } else {
       setShowTimerModal(true);
     }
-  }, [serviceId, csvFileUrl]);
+  }, [serviceId, csvFileUrl, csvFileUrls]);
 
   const handleTimerChoice = async (choice: boolean) => {
     setHasTimer(choice);
@@ -1806,8 +1844,8 @@ const RadiographyMobileContent: React.FC<RadiographyMobileProps> = ({ serviceId,
     );
   }
 
-  // When Excel is loading from URL, show loading until timer config is inferred
-  if (csvFileUrl && hasTimer === null) {
+  // When Excel is loading from URL, show loading until timer config is inferred (or soft-fail clears awaitingExcelConfig)
+  if (awaitingExcelConfig && hasTimer === null) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-xl font-medium text-gray-700">

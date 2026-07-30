@@ -26,6 +26,7 @@ import * as XLSX from "xlsx";
 import { createRadiographyFixedUploadableExcel, RadiographyFixedExportData } from "./exportRadiographyFixedToExcel";
 import { TestExportRegistryProvider, useTestExportRegistry } from "../shared/TestExportRegistry";
 import AuthorizedSignatorySelect from "../../AuthorizedSignatorySelect";
+import { isExcelFileUrl, resolvePrefillSpreadsheetUrls } from "../../../../../../utils/spreadsheetFile";
 
 import Standards from "../../Standards";
 import Notes from "../../Notes";
@@ -71,9 +72,9 @@ interface DetailsResponse {
   qaTests: Array<{ createdAt: string; qaTestReportNumber: string; qatestSubmittedAt?: string; reportULRNumber?: string }>;
 }
 
-type RadiographyFixedProps = { serviceId: string; qaTestDate?: string | null; csvFileUrl?: string | null };
+type RadiographyFixedProps = { serviceId: string; qaTestDate?: string | null; csvFileUrl?: string | null; csvFileUrls?: string[] };
 
-const RadiographyFixedContent: React.FC<RadiographyFixedProps> = ({ serviceId, qaTestDate, csvFileUrl }) => {
+const RadiographyFixedContent: React.FC<RadiographyFixedProps> = ({ serviceId, qaTestDate, csvFileUrl, csvFileUrls }) => {
   const exportRegistry = useTestExportRegistry();
   const navigate = useNavigate();
   const pickRpId = (obj: any): string =>
@@ -99,6 +100,7 @@ const RadiographyFixedContent: React.FC<RadiographyFixedProps> = ({ serviceId, q
   const [hasTimer, setHasTimer] = useState<boolean | null>(null); // null = not answered
   const [showTimerModal, setShowTimerModal] = useState(false); // Will be set based on localStorage
   const [timerPreferenceResolved, setTimerPreferenceResolved] = useState(false);
+  const [awaitingExcelConfig, setAwaitingExcelConfig] = useState(Boolean(csvFileUrl || csvFileUrls?.length));
 
   // Excel/CSV State
   const [csvDataForComponents, setCsvDataForComponents] = useState<any>({});
@@ -146,10 +148,10 @@ const RadiographyFixedContent: React.FC<RadiographyFixedProps> = ({ serviceId, q
   ];
   const [notes, setNotes] = useState<string[]>(defaultNotes);
 
-  // Check localStorage for timer preference on mount. When csvFileUrl is provided (redirect from ServiceDetails2), skip modal — config will be set from Excel in processCSVData.
+  // Check localStorage for timer preference on mount. When QA Raw spreadsheet URL(s) are provided, skip modal — config will be set from Excel (or soft-fail restores modal).
   useEffect(() => {
     if (!serviceId) return;
-    if (csvFileUrl) {
+    if (csvFileUrl || csvFileUrls?.length) {
       setShowTimerModal(false);
       setTimerPreferenceResolved(false);
       return;
@@ -164,7 +166,7 @@ const RadiographyFixedContent: React.FC<RadiographyFixedProps> = ({ serviceId, q
       setShowTimerModal(false);
       setTimerPreferenceResolved(false);
     }
-  }, [serviceId, csvFileUrl]);
+  }, [serviceId, csvFileUrl, csvFileUrls]);
 
   // Close modal and set timer choice — persist to DB + localStorage
   const handleTimerChoice = async (choice: boolean) => {
@@ -355,7 +357,7 @@ const RadiographyFixedContent: React.FC<RadiographyFixedProps> = ({ serviceId, q
           // If timer mode is not present in localStorage/header, infer from saved test docs:
           // - Saved irradiation table => timer mode
           // - Existing report header with no irradiation table => no-timer mode
-          if (!csvFileUrl && inferredTimerChoice === null && localStorage.getItem(`radiography-fixed-timer-${serviceId}`) === null) {
+          if (!(csvFileUrl || csvFileUrls?.length) && inferredTimerChoice === null && localStorage.getItem(`radiography-fixed-timer-${serviceId}`) === null) {
             try {
               const irradiationRes = await getAccuracyOfIrradiationTimeByServiceIdForRadiographyFixed(serviceId);
               const irradiationData = irradiationRes?.data ?? irradiationRes;
@@ -377,7 +379,7 @@ const RadiographyFixedContent: React.FC<RadiographyFixedProps> = ({ serviceId, q
             }
           }
 
-          if (!csvFileUrl && inferredTimerChoice !== null) {
+          if (!(csvFileUrl || csvFileUrls?.length) && inferredTimerChoice !== null) {
             setHasTimer(inferredTimerChoice);
             setShowTimerModal(false);
             setTimerPreferenceResolved(true);
@@ -408,13 +410,13 @@ const RadiographyFixedContent: React.FC<RadiographyFixedProps> = ({ serviceId, q
   }, [serviceId]);
 
   useEffect(() => {
-    if (!serviceId || csvFileUrl || loading) return;
+    if (!serviceId || awaitingExcelConfig || loading) return;
     if (timerPreferenceResolved) return;
     if (hasTimer === null) {
       setShowTimerModal(true);
       setTimerPreferenceResolved(true);
     }
-  }, [serviceId, csvFileUrl, loading, hasTimer, timerPreferenceResolved]);
+  }, [serviceId, awaitingExcelConfig, loading, hasTimer, timerPreferenceResolved]);
 
   // Fetch radiation profile
   useEffect(() => {
@@ -1805,32 +1807,68 @@ const RadiographyFixedContent: React.FC<RadiographyFixedProps> = ({ serviceId, q
     }
   };
 
-  // Auto-upload from CSV/Excel file URL (passed from ServiceDetails2 when status is complete)
-  // Uses proxyFile so the request is authenticated and avoids CORS/401 redirect to login
+  // Auto-upload from CSV/Excel file URL(s) (QA Raw from ServiceDetails2).
+  // Try each URL; valid Fixed format → auto-fill; no match → soft-fail (no toast.error).
   useEffect(() => {
-    if (!csvFileUrl) return;
+    const urls = resolvePrefillSpreadsheetUrls(csvFileUrl, csvFileUrls);
+    if (!urls.length) {
+      setAwaitingExcelConfig(false);
+      return;
+    }
+
+    const looksLikeFixedData = (rows: any[]) =>
+      Array.isArray(rows) &&
+      rows.length > 0 &&
+      rows.some((r) => String(r?.["Test Name"] ?? "").trim());
+
     const autoLoad = async () => {
       try {
         setCsvUploading(true);
         toast.loading('Auto-loading Excel data from file...', { id: 'auto-load' });
-        const response = await proxyFile(csvFileUrl);
-        const blob = response.data instanceof Blob ? response.data : new Blob([response.data]);
-        const arrayBuffer = await blob.arrayBuffer();
-        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-        const ws = workbook.Sheets[workbook.SheetNames[0]];
-        const csv = XLSX.utils.sheet_to_csv(ws);
-        const parsed = rowsFromSpreadsheetText(csv);
-        await processCSVData(parsed, true);
-        toast.success('Excel data auto-loaded!', { id: 'auto-load' });
+
+        for (const url of urls) {
+          try {
+            const response = await proxyFile(url);
+            const blob = response.data instanceof Blob ? response.data : new Blob([response.data]);
+            let parsed: any[] = [];
+            if (isExcelFileUrl(url)) {
+              const arrayBuffer = await blob.arrayBuffer();
+              const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+              const ws = workbook.Sheets[workbook.SheetNames[0]];
+              const csv = XLSX.utils.sheet_to_csv(ws);
+              parsed = rowsFromSpreadsheetText(csv);
+            } else {
+              const text = await blob.text();
+              parsed = rowsFromSpreadsheetText(text);
+            }
+            if (!looksLikeFixedData(parsed)) {
+              console.warn('Radiography Fixed: Prefill URL did not match expected format:', url);
+              continue;
+            }
+            await processCSVData(parsed, true);
+            toast.success('Excel data auto-loaded!', { id: 'auto-load' });
+            setAwaitingExcelConfig(false);
+            return;
+          } catch (urlErr) {
+            console.warn('Radiography Fixed: Prefill URL failed, trying next if any:', url, urlErr);
+          }
+        }
+
+        console.warn('QA Raw spreadsheet format not matched; opening empty report for manual creation.');
+        toast.dismiss('auto-load');
+        setShowTimerModal(true);
+        setAwaitingExcelConfig(false);
       } catch (err: any) {
-        console.error('Auto-upload failed:', err);
-        toast.error(err?.message || 'Failed to auto-load Excel data', { id: 'auto-load' });
+        console.warn('QA Raw spreadsheet format not matched; opening empty report for manual creation.', err);
+        toast.dismiss('auto-load');
+        setShowTimerModal(true);
+        setAwaitingExcelConfig(false);
       } finally {
         setCsvUploading(false);
       }
     };
     autoLoad();
-  }, [csvFileUrl]);
+  }, [csvFileUrl, csvFileUrls]);
 
   // Check which test tables are not saved; returns list of display names.
   const getUnsavedTestNames = async (): Promise<string[]> => {
@@ -2003,8 +2041,8 @@ const RadiographyFixedContent: React.FC<RadiographyFixedProps> = ({ serviceId, q
     );
   }
 
-  // When Excel is loading from URL, show loading until timer config is inferred
-  if (csvFileUrl && hasTimer === null) {
+  // When Excel is loading from URL, show loading until timer config is inferred (or soft-fail clears awaitingExcelConfig)
+  if (awaitingExcelConfig && hasTimer === null) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-xl font-medium text-gray-700">

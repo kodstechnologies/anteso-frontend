@@ -47,6 +47,7 @@ type ReportComponentProps = {
   createdAt?: string | null;
   ulrNumber?: string | null;
   csvFileUrl?: string | null;
+  csvFileUrls?: string[];
 };
 
 // ---- 2. Map machine → component ---------------------------------------
@@ -86,7 +87,7 @@ const GenerateServiceReport: React.FC = () => {
   const location = useLocation();
   console.log("📦 Location state →", location.state);
 
-  const { state } = location as { state?: { serviceId?: string; machineType?: string; qaTestDate?: string | null; createdAt?: string | null; ulrNumber?: string | null; csvFileUrl?: string | null } };
+  const { state } = location as { state?: { serviceId?: string; machineType?: string; qaTestDate?: string | null; createdAt?: string | null; ulrNumber?: string | null; csvFileUrl?: string | null; csvFileUrls?: string[] } };
 
   console.log("🧭 From location.state:", state);
 
@@ -98,7 +99,7 @@ const GenerateServiceReport: React.FC = () => {
     );
   }
 
-  const { serviceId, machineType, qaTestDate, createdAt, ulrNumber, csvFileUrl } = state;
+  const { serviceId, machineType, qaTestDate, createdAt, ulrNumber, csvFileUrl, csvFileUrls } = state;
 
   // ---- 5. Find the correct component ------------------------------------
   const ReportComponent = REPORT_MAP[machineType];
@@ -112,10 +113,9 @@ const GenerateServiceReport: React.FC = () => {
   }
 
   // ---- 6. Render it with serviceId ---------------------------------------
-  // Pass csvFileUrl as prop for mammography, OBI, BMD, FixedRadioFluro, CT Scan, Dental Cone Beam CT, and Dental Intra
-  // For these machine types, always pass csvFileUrl (can be null)
+  // Pass csvFileUrl(s) for spreadsheet prefill; report pages soft-skip unmatched formats
   if (machineType === "C-Arm" || machineType === "Mammography" || machineType === "OBI" || machineType === "KV Imaging (OBI)" || machineType === "Bone Densitometer (BMD)" || machineType === "BMD" || machineType === "Radiography and Fluoroscopy" || machineType === "Computed Tomography" || machineType === "Dental Cone Beam CT" || machineType === "Dental (Intra Oral)" || machineType === "Dental Intra" || machineType === "Dental (Hand-held)" || machineType === "Dental Hand-held" || machineType === "Radiography (Fixed)" || machineType === "Radiography (Mobile)" || machineType === "Radiography (Mobile) with HT" || machineType === "Radiography (Portable)" || machineType === "O-Arm" || machineType === "Interventional Radiology" || machineType === "Ortho Pantomography (OPG)" || machineType === "Lead Apron/Thyroid Shield/Gonad Shield") {
-    return <ReportComponent serviceId={serviceId} qaTestDate={qaTestDate} createdAt={createdAt} ulrNumber={ulrNumber} csvFileUrl={csvFileUrl || null} />;
+    return <ReportComponent serviceId={serviceId} qaTestDate={qaTestDate} createdAt={createdAt} ulrNumber={ulrNumber} csvFileUrl={csvFileUrl || null} csvFileUrls={csvFileUrls || []} />;
   }
   return <ReportComponent serviceId={serviceId} qaTestDate={qaTestDate} createdAt={createdAt} ulrNumber={ulrNumber} />;
 };
