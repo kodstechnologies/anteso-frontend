@@ -534,14 +534,14 @@ const ViewQuotation: React.FC = () => {
                     <div className="flex justify-between items-start no-break">
 
                         <div>
-                            <img src={logo} alt="Company Logo" className="h-14 " />
+                            <img src={logo} alt="Company Logo" className="h-20" />
                             <p className=" font-bold text-[.6rem]">AERB Registration No. 14-AFSXE-2148</p>
                         </div>
                         <div className="text-center">
                             <h1 className="text-xl font-bold uppercase">Quotation</h1>
                         </div>
                         <div className="text-right">
-                            <img src={logoA} alt="NABL Logo" className="h-14 ml-auto " />
+                            <img src={logoA} alt="NABL Logo" className="h-20 ml-auto" />
                             <p className=" font-bold text-[.6rem]">NABL Accreditation No TC-9843</p>
                         </div>
                     </div>
@@ -687,82 +687,30 @@ const ViewQuotation: React.FC = () => {
                         )}
                     </div>
 
-                    {/* Adjusted Layout: Discount Box and QR/Bank Details Side by Side */}
-                    <div className="flex justify-between items-start gap-6 mt-4 px-4 pdf-section">
-
-                        {/* Right: QR Code and Bank Details */}
-                        <div className="w-64 text-right space-y-1 text-xs">
-                            <img src={AntesoQRCode} alt="QR Code" className="h-20 mx-auto mb-2" />
-                            <table className="h-4">
-                                <tbody>
-                                    {[
-                                        ["Merchant Name:", "ANTESO BIOMEDICAL PRIVATE LIMITED"],
-                                        ["Mobile Number:", "8470909720"],
-                                    ].map(([label, value]) => (
-                                        <tr key={label} style={{ fontSize: ".4rem" }}>
-                                            <td className={label.includes("Merchant") ? "pb-3 text-end" : "text-end"}>{label}</td>
-                                            <td className={`text-start pl-2 ${label.includes("Merchant") ? "w-[7rem] leading-none" : ""}`}>
-                                                {value}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                            <div className="text-center text-[.4rem]" style={{ lineHeight: "8px" }}>
-                                <p>Steps to PAy UPI QR Code</p>
-                                <p className="flex justify-center items-center flex-wrap w-[10rem]">
-                                    Oppen UPI app <FaAngleRight /> Select Type to Pay <FaAngleRight /> Scan QR Code <FaAngleRight /> Enter
-                                    Amount
-                                </p>
-                            </div>
-                            <hr className="bg-gray-700 h-[1.5px]" />
-                            <div
-                                className="text-center"
-                                style={{
-                                    lineHeight: "5px",
-                                }}
-                            >
-                                <p className="font-bold text-[.6rem]">OUR ACCOUNT DETAILS</p>
-                                <p className="pb-10 mt-2 font-bold text-[.6rem]">
-                                    <span>GST NO:</span> 07AAMCA8142J1ZE
-                                </p>
-                            </div>
-                            <div className="w-[7rem] m-auto">
-                                {[
-                                    ["A/C No:", "344305001088"],
-                                    ["IFSC Code:", "ICIC0003443"],
-                                ].map(([label, value]) => (
-                                    <p key={label} className="text-left text-[.6rem]">
-                                        <span className="font-medium text-[.6rem]">{label}</span> {value}
-                                    </p>
-                                ))}
-                                <p className="text-[.6rem] text-left">ICICI BANK ROHINI</p>
-                            </div>
-                        </div>
-                        {/* Left: Discount/Totals Box */}
-                        <div className="space-y-2 w-52 p-3  rounded-md bg-gray-50">
-                            <div className="flex items-center gap-4">
+                    {/* Totals only — kept close together */}
+                    <div className="flex justify-end mt-2 px-4 pdf-section">
+                        <div className="w-52 p-2 rounded-md bg-gray-50" style={{ lineHeight: "12px" }}>
+                            <div className="flex items-center gap-2">
                                 <div className="flex-1 text-gray-900 font-bold text-[.6rem]">Subtotal</div>
                                 <div className="w-[37%] text-[.7rem] font-bold text-right">₹{formatNumber(subtotal)}</div>
                             </div>
-                            <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-2">
                                 <div className="flex-1 text-gray-900 font-bold text-[.6rem]">Discount</div>
                                 <div className="w-[37%] text-[.7rem] font-bold text-right">{formatNumber(discount)}%</div>
                             </div>
-                            <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-2">
                                 <div className="flex-1 text-gray-900 font-bold text-[.6rem]">GST Rate</div>
                                 <div className="w-[37%] text-[.7rem] font-bold text-right">{formatNumber(gstRate)}%</div>
                             </div>
-                            <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-2">
                                 <div className="flex-1 text-gray-900 font-bold text-[.6rem]">GST Amount</div>
                                 <div className="w-[37%] text-[.7rem] font-bold text-right">₹{formatNumber(gstAmount)}</div>
                             </div>
-                            <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-2">
                                 <div className="flex-1 text-gray-900 font-bold text-[.6rem]">TOTAL</div>
                                 <div className="w-[37%] text-[.7rem] font-bold text-right">₹ {formatNumber(totalAmount)}</div>
                             </div>
                         </div>
-
                     </div>
                     <br />
                     <hr />
@@ -775,29 +723,6 @@ const ViewQuotation: React.FC = () => {
                                 lineHeight: "10px",
                             }}
                         >
-                            {/* {quotationData.termsAndConditions.map((term, index) => (
-                                <li key={index} className={term.includes("GST") ? "text-green-600" : ""}>
-                                    {term}
-                                </li>
-                            ))} */}
-                            {/* {quotationData.termsAndConditions.map((term, index) => (
-                                <li
-                                    key={index}
-                                    className={typeof term === "string" && term.includes("GST") ? "text-green-600" : ""}
-                                >
-                                    {term}
-                                </li>
-                            ))} */}
-                            {/* {quotationData.termsAndConditions.map((term, index) => (
-                                <li key={index} className={term.text.includes("GST") ? "text-green-600" : ""}>
-                                    {term.text}
-                                </li>
-                            ))} */}
-                            {/* {quotationData.termsAndConditions.map((term, index) => (
-                                <li key={index} className={term.includes("GST") ? "text-green-600" : ""}>
-                                    {term}
-                                </li>
-                            ))} */}
                             {quotationData.termsAndConditions.map((term, index) => {
                                 const text = typeof term === "string" ? term : term?.text ?? "";
                                 return (
@@ -809,52 +734,101 @@ const ViewQuotation: React.FC = () => {
                         </ul>
                     </div>
 
-                    {/* Footer - Adjusted to only include left and middle */}
-                    <div className="mt-4 flex justify-between items-end text-xs no-break">
-                        <div>
-                            <img src={Signature} alt="Signature" className="mb-2 h-24" />
-                            <div
-                                className="space-y-1"
-                                style={{
-                                    lineHeight: "10px",
-                                }}
-                            >
-                                <p className="text-[.6rem]">
-                                    <span className="font-medium">A/C No.:</span> 50200007211263
-                                </p>
-                                <p className="text-[.6rem]">
-                                    <span className="font-medium">IFSC:</span> HDFC0000711
-                                </p>
-                                <p className="text-[.6rem]">HDFC BANK PUSHPANJALI ENCLAVE PITAMPURA</p>
+                    {/* Footer — matches reference: signature | QR, then 3-col bank row */}
+                    <div className="mt-4 no-break w-full">
+                        <div className="flex flex-nowrap justify-between items-start gap-4 w-full">
+                            {/* Left: signature (includes name/RSO stamp in image) */}
+                            <div className="flex-shrink-0">
+                                <img
+                                    src={Signature}
+                                    alt="Signature"
+                                    className="h-36 w-auto object-contain object-left"
+                                />
+                            </div>
+
+                            {/* Right: QR + merchant + steps — centered under QR */}
+                            <div className="flex-shrink-0 w-[15rem] flex flex-col items-center text-center">
+                                <img
+                                    src={AntesoQRCode}
+                                    alt="QR Code"
+                                    className="h-28 w-28 object-contain"
+                                />
+                                <div
+                                    className="flex flex-col items-center text-center"
+                                    style={{
+                                        transform: "scale(0.45)",
+                                        transformOrigin: "top center",
+                                        fontSize: "10px",
+                                        lineHeight: "12px",
+                                        width: "max-content",
+                                        maxWidth: "280px",
+                                    }}
+                                >
+                                    <table className="mx-auto">
+                                        <tbody>
+                                            {[
+                                                ["Merchant Name:", "ANTESO BIOMEDICAL PRIVATE LIMITED"],
+                                                ["Mobile Number:", "8470909720"],
+                                            ].map(([label, value]) => (
+                                                <tr key={label}>
+                                                    <td className="text-end pr-1 align-top whitespace-nowrap">{label}</td>
+                                                    <td className="text-start pl-1 align-top leading-none">{value}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                    <div className="text-center mt-0.5">
+                                        <p>Steps to Pay UPI QR Code</p>
+                                        <p className="flex justify-center items-center flex-wrap mx-auto">
+                                            Open UPI app <FaAngleRight /> Select Type to Pay <FaAngleRight /> Scan QR Code{" "}
+                                            <FaAngleRight /> Enter Amount
+                                        </p>
+                                    </div>
+                                </div>
+                                <hr className="bg-gray-700 h-[1.5px] mt-1 mb-0 w-full" />
                             </div>
                         </div>
 
-                        {/* <div
-                            className="text-center"
-                            style={{
-                                lineHeight: "5px",
-                            }}
+                        {/* Bank details — one horizontal line below signature + QR */}
+                        <div
+                            className="flex flex-nowrap justify-between items-start gap-3 w-full mt-2 text-[.6rem]"
+                            style={{ lineHeight: "11px" }}
                         >
-                            <p className="font-bold text-[.6rem]">OUR ACCOUNT DETAILS</p>
-                            <p className="pb-10 mt-2 font-bold text-[.6rem]">
-                                <span>GST NO:</span> 07AAMCA8142J1ZE
-                            </p>
-                        </div> */}
+                            <div className="flex-1 min-w-0 text-left">
+                                <p>
+                                    <span className="font-medium">A/C No.:</span> 50200007211263
+                                </p>
+                                <p>
+                                    <span className="font-medium">IFSC :</span> HDFC0000711
+                                </p>
+                                <p>HDFC BANK PUSHPANJALI ENCLAVE PITAMPURA</p>
+                            </div>
+                            <div className="flex-1 min-w-0 text-center">
+                                <p className="font-bold">OUR ACCOUNT DETAILS</p>
+                                <p className="font-bold">
+                                    <span>GST NO :</span> 07AAMCA8142J1ZE
+                                </p>
+                            </div>
+                            <div className="flex-1 min-w-0 text-right">
+                                <p>
+                                    <span className="font-medium">A/C No</span> 344305001088
+                                </p>
+                                <p>
+                                    <span className="font-medium">IFSC Code</span> ICIC0003443
+                                </p>
+                                <p>ICICI BANK ROHINI</p>
+                            </div>
+                        </div>
                     </div>
 
-                    <div
-                        className="overflow-x-auto mt-8 text-center no-break"
-                        style={{
-                            lineHeight: "1rem",
-                        }}
-                    >
-                        <p className="text-[.6rem]">
+                    <div className="mt-3 text-center no-break text-[.6rem]" style={{ lineHeight: "12px" }}>
+                        <p>
                             For any enquiry contact us{" "}
                             <a href="#" className="text-blue-800">
-                                info@antesobiomedicalopc.com or antesobiomedical@gmail.com
+                                business.quote@antesobiomedicalopc.com / antesobiomedical@gmail.com
                             </a>
                         </p>
-                        <p className="text-[.6rem]">Feel free to call us & Thank you for your enquiry</p>
+                        <p>Feel free to call us & Thank you for your enquiry</p>
                     </div>
                 </div>
             </div>
