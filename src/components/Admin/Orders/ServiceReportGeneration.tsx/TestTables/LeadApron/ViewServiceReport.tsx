@@ -61,6 +61,7 @@ interface ReportData {
   notes?: Note[];
   LeadApronTest?: any;
   ulrNumber?: string;
+  rpId?:string
 }
 
 const defaultNotes: Note[] = [

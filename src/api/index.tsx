@@ -3890,14 +3890,7 @@ export const getDetails = async (serviceId: any) => {
 /** Public (no auth) — engineer doc1 for signed-page QR scan */
 export const getPublicEngineerSignature = async (engineerId: string) => {
     try {
-        const res = await api.get(
-            `/auth/engineer-signature/${engineerId}`,
-            {
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                },
-            }
-        );
+        const res = await api.get(`/auth/engineer-signature/${engineerId}`);
         return res.data;
     } catch (error) {
         console.error("🚀 ~ getPublicEngineerSignature ~ error:", error);
