@@ -64,6 +64,7 @@ export interface ReportData {
   toolsUsed?: Tool[];
   notes?: Note[];
   qrCode?: string;
+  engineerId?: string;
   category: string;
   authorizedSignatoryName?: string;
   authorizedSignatorySignature?: string;
@@ -168,7 +169,7 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
             .filter((tool) => isToolUnexpired(tool.calibrationValidTill))
             .map((tool, idx) => ({ ...tool, slNumber: String(idx + 1) }));
         };
-        const detailsData = detailsRes?.data || {};
+        const detailsData = detailsRes?.data?.data || detailsRes?.data || {};
         const srfForCache =
           response?.data?.srfNumber ||
           detailsData?.srfNumber ||
@@ -251,6 +252,7 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
             toolsUsed: mergedTools,
             // notes: data.notes || defaultNotes,
             qrCode: data.qrCode || "",
+            engineerId: String(detailsData?.engineerAssigned?._id || detailsData?.engineerAssigned?.id || ""),
             category: data.category || "N/A",
             authorizedSignatoryName:
               (typeof data.authorizedSignatory === "object" && data.authorizedSignatory?.name) ||
@@ -2060,8 +2062,9 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
             <ReportPdfPageDeclaration
               todayDate={todayDate}
               customerCity={placeValue}
-              qrCode={report.qrCode}
+              engineerId={report.engineerId}
               engineerName={report.engineerNameRPId}
+              rpId={report.rpId}
               authorizedSignatoryName={report.authorizedSignatoryName}
               authorizedSignatorySignature={report.authorizedSignatorySignature}
             />

@@ -1,18 +1,44 @@
+import React, { useEffect, useState } from "react";
+import QRCode from "qrcode";
+
 export const ReportPdfPageDeclaration: React.FC<{
     todayDate: string;
     customerCity: string;
     qrCode?: string;
+    engineerId?: string;
     engineerName?: string;
+    rpId?: string;
     authorizedSignatoryName?: string;
     authorizedSignatorySignature?: string;
 }> = ({
     todayDate,
     customerCity,
     qrCode,
+    engineerId,
     engineerName,
+    rpId,
     authorizedSignatoryName,
     authorizedSignatorySignature,
-}) => (
+}) => {
+    const rpIdDisplay =
+        rpId?.trim() && rpId.trim().toUpperCase() !== "N/A" ? rpId.trim() : "";
+    const [generatedQr, setGeneratedQr] = useState("");
+
+    useEffect(() => {
+        const id = engineerId?.trim();
+        if (!id) {
+            setGeneratedQr("");
+            return;
+        }
+        const signedUrl = `${window.location.origin}/signed-page?engineerId=${encodeURIComponent(id)}`;
+        QRCode.toDataURL(signedUrl, { width: 180, margin: 1, errorCorrectionLevel: "M" })
+            .then(setGeneratedQr)
+            .catch(() => setGeneratedQr(""));
+    }, [engineerId]);
+
+    const qrSrc = generatedQr || (qrCode?.trim() ? qrCode.trim() : "");
+
+    return (
     <div className="report-pdf-declaration-block" style={{ position: "relative", minHeight: "100%", height: "100%", paddingTop: "8mm", display: "flex", flexDirection: "column" }}>
         <p style={{ fontSize: "11px", lineHeight: "1.4", marginBottom: "26mm" }}>
             I hereby undertake that all the information provided above is correct and in accordance with the detailed Quality Assurance Report enclosed herewith.
@@ -25,7 +51,24 @@ export const ReportPdfPageDeclaration: React.FC<{
             </div>
             <div style={{ width: "42%", textAlign: "left", fontSize: "11px", lineHeight: "1.35" }}>
                 <p>Signature of the Testing Engineer:</p>
-                <p>Name of the Testing Engineer:{engineerName ? ` ${engineerName}` : ""}</p>
+                {qrSrc ? (
+                    <img
+                        src={qrSrc}
+                        alt="Scan to verify engineer signature"
+                        style={{
+                            width: "22mm",
+                            height: "22mm",
+                            objectFit: "contain",
+                            display: "block",
+                            margin: "3mm 0 4mm",
+                        }}
+                    />
+                ) : null}
+                <p>
+                    Name of the Testing Engineer:
+                    {engineerName ? ` ${engineerName}` : ""}
+                    {rpIdDisplay ? ` (${rpIdDisplay})` : ""}
+                </p>
             </div>
         </div>
 
@@ -75,27 +118,6 @@ export const ReportPdfPageDeclaration: React.FC<{
                 ) : null}
             </div>
         </div>
-
-        {qrCode?.trim() ? (
-            <div
-                style={{
-                    marginTop: "auto",
-                    paddingTop: "16mm",
-                    display: "grid",
-                    gridTemplateColumns: "1fr 1fr",
-                    gap: "22mm",
-                }}
-            >
-                <div />
-                <div style={{ fontSize: "11px", lineHeight: "1.35" }}>
-                    <p style={{ margin: 0 }}><strong>Engineer Verification QR Code:</strong></p>
-                    <img
-                        src={qrCode}
-                        alt="Engineer Verification QR Code"
-                        style={{ width: "24mm", height: "24mm", objectFit: "contain", marginTop: "4mm", display: "block" }}
-                    />
-                </div>
-            </div>
-        ) : null}
     </div>
-);
+    );
+};

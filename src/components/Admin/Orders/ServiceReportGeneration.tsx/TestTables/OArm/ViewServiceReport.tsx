@@ -59,6 +59,7 @@ interface ReportData {
   hasTimer?: boolean | null;
   toolsUsed?: Tool[];
   qrCode?: string;
+  engineerId?: string;
   notes?: Note[];
   pages?: string;
   authorizedSignatoryName?: string;
@@ -209,6 +210,7 @@ const ViewServiceReportOArm: React.FC = () => {
             hasTimer: typeof data.hasTimer === "boolean" ? data.hasTimer : null,
             toolsUsed: mergedTools,
             qrCode: data.qrCode || "",
+            engineerId: String(detailsData?.engineerAssigned?._id || detailsData?.engineerAssigned?.id || ""),
 
             notes: data.notes || defaultNotes,
             authorizedSignatoryName:
@@ -1392,8 +1394,9 @@ const ViewServiceReportOArm: React.FC = () => {
             <ReportPdfPageDeclaration
               todayDate={todayDate}
               customerCity={placeValue}
-              qrCode={report.qrCode}
+              engineerId={report.engineerId}
               engineerName={report.engineerNameRPId}
+              rpId={report.rpId}
               authorizedSignatoryName={report.authorizedSignatoryName}
               authorizedSignatorySignature={report.authorizedSignatorySignature}
             />

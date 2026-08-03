@@ -78,6 +78,7 @@ interface ReportData {
   toolsUsed: Tool[];
   notes: Note[];
   qrCode?: string;
+  engineerId?: string;
   category: string;
   authorizedSignatoryName?: string;
   authorizedSignatorySignature?: string;
@@ -426,6 +427,7 @@ const ViewServiceReportMammography: React.FC = () => {
             toolsUsed: mergedTools,
             notes: data.notes || defaultNotes,
             qrCode: data.qrCode || "",
+            engineerId: String(detailsData?.engineerAssigned?._id || detailsData?.engineerAssigned?.id || ""),
 
             category: data.category || "N/A",
             authorizedSignatoryName:
@@ -2536,8 +2538,9 @@ const ViewServiceReportMammography: React.FC = () => {
             <ReportPdfPageDeclaration
               todayDate={todayDate}
               customerCity={placeValue}
-              qrCode={report.qrCode}
+              engineerId={report.engineerId}
               engineerName={report.engineerNameRPId}
+              rpId={report.rpId}
               authorizedSignatoryName={report.authorizedSignatoryName}
               authorizedSignatorySignature={report.authorizedSignatorySignature}
             />

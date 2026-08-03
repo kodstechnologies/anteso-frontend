@@ -76,6 +76,7 @@ interface ReportData {
   hasTimer?: boolean | null;
   toolsUsed?: Tool[];
   qrCode?: string;
+  engineerId?: string;
   notes?: Note[];
   category: string;
   reportULRNumber?: string;
@@ -271,6 +272,7 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
             rpId: pickRpId(data),
             toolsUsed: mergedTools,
             qrCode: data.qrCode || "",
+            engineerId: String(detailsData?.engineerAssigned?._id || detailsData?.engineerAssigned?.id || ""),
             notes: data.notes || defaultNotes,
             authorizedSignatoryName:
               (typeof data.authorizedSignatory === "object" && data.authorizedSignatory?.name) ||
@@ -2042,8 +2044,9 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
             <ReportPdfPageDeclaration
               todayDate={todayDate}
               customerCity={placeValue}
-              qrCode={report.qrCode}
+              engineerId={report.engineerId}
               engineerName={report.engineerNameRPId}
+              rpId={report.rpId}
               authorizedSignatoryName={report.authorizedSignatoryName}
               authorizedSignatorySignature={report.authorizedSignatorySignature}
             />

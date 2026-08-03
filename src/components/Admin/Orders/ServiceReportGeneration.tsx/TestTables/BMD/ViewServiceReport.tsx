@@ -61,6 +61,7 @@ interface ReportData {
   humidity?: string;
   toolsUsed?: Tool[];
   qrCode?: string;
+  engineerId?: string;
   notes?: Note[];
   pages?: string;
   authorizedSignatoryName?: string;
@@ -195,6 +196,7 @@ const ViewServiceReportBMD: React.FC = () => {
             model: data.model || "N/A",
             slNumber: data.slNumber || "N/A",
             qrCode: data.qrCode || "",
+            engineerId: String(detailsData?.engineerAssigned?._id || detailsData?.engineerAssigned?.id || ""),
 
             category: data.category || "-",
             condition: data.condition || "OK",
@@ -1705,8 +1707,9 @@ const ViewServiceReportBMD: React.FC = () => {
           <ReportPdfPageDeclaration
               todayDate={todayDate}
               customerCity={placeValue}
-              qrCode={report.qrCode}
+              engineerId={report.engineerId}
               engineerName={report.engineerNameRPId}
+              rpId={report.rpId}
               authorizedSignatoryName={report.authorizedSignatoryName}
               authorizedSignatorySignature={report.authorizedSignatorySignature}
             />

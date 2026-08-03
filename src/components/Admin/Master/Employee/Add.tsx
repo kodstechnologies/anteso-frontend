@@ -366,7 +366,39 @@ const AddEngineer = () => {
                             </div>
                         )}
 
-                       
+                        {/* ---------- Documents (Engineer only) ---------- */}
+                        {values.technicianType === 'Engineer' && (
+                            <div className="panel">
+                                <h5 className="font-semibold text-lg mb-4">Documents</h5>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                                    {[
+                                        { key: 'doc1' as const, label: 'Document 1' },
+                                        { key: 'doc2' as const, label: 'Document 2' },
+                                        { key: 'doc3' as const, label: 'Document 3' },
+                                    ].map(({ key, label }) => (
+                                        <div key={key}>
+                                            <label htmlFor={key}>{label}</label>
+                                            <input
+                                                id={key}
+                                                name={key}
+                                                type="file"
+                                                accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                                                className="form-input"
+                                                onChange={(e) => {
+                                                    const file = e.currentTarget.files?.[0] || null;
+                                                    setFieldValue(key, file);
+                                                }}
+                                            />
+                                            {values[key] instanceof File && (
+                                                <p className="text-xs text-gray-500 mt-1">
+                                                    Selected: {(values[key] as File).name}
+                                                </p>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
 
                         {/* ---------- Password (Office Staff only) ---------- */}
                         {values.technicianType === 'office-staff' && (

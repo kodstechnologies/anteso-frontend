@@ -1,7 +1,60 @@
-import React from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import antesoLogo from "../assets/logo/anteso-logo2.png";
+import { getPublicEngineerSignature } from "../api";
+
+type EngineerSignature = {
+  _id?: string;
+  name?: string;
+  empId?: string;
+  doc1?: string;
+  designation?: string;
+};
 
 const SignedPage = () => {
+  const [searchParams] = useSearchParams();
+  const engineerId = searchParams.get("engineerId") || "";
+  const [loading, setLoading] = useState(Boolean(engineerId));
+  const [error, setError] = useState("");
+  const [engineer, setEngineer] = useState<EngineerSignature | null>(null);
+
+  useEffect(() => {
+    if (!engineerId) {
+      setLoading(false);
+      setError("Missing engineer id");
+      return;
+    }
+
+    const fetchSignature = async () => {
+      try {
+        setLoading(true);
+        setError("");
+        const res = await getPublicEngineerSignature(engineerId);
+        const payload = res?.data || null;
+        if (!payload) {
+          setError("Engineer signature not found");
+          setEngineer(null);
+          return;
+        }
+        setEngineer(payload);
+      } catch (err: any) {
+        setError(err?.response?.data?.message || "Failed to load engineer signature");
+        setEngineer(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchSignature();
+  }, [engineerId]);
+
+  const doc1 = engineer?.doc1?.trim() || "";
+  const isPdf = useMemo(() => /\.pdf($|\?)/i.test(doc1), [doc1]);
+  const isImage = useMemo(
+    () => /\.(png|jpe?g|gif|webp|bmp|svg)($|\?)/i.test(doc1) || (!!doc1 && !isPdf),
+    [doc1, isPdf]
+  );
+
   return (
     <div className="signed-page-wrapper">
       <div className="signed-page">
@@ -26,8 +79,38 @@ const SignedPage = () => {
         </p>
 
         <div className="signed-page-engineer">
-          <p>Signature of the Testing Engineer:</p>
-          <p>Name of the Testing Engineer:</p>
+          {loading ? (
+            <p>Loading signature...</p>
+          ) : error ? (
+            <p className="signed-page-error">{error}</p>
+          ) : (
+            <>
+              <div className="signed-page-signature-block">
+                {doc1 ? (
+                  isPdf ? (
+                    <iframe
+                      title="Engineer Document 1"
+                      src={doc1}
+                      className="signed-page-doc-frame"
+                    />
+                  ) : isImage ? (
+                    <img src={doc1} alt="Engineer Document 1" className="signed-page-doc-image" />
+                  ) : (
+                    <a href={doc1} target="_blank" rel="noopener noreferrer" className="signed-page-doc-link">
+                      View Document 1
+                    </a>
+                  )
+                ) : (
+                  <p className="signed-page-missing">Document 1 not uploaded for this engineer.</p>
+                )}
+              </div>
+              <p>
+                Name of the Testing Engineer:
+                {engineer?.name ? ` ${engineer.name}` : ""}
+                {engineer?.empId ? ` (${engineer.empId})` : ""}
+              </p>
+            </>
+          )}
         </div>
 
         <footer className="signed-page-footer">
@@ -125,15 +208,37 @@ const SignedPage = () => {
           line-height: 1.35;
         }
         .signed-page-engineer {
-          margin-top: 28mm;
+          margin-top: 20mm;
           font-size: 12px;
           line-height: 1.35;
         }
         .signed-page-engineer p {
           margin: 0;
         }
-        .signed-page-engineer p + p {
-          margin-top: 5mm;
+        .signed-page-signature-block {
+          margin-bottom: 8mm;
+          min-height: 40mm;
+        }
+        .signed-page-doc-image {
+          max-height: 55mm;
+          max-width: 90mm;
+          object-fit: contain;
+          display: block;
+        }
+        .signed-page-doc-frame {
+          width: 100%;
+          max-width: 160mm;
+          height: 70mm;
+          border: 1px solid #d1d5db;
+          display: block;
+        }
+        .signed-page-doc-link {
+          color: #2563eb;
+          text-decoration: underline;
+        }
+        .signed-page-missing,
+        .signed-page-error {
+          color: #b91c1c;
         }
         .signed-page-footer {
           margin-top: auto;

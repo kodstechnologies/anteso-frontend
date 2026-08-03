@@ -59,6 +59,7 @@ interface ReportData {
   hasTimer?: boolean | null;
   toolsUsed?: Tool[];
   qrCode?: string;
+  engineerId?: string;
   notes?: Note[];
   pages: string;
   category: string;
@@ -240,6 +241,7 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
             notes: data.notes || defaultNotes,
             pages: data.pages ?? "",
             qrCode: data.qrCode || "",
+            engineerId: String(detailsData?.engineerAssigned?._id || detailsData?.engineerAssigned?.id || ""),
 
             category: data.category || "",
             authorizedSignatoryName:
@@ -1699,8 +1701,9 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
             <ReportPdfPageDeclaration
               todayDate={todayDate}
               customerCity={placeValue}
-              qrCode={report.qrCode}
+              engineerId={report.engineerId}
               engineerName={report.engineerNameRPId}
+              rpId={report.rpId}
               authorizedSignatoryName={report.authorizedSignatoryName}
               authorizedSignatorySignature={report.authorizedSignatorySignature}
             />

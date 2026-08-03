@@ -60,6 +60,7 @@ interface ReportData {
   hasTimer?: boolean | null;
   toolsUsed?: Tool[];
   qrCode?: string;
+  engineerId?: string;
   notes?: Note[];
   category: string;
   qaTestSubmittedAt?: string;
@@ -219,6 +220,7 @@ const ViewServiceReportRadiographyMobileHT: React.FC = () => {
             toolsUsed: mergedTools,
             notes: data.notes || defaultNotes,
             qrCode: data.qrCode || "",
+            engineerId: String(detailsData?.engineerAssigned?._id || detailsData?.engineerAssigned?.id || ""),
 
             category: data.category || "",
             qaTestSubmittedAt: data.qaTestSubmittedAt || "",
@@ -1675,8 +1677,9 @@ const ViewServiceReportRadiographyMobileHT: React.FC = () => {
           <ReportPdfPageDeclaration
               todayDate={todayDate}
               customerCity={placeValue}
-              qrCode={report.qrCode}
+              engineerId={report.engineerId}
               engineerName={report.engineerNameRPId}
+              rpId={report.rpId}
               authorizedSignatoryName={report.authorizedSignatoryName}
               authorizedSignatorySignature={report.authorizedSignatorySignature}
             />

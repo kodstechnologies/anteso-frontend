@@ -254,11 +254,38 @@ function ViewEmployee() {
                                     <span className="font-semibold text-gray-700">Working Days:</span>
                                     <p className="text-gray-600 mt-1">{employee.workingDays} days</p>
                                 </div>
+                                <div>
+                                    <span className="font-semibold text-gray-700">Role:</span>
+                                    <p className="text-gray-600 mt-1">{employee.technicianType || '—'}</p>
+                                </div>
                             </div>
-                            {/* <div className="pt-4">
-                                <span className="font-semibold text-gray-700">Address:</span>
-                                <p className="text-gray-600 mt-1">{employee.address || ''}</p>
-                            </div> */}
+
+                            <div className="pt-4 mt-2 border-t border-gray-200">
+                                <span className="font-semibold text-gray-700 block mb-3">Documents</span>
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                    {[
+                                        { key: 'doc1', label: 'Document 1' },
+                                        { key: 'doc2', label: 'Document 2' },
+                                        { key: 'doc3', label: 'Document 3' },
+                                    ].map(({ key, label }) => (
+                                        <div key={key} className="rounded border border-gray-200 p-3">
+                                            <p className="text-sm font-medium text-gray-700 mb-1">{label}</p>
+                                            {employee[key] ? (
+                                                <a
+                                                    href={employee[key]}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="text-primary text-sm underline"
+                                                >
+                                                    View / Download
+                                                </a>
+                                            ) : (
+                                                <p className="text-gray-400 text-sm">Not uploaded</p>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
                         </div>
                     </div>
 

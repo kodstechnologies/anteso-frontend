@@ -57,6 +57,7 @@ interface ReportData {
   humidity: string;
   toolsUsed?: Tool[];
   qrCode?: string;
+  engineerId?: string;
   notes?: Note[];
   LeadApronTest?: any;
   ulrNumber?: string;
@@ -179,6 +180,7 @@ const ViewServiceReportLeadApron: React.FC = () => {
             leadOwnerRole: data.leadOwnerRole || data.leadownerRole || detailsLeadOwnerRole || "",
             leadOwnerName: data.leadOwnerName || detailsLeadOwnerName || "",
             toolsUsed: mergedTools,
+            engineerId: String(detailsData?.engineerAssigned?._id || detailsData?.engineerAssigned?.id || ""),
             notes: data.notes || defaultNotes,
           };
           setReport(processedData);
@@ -572,8 +574,9 @@ const ViewServiceReportLeadApron: React.FC = () => {
           <ReportPdfPageDeclaration
               todayDate={todayDate}
               customerCity={placeValue}
-              qrCode={report.qrCode}
+              engineerId={report.engineerId}
               engineerName={report.engineerNameRPId}
+              rpId={report.rpId}
             />
         </ReportPage>
       </div>

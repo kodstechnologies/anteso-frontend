@@ -438,7 +438,55 @@ const EditEngineer = () => {
                 </div>
               </div>
 
-              {/* ---------- DOCUMENT UPLOADS ---------- */}
+              {/* ---------- DOCUMENT UPLOADS (Engineer) ---------- */}
+              {(values.role || '').toLowerCase() === 'engineer' && (
+                <div className="panel">
+                  <h5 className="font-semibold text-lg mb-4">Documents</h5>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                    {[
+                      { key: 'doc1' as const, label: 'Document 1' },
+                      { key: 'doc2' as const, label: 'Document 2' },
+                      { key: 'doc3' as const, label: 'Document 3' },
+                    ].map(({ key, label }) => {
+                      const current = values[key];
+                      const existingUrl = typeof current === 'string' ? current : null;
+                      const selectedFile = current instanceof File ? current : null;
+
+                      return (
+                        <div key={key}>
+                          <label htmlFor={key}>{label}</label>
+                          <input
+                            id={key}
+                            name={key}
+                            type="file"
+                            accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                            className="form-input"
+                            onChange={(e) => {
+                              const file = e.currentTarget.files?.[0] || null;
+                              setFieldValue(key, file ?? existingUrl);
+                            }}
+                          />
+                          {selectedFile && (
+                            <p className="text-xs text-gray-500 mt-1">
+                              Selected: {selectedFile.name}
+                            </p>
+                          )}
+                          {!selectedFile && existingUrl && (
+                            <a
+                              href={existingUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-primary text-sm underline mt-1 inline-block"
+                            >
+                              View current {label}
+                            </a>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               {/* ---------- TOOLS (Engineer only) ---------- */}
               {(values.role || '').toLowerCase() === 'engineer' && (

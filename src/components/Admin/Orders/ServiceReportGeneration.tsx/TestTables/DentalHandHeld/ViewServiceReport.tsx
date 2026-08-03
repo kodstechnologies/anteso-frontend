@@ -71,6 +71,7 @@ interface ReportData {
   hasTimer?: boolean | null;
   toolsUsed?: Tool[];
   qrCode?: string;
+  engineerId?: string;
   notes?: Note[];
   authorizedSignatoryName?: string;
   authorizedSignatorySignature?: string;
@@ -384,6 +385,7 @@ const ViewServiceReportDentalHandHeld: React.FC = () => {
             leadOwnerName: data.leadOwnerName || detailsLeadOwnerName || "",
             toolsUsed: mergedTools,
             qrCode: data.qrCode || "",
+            engineerId: String(detailsData?.engineerAssigned?._id || detailsData?.engineerAssigned?.id || ""),
 
             notes: data.notes || defaultNotes,
             authorizedSignatoryName:
@@ -1954,8 +1956,9 @@ const ViewServiceReportDentalHandHeld: React.FC = () => {
             <ReportPdfPageDeclaration
               todayDate={todayDate}
               customerCity={placeValue}
-              qrCode={report.qrCode}
+              engineerId={report.engineerId}
               engineerName={report.engineerNameRPId}
+              rpId={report.rpId}
               authorizedSignatoryName={report.authorizedSignatoryName}
               authorizedSignatorySignature={report.authorizedSignatorySignature}
             />
