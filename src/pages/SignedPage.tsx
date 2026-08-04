@@ -108,7 +108,7 @@ const SignedPage = () => {
               <p>
                 Name of the Testing Engineer:
                 {engineer?.name ? ` ${engineer.name}` : ""}
-                {rpIdFromQuery ? ` (${rpIdFromQuery})` : (engineer?.empId ? ` (${engineer.empId})` : "")}
+                {rpIdFromQuery ? ` (${rpIdFromQuery})` : ""}
               </p>
             </>
           )}

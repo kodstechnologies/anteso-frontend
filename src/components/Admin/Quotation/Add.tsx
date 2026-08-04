@@ -109,10 +109,20 @@ type QuotationData = {
 }
 
 const INITIAL_TERMS = [
-    "In case of License renewal, eLora ID and Password need to be provided by you.",
-    "The quotation applies only to the equipment mentioned above. Charges for any additional parameters will be extra.",
-    "Repeated Q/A for failed equipment and repeated visits for the same machine will be charged extra.",
-    "Share your GST number with the work order if applicable; otherwise, the order will be considered unregistered and no future claims will be entertained.",
+    "Customers have to provide their eLora login credentials while renewing their license. When necessary, the customer must also provide the TLD badge numbers.",
+    "Quotation is only for the equipment mentioned above. Charges for any additional parameter will be charged extra.",
+    "Repeated Q/A for failed equipments & Repeated visit for same machine will be charged extra.",
+    "QA Reports will be submitted only after the bank realizes 100% of the payment, & in exceptional circumstances, the minimum time frame for sharing QA reports will be 24 hours.",
+    "QA reports for dental x-ray machines have a five-year validity period, whereas x-ray machine QA reports have a two-year validity period.",
+    "Prices are valid for the duration of this quotation, after which they are subject to change without notice.",
+    "Service execution will begin within two weeks after receipt of the formal Purchase Order.",
+    'All payments should be made by DD, e-Transfer or Cheque payable to "ANTESO Biomedical (OPC) Pvt. Ltd."',
+    "Terms of payment: 100% payment in advance.",
+    "If the consumer chooses to pay by cheque they should only send it to our registered address.",
+    "The QA test will be conducted as per AERB guidelines; Anteso will not be held accountable if a machine malfunctions during the test.",
+    "During institute registration / RSO registration, the system will send a unique OTP to the customer's registered mobile number or email address. The customer is required to share it to complete the registration process.",
+    "The customer must check and validate their email address before sharing it, as we will be utilizing it exactly as it appears in the document. It can't be retrieved later.",
+    "Please share the GST No. with work order if applicable, else we will consider it in unregistered and no future claims will be entertained.",
 ]
 
 const STYLES = `

@@ -753,39 +753,25 @@ const ViewQuotation: React.FC = () => {
                                     alt="QR Code"
                                     className="h-28 w-28 object-contain"
                                 />
-                                {/* scale() does not shrink layout box — clip height so bank details sit closer */}
-                                <div className="w-full overflow-hidden flex justify-center" style={{ height: "2.6rem" }}>
-                                    <div
-                                        className="flex flex-col items-center text-center"
-                                        style={{
-                                            transform: "scale(0.45)",
-                                            transformOrigin: "top center",
-                                            fontSize: "10px",
-                                            lineHeight: "12px",
-                                            width: "max-content",
-                                            maxWidth: "280px",
-                                        }}
-                                    >
-                                        <table className="mx-auto">
-                                            <tbody>
-                                                {[
-                                                    ["Merchant Name:", "ANTESO BIOMEDICAL PRIVATE LIMITED"],
-                                                    ["Mobile Number:", "8470909720"],
-                                                ].map(([label, value]) => (
-                                                    <tr key={label}>
-                                                        <td className="text-end pr-1 align-top whitespace-nowrap">{label}</td>
-                                                        <td className="text-start pl-1 align-top leading-none">{value}</td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                        <div className="text-center mt-0.5">
-                                            <p>Steps to Pay UPI QR Code</p>
-                                            <p className="flex justify-center items-center flex-wrap mx-auto">
-                                                Open UPI app <FaAngleRight /> Select Type to Pay <FaAngleRight /> Scan QR Code{" "}
-                                                <FaAngleRight /> Enter Amount
-                                            </p>
-                                        </div>
+                                <div className="mt-0.5 w-full text-center text-gray-900">
+                                    <table className="mx-auto text-[.4rem]" style={{ lineHeight: "8px" }}>
+                                        <tbody>
+                                            <tr>
+                                                <p className="text-left whitespace-nowrap pr-1 align-top">Merchant Name :</p>
+                                                <p   className="text-left align-top">ANTESO BIOMEDICAL PRIVATE LIMITED</p>
+                                            </tr>
+                                            <tr>
+                                                <p className="text-left whitespace-nowrap pr-1 align-top">Mobile Number :</p>
+                                                <p className="text-left align-top">8470909720</p>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                    <div className="mt-0.5 text-center text-[.4rem]" style={{ lineHeight: "8px" }}>
+                                        <p>Steps to PAy UPI QR Code</p>
+                                        <p className="flex justify-center items-center flex-wrap mx-auto">
+                                            Oppen UPI app <FaAngleRight /> Select Type to Pay <FaAngleRight /> Scan QR Code{" "}
+                                            <FaAngleRight /> Enter Amount
+                                        </p>
                                     </div>
                                 </div>
                                 <hr className="bg-gray-700 h-[1.5px] mt-0.5 mb-0 w-full" />
