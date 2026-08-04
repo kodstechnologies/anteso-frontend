@@ -2266,8 +2266,8 @@ const RadiographyMobileHTContent: React.FC<RadiographyMobileHTProps> = ({ servic
           {[
             { label: "Nomenclature", name: "nomenclature", readOnly: true },
             { label: "Make", name: "make" },
-            { label: "Model", name: "model", readOnly: true },
-            { label: "Serial Number", name: "slNumber", readOnly: true },
+            { label: "Model", name: "model" },
+            { label: "Serial Number", name: "slNumber" },
             { label: "Category", name: "category" },
             { label: "Condition of Test Item", name: "condition" },
             { label: "Testing Procedure Number", name: "testingProcedureNumber" },

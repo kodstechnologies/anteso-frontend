@@ -1217,8 +1217,8 @@ const OArmContent: React.FC<OArmProps> = ({ serviceId, csvFileUrl, csvFileUrls }
           {[
             { label: "Nomenclature", name: "nomenclature", value: formData.nomenclature, readOnly: true },
             { label: "Make", name: "make", value: formData.make, readOnly: false },
-            { label: "Model", name: "model", value: formData.model, readOnly: true },
-            { label: "Serial Number", name: "slNumber", value: formData.slNumber, readOnly: true },
+            { label: "Model", name: "model", value: formData.model },
+            { label: "Serial Number", name: "slNumber", value: formData.slNumber },
             { label: "Category", name: "category", value: formData.category, readOnly: false },
             { label: "Condition of Test Item", name: "condition", value: formData.condition, readOnly: false },
             { label: "Testing Procedure Number", name: "testingProcedureNumber", value: formData.testingProcedureNumber, readOnly: false },
