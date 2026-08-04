@@ -130,6 +130,7 @@ const SignedPage = () => {
           min-height: 100vh;
           background: #e5e7eb;
           padding: 20px 0;
+          overflow-x: hidden;
         }
         .signed-page {
           display: flex;
@@ -137,6 +138,7 @@ const SignedPage = () => {
           font-family: "Times New Roman", Times, serif;
           color: #000;
           width: 210mm;
+          max-width: 100%;
           min-height: 297mm;
           height: 297mm;
           margin: 0 auto;
@@ -255,6 +257,30 @@ const SignedPage = () => {
         .signed-page-footer-link {
           color: #2563eb;
           text-decoration: underline;
+        }
+
+        /* Prevent mobile browsers from zooming due to fixed mm widths
+           (QR scan opens the page on small screens). */
+        @media (max-width: 480px) {
+          .signed-page {
+            width: 100%;
+            max-width: 210mm;
+            height: auto;
+            min-height: 0;
+            padding: 8mm 6mm 4mm;
+          }
+
+          .signed-page-header {
+            width: 100%;
+            margin-left: 0;
+            margin-right: 0;
+            padding: 0;
+          }
+
+          .signed-page-header-line {
+            width: 100%;
+            margin-left: 0;
+          }
         }
         @media print {
           body {
