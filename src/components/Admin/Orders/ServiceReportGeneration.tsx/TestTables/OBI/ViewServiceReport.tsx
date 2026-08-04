@@ -815,6 +815,15 @@ const ViewServiceReportOBI: React.FC = () => {
 
 
   const formatDate = (dateStr: string) => (!dateStr ? "-" : new Date(dateStr).toLocaleDateString("en-GB"));
+  // Safely extract display text from Mongoose subdocs like { value, _id }
+  const safeVal = (v: any): string => {
+    if (v == null || v === "") return "-";
+    if (typeof v === "object" && "value" in v) {
+      const inner = (v as { value?: unknown }).value;
+      return inner == null || inner === "" ? "-" : String(inner);
+    }
+    return String(v);
+  };
   const todayDate = new Date().toLocaleDateString("en-GB");
 
   const downloadPDF = async () => {
@@ -1258,7 +1267,7 @@ const ViewServiceReportOBI: React.FC = () => {
                   <div className="w-6 text-right pr-1 font-semibold">1.{index + 1}</div>
                   <div className="w-64 font-semibold">{label}</div>
                   <div className="px-1 font-semibold">:</div>
-                  <div className="flex-1 break-words">{value}</div>
+                  <div className="flex-1 break-words">{safeVal(value)}</div>
                 </div>
               ))}
             </div>
@@ -1312,7 +1321,7 @@ const ViewServiceReportOBI: React.FC = () => {
                   <div className="w-6 text-right pr-1">3.{index + 1}</div>
                   <div className="w-64">{label}</div>
                   <div className="px-1">:</div>
-                  <div className="flex-1 break-words">{value}</div>
+                  <div className="flex-1 break-words">{safeVal(value)}</div>
                 </div>
               ))}
             </div>
@@ -1495,7 +1504,7 @@ const ViewServiceReportOBI: React.FC = () => {
                           <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.observedShift || "-"}</td>
                           <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.edgeShift || "-"}</td>
                           <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.percentFED || "-"}</td>
-                          <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.tolerance || "-"}</td>
+                          <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{safeVal(row.tolerance)}</td>
                           <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>
                             <span className={row.remark === "Pass" || row.remark === "PASS" ? "text-green-600 font-semibold" : row.remark === "Fail" || row.remark === "FAIL" ? "text-red-600 font-semibold" : ""}>
                               {row.remark || "-"}
@@ -1750,8 +1759,8 @@ const ViewServiceReportOBI: React.FC = () => {
                           {testData.operatingPotential.rows.map((row: any, i: number) => (
                             <tr key={i}>
                               <td style={cellStyle({ border: "0.1px solid #666" })}>{row.appliedKvp || "-"}</td>
-                              {row.measuredValues?.map((val: string, idx: number) => (
-                                <td key={idx} style={cellStyle({ border: "0.1px solid #666" })}>{val || "-"}</td>
+                              {row.measuredValues?.map((val: any, idx: number) => (
+                                <td key={idx} style={cellStyle({ border: "0.1px solid #666" })}>{safeVal(val)}</td>
                               ))}
                               <td style={cellStyle({ border: "0.1px solid #666" })}>{row.averageKvp || "-"}</td>
                               <td style={cellStyle({ border: "0.1px solid #666" })}>
@@ -1917,7 +1926,7 @@ const ViewServiceReportOBI: React.FC = () => {
                           <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.kv || "-"}</td>
                           <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.mas || "-"}</td>
                           {row.outputs?.map((val: any, idx: number) => (
-                            <td key={idx} className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{val.value || val || "-"}</td>
+                            <td key={idx} className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{safeVal(val)}</td>
                           ))}
                           <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.avg || "-"}</td>
                           <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>
@@ -2310,7 +2319,9 @@ const ViewServiceReportOBI: React.FC = () => {
                   <p className="text-sm print:text-[10px]" style={{ fontSize: "10px", margin: "2px 0" }}>
                     <strong>Tolerance (CoL):</strong>{" "}
                     {normalizeComparisonOperator(testData.linearityOfMaLoading.toleranceOperator || "<=")}{" "}
-                    {testData.linearityOfMaLoading.tolerance || "0.1"}
+                    {safeVal(testData.linearityOfMaLoading.tolerance) === "-"
+                      ? "0.1"
+                      : safeVal(testData.linearityOfMaLoading.tolerance)}
                   </p>
                 </div>
               </div>
@@ -2478,7 +2489,9 @@ const ViewServiceReportOBI: React.FC = () => {
                   <p className="text-sm print:text-[10px]" style={{ fontSize: "10px", margin: "2px 0" }}>
                     <strong>Tolerance (CoL):</strong>{" "}
                     {normalizeComparisonOperator(testData.linearityOfTime.toleranceOperator || "<=")}{" "}
-                    {testData.linearityOfTime.tolerance || "0.1"}
+                    {safeVal(testData.linearityOfTime.tolerance) === "-"
+                      ? "0.1"
+                      : safeVal(testData.linearityOfTime.tolerance)}
                   </p>
                 </div>
               </div>
@@ -2533,8 +2546,8 @@ const ViewServiceReportOBI: React.FC = () => {
                         {testData.linearityOfMasLoading.table2.map((row: any, i: number) => (
                           <tr key={i} style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
                             <td className="border border-black p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px', borderColor: '#000000', textAlign: 'center' }}>{row.mAsApplied || "-"}</td>
-                            {row.measuredOutputs?.map((val: string, idx: number) => (
-                              <td key={idx} className="border border-black p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px', borderColor: '#000000', textAlign: 'center' }}>{val || "-"}</td>
+                            {row.measuredOutputs?.map((val: any, idx: number) => (
+                              <td key={idx} className="border border-black p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px', borderColor: '#000000', textAlign: 'center' }}>{safeVal(val)}</td>
                             ))}
                             <td className="border border-black p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px', borderColor: '#000000', textAlign: 'center' }}>{row.average || "-"}</td>
                             <td className="border border-black p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px', borderColor: '#000000', textAlign: 'center' }}>{row.x || "-"}</td>
@@ -2553,7 +2566,9 @@ const ViewServiceReportOBI: React.FC = () => {
                   <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
                     <strong>Tolerance (CoL):</strong>{" "}
                     {normalizeComparisonOperator(testData.linearityOfMasLoading.toleranceOperator || "<=")}{" "}
-                    {testData.linearityOfMasLoading.tolerance || "0.1"}
+                    {safeVal(testData.linearityOfMasLoading.tolerance) === "-"
+                      ? "0.1"
+                      : safeVal(testData.linearityOfMasLoading.tolerance)}
                   </p>
                 </div>
               </div>

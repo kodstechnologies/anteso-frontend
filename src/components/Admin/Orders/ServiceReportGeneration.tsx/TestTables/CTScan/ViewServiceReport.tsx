@@ -373,8 +373,8 @@ const ViewServiceReportCTScan: React.FC = () => {
     // If index is provided (0, 1, 2), use fixed labels from generator
     if (index !== undefined) {
       if (index === 0) return "0.5 mm";
-      if (index === 1) return "�50%";
-      if (index === 2) return "�1.0 mm";
+      if (index === 1) return "50%";
+      if (index === 2) return "1.0 mm";
     }
 
     const appliedNum = typeof applied === 'string' ? parseFloat(applied) : applied;
@@ -1808,7 +1808,7 @@ const ViewServiceReportCTScan: React.FC = () => {
                     <tr key={i} className="text-center" style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
                       <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.actual || "-"}</td>
                       <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.measured || "-"}</td>
-                      <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{testData.gantryTilt.toleranceSign || "+/-"}{testData.gantryTilt.toleranceValue || "2"}�</td>
+                      <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{testData.gantryTilt.toleranceSign || "+/-"}{testData.gantryTilt.toleranceValue || "2"}</td>
                       <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>
                         <span className={row.remark === "Pass" ? "text-green-600 font-bold" : row.remark === "Fail" ? "text-red-600 font-bold" : ""}>
                           {row.remark || "-"}

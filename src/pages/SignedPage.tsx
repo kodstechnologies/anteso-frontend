@@ -14,6 +14,7 @@ type EngineerSignature = {
 const SignedPage = () => {
   const [searchParams] = useSearchParams();
   const engineerId = searchParams.get("engineerId") || "";
+  const rpIdFromQuery = searchParams.get("rpId") || "";
   const [loading, setLoading] = useState(Boolean(engineerId));
   const [error, setError] = useState("");
   const [engineer, setEngineer] = useState<EngineerSignature | null>(null);
@@ -107,7 +108,7 @@ const SignedPage = () => {
               <p>
                 Name of the Testing Engineer:
                 {engineer?.name ? ` ${engineer.name}` : ""}
-                {engineer?.empId ? ` (${engineer.empId})` : ""}
+                {rpIdFromQuery ? ` (${rpIdFromQuery})` : (engineer?.empId ? ` (${engineer.empId})` : "")}
               </p>
             </>
           )}

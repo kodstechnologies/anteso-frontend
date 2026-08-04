@@ -30,11 +30,12 @@ export const ReportPdfPageDeclaration: React.FC<{
             setGeneratedQr("");
             return;
         }
-        const signedUrl = `${window.location.origin}/signed-page?engineerId=${encodeURIComponent(id)}`;
+        const rp = rpIdDisplay ? `&rpId=${encodeURIComponent(rpIdDisplay)}` : "";
+        const signedUrl = `${window.location.origin}/signed-page?engineerId=${encodeURIComponent(id)}${rp}`;
         QRCode.toDataURL(signedUrl, { width: 180, margin: 1, errorCorrectionLevel: "M" })
             .then(setGeneratedQr)
             .catch(() => setGeneratedQr(""));
-    }, [engineerId]);
+    }, [engineerId, rpIdDisplay]);
 
     const qrSrc = generatedQr || (qrCode?.trim() ? qrCode.trim() : "");
 

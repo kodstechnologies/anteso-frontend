@@ -167,7 +167,7 @@ const OArmContent: React.FC<OArmProps> = ({ serviceId, csvFileUrl, csvFileUrls }
         setDetails(detRes.data);
         const data = detRes.data;
         const firstTest = data.qaTests?.[0];
-        const srfDateStr = data.orderCreatedAt ? new Date(data.orderCreatedAt).toISOString().split("T")[0] : (firstTest?.createdAt ? firstTest.createdAt.split("T")[0] : "");
+        const srfDateStr = data.completedAt ? new Date(data.completedAt).toISOString().split("T")[0] : "";
         const testDateSource = firstTest?.qatestSubmittedAt || firstTest?.createdAt;
         const testDateStr = testDateSource ? new Date(testDateSource).toISOString().split("T")[0] : "";
         let testDueDateStr = "";
@@ -1371,3 +1371,5 @@ const OArm: React.FC<OArmProps> = (props) => (
 );
 
 export default OArm;
+
+

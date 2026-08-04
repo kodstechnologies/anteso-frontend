@@ -14,10 +14,17 @@ export const generateOBISummaryRows = (testData: any, hasTimer: boolean = false)
   const rows: any[] = [];
   let srNo = 1;
 
+  // Unwrap Mongoose subdocs like { value, _id } before display/math
+  const unwrapVal = (v: any): any => {
+    if (v != null && typeof v === "object" && "value" in v) return (v as { value?: unknown }).value;
+    return v;
+  };
+
   const asDisplayNumber = (value: any): string | null => {
-    if (value === undefined || value === null || value === "") return null;
-    const n = typeof value === "number" ? value : parseFloat(String(value));
-    return Number.isNaN(n) ? String(value).trim() || null : String(Number(n));
+    const v = unwrapVal(value);
+    if (v === undefined || v === null || v === "") return null;
+    const n = typeof v === "number" ? v : parseFloat(String(v));
+    return Number.isNaN(n) ? String(v).trim() || null : String(Number(n));
   };
 
   const addRowsForTest = (
@@ -60,12 +67,12 @@ export const generateOBISummaryRows = (testData: any, hasTimer: boolean = false)
     const validRows = congruenceBlock.congruenceMeasurements.filter((row: any) => row.dimension || row.percentFED);
     if (validRows.length > 0) {
       const testRows = validRows.map((row: any) => {
-        const percentFED = row.percentFED || "-";
-        const tolerance = row.tolerance || "2";
+        const percentFED = unwrapVal(row.percentFED) || "-";
+        const tolerance = unwrapVal(row.tolerance) || "2";
         const isPass =
           row.remark === "Pass" ||
           row.remark === "PASS" ||
-          (percentFED !== "-" && parseFloat(percentFED) <= parseFloat(tolerance));
+          (percentFED !== "-" && parseFloat(String(percentFED)) <= parseFloat(String(tolerance)));
         return {
           specified: row.dimension || "-",
           measured: percentFED !== "-" ? `${percentFED}%` : "-",
@@ -270,7 +277,7 @@ export const generateOBISummaryRows = (testData: any, hasTimer: boolean = false)
 
     const validRows = testData.linearityOfMasLoading.table2.filter((row: any) => row.mAsApplied);
     if (validRows.length > 0) {
-      const tolerance = testData.linearityOfMasLoading.tolerance || "0.1";
+      const tolerance = unwrapVal(testData.linearityOfMasLoading.tolerance) || "0.1";
       const toleranceOperator = normalizeComparisonOperator(testData.linearityOfMasLoading.toleranceOperator || "<=");
 
       const getVal = (o: any): number => {
@@ -564,7 +571,7 @@ export const generateOBISummaryRows = (testData: any, hasTimer: boolean = false)
   if (testData.linearityOfMaLoading?.measurementRows && Array.isArray(testData.linearityOfMaLoading.measurementRows)) {
     const validRows = testData.linearityOfMaLoading.measurementRows.filter((row: any) => row.maApplied || row.mGyPerMAs);
     if (validRows.length > 0) {
-      const tolerance = testData.linearityOfMaLoading.tolerance || "0.1";
+      const tolerance = unwrapVal(testData.linearityOfMaLoading.tolerance) || "0.1";
       const col = testData.linearityOfMaLoading.coefficientOfLinearity || "-";
       const isPass =
         testData.linearityOfMaLoading.remarks === "Pass" ||
@@ -585,7 +592,7 @@ export const generateOBISummaryRows = (testData: any, hasTimer: boolean = false)
       (row: any) => row.timeApplied || row.x || row.averageOutput
     );
     if (validRows.length > 0) {
-      const tolerance = testData.linearityOfTime.tolerance || "0.1";
+      const tolerance = unwrapVal(testData.linearityOfTime.tolerance) || "0.1";
       const op = normalizeComparisonOperator(testData.linearityOfTime.toleranceOperator || "<=");
       const col =
         testData.linearityOfTime.coefficientOfLinearity ||
@@ -616,9 +623,14 @@ export const generateOBISummaryRows = (testData: any, hasTimer: boolean = false)
           row.result === "Pass" ||
           row.result === "PASS";
         return {
-          specified: row.parameter || row.specified || "-",
-          measured: row.measured || row.measuredValue || "-",
-          tolerance: row.tolerance || row.toleranceValue || "-",
+          specified: row.parameter || row.specified || row.testName || "-",
+          measured: unwrapVal(row.measured) || unwrapVal(row.measuredValue) || "-",
+          tolerance:
+            unwrapVal(row.tolerance) ||
+            unwrapVal(row.toleranceValue) ||
+            (row.sign || row.value
+              ? `${normalizeComparisonOperator(row.sign || "<=")} ${unwrapVal(row.value) ?? ""}`.trim()
+              : "-"),
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });
@@ -710,7 +722,9 @@ const MainTestTableForOBI: React.FC<MainTestTableProps> = ({
                       {...(row.measuredRowSpan > 0 ? { rowSpan: row.measuredRowSpan } : {})}
                       className="border border-black px-4 py-3 text-center align-middle font-normal"
                     >
-                      {row.measured}
+                      {typeof row.measured === "object" && row.measured != null && "value" in row.measured
+                        ? String((row.measured as { value?: unknown }).value ?? "-")
+                        : row.measured}
                     </td>
                   )}
                   {shouldRenderTolerance && (
@@ -718,7 +732,9 @@ const MainTestTableForOBI: React.FC<MainTestTableProps> = ({
                       {...(row.toleranceRowSpan > 0 ? { rowSpan: row.toleranceRowSpan } : {})}
                       className="border border-black px-4 py-3 print:px-2 print:py-1.5 text-center align-middle text-xs print:text-[9px] leading-tight"
                     >
-                      {row.tolerance}
+                      {typeof row.tolerance === "object" && row.tolerance != null && "value" in row.tolerance
+                        ? String((row.tolerance as { value?: unknown }).value ?? "-")
+                        : row.tolerance}
                     </td>
                   )}
                   <td

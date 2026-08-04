@@ -181,7 +181,7 @@ const RadioFluroContent: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, c
                 setDetails(data);
 
                 // SRF date = order created at; Test date = QA test submitted at (or createdAt)
-                const srfDateStr = data.orderCreatedAt ? new Date(data.orderCreatedAt).toISOString().split("T")[0] : (firstTest?.createdAt ? firstTest.createdAt.split("T")[0] : "");
+                const srfDateStr = data.completedAt ? new Date(data.completedAt).toISOString().split("T")[0] : "";
                 const testDateSource = firstTest?.qatestSubmittedAt || firstTest?.createdAt || (qaTestDate ? qaTestDate : "");
                 const testDateStr = testDateSource ? (typeof testDateSource === "string" ? testDateSource.split("T")[0] : "") : "";
                 let testDueDateStr = "";
@@ -2191,3 +2191,4 @@ const RadioFluro: React.FC<RadioFluroProps> = (props) => (
 );
 
 export default RadioFluro;
+

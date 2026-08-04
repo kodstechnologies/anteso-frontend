@@ -252,7 +252,7 @@ const RadiographyMobileContent: React.FC<RadiographyMobileProps> = ({ serviceId,
         const firstTest = data.qaTests?.[0];
         setDetails(data);
 
-        const srfDateStr = data.orderCreatedAt ? new Date(data.orderCreatedAt).toISOString().split("T")[0] : (firstTest?.createdAt ? firstTest.createdAt.split("T")[0] : "");
+        const srfDateStr = data.completedAt ? new Date(data.completedAt).toISOString().split("T")[0] : "";
         const testDateSource = firstTest?.qatestSubmittedAt || firstTest?.createdAt;
         let testDate = "";
         let testDueDate = "";
@@ -2162,3 +2162,5 @@ const RadiographyMobile: React.FC<RadiographyMobileProps> = (props) => (
 );
 
 export default RadiographyMobile;
+
+

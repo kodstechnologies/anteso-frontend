@@ -106,7 +106,7 @@ const LeadApron: React.FC<{ serviceId: string; qaTestDate?: string | null; creat
                 setDetails(data);
 
                 // SRF date = order created at; Test date = QA test submitted at (or createdAt)
-                const srfDateValue = data.orderCreatedAt ? new Date(data.orderCreatedAt).toISOString().split("T")[0] : (createdAt ? new Date(createdAt).toISOString().split("T")[0] : (firstTest?.createdAt ? firstTest.createdAt.split("T")[0] : ""));
+                const srfDateValue = data.completedAt ? new Date(data.completedAt).toISOString().split("T")[0] : "";
                 const testDateSource = firstTest?.qatestSubmittedAt || firstTest?.createdAt || qaTestDate;
                 const testDateValue = testDateSource ? (typeof testDateSource === "string" ? new Date(testDateSource).toISOString().split("T")[0] : "") : "";
 
@@ -769,4 +769,6 @@ const LeadApron: React.FC<{ serviceId: string; qaTestDate?: string | null; creat
 };
 
 export default LeadApron;
+
+
 

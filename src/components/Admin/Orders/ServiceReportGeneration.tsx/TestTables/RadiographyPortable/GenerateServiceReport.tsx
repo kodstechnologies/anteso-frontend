@@ -183,7 +183,7 @@ const RadiographyPortableContent: React.FC<RadiographyPortableProps> = ({ servic
           customerName: data.hospitalName,
           address: data.hospitalAddress,
           srfNumber: data.srfNumber,
-          srfDate: firstTest?.createdAt ? firstTest.createdAt.split("T")[0] : "",
+          srfDate: data.completedAt ? new Date(data.completedAt).toISOString().split("T")[0] : "",
           testReportNumber: firstTest?.qaTestReportNumber || "",
           issueDate: new Date().toISOString().split("T")[0],
           nomenclature: data.machineType,
@@ -1614,3 +1614,5 @@ const RadiographyPortable: React.FC<RadiographyPortableProps> = (props) => (
 );
 
 export default RadiographyPortable;
+
+

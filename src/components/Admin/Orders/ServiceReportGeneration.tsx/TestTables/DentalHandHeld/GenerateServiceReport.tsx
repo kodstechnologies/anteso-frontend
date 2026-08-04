@@ -153,7 +153,7 @@ const GenerateReportForDentalHandHeldContent: React.FC<DentalProps> = ({ service
                 setDetails(data);
 
                 const firstTest = data.qaTests[0];
-                const srfDateStr = data.orderCreatedAt ? new Date(data.orderCreatedAt).toISOString().split("T")[0] : "";
+                const srfDateStr = data.completedAt ? new Date(data.completedAt).toISOString().split("T")[0] : "";
                 const rawTestDate = firstTest?.qatestSubmittedAt || firstTest?.createdAt || qaTestDate || "";
                 const baseTestDate = rawTestDate ? (typeof rawTestDate === "string" ? rawTestDate.split("T")[0] : "") : "";
                 const dueDate = baseTestDate ? addYearsToDate(baseTestDate, 5) : "";
@@ -1458,3 +1458,5 @@ const GenerateReportForDentalHandHeld: React.FC<DentalProps> = (props) => (
 );
 
 export default GenerateReportForDentalHandHeld;
+
+

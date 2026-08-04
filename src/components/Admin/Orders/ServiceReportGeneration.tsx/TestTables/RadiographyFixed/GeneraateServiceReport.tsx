@@ -216,7 +216,7 @@ const RadiographyFixedContent: React.FC<RadiographyFixedProps> = ({ serviceId, q
         setDetails(data);
 
         // SRF date = order created at; Test date = QA test submitted at (or createdAt)
-        const srfDateStr = data.orderCreatedAt ? new Date(data.orderCreatedAt).toISOString().split("T")[0] : (firstTest?.createdAt ? firstTest.createdAt.split("T")[0] : "");
+        const srfDateStr = data.completedAt ? new Date(data.completedAt).toISOString().split("T")[0] : (data.orderCreatedAt ? new Date(data.orderCreatedAt).toISOString().split("T")[0] : (firstTest?.createdAt ? firstTest.createdAt.split("T")[0] : ""));
         const testDateSource = firstTest?.qatestSubmittedAt || firstTest?.createdAt;
         let testDate = "";
         let testDueDate = "";

@@ -164,7 +164,7 @@ const CArmContent: React.FC<CArmProps> = ({ serviceId, csvFileUrl, csvFileUrls }
         setDetails(detRes.data);
         const data = detRes.data;
         const firstTest = data.qaTests?.[0];
-        const srfDateStr = data.orderCreatedAt ? new Date(data.orderCreatedAt).toISOString().split("T")[0] : (firstTest?.createdAt ? firstTest.createdAt.split("T")[0] : "");
+        const srfDateStr = data.completedAt ? new Date(data.completedAt).toISOString().split("T")[0] : "";
         const testDateSource = firstTest?.qatestSubmittedAt || firstTest?.createdAt;
         const testDateStr = testDateSource ? new Date(testDateSource).toISOString().split("T")[0] : "";
         let testDueDateStr = "";
@@ -197,7 +197,7 @@ const CArmContent: React.FC<CArmProps> = ({ serviceId, csvFileUrl, csvFileUrls }
           temperature: "",
           humidity: "",
           engineerNameRPId: detRes.data.engineerAssigned?.name || "",
-          rpId: detRes.data.engineerAssigned?.rpId || "",
+          rpId: detRes.data.rpId || "",
           authorizedSignatory: "",
         });
 
@@ -1665,3 +1665,4 @@ const CArm: React.FC<CArmProps> = (props) => (
 );
 
 export default CArm;
+

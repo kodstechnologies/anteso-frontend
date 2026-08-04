@@ -172,7 +172,7 @@ const CTScanReportContent: React.FC<CTScanReportProps> = ({ serviceId, qaTestDat
                 setDetails(data);
 
                 // SRF date = order created at; Test date = QA test submitted at (or createdAt)
-                const srfDateValue = data.orderCreatedAt ? new Date(data.orderCreatedAt).toISOString().split("T")[0] : (createdAt ? new Date(createdAt).toISOString().split("T")[0] : (firstTest?.createdAt ? firstTest.createdAt.split("T")[0] : ""));
+                const srfDateValue = data.completedAt ? new Date(data.completedAt).toISOString().split("T")[0] : "";
                 const rawTestDate = firstTest?.qatestSubmittedAt || firstTest?.createdAt || qaTestDate || "";
                 const testDateValue = rawTestDate ? (typeof rawTestDate === "string" ? rawTestDate.split("T")[0] : "") : "";
                 const testDueDateValue = testDateValue ? addYearsToDate(testDateValue, 2) : "";
@@ -1728,3 +1728,4 @@ const CTScanReport: React.FC<CTScanReportProps> = (props) => (
 );
 
 export default CTScanReport;
+

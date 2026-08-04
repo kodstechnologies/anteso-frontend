@@ -1143,7 +1143,7 @@ const InventionalRadiologyContent: React.FC<InventionalRadiologyProps> = ({ serv
         const firstTest = data.qaTests?.[0];
         setDetails(data);
 
-        const srfDateStr = data.orderCreatedAt ? new Date(data.orderCreatedAt).toISOString().split("T")[0] : (firstTest?.createdAt ? firstTest.createdAt.split("T")[0] : "");
+        const srfDateStr = data.completedAt ? new Date(data.completedAt).toISOString().split("T")[0] : "";
         const testDateSource = firstTest?.qatestSubmittedAt || firstTest?.createdAt;
         const testDateStr = testDateSource ? new Date(testDateSource).toISOString().split("T")[0] : "";
         let testDueDateStr = "";
@@ -1998,3 +1998,4 @@ const InventionalRadiology: React.FC<InventionalRadiologyProps> = (props) => (
 );
 
 export default InventionalRadiology;
+
