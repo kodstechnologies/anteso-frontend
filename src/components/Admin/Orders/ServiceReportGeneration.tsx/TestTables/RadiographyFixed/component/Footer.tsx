@@ -1,5 +1,5 @@
 import React from "react";
-import roundStamp from "../../../../../../../assets/logo/roundstamp.jpeg";
+import roundStamp from "../../../../../../../assets/logo/roundstamp.png";
 
 export const ReportPdfPageFooter: React.FC<{
   todayDate: string;
