@@ -1010,13 +1010,13 @@ const EditQuotation: React.FC = () => {
                         {/* Items Tables */}
                         <div className="mt-1">
                             {aitems.length > 0 && (
-                                <table className="items-table w-full text-xs mb-1 border border-gray-400 border-collapse">
+                                <table className="items-table w-full text-xs mb-1 border border-black border-collapse">
                                     <thead>
                                         <tr className="pdf-row-avoid">
                                             {acolumns.map((column) => (
                                                 <th
                                                     key={column.key}
-                                                    className={`${column?.class} px-0.5 py-0 font-extrabold text-[.6rem] border-2 border-gray-400`}
+                                                    className={`${column?.class} px-0.5 py-0 font-extrabold text-[.6rem] border border-black`}
                                                     style={{ backgroundColor: "#2563eb", color: "#ffffff", lineHeight: "0.6rem", height: "10px" }}
                                                 >
                                                     {column.label}
@@ -1027,11 +1027,11 @@ const EditQuotation: React.FC = () => {
                                     <tbody>
                                         {aitems.map((item, i) => (
                                             <tr key={i} className="pdf-row-avoid" style={{ height: "9px" }}>
-                                                <td className="px-0.5 py-0 text-[.6rem] border border-gray-400" style={{ lineHeight: "0.6rem" }}>{i + 1}</td>
-                                                <td className="px-0.5 py-0 text-[.6rem] border border-gray-400" style={{ lineHeight: "0.6rem" }}>{item.title}</td>
-                                                <td className="px-0.5 py-0 text-[.6rem] border border-gray-400" style={{ lineHeight: "0.6rem" }}>{item.description}</td>
-                                                <td className="px-0.5 py-0 text-[.6rem] text-right border border-gray-400" style={{ lineHeight: "0.6rem" }}>{item.quantity}</td>
-                                                <td className="px-0.5 py-0 text-[.6rem] text-right border border-gray-400" style={{ lineHeight: "0.6rem" }}>₹ {item.amount}</td>
+                                                <td className="px-0.5 py-0 text-[.6rem] border border-black" style={{ lineHeight: "0.6rem" }}>{i + 1}</td>
+                                                <td className="px-0.5 py-0 text-[.6rem] border border-black" style={{ lineHeight: "0.6rem" }}>{item.title}</td>
+                                                <td className="px-0.5 py-0 text-[.6rem] border border-black" style={{ lineHeight: "0.6rem" }}>{item.description}</td>
+                                                <td className="px-0.5 py-0 text-[.6rem] text-right border border-black" style={{ lineHeight: "0.6rem" }}>{item.quantity}</td>
+                                                <td className="px-0.5 py-0 text-[.6rem] text-right border border-black" style={{ lineHeight: "0.6rem" }}>₹ {item.amount}</td>
                                             </tr>
                                         ))}
                                     </tbody>
@@ -1039,13 +1039,13 @@ const EditQuotation: React.FC = () => {
                             )}
 
                             {bitems.length > 0 && (
-                                <table className="items-table w-full text-xs mb-2 border border-gray-400 border-collapse">
+                                <table className="items-table w-full text-xs mb-2 border border-black border-collapse">
                                     <thead>
                                         <tr className="pdf-row-avoid">
                                             {bcolumns.map((column) => (
                                                 <th
                                                     key={column.key}
-                                                    className={`${column?.class} px-0.5 py-0 font-extrabold text-[.6rem] border-2 border-gray-400`}
+                                                    className={`${column?.class} px-0.5 py-0 font-extrabold text-[.6rem] border border-black`}
                                                     style={{ backgroundColor: "#2563eb", color: "#ffffff", lineHeight: "0.6rem", height: "10px" }}
                                                 >
                                                     {column.label}
@@ -1056,10 +1056,10 @@ const EditQuotation: React.FC = () => {
                                     <tbody>
                                         {bitems.map((item, i) => (
                                             <tr key={i} className="pdf-row-avoid" style={{ height: "9px" }}>
-                                                <td className="px-0.5 py-0 text-[.6rem] border border-gray-400" style={{ lineHeight: "0.6rem" }}>{i + 1}</td>
-                                                <td className="px-0.5 py-0 text-[.6rem] border border-gray-400" style={{ lineHeight: "0.6rem" }}>{item.title}</td>
-                                                <td className="px-0.5 py-0 text-[.6rem] border border-gray-400" style={{ lineHeight: "0.6rem" }}>{item.description}</td>
-                                                <td className="px-0.5 py-0 text-[.6rem] text-right border border-gray-400" style={{ lineHeight: "0.6rem" }}>₹ {item.amount}</td>
+                                                <td className="px-0.5 py-0 text-[.6rem] border border-black" style={{ lineHeight: "0.6rem" }}>{i + 1}</td>
+                                                <td className="px-0.5 py-0 text-[.6rem] border border-black" style={{ lineHeight: "0.6rem" }}>{item.title}</td>
+                                                <td className="px-0.5 py-0 text-[.6rem] border border-black" style={{ lineHeight: "0.6rem" }}>{item.description}</td>
+                                                <td className="px-0.5 py-0 text-[.6rem] text-right border border-black" style={{ lineHeight: "0.6rem" }}>₹ {item.amount}</td>
                                             </tr>
                                         ))}
                                     </tbody>
@@ -1069,33 +1069,33 @@ const EditQuotation: React.FC = () => {
 
                         {/* Totals — full width */}
                         <div className="mt-2 pdf-section">
-                            <table className="w-full text-xs border border-gray-400 border-collapse" style={{ lineHeight: "6px" }}>
+                            <table className="w-full text-xs border border-black border-collapse" style={{ lineHeight: "6px" }}>
                                 <tbody>
                                     <tr style={{ height: "9px" }}>
-                                        <td className="border border-gray-400 px-0.5 py-0 text-gray-900 font-bold text-[.6rem] w-[30%]" style={{ lineHeight: "6px" }}>Subtotal</td>
-                                        <td className="border border-gray-400 px-0.5 py-0 text-[.7rem] font-bold text-right" style={{ lineHeight: "6px" }}>₹{formatCurrency(subtotal)}</td>
+                                        <td className="border border-black px-0.5 py-0 text-gray-900 font-bold text-[.6rem] w-[30%]" style={{ lineHeight: "6px" }}>Subtotal</td>
+                                        <td className="border border-black px-0.5 py-0 text-[.7rem] font-bold text-right" style={{ lineHeight: "6px" }}>₹{formatCurrency(subtotal)}</td>
                                     </tr>
                                     <tr style={{ height: "9px" }}>
-                                        <td className="border border-gray-400 px-0.5 py-0 text-gray-900 font-bold text-[.6rem]" style={{ lineHeight: "6px" }}>Discount</td>
-                                        <td className="border border-gray-400 px-0.5 py-0 text-[.7rem] font-bold text-right" style={{ lineHeight: "6px" }}>{formatCurrency(discountPercentage)}%</td>
+                                        <td className="border border-black px-0.5 py-0 text-gray-900 font-bold text-[.6rem]" style={{ lineHeight: "6px" }}>Discount</td>
+                                        <td className="border border-black px-0.5 py-0 text-[.7rem] font-bold text-right" style={{ lineHeight: "6px" }}>{formatCurrency(discountPercentage)}%</td>
                                     </tr>
                                     <tr style={{ height: "9px" }}>
-                                        <td className="border border-gray-400 px-0.5 py-0 text-gray-900 font-bold text-[.6rem]" style={{ lineHeight: "6px" }}>GST Rate</td>
-                                        <td className="border border-gray-400 px-0.5 py-0 text-[.7rem] font-bold text-right" style={{ lineHeight: "6px" }}>{formatCurrency(gstRate)}%</td>
+                                        <td className="border border-black px-0.5 py-0 text-gray-900 font-bold text-[.6rem]" style={{ lineHeight: "6px" }}>GST Rate</td>
+                                        <td className="border border-black px-0.5 py-0 text-[.7rem] font-bold text-right" style={{ lineHeight: "6px" }}>{formatCurrency(gstRate)}%</td>
                                     </tr>
                                     <tr style={{ height: "9px" }}>
-                                        <td className="border border-gray-400 px-0.5 py-0 text-gray-900 font-bold text-[.6rem]" style={{ lineHeight: "6px" }}>GST Amount</td>
-                                        <td className="border border-gray-400 px-0.5 py-0 text-[.7rem] font-bold text-right" style={{ lineHeight: "6px" }}>₹{formatCurrency(gstAmount)}</td>
+                                        <td className="border border-black px-0.5 py-0 text-gray-900 font-bold text-[.6rem]" style={{ lineHeight: "6px" }}>GST Amount</td>
+                                        <td className="border border-black px-0.5 py-0 text-[.7rem] font-bold text-right" style={{ lineHeight: "6px" }}>₹{formatCurrency(gstAmount)}</td>
                                     </tr>
                                     <tr style={{ height: "9px" }}>
-                                        <td className="border border-gray-400 px-0.5 py-0 text-gray-900 font-bold text-[.6rem]" style={{ lineHeight: "6px" }}>TOTAL</td>
-                                        <td className="border border-gray-400 px-0.5 py-0 text-[.7rem] font-bold text-right" style={{ lineHeight: "6px" }}>₹ {formatCurrency(totalAmount)}</td>
+                                        <td className="border border-black px-0.5 py-0 text-gray-900 font-bold text-[.6rem]" style={{ lineHeight: "6px" }}>TOTAL</td>
+                                        <td className="border border-black px-0.5 py-0 text-[.7rem] font-bold text-right" style={{ lineHeight: "6px" }}>₹ {formatCurrency(totalAmount)}</td>
                                     </tr>
                                     <tr style={{ height: "10px" }}>
-                                        <td className="border border-gray-400 px-0.5 py-0 text-gray-900 font-bold text-[.6rem] whitespace-nowrap" style={{ lineHeight: "6px" }}>
+                                        <td className="border border-black px-0.5 py-0 text-gray-900 font-bold text-[.6rem] whitespace-nowrap" style={{ lineHeight: "6px" }}>
                                             Total Amount (in words)
                                         </td>
-                                        <td className="border border-gray-400 px-0.5 py-0 text-[.6rem] font-bold uppercase" style={{ lineHeight: "6px" }}>
+                                        <td className="border border-black px-0.5 py-0 text-[.6rem] font-bold uppercase" style={{ lineHeight: "6px" }}>
                                             {numberToWords(totalAmount)}
                                         </td>
                                     </tr>

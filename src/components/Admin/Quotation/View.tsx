@@ -637,13 +637,13 @@ const ViewQuotation: React.FC = () => {
                                 <div key={`machine-chunk-${chunkIndex}`}>
                                     {chunkIndex > 0 && <div className="pdf-page-break" />}
                                     <div className={chunkIndex > 0 ? "pdf-continued-gap" : ""}>
-                                        <table className="items-table w-full text-xs mb-1 border border-gray-400 border-collapse">
+                                        <table className="items-table w-full text-xs mb-1 border border-black border-collapse">
                                             <thead>
                                                 <tr className="pdf-row-avoid">
                                                     {acolumns.map((col) => (
                                                         <th
                                                             key={col.key}
-                                                            className={`${col.class} px-0.5 py-0 font-extrabold text-[.6rem] border-2 border-gray-400`}
+                                                            className={`${col.class} px-0.5 py-0 font-extrabold text-[.6rem] border border-black`}
                                                             style={{ backgroundColor: "#2563eb", color: "#ffffff", lineHeight: "0.6rem", height: "10px" }}
                                                         >
                                                             {col.label}
@@ -654,11 +654,11 @@ const ViewQuotation: React.FC = () => {
                                             <tbody>
                                                 {chunk.map((item, i) => (
                                                     <tr key={`${chunkIndex}-${i}`} className="pdf-row-avoid" style={{ height: "9px" }}>
-                                                        <td className="px-0.5 py-0 text-[.6rem] border border-gray-400" style={{ lineHeight: "0.6rem" }}>{startIndex + i + 1}</td>
-                                                        <td className="px-0.5 py-0 text-[.6rem] border border-gray-400" style={{ lineHeight: "0.6rem" }}>{item.title}</td>
-                                                        <td className="px-0.5 py-0 text-[.6rem] border border-gray-400" style={{ lineHeight: "0.6rem" }}>{item.description}</td>
-                                                        <td className="px-0.5 py-0 text-[.6rem] text-right border border-gray-400" style={{ lineHeight: "0.6rem" }}>{item.quantity}</td>
-                                                        <td className="px-0.5 py-0 text-[.6rem] text-right border border-gray-400" style={{ lineHeight: "0.6rem" }}>₹ {item.amount}</td>
+                                                        <td className="px-0.5 py-0 text-[.6rem] border border-black" style={{ lineHeight: "0.6rem" }}>{startIndex + i + 1}</td>
+                                                        <td className="px-0.5 py-0 text-[.6rem] border border-black" style={{ lineHeight: "0.6rem" }}>{item.title}</td>
+                                                        <td className="px-0.5 py-0 text-[.6rem] border border-black" style={{ lineHeight: "0.6rem" }}>{item.description}</td>
+                                                        <td className="px-0.5 py-0 text-[.6rem] text-right border border-black" style={{ lineHeight: "0.6rem" }}>{item.quantity}</td>
+                                                        <td className="px-0.5 py-0 text-[.6rem] text-right border border-black" style={{ lineHeight: "0.6rem" }}>₹ {item.amount}</td>
                                                     </tr>
                                                 ))}
                                             </tbody>
@@ -670,13 +670,13 @@ const ViewQuotation: React.FC = () => {
 
                         {/* ────── B-ITEMS TABLE ────── */}
                         {bitems.length > 0 && (
-                            <table className="items-table w-full text-xs mb-2 border border-gray-400 border-collapse">
+                            <table className="items-table w-full text-xs mb-2 border border-black border-collapse">
                                 <thead>
                                     <tr className="pdf-row-avoid">
                                         {bcolumns.map((col) => (
                                             <th
                                                 key={col.key}
-                                                className={`${col.class} px-0.5 py-0 font-extrabold text-[.6rem] border-2 border-gray-400`}
+                                                className={`${col.class} px-0.5 py-0 font-extrabold text-[.6rem] border border-black`}
                                                 style={{ backgroundColor: "#2563eb", color: "#ffffff", lineHeight: "0.6rem", height: "10px" }}
                                             >
                                                 {col.label}
@@ -687,10 +687,10 @@ const ViewQuotation: React.FC = () => {
                                 <tbody>
                                     {bitems.map((item, i) => (
                                         <tr key={i} className="pdf-row-avoid" style={{ height: "9px" }}>
-                                            <td className="px-0.5 py-0 text-[.6rem] border border-gray-400" style={{ lineHeight: "0.6rem" }}>{i + 1}</td>
-                                            <td className="px-0.5 py-0 text-[.6rem] border border-gray-400" style={{ lineHeight: "0.6rem" }}>{item.title}</td>
-                                            <td className="px-0.5 py-0 text-[.6rem] border border-gray-400" style={{ lineHeight: "0.6rem" }}>{item.description}</td>
-                                            <td className="px-0.5 py-0 text-[.6rem] text-right border border-gray-400" style={{ lineHeight: "0.6rem" }}>₹ {item.amount}</td>
+                                            <td className="px-0.5 py-0 text-[.6rem] border border-black" style={{ lineHeight: "0.6rem" }}>{i + 1}</td>
+                                            <td className="px-0.5 py-0 text-[.6rem] border border-black" style={{ lineHeight: "0.6rem" }}>{item.title}</td>
+                                            <td className="px-0.5 py-0 text-[.6rem] border border-black" style={{ lineHeight: "0.6rem" }}>{item.description}</td>
+                                            <td className="px-0.5 py-0 text-[.6rem] text-right border border-black" style={{ lineHeight: "0.6rem" }}>₹ {item.amount}</td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -700,33 +700,33 @@ const ViewQuotation: React.FC = () => {
 
                     {/* Totals — full width */}
                     <div className="mt-2 pdf-section">
-                        <table className="w-full text-xs border border-gray-400 border-collapse" style={{ lineHeight: "6px" }}>
+                        <table className="w-full text-xs border border-black border-collapse" style={{ lineHeight: "6px" }}>
                             <tbody>
                                 <tr style={{ height: "9px" }}>
-                                    <td className="border border-gray-400 px-0.5 py-0 text-gray-900 font-bold text-[.6rem] w-[30%]" style={{ lineHeight: "6px" }}>Subtotal</td>
-                                    <td className="border border-gray-400 px-0.5 py-0 text-[.7rem] font-bold text-right" style={{ lineHeight: "6px" }}>₹{formatNumber(subtotal)}</td>
+                                    <td className="border border-black px-0.5 py-0 text-gray-900 font-bold text-[.6rem] w-[30%]" style={{ lineHeight: "6px" }}>Subtotal</td>
+                                    <td className="border border-black px-0.5 py-0 text-[.7rem] font-bold text-right" style={{ lineHeight: "6px" }}>₹{formatNumber(subtotal)}</td>
                                 </tr>
                                 <tr style={{ height: "9px" }}>
-                                    <td className="border border-gray-400 px-0.5 py-0 text-gray-900 font-bold text-[.6rem]" style={{ lineHeight: "6px" }}>Discount</td>
-                                    <td className="border border-gray-400 px-0.5 py-0 text-[.7rem] font-bold text-right" style={{ lineHeight: "6px" }}>{formatNumber(discount)}%</td>
+                                    <td className="border border-black px-0.5 py-0 text-gray-900 font-bold text-[.6rem]" style={{ lineHeight: "6px" }}>Discount</td>
+                                    <td className="border border-black px-0.5 py-0 text-[.7rem] font-bold text-right" style={{ lineHeight: "6px" }}>{formatNumber(discount)}%</td>
                                 </tr>
                                 <tr style={{ height: "9px" }}>
-                                    <td className="border border-gray-400 px-0.5 py-0 text-gray-900 font-bold text-[.6rem]" style={{ lineHeight: "6px" }}>GST Rate</td>
-                                    <td className="border border-gray-400 px-0.5 py-0 text-[.7rem] font-bold text-right" style={{ lineHeight: "6px" }}>{formatNumber(gstRate)}%</td>
+                                    <td className="border border-black px-0.5 py-0 text-gray-900 font-bold text-[.6rem]" style={{ lineHeight: "6px" }}>GST Rate</td>
+                                    <td className="border border-black px-0.5 py-0 text-[.7rem] font-bold text-right" style={{ lineHeight: "6px" }}>{formatNumber(gstRate)}%</td>
                                 </tr>
                                 <tr style={{ height: "9px" }}>
-                                    <td className="border border-gray-400 px-0.5 py-0 text-gray-900 font-bold text-[.6rem]" style={{ lineHeight: "6px" }}>GST Amount</td>
-                                    <td className="border border-gray-400 px-0.5 py-0 text-[.7rem] font-bold text-right" style={{ lineHeight: "6px" }}>₹{formatNumber(gstAmount)}</td>
+                                    <td className="border border-black px-0.5 py-0 text-gray-900 font-bold text-[.6rem]" style={{ lineHeight: "6px" }}>GST Amount</td>
+                                    <td className="border border-black px-0.5 py-0 text-[.7rem] font-bold text-right" style={{ lineHeight: "6px" }}>₹{formatNumber(gstAmount)}</td>
                                 </tr>
                                 <tr style={{ height: "9px" }}>
-                                    <td className="border border-gray-400 px-0.5 py-0 text-gray-900 font-bold text-[.6rem]" style={{ lineHeight: "6px" }}>TOTAL</td>
-                                    <td className="border border-gray-400 px-0.5 py-0 text-[.7rem] font-bold text-right" style={{ lineHeight: "6px" }}>₹ {formatNumber(totalAmount)}</td>
+                                    <td className="border border-black px-0.5 py-0 text-gray-900 font-bold text-[.6rem]" style={{ lineHeight: "6px" }}>TOTAL</td>
+                                    <td className="border border-black px-0.5 py-0 text-[.7rem] font-bold text-right" style={{ lineHeight: "6px" }}>₹ {formatNumber(totalAmount)}</td>
                                 </tr>
                                 <tr style={{ height: "10px" }}>
-                                    <td className="border border-gray-400 px-0.5 py-0 text-gray-900 font-bold text-[.6rem] whitespace-nowrap" style={{ lineHeight: "6px" }}>
+                                    <td className="border border-black px-0.5 py-0 text-gray-900 font-bold text-[.6rem] whitespace-nowrap" style={{ lineHeight: "6px" }}>
                                         Total Amount (in words)
                                     </td>
-                                    <td className="border border-gray-400 px-0.5 py-0 text-[.6rem] font-bold uppercase" style={{ lineHeight: "6px" }}>
+                                    <td className="border border-black px-0.5 py-0 text-[.6rem] font-bold uppercase" style={{ lineHeight: "6px" }}>
                                         {numberToWords(totalAmount)}
                                     </td>
                                 </tr>
