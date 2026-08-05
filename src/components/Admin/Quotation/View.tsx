@@ -740,7 +740,7 @@ const ViewQuotation: React.FC = () => {
                     <div className="terms-pdf-section">
                         <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-200">Terms & Conditions:</h4>
                         <div
-                            className="mt-1 space-y-1 text-gray-700 dark:text-gray-300 text-[.65rem]"
+                            className="mt-1 space-y-1 text-gray-700 dark:text-gray-300 text-[.65rem] font-bold"
                             style={{ lineHeight: "1.25rem" }}
                         >
                             {quotationData.termsAndConditions.map((term, index) => {
