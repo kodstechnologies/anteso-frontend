@@ -2,15 +2,12 @@ import React, { useRef } from "react";
 import html2pdf from "html2pdf.js";
 import { useState, useEffect } from "react"
 // import { useParams } from "next/navigation"
-import { FaAngleRight } from "react-icons/fa6"
 import { downloadQuotationPdf, getQuotationByEEnquiryId, getQuotationHistory, sendQuotation } from "../../../api"
 import { Navigate, useNavigate, useParams } from "react-router-dom"
-import logo from "../../../assets/logo/anteso-logo2.png"
-import logoA from "../../../assets/quotationImg/NABLlogo.png"
-import AntesoQRCode from '../../../assets/quotationImg/qrcode.png'
-import Signature from '../../../assets/quotationImg/signature.png'
 import SuccessAlert from "../../common/ShowSuccess";
-import IconFile from "../../Icon/IconFile";
+import QuotationFooter from "./Footer";
+import QuotationHeader from "./Header";
+import QuotationHistory from "./History";
 
 interface Term {
     text: string;
@@ -109,6 +106,38 @@ const ViewQuotation: React.FC = () => {
         return Number(num).toFixed(2);
     };
 
+    const numberToWords = (amount: number): string => {
+        const ones = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine",
+            "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen",
+            "Seventeen", "Eighteen", "Nineteen"];
+        const tens = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+
+        if (amount === 0) return "Zero Rupees Only";
+
+        const wholePart = Math.floor(amount);
+        const paisaPart = Math.round((amount - wholePart) * 100);
+
+        const convertBelow1000 = (n: number): string => {
+            if (n === 0) return "";
+            if (n < 20) return ones[n] + " ";
+            if (n < 100) return tens[Math.floor(n / 10)] + (n % 10 ? " " + ones[n % 10] : "") + " ";
+            return ones[Math.floor(n / 100)] + " Hundred " + convertBelow1000(n % 100);
+        };
+
+        const convertToWords = (n: number): string => {
+            if (n === 0) return "";
+            if (n < 1000) return convertBelow1000(n);
+            if (n < 100000) return convertBelow1000(Math.floor(n / 1000)) + "Thousand " + convertBelow1000(n % 1000);
+            if (n < 10000000) return convertBelow1000(Math.floor(n / 100000)) + "Lakh " + convertToWords(n % 100000);
+            return convertBelow1000(Math.floor(n / 10000000)) + "Crore " + convertToWords(n % 10000000);
+        };
+
+        let result = convertToWords(wholePart).trim() + " Rupees";
+        if (paisaPart > 0) result += " and " + convertToWords(paisaPart).trim() + " Paise";
+        result += " Only";
+        return result;
+    };
+
     useEffect(() => {
         const fetchQuotationData = async () => {
             try {
@@ -174,39 +203,21 @@ const ViewQuotation: React.FC = () => {
             //     jsPDF: { unit: "in", format: "a4", orientation: "portrait" as const },
             // };
             const opt = {
-                margin: 0.2,
+                margin: [0.4, 0.45, 0.45, 0.45] as [number, number, number, number],
                 filename: `Quotation_${quotationData.quotationId}.pdf`,
                 image: { type: "jpeg" as const, quality: 0.95 },
-                html2canvas: { scale: 1.5 }, // shrink content
+                html2canvas: { scale: 1.5, useCORS: true },
                 jsPDF: { unit: "in", format: "a4", orientation: "portrait" as const },
                 pagebreak: {
                     mode: ["css", "legacy"],
-                    avoid: [".no-break", ".pdf-section", "table", "tr", "td", "th", "img", "p", "li"],
+                    before: ".pdf-page-break",
+                    avoid: [".no-break", ".pdf-section", ".terms-pdf-section", ".pdf-row-avoid", "img"],
                 },
             };
 
 
             const worker = html2pdf().set(opt).from(pdfRef.current).toPdf();
             const pdf = await worker.get("pdf");
-
-            // Draw border on each PDF page (page-wise frame).
-            const pageCount = pdf.internal.getNumberOfPages();
-            const pageWidth = pdf.internal.pageSize.getWidth();
-            const pageHeight = pdf.internal.pageSize.getHeight();
-            const frameMargin = 0.12; // inches
-
-            for (let i = 1; i <= pageCount; i++) {
-                pdf.setPage(i);
-                pdf.setDrawColor(0, 0, 0);
-                pdf.setLineWidth(0.02);
-                pdf.rect(
-                    frameMargin,
-                    frameMargin,
-                    pageWidth - frameMargin * 2,
-                    pageHeight - frameMargin * 2
-                );
-            }
-
             const blob = pdf.output("blob");
 
             const file = new File([blob], `Quotation_${quotationData.quotationId}.pdf`, {
@@ -280,7 +291,7 @@ const ViewQuotation: React.FC = () => {
             const quotationId = quotationData._id; // quotation _id ✅
 
             const pdfUrl = await sendQuotation(hospitalId, enquiryId, quotationId);
-            setSuccessMessage(`✅ Quotation sent successfully! URL: ${pdfUrl}`);
+            setSuccessMessage(`✅ Quotation sent successfully!`);
         } catch (err: any) {
             console.error("Error sending quotation:", err);
             setSuccessMessage("❌ Failed to send quotation");
@@ -333,6 +344,42 @@ const ViewQuotation: React.FC = () => {
         quotationData.enquiry?.contactPerson ||
         "-";
     const assignedEmployeePhone = quotationData.assignedEmployee?.phone || "-";
+
+    const machineTypes = [
+        ...new Set(
+            (quotationData?.enquiry?.services || [])
+                .map((s) => s.machineType)
+                .filter(Boolean)
+        ),
+    ].join(", ");
+
+    const additionalServiceNames = (quotationData?.enquiry?.additionalServices || [])
+        .map((s) => s?.name)
+        .filter(Boolean)
+        .join(", ");
+
+    const toAddress = [
+        quotationData.enquiry.hospitalName,
+        quotationData.enquiry.fullAddress,
+        quotationData.enquiry.city,
+        quotationData.enquiry.district,
+        `${quotationData.enquiry.state}-${quotationData.enquiry.pinCode}`,
+    ]
+        .filter(Boolean)
+        .join(", ");
+
+    const quotationDescription = [
+        quotationData.quotationId,
+        machineTypes
+            ? `Quotation for the QA test/s for ${machineTypes}`
+            : "Quotation for the QA test/s",
+        additionalServiceNames
+            ? `and additional services ${additionalServiceNames}`
+            : null,
+        toAddress ? `for ${toAddress}` : null,
+    ]
+        .filter(Boolean)
+        .join(" ");
     // const aitems =
     //     quotationData?.enquiry?.services?.map((service, index) => ({
     //         type: "A",
@@ -354,6 +401,17 @@ const ViewQuotation: React.FC = () => {
             price: formatNumber(service.totalAmount ?? 0),
             amount: formatNumber(service.totalAmount ?? 0),
         })) || []
+
+    // Split machines across PDF pages so overflow continues cleanly with gap
+    const MACHINES_FIRST_PAGE = 5;
+    const MACHINES_PER_NEXT_PAGE = 12;
+    const machineChunks: typeof aitems[] = [];
+    if (aitems.length > 0) {
+        machineChunks.push(aitems.slice(0, MACHINES_FIRST_PAGE));
+        for (let i = MACHINES_FIRST_PAGE; i < aitems.length; i += MACHINES_PER_NEXT_PAGE) {
+            machineChunks.push(aitems.slice(i, i + MACHINES_PER_NEXT_PAGE));
+        }
+    }
 
 
     // const bitems = quotationData?.enquiry?.additionalServices
@@ -516,7 +574,7 @@ const ViewQuotation: React.FC = () => {
             <div ref={pdfRef}>
                 {/* <div className="max-w-6xl mx-auto rounded-lg px-4 bg-white w-[50rem]"> */}
                 <div
-                    className="mx-auto px-4 pb-4 bg-white"
+                    className="mx-auto px-6 pb-5 pt-0 bg-white"
                     style={{ width: "793px", maxWidth: "100%", boxSizing: "border-box" }} // ~A4 portrait width at 96 DPI
                 >
                     <style>{`
@@ -524,149 +582,102 @@ const ViewQuotation: React.FC = () => {
                             break-inside: avoid;
                             page-break-inside: avoid;
                         }
-                        table, tr, td, th {
+                        .items-table {
+                            break-inside: auto;
+                            page-break-inside: auto;
+                            width: 100%;
+                        }
+                        .items-table thead {
+                            display: table-header-group;
+                        }
+                        .items-table tbody {
+                            display: table-row-group;
+                        }
+                        .items-table tr.pdf-row-avoid {
                             break-inside: avoid;
                             page-break-inside: avoid;
+                        }
+                        .pdf-page-break {
+                            break-before: page;
+                            page-break-before: always;
+                            display: block;
+                            height: 0;
+                            margin: 0;
+                            padding: 0;
+                            border: none;
+                        }
+                        .pdf-continued-gap {
+                            padding-top: 28px;
+                        }
+                        .terms-pdf-section {
+                            break-inside: avoid;
+                            page-break-inside: avoid;
+                            padding-top: 36px;
+                            margin-top: 8px;
                         }
                     `}</style>
 
                     {/* Header */}
-                    <div className="flex justify-between items-start no-break">
+                    <QuotationHeader
+                        date={quotationData.date}
+                        enquiry={quotationData.enquiry}
+                        assignedEmployeeName={assignedEmployeeName}
+                        assignedEmployeePhone={assignedEmployeePhone}
+                        quotationDescription={quotationDescription}
+                        formatDate={formatDate}
+                    />
 
-                        <div>
-                            <img src={logo} alt="Company Logo" className="h-20" />
-                            <p className=" font-bold text-[.6rem]">AERB Registration No. 14-AFSXE-2148</p>
-                        </div>
-                        <div className="text-center">
-                            <h1 className="text-xl font-bold uppercase">Quotation</h1>
-                        </div>
-                        <div className="text-right">
-                            <img src={logoA} alt="NABL Logo" className="h-20 ml-auto" />
-                            <p className=" font-bold text-[.6rem]">NABL Accreditation No TC-9843</p>
-                        </div>
-                    </div>
-
-                    {/* Company and Recipient Info */}
-                    <div className="flex w-full justify-between pdf-section">
-                        <div>
-                            <table
-                                className="text-sm w-[20rem]"
-                                style={{
-                                    lineHeight: "1.5rem",
-                                }}
-                            >
-                                <tr className="text-[.7rem]">
-                                    <td>Date:</td>
-                                    <td className="pl-2">{formatDate(quotationData.date)}</td>
-                                </tr>
-                                <tr className="text-[.7rem]">
-                                    <td className="font-bold pb-4">To:</td>
-                                    <td
-                                        className="pl-2"
-                                        style={{
-                                            lineHeight: "20px",
-                                        }}
-                                    >
-                                        <span className="font-bold">{(quotationData.enquiry.hospitalName || '').toUpperCase()}</span>
-                                        <br />
-                                        {quotationData.enquiry.fullAddress}, {quotationData.enquiry.city}, {quotationData.enquiry.district},{" "}
-                                        {quotationData.enquiry.state}-{quotationData.enquiry.pinCode}
-                                    </td>
-                                </tr>
-
-                                <tr className="text-[.7rem]">
-                                    <td className="font-bold">Email:</td>
-                                    <td className="pl-2">
-                                        <a href={`mailto:${quotationData.enquiry.emailAddress}`} className="text-blue-600 hover:underline">
-                                            {quotationData.enquiry.emailAddress}
-                                        </a>
-                                    </td>
-                                </tr>
-                                <tr className="text-[.7rem]">
-                                    <td className="font-bold">Contact:</td>
-                                    <td className="pl-2">{quotationData.enquiry.contactNumber}</td>
-                                </tr>
-                                <tr className="text-[.7rem]">
-                                    <td className="pl-4 font-bold w-[10rem]">Name:</td>
-                                    <td className="pl-2" colSpan={3}>
-                                        {assignedEmployeeName} &nbsp;&nbsp;
-                                    </td>
-                                </tr>
-                                <tr className="text-[.7rem]">
-                                    <td className="pl-4 font-bold w-[10rem]">Phone:</td>
-                                    <td className="pl-2" colSpan={3}>
-                                        {assignedEmployeePhone} &nbsp;&nbsp;
-                                    </td>
-                                </tr>
-                                <tr className="text-[.7rem]">
-                                    <td className="font-bold">Enquiry ID:</td>
-                                    <td className="pl-2 font-bold">{quotationData.enquiry.enquiryId}</td>
-                                </tr>
-                                <tr className="text-[.7rem]">
-                                    <td className="font-bold">Quotation:</td>
-                                    <td className="pl-2 font-bold">{quotationData.quotationId}</td>
-                                </tr>
-                                <tr className="text-[.7rem]">
-                                    <td className="font-bold">Expires:</td>
-                                    <td className="pl-2">30 days from above date</td>
-                                </tr>
-                            </table>
-                        </div>
-
-                        <div
-                            className=""
-                            style={{
-                                lineHeight: "17px",
-                            }}
-                        >
-                            <p className="font-bold text-black text-[.7rem]">ANTESO Biomedical (OPC) Pvt. Ltd.</p>
-                            <p className="text-[.7rem]">Flat No. 290, 2nd Floor, Block D,</p>
-                            <p className="text-[.7rem]">Pocket 7, Sector 6, Rohini,</p>
-                            <p className="text-[.7rem]">New Delhi – 110 085, INDIA</p>
-                            <p className="text-[.7rem]">Mobile: +91 8470909720 / 8951818690</p>
-                            <p className="text-[.7rem]">Email: info@antesobiomedicalopc.com</p>
-                        </div>
-                    </div>
-
-                    {/* Items Tables */}
-                    <div className="mt-1 pdf-section">
-                        {aitems.length > 0 && (
-                            <table className="w-full text-xs mb-1">
-                                <thead>
-                                    <tr>
-                                        {acolumns.map((col) => (
-                                            <th
-                                                key={col.key}
-                                                className={`${col.class} px-2 bg-gray-100 text-gray-900 font-bold text-[.6rem]`}
-                                            >
-                                                {col.label}
-                                            </th>
-                                        ))}
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {aitems.map((item, i) => (
-                                        <tr key={i}>
-                                            <td className="px-2 py-1 text-[.6rem]">{i + 1}</td>
-                                            <td className="px-2 py-1 text-[.6rem]">{item.title}</td>
-                                            <td className="px-2 py-1 text-[.6rem]">{item.description}</td>
-                                            <td className="px-2 py-1 text-[.6rem] text-right">{item.quantity}</td>
-                                            <td className="px-2 py-1 text-[.6rem] text-right">₹ {item.amount}</td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        )}
+                    {/* Items Tables — overflow machines continue on next page with gap */}
+                    <div className="mt-1">
+                        {machineChunks.map((chunk, chunkIndex) => {
+                            const startIndex = chunkIndex === 0
+                                ? 0
+                                : MACHINES_FIRST_PAGE + (chunkIndex - 1) * MACHINES_PER_NEXT_PAGE;
+                            return (
+                                <div key={`machine-chunk-${chunkIndex}`}>
+                                    {chunkIndex > 0 && <div className="pdf-page-break" />}
+                                    <div className={chunkIndex > 0 ? "pdf-continued-gap" : ""}>
+                                        <table className="items-table w-full text-xs mb-1 border border-gray-400 border-collapse">
+                                            <thead>
+                                                <tr className="pdf-row-avoid">
+                                                    {acolumns.map((col) => (
+                                                        <th
+                                                            key={col.key}
+                                                            className={`${col.class} px-0.5 py-0 font-extrabold text-[.6rem] border-2 border-gray-400`}
+                                                            style={{ backgroundColor: "#2563eb", color: "#ffffff", lineHeight: "0.6rem", height: "10px" }}
+                                                        >
+                                                            {col.label}
+                                                        </th>
+                                                    ))}
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {chunk.map((item, i) => (
+                                                    <tr key={`${chunkIndex}-${i}`} className="pdf-row-avoid" style={{ height: "9px" }}>
+                                                        <td className="px-0.5 py-0 text-[.6rem] border border-gray-400" style={{ lineHeight: "0.6rem" }}>{startIndex + i + 1}</td>
+                                                        <td className="px-0.5 py-0 text-[.6rem] border border-gray-400" style={{ lineHeight: "0.6rem" }}>{item.title}</td>
+                                                        <td className="px-0.5 py-0 text-[.6rem] border border-gray-400" style={{ lineHeight: "0.6rem" }}>{item.description}</td>
+                                                        <td className="px-0.5 py-0 text-[.6rem] text-right border border-gray-400" style={{ lineHeight: "0.6rem" }}>{item.quantity}</td>
+                                                        <td className="px-0.5 py-0 text-[.6rem] text-right border border-gray-400" style={{ lineHeight: "0.6rem" }}>₹ {item.amount}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            );
+                        })}
 
                         {/* ────── B-ITEMS TABLE ────── */}
                         {bitems.length > 0 && (
-                            <table className="w-full text-xs mb-6">
+                            <table className="items-table w-full text-xs mb-2 border border-gray-400 border-collapse">
                                 <thead>
-                                    <tr>
+                                    <tr className="pdf-row-avoid">
                                         {bcolumns.map((col) => (
                                             <th
                                                 key={col.key}
-                                                className={`${col.class} px-2 py-1 bg-gray-100 text-gray-900 font-bold text-[.6rem]`}
+                                                className={`${col.class} px-0.5 py-0 font-extrabold text-[.6rem] border-2 border-gray-400`}
+                                                style={{ backgroundColor: "#2563eb", color: "#ffffff", lineHeight: "0.6rem", height: "10px" }}
                                             >
                                                 {col.label}
                                             </th>
@@ -675,11 +686,11 @@ const ViewQuotation: React.FC = () => {
                                 </thead>
                                 <tbody>
                                     {bitems.map((item, i) => (
-                                        <tr key={i}>
-                                            <td className="px-2 py-1 text-[.6rem]">{i + 1}</td>
-                                            <td className="px-2 py-1 text-[.6rem]">{item.title}</td>
-                                            <td className="px-2 py-1 text-[.6rem]">{item.description}</td>
-                                            <td className="px-2 py-1 text-[.6rem] text-right">₹ {item.amount}</td>
+                                        <tr key={i} className="pdf-row-avoid" style={{ height: "9px" }}>
+                                            <td className="px-0.5 py-0 text-[.6rem] border border-gray-400" style={{ lineHeight: "0.6rem" }}>{i + 1}</td>
+                                            <td className="px-0.5 py-0 text-[.6rem] border border-gray-400" style={{ lineHeight: "0.6rem" }}>{item.title}</td>
+                                            <td className="px-0.5 py-0 text-[.6rem] border border-gray-400" style={{ lineHeight: "0.6rem" }}>{item.description}</td>
+                                            <td className="px-0.5 py-0 text-[.6rem] text-right border border-gray-400" style={{ lineHeight: "0.6rem" }}>₹ {item.amount}</td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -687,128 +698,64 @@ const ViewQuotation: React.FC = () => {
                         )}
                     </div>
 
-                    {/* Totals only — kept close together */}
-                    <div className="flex justify-end mt-2 px-4 pdf-section">
-                        <div className="w-52 p-2 rounded-md bg-gray-50" style={{ lineHeight: "12px" }}>
-                            <div className="flex items-center gap-2">
-                                <div className="flex-1 text-gray-900 font-bold text-[.6rem]">Subtotal</div>
-                                <div className="w-[37%] text-[.7rem] font-bold text-right">₹{formatNumber(subtotal)}</div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <div className="flex-1 text-gray-900 font-bold text-[.6rem]">Discount</div>
-                                <div className="w-[37%] text-[.7rem] font-bold text-right">{formatNumber(discount)}%</div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <div className="flex-1 text-gray-900 font-bold text-[.6rem]">GST Rate</div>
-                                <div className="w-[37%] text-[.7rem] font-bold text-right">{formatNumber(gstRate)}%</div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <div className="flex-1 text-gray-900 font-bold text-[.6rem]">GST Amount</div>
-                                <div className="w-[37%] text-[.7rem] font-bold text-right">₹{formatNumber(gstAmount)}</div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <div className="flex-1 text-gray-900 font-bold text-[.6rem]">TOTAL</div>
-                                <div className="w-[37%] text-[.7rem] font-bold text-right">₹ {formatNumber(totalAmount)}</div>
-                            </div>
-                        </div>
+                    {/* Totals — full width */}
+                    <div className="mt-2 pdf-section">
+                        <table className="w-full text-xs border border-gray-400 border-collapse" style={{ lineHeight: "6px" }}>
+                            <tbody>
+                                <tr style={{ height: "9px" }}>
+                                    <td className="border border-gray-400 px-0.5 py-0 text-gray-900 font-bold text-[.6rem] w-[30%]" style={{ lineHeight: "6px" }}>Subtotal</td>
+                                    <td className="border border-gray-400 px-0.5 py-0 text-[.7rem] font-bold text-right" style={{ lineHeight: "6px" }}>₹{formatNumber(subtotal)}</td>
+                                </tr>
+                                <tr style={{ height: "9px" }}>
+                                    <td className="border border-gray-400 px-0.5 py-0 text-gray-900 font-bold text-[.6rem]" style={{ lineHeight: "6px" }}>Discount</td>
+                                    <td className="border border-gray-400 px-0.5 py-0 text-[.7rem] font-bold text-right" style={{ lineHeight: "6px" }}>{formatNumber(discount)}%</td>
+                                </tr>
+                                <tr style={{ height: "9px" }}>
+                                    <td className="border border-gray-400 px-0.5 py-0 text-gray-900 font-bold text-[.6rem]" style={{ lineHeight: "6px" }}>GST Rate</td>
+                                    <td className="border border-gray-400 px-0.5 py-0 text-[.7rem] font-bold text-right" style={{ lineHeight: "6px" }}>{formatNumber(gstRate)}%</td>
+                                </tr>
+                                <tr style={{ height: "9px" }}>
+                                    <td className="border border-gray-400 px-0.5 py-0 text-gray-900 font-bold text-[.6rem]" style={{ lineHeight: "6px" }}>GST Amount</td>
+                                    <td className="border border-gray-400 px-0.5 py-0 text-[.7rem] font-bold text-right" style={{ lineHeight: "6px" }}>₹{formatNumber(gstAmount)}</td>
+                                </tr>
+                                <tr style={{ height: "9px" }}>
+                                    <td className="border border-gray-400 px-0.5 py-0 text-gray-900 font-bold text-[.6rem]" style={{ lineHeight: "6px" }}>TOTAL</td>
+                                    <td className="border border-gray-400 px-0.5 py-0 text-[.7rem] font-bold text-right" style={{ lineHeight: "6px" }}>₹ {formatNumber(totalAmount)}</td>
+                                </tr>
+                                <tr style={{ height: "10px" }}>
+                                    <td className="border border-gray-400 px-0.5 py-0 text-gray-900 font-bold text-[.6rem] whitespace-nowrap" style={{ lineHeight: "6px" }}>
+                                        Total Amount (in words)
+                                    </td>
+                                    <td className="border border-gray-400 px-0.5 py-0 text-[.6rem] font-bold uppercase" style={{ lineHeight: "6px" }}>
+                                        {numberToWords(totalAmount)}
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
+
                     <br />
                     <hr />
 
-                    <div className="mt-4 pdf-section">
-                        <h4 className="ml-4 text-sm font-semibold text-gray-800 dark:text-gray-200">Terms & Conditions:</h4>
-                        <ul
-                            className="list-disc list-outside pl-6 space-y-2 text-gray-700 dark:text-gray-300 text-[.65rem] leading-relaxed"
-                            style={{
-                                lineHeight: "10px",
-                            }}
+                    <div className="terms-pdf-section">
+                        <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-200">Terms & Conditions:</h4>
+                        <div
+                            className="mt-1 space-y-1 text-gray-700 dark:text-gray-300 text-[.65rem]"
+                            style={{ lineHeight: "1.25rem" }}
                         >
                             {quotationData.termsAndConditions.map((term, index) => {
                                 const text = typeof term === "string" ? term : term?.text ?? "";
                                 return (
-                                    <li key={index} className={text.includes("GST") ? "text-green-600" : ""}>
-                                        {text}
-                                    </li>
+                                    <p key={index} className={text.includes("GST") ? "text-green-600" : ""}>
+                                        - {text}
+                                    </p>
                                 );
                             })}
-                        </ul>
+                        </div>
                     </div>
 
                     {/* Footer — matches reference: signature | QR, then 3-col bank row */}
-                    <div className="mt-4 no-break w-full">
-                        <div className="flex flex-nowrap justify-between items-start gap-4 w-full">
-                            {/* Left: signature (includes name/RSO stamp in image) */}
-                            <div className="flex-shrink-0">
-                                <img
-                                    src={Signature}
-                                    alt="Signature"
-                                    className="h-36 w-auto object-contain object-left"
-                                />
-                            </div>
-
-                            {/* Right: QR + merchant + steps — centered under QR */}
-                            <div className="flex-shrink-0 w-[15rem] flex flex-col items-center text-center">
-                                <img
-                                    src={AntesoQRCode}
-                                    alt="QR Code"
-                                    className="h-28 w-28 object-contain"
-                                />
-                                <div className="mt-0.5 w-full text-center text-gray-900">
-                                    <table className="mx-auto text-[.4rem]" style={{ lineHeight: "8px" }}>
-                                        <tbody>
-                                            <tr>
-                                                <p className="text-left whitespace-nowrap pr-1 align-top">Merchant Name :</p>
-                                                <p   className="text-left align-top">ANTESO BIOMEDICAL PRIVATE LIMITED</p>
-                                            </tr>
-                                            <tr>
-                                                <p className="text-left whitespace-nowrap pr-1 align-top">Mobile Number :</p>
-                                                <p className="text-left align-top">8470909720</p>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                    <div className="mt-0.5 text-center text-[.4rem]" style={{ lineHeight: "8px" }}>
-                                        <p>Steps to PAy UPI QR Code</p>
-                                        <p className="flex justify-center items-center flex-wrap mx-auto">
-                                            Oppen UPI app <FaAngleRight /> Select Type to Pay <FaAngleRight /> Scan QR Code{" "}
-                                            <FaAngleRight /> Enter Amount
-                                        </p>
-                                    </div>
-                                </div>
-                                <hr className="bg-gray-700 h-[1.5px] mt-0.5 mb-0 w-full" />
-                            </div>
-                        </div>
-
-                        {/* Bank details — one horizontal line below signature + QR */}
-                        <div
-                            className="flex flex-nowrap justify-between items-start gap-3 w-full mt-0.5 text-[.6rem]"
-                            style={{ lineHeight: "11px" }}
-                        >
-                            <div className="flex-1 min-w-0 text-left">
-                                <p>
-                                    <span className="font-medium">A/C No.:</span> 50200007211263
-                                </p>
-                                <p>
-                                    <span className="font-medium">IFSC :</span> HDFC0000711
-                                </p>
-                                <p>HDFC BANK PUSHPANJALI ENCLAVE PITAMPURA</p>
-                            </div>
-                            <div className="flex-1 min-w-0 text-center">
-                                <p className="font-bold">OUR ACCOUNT DETAILS</p>
-                                <p className="font-bold">
-                                    <span>GST NO :</span> 07AAMCA8142J1ZE
-                                </p>
-                            </div>
-                            <div className="flex-1 min-w-0 text-right">
-                                <p>
-                                    <span className="font-medium">A/C No</span> 344305001088
-                                </p>
-                                <p>
-                                    <span className="font-medium">IFSC Code</span> ICIC0003443
-                                </p>
-                                <p>ICICI BANK ROHINI</p>
-                            </div>
-                        </div>
-                    </div>
+                    <QuotationFooter />
 
                     <div className="mt-3 text-center no-break text-[.6rem]" style={{ lineHeight: "12px" }}>
                         <p>
@@ -830,23 +777,17 @@ const ViewQuotation: React.FC = () => {
             )}
 
             <div className="flex justify-end my-4 space-x-2">
-                {/* Show Save & Upload only if status is "Created" */}
-                {/* {quotationData.quotationStatus === "Created" && (
+                {/* Show Edit button only when status is Rejected */}
+                {quotationData.quotationStatus === "Rejected" && (
                     <button
-                        onClick={handleSaveAsPdf}
-                        disabled={isSavingPdf}
-                        className={`bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 flex items-center justify-center ${isSavingPdf ? "opacity-70 cursor-not-allowed" : ""}`}
+                        onClick={handleEditQuotation}
+                        className="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700 flex items-center justify-center"
                     >
-                        {isSavingPdf ? (
-                            <div className="flex items-center gap-2">
-                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                                Saving PDF...
-                            </div>
-                        ) : (
-                            "Save & Upload Quotation PDF"
-                        )}
+                        Edit Quotation
                     </button>
-                )} */}
+                )}
+
+                {/* Show Save & Upload only if status is "Created" and not uploaded */}
                 {quotationData.quotationStatus === "Created" && !quotationData?.isUploaded && (
                     <button
                         onClick={handleSaveAsPdf}
@@ -864,7 +805,6 @@ const ViewQuotation: React.FC = () => {
                     </button>
                 )}
 
-                {/* Show Send only after PDF is uploaded successfully */}
                 {/* Show Send only if quotation has a PDF and status is Created */}
                 {/* {quotationData.quotationStatus === "Created" && quotationData.pdfUrl && (
                     <button
@@ -884,7 +824,7 @@ const ViewQuotation: React.FC = () => {
                 )} */}
 
                 {/* Show Reshare only if status is Rejected */}
-                {/* {quotationData.quotationStatus === "Rejected" && (
+                {/* {quotationData.quotationStatus === "Rejected" && quotationData.pdfUrl && (
                     <button
                         onClick={handleSendQuotation}
                         disabled={isSending}
@@ -900,103 +840,13 @@ const ViewQuotation: React.FC = () => {
                         )}
                     </button>
                 )} */}
-                {quotationData.quotationStatus === "Rejected" && (
-                    <button
-                        onClick={handleEditQuotation}
-                        className="bg-yellow-600 text-white px-4 py-2 rounded hover:bg-yellow-700 flex items-center justify-center"
-                    >
-                        Edit Quotation
-                    </button>
-                )}
             </div>
-            <div className="mt-8 flex justify-center">
-                <div
-                    className="bg-white rounded-lg shadow-sm p-6 w-full border border-gray-200"
-                    style={{ maxWidth: "793px" }}
-                >
-                    <h3 className="font-semibold text-lg text-gray-800 mb-4 flex items-center justify-center">
-                        <IconFile className="w-6 h-6 mr-2 text-blue-600" />
-                        Quotation History
-                    </h3>
-
-                    {historyLoading ? (
-                        <div className="flex flex-col items-center justify-center py-8">
-                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-3"></div>
-                            <p className="text-sm text-gray-500">Loading history…</p>
-                        </div>
-                    ) : historyError ? (
-                        <div className="flex flex-col items-center justify-center py-8 text-center">
-                            <svg className="w-12 h-12 text-red-500 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            <p className="text-sm text-red-600 font-medium">{historyError}</p>
-                        </div>
-                    ) : uniqueHistory.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-12 text-center bg-gray-50 rounded-md">
-                            <svg className="w-16 h-16 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
-                            <p className="text-base text-gray-600 font-medium mb-1">No revision history available</p>
-                        </div>
-                    ) : (
-                        <div className="overflow-x-auto border border-gray-200 rounded-md">
-                            <table className="w-full text-sm divide-y divide-gray-200">
-                                <thead className="bg-gray-50">
-                                    <tr>
-                                        <th className="px-4 py-3 text-left font-semibold text-gray-700">Date & Time</th>
-                                        <th className="px-4 py-3 text-left font-semibold text-gray-700">Status</th>
-                                        <th className="px-4 py-3 text-left font-semibold text-gray-700">PDF</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="bg-white divide-y divide-gray-100">
-                                    {uniqueHistory.map((rec, i) => (
-                                        <tr key={i} className="hover:bg-gray-50 transition-colors">
-                                            <td className="px-4 py-3 text-gray-800">
-                                                {new Date(rec.date).toLocaleString("en-IN", {
-                                                    day: "2-digit",
-                                                    month: "short",
-                                                    year: "numeric",
-                                                    hour: "2-digit",
-                                                    minute: "2-digit",
-                                                })}
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                <span
-                                                    className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${rec.status === "Accepted"
-                                                        ? "bg-green-100 text-green-800"
-                                                        : rec.status === "Rejected"
-                                                            ? "bg-red-100 text-red-800"
-                                                            : "bg-yellow-100 text-yellow-800"
-                                                        }`}
-                                                >
-                                                    {rec.status}
-                                                </span>
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                {(quotationPdfUrl || rec.pdfUrl) ? (
-                                                    <a
-                                                        href={quotationPdfUrl || rec.pdfUrl}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="inline-flex items-center text-blue-600 hover:text-blue-800 font-medium text-sm transition-colors"
-                                                    >
-                                                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                                                        </svg>
-                                                        View PDF
-                                                    </a>
-                                                ) : (
-                                                    <span className="text-gray-400 text-sm">—</span>
-                                                )}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
-                </div>
-            </div>
+            <QuotationHistory
+                historyLoading={historyLoading}
+                historyError={historyError}
+                uniqueHistory={uniqueHistory}
+                quotationPdfUrl={quotationPdfUrl}
+            />
         </div>
     )
 }

@@ -3,11 +3,9 @@ import html2pdf from "html2pdf.js";
 import { FaAngleRight, FaPlus, FaTrash } from "react-icons/fa6";
 import { allEmployees, downloadQuotationPdf, getAllDealers, getQuotationByEEnquiryId, sendQuotation, updateQuotationById } from "../../../api";
 import { useNavigate, useParams } from "react-router-dom";
-import logo from "../../../assets/logo/logo-sm.png";
-import logoA from "../../../assets/quotationImg/NABLlogo.png";
-import AntesoQRCode from '../../../assets/quotationImg/qrcode.png';
-import Signature from '../../../assets/quotationImg/signature.png';
 import SuccessAlert from "../../common/ShowSuccess";
+import QuotationHeader from "./Header";
+import QuotationFooter from "./Footer";
 // import ErrorAlert from "../../common/ShowError";
 
 interface Term {
@@ -27,7 +25,7 @@ interface EditableQuotationData {
     enquiry: {
         _id: string;
         enquiryId: string;
-        leadOwner?: { id?: string; name?: string } | string;
+        leadOwner?: { id?: string; name?: string } ;
         hospitalName: string;
         fullAddress: string;
         city: string;
@@ -76,6 +74,7 @@ interface EditableQuotationData {
         address: string;
         gstin: string;
     };
+   
 }
 
 interface AdditionalServiceData {
@@ -387,25 +386,6 @@ const EditQuotation: React.FC = () => {
 
             const worker = html2pdf().set(opt).from(pdfRef.current).toPdf();
             const pdf = await worker.get("pdf");
-
-            // Draw border on each PDF page (single page-wise frame).
-            const pageCount = pdf.internal.getNumberOfPages();
-            const pageWidth = pdf.internal.pageSize.getWidth();
-            const pageHeight = pdf.internal.pageSize.getHeight();
-            const frameMargin = 0.12;
-
-            for (let i = 1; i <= pageCount; i++) {
-                pdf.setPage(i);
-                pdf.setDrawColor(0, 0, 0);
-                pdf.setLineWidth(0.02);
-                pdf.rect(
-                    frameMargin,
-                    frameMargin,
-                    pageWidth - frameMargin * 2,
-                    pageHeight - frameMargin * 2
-                );
-            }
-
             const blob = pdf.output("blob");
 
             const file = new File([blob], `Quotation_${quotationData.quotationId}.pdf`, {
@@ -633,44 +613,80 @@ const EditQuotation: React.FC = () => {
     const hasSelectedOptionInList =
         !!selectedOption?._id && options.some((opt) => opt._id === selectedOption._id);
 
-    // QR and Bank Details component (moved beside calculations)
-    const QrAndBankDetails = () => (
-        <div className="text-left space-y-1 w-48 flex-shrink-0">
-            <img src={AntesoQRCode} alt="QR Code" className="h-20 mx-auto mb-2" />
-            <table className="h-4 w-full">
-                <tr style={{ fontSize: ".4rem" }}>
-                    <td className="pb-3 text-start">Merchant Name:</td>
-                    <td className="leading-none text-end pr-2">
-                        {editableCompanyDetails.name || "ANTESO BIOMEDICAL PRIVATE LIMITED"}
-                    </td>
-                </tr>
-                <tr style={{ fontSize: ".4rem" }}>
-                    <td className="text-start">Mobile Number:</td>
-                    <td className="text-end pr-2">8470909720</td>
-                </tr>
-            </table>
-            <div className="text-center text-[.4rem]" style={{ lineHeight: "8px" }}>
-                <p>Steps to Pay UPI QR Code</p>
-                <p className="flex justify-center items-center flex-wrap w-[10rem]">
-                    Open UPI app <FaAngleRight /> Select Type to Pay <FaAngleRight /> Scan QR Code <FaAngleRight /> Enter
-                    Amount
-                </p>
-            </div>
+    const assignedEmployeeName =
+        quotationData?.assignedEmployee?.name ||
+        quotationData?.enquiry?.leadOwner?.name ||
+        quotationData?.enquiry?.contactPerson ||
+        "-";
+    const assignedEmployeePhone = quotationData?.assignedEmployee?.phone || "-";
 
-            <hr className="bg-gray-700 h-[1.5px]" />
-            <div>
-                <div className="w-full m-auto">
-                    <p className="text-right text-[.6rem]">
-                        <span className="font-medium text-[.6rem]">A/C No:</span> {editableBankDetails.accountNumber || "344305001088"}
-                    </p>
-                    <p className="text-right text-[.6rem]">
-                        <span className="font-medium text-[.6rem]">IFSC Code:</span> {editableBankDetails.ifsc || "ICIC0003443"}
-                    </p>
-                    <p className="text-[.6rem] text-right">{editableBankDetails.bankName || "ICICI BANK ROHINI"}</p>
-                </div>
-            </div>
-        </div>
-    );
+    const machineTypes = [
+        ...new Set(
+            (quotationData?.enquiry?.services || [])
+                .map((s) => s.machineType)
+                .filter(Boolean)
+        ),
+    ].join(", ");
+
+    const additionalServiceNames = (quotationData?.enquiry?.additionalServices || [])
+        .map((s) => s?.name)
+        .filter(Boolean)
+        .join(", ");
+
+    const toAddress = [
+        quotationData?.enquiry.hospitalName,
+        quotationData?.enquiry.fullAddress,
+        quotationData?.enquiry.city,
+        quotationData?.enquiry.district,
+        `${quotationData?.enquiry.state}-${quotationData?.enquiry.pinCode}`,
+    ]
+        .filter(Boolean)
+        .join(", ");
+
+    const quotationDescription = [
+        quotationData?.quotationId,
+        machineTypes
+            ? `Quotation for the QA test/s for ${machineTypes}`
+            : "Quotation for the QA test/s",
+        additionalServiceNames
+            ? `and additional services ${additionalServiceNames}`
+            : null,
+        toAddress ? `for ${toAddress}` : null,
+    ]
+        .filter(Boolean)
+        .join(" ");
+
+    const numberToWords = (amount: number): string => {
+        const ones = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine",
+            "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen",
+            "Seventeen", "Eighteen", "Nineteen"];
+        const tens = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+
+        if (amount === 0) return "Zero Rupees Only";
+
+        const wholePart = Math.floor(amount);
+        const paisaPart = Math.round((amount - wholePart) * 100);
+
+        const convertBelow1000 = (n: number): string => {
+            if (n === 0) return "";
+            if (n < 20) return ones[n] + " ";
+            if (n < 100) return tens[Math.floor(n / 10)] + (n % 10 ? " " + ones[n % 10] : "") + " ";
+            return ones[Math.floor(n / 100)] + " Hundred " + convertBelow1000(n % 100);
+        };
+
+        const convertToWords = (n: number): string => {
+            if (n === 0) return "";
+            if (n < 1000) return convertBelow1000(n);
+            if (n < 100000) return convertBelow1000(Math.floor(n / 1000)) + "Thousand " + convertBelow1000(n % 1000);
+            if (n < 10000000) return convertBelow1000(Math.floor(n / 100000)) + "Lakh " + convertToWords(n % 100000);
+            return convertBelow1000(Math.floor(n / 10000000)) + "Crore " + convertToWords(n % 10000000);
+        };
+
+        let result = convertToWords(wholePart).trim() + " Rupees";
+        if (paisaPart > 0) result += " and " + convertToWords(paisaPart).trim() + " Paise";
+        result += " Only";
+        return result;
+    };
 
     return (
         <div className="w-full min-h-screen bg-gray-50 px-8 absolute top-0 left-0 z-50 lg:px-[15%]">
@@ -950,102 +966,58 @@ const EditQuotation: React.FC = () => {
             ) : (
                 <div ref={pdfRef}>
                     <div
-                        className="mx-auto px-4 pb-4 bg-white"
-                        style={{ width: "793px", maxWidth: "100%" }}
+                        className="mx-auto px-6 pb-5 pt-0 bg-white"
+                        style={{ width: "793px", maxWidth: "100%", boxSizing: "border-box" }}
                     >
-                        {/* Header - Same as View */}
-                        <div className="flex justify-between items-start">
-                            <div>
-                                <img src={logo} alt="Company Logo" className="h-14" />
-                                <p className="font-bold text-[.6rem]">AERB Registration No. 14-AFSXE-2148</p>
-                            </div>
-                            <div className="text-center">
-                                <h1 className="text-xl font-bold uppercase">Quotation</h1>
-                            </div>
-                            <div className="text-right">
-                                <img src={logoA} alt="NABL Logo" className="h-14 ml-auto" />
-                                <p className="font-bold text-[.6rem]">NABL Accreditation No TC-9843</p>
-                            </div>
-                        </div>
+                        <style>{`
+                            .pdf-section, .no-break {
+                                break-inside: avoid;
+                                page-break-inside: avoid;
+                            }
+                            .items-table {
+                                break-inside: auto;
+                                page-break-inside: auto;
+                                width: 100%;
+                            }
+                            .items-table thead {
+                                display: table-header-group;
+                            }
+                            .items-table tbody {
+                                display: table-row-group;
+                            }
+                            .items-table tr.pdf-row-avoid {
+                                break-inside: avoid;
+                                page-break-inside: avoid;
+                            }
+                            .terms-pdf-section {
+                                break-inside: avoid;
+                                page-break-inside: avoid;
+                                padding-top: 36px;
+                                margin-top: 8px;
+                            }
+                        `}</style>
 
-                        {/* Company and Recipient Info - Use original data or editable if needed */}
-                        <div className="flex w-full justify-between">
-                            <div>
-                                <table className="text-sm w-[20rem]" style={{ lineHeight: "1.5rem" }}>
-                                    <tr className="text-[.7rem]">
-                                        <td>Date:</td>
-                                        <td className="pl-2">{formatDate(editableDate)}</td>
-                                    </tr>
-                                    <tr className="text-[.7rem]">
-                                        <td className="font-bold pb-4">To:</td>
-                                        <td className="pl-2" style={{ lineHeight: "20px" }}>
-                                            <span className="font-bold">{quotationData.enquiry.hospitalName.toUpperCase()}</span>
-                                            <br />
-                                            {quotationData.enquiry.fullAddress}, {quotationData.enquiry.city}, {quotationData.enquiry.district},{" "}
-                                            {quotationData.enquiry.state}-{quotationData.enquiry.pinCode}
-                                        </td>
-                                    </tr>
-                                    <tr className="text-[.7rem]">
-                                        <td className="font-bold">Email:</td>
-                                        <td className="pl-2">
-                                            <a href={`mailto:${quotationData.enquiry.emailAddress}`} className="text-blue-600 hover:underline">
-                                                {quotationData.enquiry.emailAddress}
-                                            </a>
-                                        </td>
-                                    </tr>
-                                    <tr className="text-[.7rem]">
-                                        <td className="font-bold">Contact:</td>
-                                        <td className="pl-2">{quotationData.enquiry.contactNumber}</td>
-                                    </tr>
-                                    <tr className="text-[.7rem]">
-                                        <td className="pl-4 font-bold w-[10rem]">Name:</td>
-                                        <td className="pl-2" colSpan={3}>
-                                            {quotationData.assignedEmployee.name} &nbsp;&nbsp;
-                                        </td>
-                                    </tr>
-                                    <tr className="text-[.7rem]">
-                                        <td className="pl-4 font-bold w-[10rem]">Phone:</td>
-                                        <td className="pl-2" colSpan={3}>
-                                            {quotationData.assignedEmployee.phone} &nbsp;&nbsp;
-                                        </td>
-                                    </tr>
-                                    <tr className="text-[.7rem]">
-                                        <td className="font-bold">Enquiry ID:</td>
-                                        <td className="pl-2 font-bold">{quotationData.enquiry.enquiryId}</td>
-                                    </tr>
-                                    <tr className="text-[.7rem]">
-                                        <td className="font-bold">Quotation:</td>
-                                        <td className="pl-2 font-bold">{quotationData.quotationId}</td>
-                                    </tr>
-                                    <tr className="text-[.7rem]">
-                                        <td className="font-bold">Expires:</td>
-                                        <td className="pl-2">30 days from above date</td>
-                                    </tr>
-                                </table>
-                            </div>
+                        {/* Header */}
+                        <QuotationHeader
+                            date={editableDate}
+                            enquiry={quotationData.enquiry}
+                            assignedEmployeeName={assignedEmployeeName}
+                            assignedEmployeePhone={assignedEmployeePhone}
+                            quotationDescription={quotationDescription}
+                            formatDate={formatDate}
+                        />
 
-                            <div style={{ lineHeight: "17px" }}>
-                                <p className="font-bold text-black text-[.7rem]">
-                                    {editableCompanyDetails.name || "ANTESO Biomedical (OPC) Pvt. Ltd."}
-                                </p>
-                                <p className="text-[.7rem]">{editableCompanyDetails.address || "Flat No. 290, 2nd Floor, Block D,"}</p>
-                                <p className="text-[.7rem]">Pocket 7, Sector 6, Rohini,</p>
-                                <p className="text-[.7rem]">New Delhi – 110 085, INDIA</p>
-                                <p className="text-[.7rem]">Mobile: +91 8470909720 / 8951818690</p>
-                                <p className="text-[.7rem]">Email: info@antesobiomedicalopc.com</p>
-                            </div>
-                        </div>
-
-                        {/* Items Tables - Using editable items */}
+                        {/* Items Tables */}
                         <div className="mt-1">
                             {aitems.length > 0 && (
-                                <table className="w-full text-xs mb-1">
+                                <table className="items-table w-full text-xs mb-1 border border-gray-400 border-collapse">
                                     <thead>
-                                        <tr>
+                                        <tr className="pdf-row-avoid">
                                             {acolumns.map((column) => (
                                                 <th
                                                     key={column.key}
-                                                    className={`${column?.class} px-2 bg-gray-100 text-gray-900 font-bold text-[.6rem]`}
+                                                    className={`${column?.class} px-0.5 py-0 font-extrabold text-[.6rem] border-2 border-gray-400`}
+                                                    style={{ backgroundColor: "#2563eb", color: "#ffffff", lineHeight: "0.6rem", height: "10px" }}
                                                 >
                                                     {column.label}
                                                 </th>
@@ -1054,13 +1026,12 @@ const EditQuotation: React.FC = () => {
                                     </thead>
                                     <tbody>
                                         {aitems.map((item, i) => (
-                                            <tr key={i}>
-                                                {/* <td>{item.type}</td>   ← REMOVE */}
-                                                <td className="px-2 py-1 text-[.6rem]">{i + 1}</td>   {/* S.NO */}
-                                                <td className="px-2 py-1 text-[.6rem]">{item.title}</td>
-                                                <td className="px-2 py-1 text-[.6rem]">{item.description}</td>
-                                                <td className="ltr:text-right rtl:text-left px-2 py-1 text-[.6rem]">{item.quantity}</td>
-                                                <td className="ltr:text-right rtl:text-left px-2 py-1 text-[.6rem]">₹ {item.amount}</td>
+                                            <tr key={i} className="pdf-row-avoid" style={{ height: "9px" }}>
+                                                <td className="px-0.5 py-0 text-[.6rem] border border-gray-400" style={{ lineHeight: "0.6rem" }}>{i + 1}</td>
+                                                <td className="px-0.5 py-0 text-[.6rem] border border-gray-400" style={{ lineHeight: "0.6rem" }}>{item.title}</td>
+                                                <td className="px-0.5 py-0 text-[.6rem] border border-gray-400" style={{ lineHeight: "0.6rem" }}>{item.description}</td>
+                                                <td className="px-0.5 py-0 text-[.6rem] text-right border border-gray-400" style={{ lineHeight: "0.6rem" }}>{item.quantity}</td>
+                                                <td className="px-0.5 py-0 text-[.6rem] text-right border border-gray-400" style={{ lineHeight: "0.6rem" }}>₹ {item.amount}</td>
                                             </tr>
                                         ))}
                                     </tbody>
@@ -1068,13 +1039,14 @@ const EditQuotation: React.FC = () => {
                             )}
 
                             {bitems.length > 0 && (
-                                <table className="w-full text-xs mb-6">
+                                <table className="items-table w-full text-xs mb-2 border border-gray-400 border-collapse">
                                     <thead>
-                                        <tr>
+                                        <tr className="pdf-row-avoid">
                                             {bcolumns.map((column) => (
                                                 <th
                                                     key={column.key}
-                                                    className={`${column?.class} px-2 py-1 bg-gray-100 text-gray-900 font-bold text-[.6rem]`}
+                                                    className={`${column?.class} px-0.5 py-0 font-extrabold text-[.6rem] border-2 border-gray-400`}
+                                                    style={{ backgroundColor: "#2563eb", color: "#ffffff", lineHeight: "0.6rem", height: "10px" }}
                                                 >
                                                     {column.label}
                                                 </th>
@@ -1083,12 +1055,11 @@ const EditQuotation: React.FC = () => {
                                     </thead>
                                     <tbody>
                                         {bitems.map((item, i) => (
-                                            <tr key={i}>
-                                                {/* <td>{item.type}</td>   ← REMOVE */}
-                                                <td className="px-2 py-1 text-[.6rem]">{i + 1}</td>   {/* S.NO */}
-                                                <td className="px-2 py-1 text-[.6rem]">{item.title}</td>
-                                                <td className="px-2 py-1 text-[.6rem]">{item.description}</td>
-                                                <td className="ltr:text-right rtl:text-left px-2 py-1 text-[.6rem]">₹ {item.amount}</td>
+                                            <tr key={i} className="pdf-row-avoid" style={{ height: "9px" }}>
+                                                <td className="px-0.5 py-0 text-[.6rem] border border-gray-400" style={{ lineHeight: "0.6rem" }}>{i + 1}</td>
+                                                <td className="px-0.5 py-0 text-[.6rem] border border-gray-400" style={{ lineHeight: "0.6rem" }}>{item.title}</td>
+                                                <td className="px-0.5 py-0 text-[.6rem] border border-gray-400" style={{ lineHeight: "0.6rem" }}>{item.description}</td>
+                                                <td className="px-0.5 py-0 text-[.6rem] text-right border border-gray-400" style={{ lineHeight: "0.6rem" }}>₹ {item.amount}</td>
                                             </tr>
                                         ))}
                                     </tbody>
@@ -1096,103 +1067,73 @@ const EditQuotation: React.FC = () => {
                             )}
                         </div>
 
-                        {/* Calculations and QR/Bank beside */}
-                        <div className="flex justify-between items-start gap-4 px-4 mt-6">
-                            <QrAndBankDetails />
-                            {/* <div className="w-52 space-y-2">
-                                <div className="flex items-center gap-4">
-                                    <div className="flex-1 text-gray-900 font-bold text-[.6rem]">SUBTOTAL</div>
-                                    <div className="w-[37%] text-[.7rem] font-bold text-right">₹ {subtotal}</div>
-                                </div>
-                                <div className="flex items-center gap-4">
-
-                                    <div className="flex-1 text-gray-900 font-bold text-[.6rem]">DISCOUNT ({discountPercentage}%)</div>
-                                    <div className="w-[37%] text-[.7rem] font-bold text-right">₹ {discountAmount}</div>
-                                </div>
-                                <div className="flex items-center gap-4">
-                                    <div className="flex-1 text-gray-900 font-bold text-[.6rem]">GST ({gstRate}%)</div>
-                                    <div className="w-[37%] text-[.7rem] font-bold text-right">₹ {gstAmount}</div>
-                                </div>
-
-                                <div className="flex items-center gap-4">
-                                    <div className="flex-1 text-gray-900 font-bold text-[.6rem]">TOTAL</div>
-                                    <div className="w-[37%] text-[.7rem] font-bold text-right">₹ {totalAmount}</div>
-                                </div>
-                            </div> */}
-                            <div className="w-52 space-y-2">
-                                <div className="flex items-center gap-4">
-                                    <div className="flex-1 text-gray-900 font-bold text-[.6rem]">Subtotal</div>
-                                    <div className="w-[37%] text-[.7rem] font-bold text-right">₹ {formatCurrency(subtotal)}</div>
-                                </div>
-                                <div className="flex items-center gap-4">
-                                    <div className="flex-1 text-gray-900 font-bold text-[.6rem]">Discount</div>
-                                    <div className="w-[37%] text-[.7rem] font-bold text-right">{formatCurrency(discountPercentage)}%</div>
-                                </div>
-                                <div className="flex items-center gap-4">
-                                    <div className="flex-1 text-gray-900 font-bold text-[.6rem]">GST Rate </div>
-                                    <div className="w-[37%] text-[.7rem] font-bold text-right">{formatCurrency(gstRate)}%</div>
-                                </div>
-                                <div className="flex items-center gap-4">
-                                    <div className="flex-1 text-gray-900 font-bold text-[.6rem]">GST Amount </div>
-                                    <div className="w-[37%] text-[.7rem] font-bold text-right">₹ {formatCurrency(gstAmount)}</div>
-                                </div>
-                                <div className="flex items-center gap-4">
-                                    <div className="flex-1 text-gray-900 font-bold text-[.6rem]">TOTAL</div>
-                                    <div className="w-[37%] text-[.7rem] font-bold text-right">₹ {formatCurrency(totalAmount)}</div>
-                                </div>
-                            </div>
+                        {/* Totals — full width */}
+                        <div className="mt-2 pdf-section">
+                            <table className="w-full text-xs border border-gray-400 border-collapse" style={{ lineHeight: "6px" }}>
+                                <tbody>
+                                    <tr style={{ height: "9px" }}>
+                                        <td className="border border-gray-400 px-0.5 py-0 text-gray-900 font-bold text-[.6rem] w-[30%]" style={{ lineHeight: "6px" }}>Subtotal</td>
+                                        <td className="border border-gray-400 px-0.5 py-0 text-[.7rem] font-bold text-right" style={{ lineHeight: "6px" }}>₹{formatCurrency(subtotal)}</td>
+                                    </tr>
+                                    <tr style={{ height: "9px" }}>
+                                        <td className="border border-gray-400 px-0.5 py-0 text-gray-900 font-bold text-[.6rem]" style={{ lineHeight: "6px" }}>Discount</td>
+                                        <td className="border border-gray-400 px-0.5 py-0 text-[.7rem] font-bold text-right" style={{ lineHeight: "6px" }}>{formatCurrency(discountPercentage)}%</td>
+                                    </tr>
+                                    <tr style={{ height: "9px" }}>
+                                        <td className="border border-gray-400 px-0.5 py-0 text-gray-900 font-bold text-[.6rem]" style={{ lineHeight: "6px" }}>GST Rate</td>
+                                        <td className="border border-gray-400 px-0.5 py-0 text-[.7rem] font-bold text-right" style={{ lineHeight: "6px" }}>{formatCurrency(gstRate)}%</td>
+                                    </tr>
+                                    <tr style={{ height: "9px" }}>
+                                        <td className="border border-gray-400 px-0.5 py-0 text-gray-900 font-bold text-[.6rem]" style={{ lineHeight: "6px" }}>GST Amount</td>
+                                        <td className="border border-gray-400 px-0.5 py-0 text-[.7rem] font-bold text-right" style={{ lineHeight: "6px" }}>₹{formatCurrency(gstAmount)}</td>
+                                    </tr>
+                                    <tr style={{ height: "9px" }}>
+                                        <td className="border border-gray-400 px-0.5 py-0 text-gray-900 font-bold text-[.6rem]" style={{ lineHeight: "6px" }}>TOTAL</td>
+                                        <td className="border border-gray-400 px-0.5 py-0 text-[.7rem] font-bold text-right" style={{ lineHeight: "6px" }}>₹ {formatCurrency(totalAmount)}</td>
+                                    </tr>
+                                    <tr style={{ height: "10px" }}>
+                                        <td className="border border-gray-400 px-0.5 py-0 text-gray-900 font-bold text-[.6rem] whitespace-nowrap" style={{ lineHeight: "6px" }}>
+                                            Total Amount (in words)
+                                        </td>
+                                        <td className="border border-gray-400 px-0.5 py-0 text-[.6rem] font-bold uppercase" style={{ lineHeight: "6px" }}>
+                                            {numberToWords(totalAmount)}
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
+
                         <br />
                         <hr />
 
-                        <div className="mt-4">
-                            <h4 className="ml-4 text-sm font-semibold text-gray-800 dark:text-gray-200">Terms & Conditions:</h4>
-                            <ul
-                                className="list-disc list-outside pl-6 space-y-2 text-gray-700 dark:text-gray-300 text-[.65rem] leading-relaxed"
-                                style={{ lineHeight: "10px" }}
+                        <div className="terms-pdf-section">
+                            <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-200">Terms & Conditions:</h4>
+                            <div
+                                className="mt-1 space-y-1 text-gray-700 dark:text-gray-300 text-[.65rem]"
+                                style={{ lineHeight: "1.25rem" }}
                             >
                                 {editableTerms.map((term, index) => {
                                     const text = typeof term === "string" ? term : term?.text ?? "";
                                     return (
-                                        <li key={index} className={text.includes("GST") ? "text-green-600" : ""}>
-                                            {text}
-                                        </li>
+                                        <p key={index} className={text.includes("GST") ? "text-green-600" : ""}>
+                                            - {text}
+                                        </p>
                                     );
                                 })}
-                            </ul>
-                        </div>
-
-                        {/* Footer - now without QR right part */}
-                        <div className="mt-4 flex justify-between items-end text-xs">
-                            <div>
-                                <img src={Signature} alt="Signature" className="mb-2 h-24" />
-                                <div style={{ lineHeight: "10px" }} className="space-y-1">
-                                    <p className="text-[.6rem]">
-                                        <span className="font-medium">A/C No.:</span> {editableBankDetails.accountNumber || "50200007211263"}
-                                    </p>
-                                    <p className="text-[.6rem]">
-                                        <span className="font-medium">IFSC:</span> {editableBankDetails.ifsc || "HDFC0000711"}
-                                    </p>
-                                    <p className="text-[.6rem]">{editableBankDetails.bankName || "HDFC BANK PUSHPANJALI ENCLAVE PITAMPURA"}</p>
-                                </div>
-                            </div>
-
-                            <div style={{ lineHeight: "5px" }} className="text-center">
-                                <p className="font-bold text-[.6rem]">OUR ACCOUNT DETAILS</p>
-                                <p className="pb-10 mt-2 font-bold text-[.6rem]">
-                                    <span>GST NO:</span> {editableCompanyDetails.gstin || "07AAMCA8142J1ZE"}
-                                </p>
                             </div>
                         </div>
 
-                        <div className="overflow-x-auto mt-8 text-center" style={{ lineHeight: "1rem" }}>
-                            <p className="text-[.6rem]">
+                        {/* Footer */}
+                        <QuotationFooter />
+
+                        <div className="mt-3 text-center no-break text-[.6rem]" style={{ lineHeight: "12px" }}>
+                            <p>
                                 For any enquiry contact us{" "}
                                 <a href="#" className="text-blue-800">
-                                    info@antesobiomedicalopc.com or antesobiomedical@gmail.com
+                                    business.quote@antesobiomedicalopc.com / antesobiomedical@gmail.com
                                 </a>
                             </p>
-                            <p className="text-[.6rem]">Feel free to call us & Thank you for your enquiry</p>
+                            <p>Feel free to call us & Thank you for your enquiry</p>
                         </div>
                     </div>
                 </div>

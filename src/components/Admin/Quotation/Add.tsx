@@ -1,11 +1,10 @@
 import type React from "react"
 import { useEffect, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
-import { FaAngleRight } from "react-icons/fa6"
 import logoA from "../../../assets/quotationImg/NABLlogo.png"
 import signature from "../../../assets/quotationImg/signature.png"
 import qrcode from "../../../assets/quotationImg/qrcode.png"
-import logo from "../../../assets/logo/logo-sm.png"
+import logo from "../../../assets/logo/anteso-logo2.png"
 import IconTrashLines from "../../Icon/IconTrashLines"
 import { getEnquiryById, createQuotationByEnquiryId, getAllDealers, getNextQuotationNumber, getAllActiveEmployees, getAllManufacturer } from "../../../api"
 import { showMessage } from "../../common/ShowMessage"
@@ -136,20 +135,6 @@ const STYLES = `
 `
 
 // Reusable Components
-const InfoRow: React.FC<{ label: string; value: string; isEmail?: boolean }> = ({ label, value, isEmail }) => (
-    <tr className="text-[.7rem]">
-        <td className="font-bold">{label}:</td>
-        <td className="pl-2">
-            {isEmail ? (
-                <a href={`mailto:${value}`} className="text-blue-600 hover:underline">
-                    {value}
-                </a>
-            ) : (
-                value
-            )}
-        </td>
-    </tr>
-)
 
 // const ItemsTable: React.FC<{
 //     title: string
@@ -302,59 +287,84 @@ const ItemsTable: React.FC<{
     onItemChange: (index: number, key: StringItemKeys, value: string) => void
     showEditableDescription?: boolean
 }> = ({ title, headerBg, items, onItemChange, showEditableDescription = false }) => (
-    <table className="w-full text-xs mb-6">
-        <thead className={headerBg}>
+    <table className="w-full text-xs mb-6 border border-gray-400 border-collapse">
+        <thead>
             <tr>
-                {/* REMOVED: <th className="p-2 text-[.7rem]">{title}</th> */}
-                <th className="text-[.7rem]">S.NO</th>
-                <th className="text-[.7rem] w-36">{title === "A" ? "TYPE OF MACHINE" : "ADDITIONAL SERVICE"}</th>
-                <th className="text-[.7rem] min-w-[320px]">DESCRIPTION</th>
-                <th className="text-[.7rem]">QTY</th>
-                <th className="text-[.7rem]">TOTAL</th>
+                <th
+                    className="text-[.7rem] border border-gray-400 px-1.5 py-0.5"
+                    style={{ backgroundColor: "#2563eb", color: "#ffffff", lineHeight: "1rem" }}
+                >
+                    S.NO
+                </th>
+                <th
+                    className="text-[.7rem] w-36 border border-gray-400 px-1.5 py-0.5"
+                    style={{ backgroundColor: "#2563eb", color: "#ffffff", lineHeight: "1rem" }}
+                >
+                    {title === "A" ? "TYPE OF MACHINE" : "ADDITIONAL SERVICE"}
+                </th>
+                <th
+                    className="text-[.7rem] min-w-[320px] border border-gray-400 px-1.5 py-0.5"
+                    style={{ backgroundColor: "#2563eb", color: "#ffffff", lineHeight: "1rem" }}
+                >
+                    DESCRIPTION
+                </th>
+                <th
+                    className="text-[.7rem] border border-gray-400 px-1.5 py-0.5"
+                    style={{ backgroundColor: "#2563eb", color: "#ffffff", lineHeight: "1rem" }}
+                >
+                    QTY
+                </th>
+                <th
+                    className="text-[.7rem] border border-gray-400 px-1.5 py-0.5"
+                    style={{ backgroundColor: "#2563eb", color: "#ffffff", lineHeight: "1rem" }}
+                >
+                    TOTAL
+                </th>
             </tr>
         </thead>
         <tbody>
             {items.map((item, i) => (
-                <tr key={item.id} className="border-b">
-                    {/* REMOVED: <td className="p-2 text-[.7rem]">{item.type}</td> */}
-                    <td className="text-[.7rem]">{i + 1}</td>  {/* ← 1, 2, 3… */}
-                    <td className="text-[.7rem]">{item.title}</td>
-                    <td className="text-[.7rem]">
+                <tr key={item.id}>
+                    <td className="text-[.7rem] border border-gray-400 px-1.5 py-0.5" style={{ lineHeight: "1rem" }}>{i + 1}</td>
+                    <td className="text-[.7rem] border border-gray-400 px-1.5 py-0.5" style={{ lineHeight: "1rem" }}>{item.title}</td>
+                    <td className="text-[.7rem] border border-gray-400 px-1.5 py-0.5">
                         {showEditableDescription ? (
                             <textarea
                                 value={item.description || ""}
                                 onChange={(e) => onItemChange(i, "description", e.target.value)}
-                                rows={2}
-                                className="w-full min-w-[320px] border rounded p-1 text-[.7rem] resize-y"
+                                rows={1}
+                                className="w-full min-w-[320px] border rounded p-0.5 text-[.7rem] resize-y"
+                                style={{ lineHeight: "1rem" }}
                             />
                         ) : (
                             <textarea
                                 value={item.description || ""}
                                 onChange={() => { }}
-                                rows={2}
-                                className="w-full min-w-[320px] border rounded p-1 text-[.7rem] bg-gray-100 cursor-not-allowed resize-none"
+                                rows={1}
+                                className="w-full min-w-[320px] border rounded p-0.5 text-[.7rem] bg-gray-100 cursor-not-allowed resize-none"
+                                style={{ lineHeight: "1rem" }}
                                 disabled
                             />
                         )}
                     </td>
-                    <td>
+                    <td className="border border-gray-400 px-1.5 py-0.5">
                         <input
                             value={item.quantity}
                             onChange={() => { }}
                             type="number"
                             readOnly
                             className={`
-                                border rounded p-1 text-right text-[.7rem] w-16
+                                border rounded p-0.5 text-right text-[.7rem] w-16
                                 ${item.type === "A" ? "bg-white" : "bg-gray-100 cursor-not-allowed"}
                             `}
                         />
                     </td>
-                    <td className="text-[.7rem] ">
+                    <td className="text-[.7rem] border border-gray-400 px-1.5 py-0.5">
                         <input
                             value={item.price || ""}
                             onChange={(e) => onItemChange(i, "price", e.target.value)}
                             type="number"
-                            className="border rounded p-1 text-right text-[.7rem] w-24 font-semibold"
+                            className="border rounded p-0.5 text-right text-[.7rem] w-24 font-semibold"
                         />
                     </td>
                 </tr>
@@ -877,104 +887,166 @@ const AddQuotation: React.FC = () => {
     };
 
 
+    const machineTypes = [
+        ...new Set(aitems.map((item) => item.title).filter(Boolean)),
+    ].join(", ");
+
+    const additionalServiceNames = bitems
+        .map((item) => item.title || item.name)
+        .filter(Boolean)
+        .join(", ");
+
+    const toAddress = [
+        enquiryData?.hospitalName,
+        enquiryData?.fullAddress,
+        enquiryData?.city,
+        enquiryData?.district,
+        enquiryData?.state && enquiryData?.pinCode
+            ? `${enquiryData.state}-${enquiryData.pinCode}`
+            : enquiryData?.state || enquiryData?.pinCode,
+    ]
+        .filter(Boolean)
+        .join(", ");
+
+    const quotationDescriptionParts = [
+        machineTypes
+            ? `Quotation for the QA test/s for ${machineTypes}`
+            : "Quotation for the QA test/s",
+        additionalServiceNames
+            ? `and additional services ${additionalServiceNames}`
+            : null,
+        toAddress ? `for ${toAddress}` : null,
+    ]
+        .filter(Boolean)
+        .join(" ");
+
     return (
-        <div className="w-full min-h-screen bg-gray-50 p-8 absolute top-0 left-0 z-50 lg:px-[15%]">
+        <div className="w-full min-h-screen bg-gray-50 px-8 absolute top-0 left-0 z-50 lg:px-[15%]">
             <style>{STYLES}</style>
-            <div className="max-w-6xl mx-auto rounded-lg p-6 bg-white w-[50rem]">
+            <div
+                className="mx-auto px-6 pb-5 pt-0 bg-white"
+                style={{ width: "793px", maxWidth: "100%", boxSizing: "border-box" }}
+            >
                 {/* Header */}
-                <div className="flex justify-between items-start mb-4">
+                <div className="flex justify-between items-start mb-10">
                     <div>
-                        <img src={logo || "/placeholder.svg"} alt="Logo B" className="h-20 mb-2" />
-                        <p className="text-sm font-bold text-[.5rem]">AERB Registration No. 14-AFSXE-2148</p>
+                        <img src={logo || "/placeholder.svg"} alt="Logo B" className="h-20" />
+                        <p className="font-bold text-[.6rem]">AERB Registration No. 14-AFSXE-2148</p>
                     </div>
-                    <div className="text-center">
+                    <div className="text-center pt-2">
                         <h1 className="text-xl font-bold uppercase">Quotation</h1>
                     </div>
                     <div className="text-right">
-                        <img src={logoA || "/placeholder.svg"} alt="Logo A" className="h-20 ml-auto mb-2" />
-                        <p className="text-sm font-bold text-[.5rem]">NABL Accreditation No TC-9843</p>
+                        <img src={logoA || "/placeholder.svg"} alt="Logo A" className="h-20 ml-auto" />
+                        <p className="font-bold text-[.6rem]">NABL Accreditation No TC-9843</p>
                     </div>
                 </div>
 
-                {/* Company Info */}
-                <div className="flex w-full justify-between mb-4">
-                    <table className="text-sm w-full" style={{ lineHeight: "1.5rem" }}>
-                        <tbody>
-                            <InfoRow
-                                label="Date"
-                                value={new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
-                            />
-                            <tr className="text-[.7rem]">
-                                <td className="font-bold pb-4">To:</td>
-                                <td className="pl-2" style={{ lineHeight: "20px" }}>
-                                    <span className="font-bold">{enquiryData?.hospitalName.toUpperCase() || "N/A"}</span>
+                {/* Company and Recipient Info */}
+                <div className="flex w-full justify-between">
+                    <div className="flex-1 min-w-0 pr-4">
+                        <div className="text-[.7rem]" style={{ lineHeight: "1.35rem" }}>
+                            <div className="flex">
+                                <span className="font-bold shrink-0 w-[4.5rem]">Date:</span>
+                                <span>
+                                    {new Date().toLocaleDateString("en-GB", {
+                                        day: "2-digit",
+                                        month: "short",
+                                        year: "numeric",
+                                    })}
+                                </span>
+                            </div>
+                            <div className="flex mt-1">
+                                <span className="font-bold shrink-0 w-[4.5rem]">To</span>
+                                <div style={{ lineHeight: "18px" }}>
+                                    {enquiryData?.contactPerson && (
+                                        <>
+                                            <span className="font-bold">{enquiryData.contactPerson}</span>
+                                            <br />
+                                        </>
+                                    )}
+                                    <span className="font-bold">
+                                        {(enquiryData?.hospitalName || "N/A").toUpperCase()}
+                                    </span>
                                     <br />
                                     {enquiryData?.fullAddress || "N/A"}
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                    <div style={{ lineHeight: "17px" }}>
+                                    {(enquiryData?.city || enquiryData?.district || enquiryData?.state) && (
+                                        <>
+                                            <br />
+                                            {[enquiryData?.city, enquiryData?.district]
+                                                .filter(Boolean)
+                                                .join(", ")}
+                                            {enquiryData?.state
+                                                ? `, ${enquiryData.state}${enquiryData?.pinCode ? `-${enquiryData.pinCode}` : ""}`
+                                                : ""}
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+                            <div className="flex mt-2">
+                                <span className="font-bold shrink-0 w-[4.5rem]">Email-</span>
+                                <a
+                                    href={`mailto:${enquiryData?.emailAddress || ""}`}
+                                    className="text-blue-600 hover:underline"
+                                >
+                                    {enquiryData?.emailAddress || "N/A"}
+                                </a>
+                            </div>
+                            <div className="flex">
+                                <span className="font-bold shrink-0 w-[4.5rem]">Contact.-</span>
+                                <span>
+                                    {enquiryData?.contactNumber ||
+                                        enquiryData?.customer?.phone ||
+                                        "N/A"}
+                                </span>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-1">
+                                <span className="font-bold shrink-0">From: </span>
+                                <select
+                                    className="text-[.7rem] border border-gray-300 rounded px-1 focus:outline-none max-w-[12rem]"
+                                    value={selectedIndex}
+                                    onChange={(e) => setSelectedIndex(Number(e.target.value))}
+                                >
+                                    {people.map((person, index) => (
+                                        <option key={person._id} value={index}>
+                                            {person.name} ({person.type})
+                                        </option>
+                                    ))}
+                                </select>
+                                <span className="inline-block w-6" />
+                                <span className="font-bold">M: </span>
+                                <span>{people[selectedIndex]?.phone || ""}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex-shrink-0 text-left pt-6" style={{ lineHeight: "17px" }}>
                         <p className="font-bold text-black text-[.7rem]">ANTESO Biomedical (OPC) Pvt. Ltd.</p>
-                        {[
-                            "Flat No. 290, 2nd Floor, Block D,",
-                            "Pocket 7, Sector 6, Rohini,",
-                            "New Delhi – 110 085, INDIA",
-                            "Mobile: +91 8470909720 / 8951818690",
-                            "Email: info@antesobiomedicalopc.com",
-                        ].map((line, i) => (
-                            <p key={i} className="text-[.7rem]">
-                                {line}
-                            </p>
-                        ))}
+                        <p className="text-[.7rem]">Flat No. 290, 2nd Floor, Block D,</p>
+                        <p className="text-[.7rem]">Pocket 7, Sector 6, Rohini,</p>
+                        <p className="text-[.7rem]">New Delhi – 110 085, INDIA</p>
+                        <p className="text-[.7rem]">Mobile: +91 8470909720 / 8951818690</p>
+                        <p className="text-[.7rem]">Email: info@antesobiomedicalopc.com</p>
                     </div>
                 </div>
 
-                {/* Contact Info */}
-                <div className="mb-4 bg-gray-50 p-2">
-                    <table className="text-sm w-full max-w-[20rem]">
-                        <tbody>
-                            <InfoRow label="Email" value={enquiryData?.emailAddress || "N/A"} isEmail />
-                            <InfoRow label="Contact" value={enquiryData?.customer?.phone || "N/A"} />
-                            <tr className="text-[.7rem]">
-                                <td className="font-bold">From:</td>
-                                <td className="pl-2" colSpan={2}>
-                                    <select
-                                        className="text-[.7rem] border border-gray-300 rounded px-1 focus:outline-none w-full"
-                                        value={selectedIndex}
-                                        onChange={(e) => setSelectedIndex(Number(e.target.value))}
-                                    >
-                                        {people.map((person, index) => (
-                                            <option key={person._id} value={index}>
-                                                {person.name} ({person.type})
-                                            </option>
-                                        ))}
-                                    </select>
-                                </td>
-
-                                {/* Only show selected person's phone */}
-                                <td className="pl-2">{people[selectedIndex]?.phone || ""}</td>
-                            </tr>
-
-                            <tr className="h-5"></tr>
-                            <tr className="text-[.7rem]">
-                                <td className="font-bold">Quotation:</td>
-                                <td className="pl-2">
-                                    <input
-                                        type="text"
-                                        value={quotationNumber}
-                                        onChange={(e) => setQuotationNumber(e.target.value)}
-                                        className="text-[.7rem] border border-gray-300 rounded px-1 focus:outline-none"
-                                    />
-                                </td>
-                            </tr>
-                            <InfoRow label="Expires" value="30 days from above date" />
-                        </tbody>
-                    </table>
+                <div className="w-full text-[.7rem] font-bold mt-3" style={{ lineHeight: "1.3rem" }}>
+                    <span>QUOTATION : </span>
+                    <input
+                        type="text"
+                        value={quotationNumber}
+                        onChange={(e) => setQuotationNumber(e.target.value)}
+                        className="text-[.7rem] font-bold border border-gray-300 rounded px-1 focus:outline-none mr-1"
+                    />
+                    <span>{quotationDescriptionParts}</span>
                 </div>
+                <div className="w-full text-[.7rem] mb-2 mt-0.5" style={{ lineHeight: "1.3rem" }}>
+                    <span className="font-bold">EXPIRES: </span>
+                    <span>30 days from above date</span>
+                </div>
+
                 {/* Items Tables */}
                 <div>
-                    <h2 className="font-semibold text-gray-800 mb-4 text-[.8rem]">Quotation Details</h2>
                     <ItemsTable
                         title="A"
                         headerBg="bg-gray-600"
@@ -988,146 +1060,105 @@ const AddQuotation: React.FC = () => {
                         onItemChange={(i, key, value) => handleItemChange(setBItems, bitems, i, key, value)}
                         showEditableDescription
                     />
-
-                    {/* Adjusted Layout: Discount Box and QR/Bank Details Side by Side */}
-                    <div className="flex justify-between items-start gap-6 mt-4">
-                        <div className="w-64 text-right space-y-1 text-xs">
-                            <img src={qrcode || "/placeholder.svg"} alt="QR Code" className="h-20 mx-auto mb-2" />
-                            <table className="h-4">
-                                <tbody>
-                                    {[
-                                        ["Merchant Name:", "ANTESO BIOMEDICAL PRIVATE LIMITED"],
-                                        ["Mobile Number:", "8470909720"],
-                                    ].map(([label, value]) => (
-                                        <tr key={label} style={{ fontSize: ".4rem" }}>
-                                            <td className={label.includes("Merchant") ? "pb-3 text-end" : "text-end"}>{label}</td>
-                                            <td className={`text-start pl-2 ${label.includes("Merchant") ? "w-[7rem] leading-none" : ""}`}>
-                                                {value}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                            <div className="text-center text-[.4rem]" style={{ lineHeight: "8px" }}>
-                                <p>Steps to PAy UPI QR Code</p>
-                                <p className="flex justify-center items-center flex-wrap w-[10rem]">
-                                    Oppen UPI app <FaAngleRight /> Select Type to Pay <FaAngleRight /> Scan QR Code <FaAngleRight /> Enter
-                                    Amount
-                                </p>
-                            </div>
-                            <hr className="bg-gray-700 h-[1.5px]" />
-                            <div className="text-center" style={{ lineHeight: "5px" }}>
-                                <br />
-                                <p className="font-bold text-[.6rem]">OUR ACCOUNT DETAILS</p>
-                                <p className="pb-10 mt-2 font-bold text-[.6rem]">
-                                    <span>GST NO:</span> 07AAMCA8142J1ZE
-                                </p>
-                            </div>
-                            <div className="w-[7rem] m-auto">
-                                {[
-                                    ["A/C No:", "344305001088"],
-                                    ["IFSC Code:", "ICIC0003443"],
-                                ].map(([label, value]) => (
-                                    <p key={label} className="text-left text-[.6rem]">
-                                        <span className="font-medium text-[.6rem]">{label}</span> {value}
-                                    </p>
-                                ))}
-                                <p className="text-[.6rem] text-left">ICICI BANK ROHINI</p>
-                            </div>
-                        </div>
-                        {/* Left: Discount/Totals Box */}
-                        <div className="space-y-1 w-60 p-3 border rounded-md bg-gray-50">
-                            {/* Discount Toggle Row */}
-                            <div className="flex items-center justify-between gap-2 text-[.8rem]">
-                                <div className="flex items-center gap-2">
-                                    <input
-                                        type="checkbox"
-                                        id="discountCheck"
-                                        checked={isDiscountApplied}
-                                        onChange={(e) => {
-                                            const checked = e.target.checked;
-                                            setIsDiscountApplied(checked);
-                                            if (checked) {
-                                                setDiscount(1); // start discount from 1 when checked
-                                            } else {
-                                                setDiscount(0); // reset discount when unchecked
-                                            }
-                                        }}
-                                        className="appearance-none h-5 w-5 border-2 border-gray-400 cursor-pointer transition-all duration-200 checked:bg-blue-500 checked:border-blue-500 checked:after:block after:content-['✔'] after:text-white after:text-xs after:text-center after:leading-4"
-                                    />
-                                    <label htmlFor="discountCheck" className="font-semibold cursor-pointer">
-                                        Apply Discount %
-                                    </label>
-                                </div>
-
-                                {/* Discount input only if checked */}
-                                {isDiscountApplied && (
-                                    <input
-                                        type="number"
-                                        value={discount}
-                                        onChange={(e) => setDiscount(Number.parseFloat(e.target.value) || 0)}
-                                        className="w-16 text-sm text-right border rounded px-2 py-1 focus:outline-none focus:ring focus:ring-green-300"
-                                    />
-                                )}
-                            </div>
-
-                            {/* Totals */}
-                            {[
-                                ["Subtotal", calculations.subtotal],
-                                ...(isDiscountApplied ? [[`Discount (${discount}%)`, -calculations.discountAmount]] : []),
-                                ["Total (Before GST)", isDiscountApplied ? calculations.totalAmount : calculations.subtotal],
-                                [`GST (${GST_RATE}%)`, calculations.gstAmount],
-                                ["Total (Including GST)", calculations.totalWithGst],
-                            ].map(([label, amount], i) => (
-                                <div
-                                    key={i}
-                                    className={`flex justify-between text-[.8rem] ${label === "Total (Including GST)" ? "text-green-700 font-semibold" : ""}`}
-                                >
-                                    <span>{label}:</span>
-                                    <span>
-                                        {label.toString().includes("Discount") ? "- " : ""}₹ {Math.abs(amount as number).toLocaleString("en-IN")}
-                                    </span>
-                                </div>
-                            ))}
-                        </div>
-
-                        {/* Right: QR Code and Bank Details */}
-
-                    </div>
-
-                    <div className="flex justify-end mt-6">
-                        <button
-                            onClick={handleSubmitQuotation}
-                            disabled={isSubmitting}
-                            className={`px-6 py-2 text-white rounded ${isSubmitting ? "bg-gray-400 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700"
-                                }`}
-                        >
-                            {isSubmitting ? "Submitting..." : "Submit Quotation"}
-                        </button>
-                    </div>
                 </div>
 
+                {/* Totals */}
+                <div className="mt-2 w-full">
+                    <div className="flex items-center justify-end gap-2 text-[.65rem] mb-1">
+                        <div className="flex items-center gap-2">
+                            <input
+                                type="checkbox"
+                                id="discountCheck"
+                                checked={isDiscountApplied}
+                                onChange={(e) => {
+                                    const checked = e.target.checked;
+                                    setIsDiscountApplied(checked);
+                                    if (checked) {
+                                        setDiscount(1);
+                                    } else {
+                                        setDiscount(0);
+                                    }
+                                }}
+                                className="appearance-none h-4 w-4 border-2 border-gray-400 cursor-pointer transition-all duration-200 checked:bg-blue-500 checked:border-blue-500 checked:after:block after:content-['✔'] after:text-white after:text-[10px] after:text-center after:leading-3"
+                            />
+                            <label htmlFor="discountCheck" className="font-semibold cursor-pointer">
+                                Apply Discount %
+                            </label>
+                        </div>
+                        {isDiscountApplied && (
+                            <input
+                                type="number"
+                                value={discount}
+                                onChange={(e) => setDiscount(Number.parseFloat(e.target.value) || 0)}
+                                className="w-14 text-[.65rem] text-right border rounded px-1 py-0.5 focus:outline-none focus:ring focus:ring-green-300"
+                            />
+                        )}
+                    </div>
+                    <table className="w-full text-xs border border-gray-400 border-collapse" style={{ lineHeight: "12px" }}>
+                        <tbody>
+                            <tr>
+                                <td className="border border-gray-400 px-1.5 py-0.5 text-gray-900 font-bold text-[.6rem] w-[70%]">Subtotal</td>
+                                <td className="border border-gray-400 px-1.5 py-0.5 text-[.7rem] font-bold text-right">
+                                    ₹{calculations.subtotal.toLocaleString("en-IN")}
+                                </td>
+                            </tr>
+                            {isDiscountApplied && (
+                                <tr>
+                                    <td className="border border-gray-400 px-1.5 py-0.5 text-gray-900 font-bold text-[.6rem]">Discount</td>
+                                    <td className="border border-gray-400 px-1.5 py-0.5 text-[.7rem] font-bold text-right">{discount}%</td>
+                                </tr>
+                            )}
+                            <tr>
+                                <td className="border border-gray-400 px-1.5 py-0.5 text-gray-900 font-bold text-[.6rem]">GST Rate</td>
+                                <td className="border border-gray-400 px-1.5 py-0.5 text-[.7rem] font-bold text-right">{GST_RATE}%</td>
+                            </tr>
+                            <tr>
+                                <td className="border border-gray-400 px-1.5 py-0.5 text-gray-900 font-bold text-[.6rem]">GST Amount</td>
+                                <td className="border border-gray-400 px-1.5 py-0.5 text-[.7rem] font-bold text-right">
+                                    ₹{calculations.gstAmount.toLocaleString("en-IN")}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td className="border border-gray-400 px-1.5 py-0.5 text-gray-900 font-bold text-[.6rem]">TOTAL</td>
+                                <td className="border border-gray-400 px-1.5 py-0.5 text-[.7rem] font-bold text-right">
+                                    ₹{calculations.totalWithGst.toLocaleString("en-IN")}
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <br />
+                <hr />
+
                 {/* Terms & Conditions */}
-                <div className="mt-4">
-                    <h4 className="m-3 text-sm font-semibold text-gray-800">Terms & Conditions:</h4>
-                    <ul className="list-disc list-outside pl-6 space-y-2 text-gray-700 text-[.65rem]">
+                <div className="mt-4" style={{ paddingTop: "36px" }}>
+                    <h4 className="text-sm font-semibold text-gray-800">Terms & Conditions:</h4>
+                    <div
+                        className="mt-1 space-y-1 text-gray-700 text-[.65rem]"
+                        style={{ lineHeight: "1.25rem" }}
+                    >
                         {terms.map((term) => (
-                            <li key={term.id}>
-                                <input
-                                    type="text"
-                                    value={term.text}
-                                    onChange={(e) => handleTerms.edit(term.id, e.target.value)}
-                                    className="w-full p-1 text-xs border rounded"
-                                />
-                                <div className="flex gap-2 mt-1">
-                                    <button onClick={() => handleTerms.delete(term.id)} className="text-red-500 text-xs">
+                            <div key={term.id} className="flex gap-1 items-start">
+                                <span className="shrink-0">-</span>
+                                <div className="flex-1">
+                                    <input
+                                        type="text"
+                                        value={term.text}
+                                        onChange={(e) => handleTerms.edit(term.id, e.target.value)}
+                                        className="w-full p-1 text-xs border rounded"
+                                    />
+                                    <button
+                                        onClick={() => handleTerms.delete(term.id)}
+                                        className="text-red-500 text-xs mt-0.5"
+                                    >
                                         <IconTrashLines />
                                     </button>
                                 </div>
-                            </li>
+                            </div>
                         ))}
-                    </ul>
-                    <div className="mt-4 pl-6">
+                    </div>
+                    <div className="mt-4">
                         <input
                             type="text"
                             value={newTerm}
@@ -1135,47 +1166,111 @@ const AddQuotation: React.FC = () => {
                             placeholder="Add new condition"
                             className="w-full p-1 text-xs border rounded"
                         />
-                        <button onClick={handleTerms.add} className="mt-1 px-3 py-1 text-xs bg-green-600 text-white rounded">
+                        <button
+                            onClick={handleTerms.add}
+                            className="mt-1 px-3 py-1 text-xs bg-green-600 text-white rounded"
+                        >
                             Add Term
                         </button>
                     </div>
                 </div>
 
-                {/* Footer - Adjusted to only include left and middle */}
-                <div className="mt-4 flex justify-between items-end text-xs">
-                    <div>
-                        <img src={signature || "/placeholder.svg"} alt="Signature" className="mb-2 h-24" />
-                        <div className="space-y-1" style={{ lineHeight: "10px" }}>
-                            {[
-                                ["A/C No.", "50200007211263"],
-                                ["IFSC", "HDFC0000711"],
-                            ].map(([label, value]) => (
-                                <p key={label} className="text-[.6rem]">
-                                    <span className="font-medium">{label}:</span> {value}
-                                </p>
-                            ))}
-                            <p className="text-[.6rem]">HDFC BANK PUSHPANJALI ENCLAVE PITAMPURA</p>
+                {/* Footer — signature | QR, then 3-col bank row */}
+                <div className="mt-4 w-full">
+                    <div className="flex flex-nowrap justify-between items-start gap-4 w-full">
+                        <div className="flex-shrink-0">
+                            <img
+                                src={signature || "/placeholder.svg"}
+                                alt="Signature"
+                                className="h-36 w-auto object-contain object-left"
+                            />
+                        </div>
+
+                        <div className="flex-shrink-0 w-[15rem] flex flex-col items-center text-center">
+                            <img
+                                src={qrcode || "/placeholder.svg"}
+                                alt="QR Code"
+                                className="h-28 w-28 object-contain"
+                            />
+                            <div className="mt-0.5 flex flex-col items-center text-gray-900">
+                                <div className="w-28 mx-auto text-[.4rem] text-left" style={{ lineHeight: "8px" }}>
+                                    <div className="flex gap-1 items-start">
+                                        <span className="whitespace-nowrap shrink-0">Merchant Name :</span>
+                                        <span className="break-words">ANTESO BIOMEDICAL PRIVATE LIMITED</span>
+                                    </div>
+                                    <div className="flex gap-1 items-start">
+                                        <span className="whitespace-nowrap shrink-0">Mobile Number :</span>
+                                        <span>8470909720</span>
+                                    </div>
+                                </div>
+                                <div
+                                    className="mt-0.5 w-full text-center text-[.4rem] px-1"
+                                    style={{ lineHeight: "10px" }}
+                                >
+                                    <p>Steps to Pay UPI QR Code</p>
+                                    <p>
+                                        Open UPI app &gt; Select Type to Pay &gt; Scan QR Code &gt; Enter Amount
+                                    </p>
+                                </div>
+                            </div>
+                            <hr className="bg-gray-700 h-[1.5px] mt-0.5 mb-0 w-full" />
                         </div>
                     </div>
-                    {/* <div className="text-center" style={{ lineHeight: "5px" }}>
-                        <p className="font-bold text-[.6rem]">OUR ACCOUNT DETAILS</p>
-                        <p className="pb-10 mt-2 font-bold text-[.6rem]">
-                            <span>GST NO:</span> 07AAMCA8142J1ZE
-                        </p>
-                    </div> */}
+
+                    <div
+                        className="flex flex-nowrap justify-between items-start gap-3 w-full mt-0.5 text-[.6rem]"
+                        style={{ lineHeight: "11px" }}
+                    >
+                        <div className="flex-1 min-w-0 text-left">
+                            <p>
+                                <span className="font-medium">A/C No.:</span> 50200007211263
+                            </p>
+                            <p>
+                                <span className="font-medium">IFSC :</span> HDFC0000711
+                            </p>
+                            <p>HDFC BANK PUSHPANJALI ENCLAVE PITAMPURA</p>
+                        </div>
+                        <div className="flex-1 min-w-0 text-center">
+                            <p className="font-bold">OUR ACCOUNT DETAILS</p>
+                            <p className="font-bold">
+                                <span>GST NO :</span> 07AAMCA8142J1ZE
+                            </p>
+                        </div>
+                        <div className="flex-1 min-w-0 text-left pl-6">
+                            <p>
+                                <span className="font-medium">A/C No</span> 344305001088
+                            </p>
+                            <p>
+                                <span className="font-medium">IFSC Code</span> ICIC0003443
+                            </p>
+                            <p>ICICI BANK ROHINI</p>
+                        </div>
+                    </div>
                 </div>
 
-                <div className="overflow-x-auto mt-8 text-center" style={{ lineHeight: "1rem" }}>
-                    <p className="text-[.6rem]">
+                <div className="mt-3 text-center text-[.6rem]" style={{ lineHeight: "12px" }}>
+                    <p>
                         For any enquiry contact us{" "}
                         <a href="#" className="text-blue-800">
-                            info@antesobiomedicalopc.com or antesobiomedical@gmail.com
+                            business.quote@antesobiomedicalopc.com / antesobiomedical@gmail.com
                         </a>
                     </p>
-                    <p className="text-[.6rem]">Feel free to call us & Thank you for your enquiry</p>
+                    <p>Feel free to call us & Thank you for your enquiry</p>
+                </div>
+
+                <div className="flex justify-end mt-6">
+                    <button
+                        onClick={handleSubmitQuotation}
+                        disabled={isSubmitting}
+                        className={`px-6 py-2 text-white rounded ${
+                            isSubmitting ? "bg-gray-400 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700"
+                        }`}
+                    >
+                        {isSubmitting ? "Submitting..." : "Submit Quotation"}
+                    </button>
                 </div>
             </div>
-            {/* Inside AddQuotation.tsx (or wherever you’re using it) */}
+
             <div className="quotation-error-modal">
                 <ConfirmModal
                     open={modalOpen}
@@ -1186,15 +1281,11 @@ const AddQuotation: React.FC = () => {
                 />
             </div>
 
-
-            {/* Use a little CSS trick to hide the second (Delete) button */}
             <style>
                 {`
-    /* Hide Delete button only inside this page */
     .quotation-error-modal button.bg-red-600 {
         display: none !important;
     }
-    /* Rename Cancel to Close for clarity */
     .quotation-error-modal button.bg-gray-200::after {
        
     }
@@ -1203,7 +1294,6 @@ const AddQuotation: React.FC = () => {
     }
 `}
             </style>
-
         </div>
     )
 }
