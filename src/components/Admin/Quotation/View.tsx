@@ -368,11 +368,14 @@ const ViewQuotation: React.FC = () => {
         .filter(Boolean)
         .join(", ");
 
+    const machineCount = quotationData?.enquiry?.services?.length || 0;
+    const testWord = machineCount > 1 ? "tests" : "test";
+    
     const quotationDescription = [
         quotationData.quotationId,
         machineTypes
-            ? `Quotation for the QA test/s for ${machineTypes}`
-            : "Quotation for the QA test/s",
+            ? `Quotation for the QA ${testWord} for ${machineTypes}`
+            : `Quotation for the QA ${testWord}`,
         additionalServiceNames
             ? `and additional services ${additionalServiceNames}`
             : null,
@@ -700,27 +703,27 @@ const ViewQuotation: React.FC = () => {
 
                     {/* Totals — full width */}
                     <div className="mt-2 pdf-section">
-                        <table className="w-full text-xs border border-black border-collapse" style={{ lineHeight: "6px" }}>
+                        <table className="w-full text-xs border border-black border-collapse" style={{ lineHeight: "5px" }}>
                             <tbody>
-                                <tr style={{ height: "9px" }}>
-                                    <td className="border border-black px-0.5 py-0 text-gray-900 font-bold text-[.6rem] w-[30%]" style={{ lineHeight: "6px" }}>Subtotal</td>
-                                    <td className="border border-black px-0.5 py-0 text-[.7rem] font-bold text-right" style={{ lineHeight: "6px" }}>₹{formatNumber(subtotal)}</td>
+                                <tr style={{ height: "7px" }}>
+                                    <td className="border border-black px-0.5 py-0 text-gray-900 font-bold text-[.6rem] w-[30%]" style={{ lineHeight: "5px" }}>Subtotal</td>
+                                    <td className="border border-black px-0.5 py-0 text-[.7rem] font-bold text-right" style={{ lineHeight: "5px" }}>₹{formatNumber(subtotal)}</td>
                                 </tr>
-                                <tr style={{ height: "9px" }}>
-                                    <td className="border border-black px-0.5 py-0 text-gray-900 font-bold text-[.6rem]" style={{ lineHeight: "6px" }}>Discount</td>
-                                    <td className="border border-black px-0.5 py-0 text-[.7rem] font-bold text-right" style={{ lineHeight: "6px" }}>{formatNumber(discount)}%</td>
+                                <tr style={{ height: "7px" }}>
+                                    <td className="border border-black px-0.5 py-0 text-gray-900 font-bold text-[.6rem]" style={{ lineHeight: "5px" }}>Discount</td>
+                                    <td className="border border-black px-0.5 py-0 text-[.7rem] font-bold text-right" style={{ lineHeight: "5px" }}>{formatNumber(discount)}%</td>
                                 </tr>
-                                <tr style={{ height: "9px" }}>
-                                    <td className="border border-black px-0.5 py-0 text-gray-900 font-bold text-[.6rem]" style={{ lineHeight: "6px" }}>GST Rate</td>
-                                    <td className="border border-black px-0.5 py-0 text-[.7rem] font-bold text-right" style={{ lineHeight: "6px" }}>{formatNumber(gstRate)}%</td>
+                                <tr style={{ height: "7px" }}>
+                                    <td className="border border-black px-0.5 py-0 text-gray-900 font-bold text-[.6rem]" style={{ lineHeight: "5px" }}>GST Rate</td>
+                                    <td className="border border-black px-0.5 py-0 text-[.7rem] font-bold text-right" style={{ lineHeight: "5px" }}>{formatNumber(gstRate)}%</td>
                                 </tr>
-                                <tr style={{ height: "9px" }}>
-                                    <td className="border border-black px-0.5 py-0 text-gray-900 font-bold text-[.6rem]" style={{ lineHeight: "6px" }}>GST Amount</td>
-                                    <td className="border border-black px-0.5 py-0 text-[.7rem] font-bold text-right" style={{ lineHeight: "6px" }}>₹{formatNumber(gstAmount)}</td>
+                                <tr style={{ height: "7px" }}>
+                                    <td className="border border-black px-0.5 py-0 text-gray-900 font-bold text-[.6rem]" style={{ lineHeight: "5px" }}>GST Amount</td>
+                                    <td className="border border-black px-0.5 py-0 text-[.7rem] font-bold text-right" style={{ lineHeight: "5px" }}>₹{formatNumber(gstAmount)}</td>
                                 </tr>
-                                <tr style={{ height: "9px" }}>
-                                    <td className="border border-black px-0.5 py-0 text-gray-900 font-bold text-[.6rem]" style={{ lineHeight: "6px" }}>TOTAL</td>
-                                    <td className="border border-black px-0.5 py-0 text-[.7rem] font-bold text-right" style={{ lineHeight: "6px" }}>₹ {formatNumber(totalAmount)}</td>
+                                <tr style={{ height: "7px" }}>
+                                    <td className="border border-black px-0.5 py-0 text-gray-900 font-bold text-[.6rem]" style={{ lineHeight: "5px" }}>TOTAL</td>
+                                    <td className="border border-black px-0.5 py-0 text-[.7rem] font-bold text-right" style={{ lineHeight: "5px" }}>₹ {formatNumber(totalAmount)}</td>
                                 </tr>
                                 <tr style={{ height: "10px" }}>
                                     <td className="border border-black px-0.5 py-0 text-gray-900 font-bold text-[.6rem] whitespace-nowrap" style={{ lineHeight: "6px" }}>
