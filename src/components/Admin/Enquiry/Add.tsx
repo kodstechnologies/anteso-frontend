@@ -372,7 +372,7 @@ const AddEnquiry: React.FC = () => {
                             <h5 className="font-semibold text-lg mb-4">Basic Details</h5>
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-4">
                                 <div className={submitCount && errors.leadOwner ? "has-error" : submitCount ? "has-success" : ""}>
-                                    <label htmlFor="leadOwner">Lead Owner</label>
+                                    <label htmlFor="leadOwner">Lead Owner <span className="text-red-500">*</span></label>
                                     <Field as="select" name="leadOwner" className="form-input">
                                         <option value="">Select Lead Owner</option>
 
@@ -397,7 +397,7 @@ const AddEnquiry: React.FC = () => {
 
 
                                 <div className={submitCount && errors.hospitalName ? "has-error" : submitCount ? "has-success" : ""}>
-                                    <label htmlFor="hospitalName">Hospital Name</label>
+                                    <label htmlFor="hospitalName">Hospital Name <span className="text-red-500">*</span></label>
                                     <Field
                                         name="hospitalName"
                                         type="text"
@@ -410,7 +410,7 @@ const AddEnquiry: React.FC = () => {
                                     ) : null}
                                 </div>
                                 <div className={submitCount && errors.fullAddress ? "has-error" : submitCount ? "has-success" : ""}>
-                                    <label htmlFor="fullAddress">Full Address</label>
+                                    <label htmlFor="fullAddress">Full Address <span className="text-red-500">*</span></label>
                                     <Field
                                         name="fullAddress"
                                         type="text"
@@ -423,7 +423,7 @@ const AddEnquiry: React.FC = () => {
                                     ) : null}
                                 </div>
                                 <div className={submitCount && errors.city ? "has-error" : submitCount ? "has-success" : ""}>
-                                    <label htmlFor="city">City</label>
+                                    <label htmlFor="city">City <span className="text-red-500">*</span></label>
                                     <Field name="city" type="text" id="city" placeholder="Enter City Name" className="form-input" />
                                     {submitCount && errors.city ? <div className="text-danger mt-1">{errors.city}</div> : null}
                                 </div>
@@ -443,7 +443,7 @@ const AddEnquiry: React.FC = () => {
                                         submitCount && errors.state ? "has-error" : submitCount ? "has-success" : ""
                                     }
                                 >
-                                    <label htmlFor="state">State</label>
+                                    <label htmlFor="state">State <span className="text-red-500">*</span></label>
                                     <Field
                                         as="select"
                                         name="state"
@@ -463,7 +463,7 @@ const AddEnquiry: React.FC = () => {
                                     ) : null}
                                 </div>
                                 <div className={submitCount && errors.pinCode ? "has-error" : submitCount ? "has-success" : ""}>
-                                    <label htmlFor="pinCode">PIN Code</label>
+                                    <label htmlFor="pinCode">PIN Code <span className="text-red-500">*</span></label>
                                     <Field
                                         name="pinCode"
                                         type="text"
@@ -486,7 +486,7 @@ const AddEnquiry: React.FC = () => {
                                     {submitCount && errors.branchName ? <div className="text-danger mt-1">{errors.branchName}</div> : null}
                                 </div>
                                 <div className={submitCount && errors.contactPersonName ? "has-error" : submitCount ? "has-success" : ""}>
-                                    <label htmlFor="contactPersonName">Contact Person Name</label>
+                                    <label htmlFor="contactPersonName">Contact Person Name <span className="text-red-500">*</span></label>
                                     <Field
                                         name="contactPersonName"
                                         type="text"
@@ -499,7 +499,7 @@ const AddEnquiry: React.FC = () => {
                                     ) : null}
                                 </div>
                                 <div className={submitCount && errors.emailAddress ? "has-error" : submitCount ? "has-success" : ""}>
-                                    <label htmlFor="emailAddress">Email Address</label>
+                                    <label htmlFor="emailAddress">Email Address <span className="text-red-500">*</span></label>
                                     <Field
                                         name="emailAddress"
                                         type="text"
@@ -512,7 +512,7 @@ const AddEnquiry: React.FC = () => {
                                     ) : null}
                                 </div>
                                 <div className={submitCount && errors.contactNumber ? "has-error" : submitCount ? "has-success" : ""}>
-                                    <label htmlFor="contactNumber">Contact Number</label>
+                                    <label htmlFor="contactNumber">Contact Number <span className="text-red-500">*</span></label>
                                     <Field
                                         name="contactNumber"
                                         type="text"
@@ -529,7 +529,7 @@ const AddEnquiry: React.FC = () => {
                                     ) : null}
                                 </div>
                                 <div className={submitCount && errors.designation ? "has-error" : submitCount ? "has-success" : ""}>
-                                    <label htmlFor="designation">Designation</label>
+                                    <label htmlFor="designation">Designation <span className="text-red-500">*</span></label>
                                     <Field
                                         name="designation"
                                         type="text"
@@ -572,7 +572,7 @@ const AddEnquiry: React.FC = () => {
                                                     <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
                                                         {/* Machine Type Dropdown */}
                                                         <div className="md:col-span-4">
-                                                            <label className="text-sm font-semibold text-gray-700">Machine Type</label>
+                                                            <label className="text-sm font-semibold text-gray-700">Machine Type <span className="text-red-500">*</span></label>
                                                             <Field
                                                                 as="select"
                                                                 name={`services.${index}.machineType`}
@@ -633,7 +633,7 @@ const AddEnquiry: React.FC = () => {
 
                                                         {/* Quantity */}
                                                         <div className="md:col-span-2">
-                                                            <label className="text-sm font-semibold text-gray-700">Quantity</label>
+                                                            <label className="text-sm font-semibold text-gray-700">Quantity <span className="text-red-500">*</span></label>
                                                             <Field
                                                                 type="number"
                                                                 name={`services.${index}.quantity`}
@@ -657,7 +657,7 @@ const AddEnquiry: React.FC = () => {
 
                                                         {/* Work Type */}
                                                         <div className="md:col-span-4">
-                                                            <label className="text-sm font-semibold text-gray-700">Type Of Work</label>
+                                                            <label className="text-sm font-semibold text-gray-700">Type Of Work <span className="text-red-500">*</span></label>
                                                             <MultiSelectField name={`services.${index}.workType`} options={workTypeOptions} />
                                                         </div>
 
