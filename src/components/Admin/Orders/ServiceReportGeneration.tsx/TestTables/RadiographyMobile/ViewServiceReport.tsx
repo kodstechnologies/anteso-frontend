@@ -61,6 +61,7 @@ interface ReportData {
   toolsUsed?: Tool[];
   qrCode?: string;
   engineerId?: string;
+  reportStatus?: string;
   notes?: Note[];
   category: string;
   authorizedSignatoryName?: string;
@@ -243,6 +244,7 @@ const ViewServiceReportRadiographyMobile: React.FC = () => {
             notes: data.notes || defaultNotes,
             qrCode: data.qrCode || "",
             engineerId: String(detailsData?.engineerAssigned?._id || detailsData?.engineerAssigned?.id || ""),
+            reportStatus: String(detailsFirstQaTest?.reportStatus || data.reportStatus || "pending"),
 
             category: data.category || "",
             authorizedSignatoryName:
@@ -1537,6 +1539,7 @@ const ViewServiceReportRadiographyMobile: React.FC = () => {
               engineerId={report.engineerId}
               engineerName={report.engineerNameRPId}
               rpId={report.rpId}
+              reportStatus={report.reportStatus}
               authorizedSignatoryName={report.authorizedSignatoryName}
               authorizedSignatorySignature={report.authorizedSignatorySignature}
             />

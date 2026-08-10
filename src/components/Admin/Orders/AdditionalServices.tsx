@@ -1,4 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
+import Cookies from "js-cookie";
+import { jwtDecode } from "jwt-decode";
 import {
     getAdditionalServicesByOrderId,
     getActiveStaffs,
@@ -41,8 +43,25 @@ const AdditionalServices = () => {
         data: null
     });
     const [historyLoading, setHistoryLoading] = useState<boolean>(false);
+    const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
+    const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
     const { orderId } = useParams();
+    const canAssignStaff = currentUserRole === "admin";
+
+    useEffect(() => {
+        const token = Cookies.get("accessToken");
+        if (!token) return;
+
+        try {
+            const decoded: { role?: string; _id?: string; id?: string } = jwtDecode(token);
+            setCurrentUserRole(decoded.role || null);
+            setCurrentUserId(decoded._id || decoded.id || null);
+        } catch {
+            setCurrentUserRole(null);
+            setCurrentUserId(null);
+        }
+    }, []);
 
     const fetchInitialData = useCallback(async () => {
         if (!orderId) return;
@@ -84,6 +103,10 @@ const AdditionalServices = () => {
     };
 
     const handleAssignStaff = async (serviceId: string, staffId: string) => {
+        if (!canAssignStaff) {
+            showMessage("Only admin can assign staff to additional services.", "warning");
+            return;
+        }
         if (!staffId) return;
         setUpdatingIds((prev) => new Set([...prev, serviceId]));
         try {
@@ -102,6 +125,12 @@ const AdditionalServices = () => {
                 return newSet;
             });
         }
+    };
+
+    const canEditService = (service: any) => {
+        if (currentUserRole === "admin") return true;
+        const assignedStaffId = service.assignedStaff?._id || service.assignedStaff;
+        return assignedStaffId && currentUserId === assignedStaffId;
     };
 
     const handleStatusUpdate = async (service: any) => {
@@ -244,12 +273,14 @@ const AdditionalServices = () => {
                                                 <UserPlus className="h-3 w-3" /> Responsibility
                                             </label>
                                             <select
-                                                disabled={updatingIds.has(service._id)}
+                                                disabled={!canAssignStaff || updatingIds.has(service._id)}
                                                 value={service.assignedStaff?._id || service.assignedStaff || ""}
                                                 onChange={(e) => handleAssignStaff(service._id, e.target.value)}
-                                                className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm font-medium focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none"
+                                                className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm font-medium focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500"
                                             >
-                                                <option value="">Choose Staff Member...</option>
+                                                <option value="">
+                                                    {canAssignStaff ? "Choose Staff Member..." : "Staff assignment restricted to admin"}
+                                                </option>
                                                 {staffList.map((staff) => (
                                                     <option key={staff._id} value={staff._id}>
                                                         {staff.name} ({staff.role})
@@ -263,10 +294,10 @@ const AdditionalServices = () => {
                                             <div>
                                                 <label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block">Status</label>
                                                 <select
-                                                    disabled={updatingIds.has(service._id)}
+                                                    disabled={!canEditService(service) || updatingIds.has(service._id)}
                                                     value={service.status}
                                                     onChange={(e) => handleChange(service._id, "status", e.target.value)}
-                                                    className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm font-semibold focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none"
+                                                    className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm font-semibold focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500"
                                                 >
                                                     <option value="pending">Pending</option>
                                                     <option value="in-progress">In Progress</option>
@@ -279,10 +310,11 @@ const AdditionalServices = () => {
                                                 <div className="relative">
                                                     <input
                                                         type="text"
+                                                        disabled={!canEditService(service) || updatingIds.has(service._id)}
                                                         value={service.remark}
                                                         onChange={(e) => handleChange(service._id, "remark", e.target.value)}
                                                         placeholder="..."
-                                                        className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none pl-9"
+                                                        className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none pl-9 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500"
                                                     />
                                                     <MessageSquare className="h-4 w-4 text-gray-400 absolute left-3 top-3" />
                                                 </div>
@@ -308,8 +340,8 @@ const AdditionalServices = () => {
                                     <div className="p-5 pt-0 mt-auto flex gap-3">
                                         <button
                                             onClick={() => handleStatusUpdate(service)}
-                                            disabled={updatingIds.has(service._id)}
-                                            className="grow flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl shadow-lg shadow-indigo-100 transition-all active:scale-95 disabled:opacity-50"
+                                            disabled={!canEditService(service) || updatingIds.has(service._id)}
+                                            className="grow flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl shadow-lg shadow-indigo-100 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                                         >
                                             {updatingIds.has(service._id) ? (
                                                 <Loader2 className="h-5 w-5 animate-spin" />

@@ -337,8 +337,9 @@ const RadiographyFixedContent: React.FC<RadiographyFixedProps> = ({ serviceId, q
               location: reportData.location || prev.location,
               temperature: reportData.temperature || prev.temperature,
               humidity: reportData.humidity || prev.humidity,
-              engineerNameRPId: reportData.engineerNameRPId || prev.engineerNameRPId,
-              rpId: pickRpId(reportData) || prev.rpId,
+              // Always prefer currently assigned engineer from getDetails (reassignment-safe)
+              engineerNameRPId: data.engineerAssigned?.name || reportData.engineerNameRPId || prev.engineerNameRPId,
+              rpId: pickRpId(data) || pickRpId(reportData) || prev.rpId,
               authorizedSignatory: (typeof reportData.authorizedSignatory === "object" ? reportData.authorizedSignatory?._id : reportData.authorizedSignatory) || prev.authorizedSignatory || "",
             }));
             if (reportData.testDate) setMinIssueDate(reportData.testDate);

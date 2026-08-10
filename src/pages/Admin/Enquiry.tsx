@@ -37,6 +37,7 @@ const emptyFilterOptions: EnquiryFilterOptions = {
     branches: [],
     emailAddresses: [],
     contactNumbers: [],
+    leadOwners: [],
 };
 
 const FilterSelect = ({
@@ -86,6 +87,7 @@ const mapEnquiryItem = (item: any) => ({
     email: item.emailAddress,
     phone: item.contactNumber,
     designation: item.designation,
+    leadOwner: item.leadOwnerName || item.leadOwner || 'N/A',
     quotation: item.quotationStatus?.toLowerCase(),
     remark: item.quotation?.rejectionRemark || null,
 });
@@ -110,6 +112,7 @@ const Enquiry = () => {
     const [branch, setBranch] = useState('');
     const [emailAddress, setEmailAddress] = useState('');
     const [contactNumber, setContactNumber] = useState('');
+    const [leadOwner, setLeadOwner] = useState('');
     const [filterOptions, setFilterOptions] = useState<EnquiryFilterOptions>(emptyFilterOptions);
 
     const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -146,10 +149,11 @@ const Enquiry = () => {
             branch,
             emailAddress,
             contactNumber,
+            leadOwner,
         };
         fetchEnquiries(filters);
         setPage(1);
-    }, [city, district, pinCode, branch, emailAddress, contactNumber]);
+    }, [city, district, pinCode, branch, emailAddress, contactNumber, leadOwner]);
 
     const clearFilters = () => {
         setSearch('');
@@ -161,6 +165,7 @@ const Enquiry = () => {
         setBranch('');
         setEmailAddress('');
         setContactNumber('');
+        setLeadOwner('');
         setPage(1);
     };
 
@@ -173,7 +178,8 @@ const Enquiry = () => {
         pinCode ||
         branch ||
         emailAddress ||
-        contactNumber;
+        contactNumber ||
+        leadOwner;
 
     const handleCopy = async () => {
         try {
@@ -236,6 +242,7 @@ const Enquiry = () => {
                 (item.email && String(item.email).toLowerCase().includes(q)) ||
                 (item.phone && String(item.phone).toLowerCase().includes(q)) ||
                 (item.designation && String(item.designation).toLowerCase().includes(q)) ||
+                (item.leadOwner && String(item.leadOwner).toLowerCase().includes(q)) ||
                 (item.quotation && String(item.quotation).toLowerCase().includes(q));
 
             const matchesDate = isInDateRange(item.createdAt, dateFrom, dateTo);
@@ -292,6 +299,7 @@ const Enquiry = () => {
         dateFrom,
         dateTo,
         search,
+        leadOwner,
     };
 
     const handleExport = async (type: 'pdf' | 'excel' | 'word') => {
@@ -375,7 +383,14 @@ const Enquiry = () => {
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-7">
+                                <FilterSelect
+                                    title="Lead Owner"
+                                    label="All Lead Owners"
+                                    value={leadOwner}
+                                    options={filterOptions.leadOwners}
+                                    onChange={setLeadOwner}
+                                />
                                 <FilterSelect
                                     title="City"
                                     label="All Cities"
@@ -480,6 +495,11 @@ const Enquiry = () => {
                                     title: 'Created At',
                                     sortable: true,
                                     render: ({ createdAt }) => formatCreatedAtDisplay(createdAt),
+                                },
+                                {
+                                    accessor: 'leadOwner',
+                                    title: 'Lead Owner',
+                                    sortable: true,
                                 },
                                 {
                                     accessor: 'hName',

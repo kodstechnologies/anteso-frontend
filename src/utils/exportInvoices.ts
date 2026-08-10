@@ -17,6 +17,7 @@ import { formatCurrencyForExport, formatCurrencyForPdf } from './formatCurrency'
 export type InvoiceExportRow = {
     invoiceId: string;
     srfNumber: string;
+    leadOwner: string;
     buyerName: string;
     address: string;
     state: string;
@@ -29,6 +30,7 @@ export type InvoiceExportRow = {
 export type InvoiceExportFilters = {
     state?: string;
     branchName?: string;
+    leadOwner?: string;
     dateFrom?: string;
     dateTo?: string;
     search?: string;
@@ -37,6 +39,7 @@ export type InvoiceExportFilters = {
 const INVOICE_EXPORT_HEADERS = [
     'Invoice ID',
     'SRF No',
+    'Lead Owner',
     'Customer Name',
     'Address',
     'State',
@@ -59,6 +62,7 @@ export const mapInvoiceToExportRow = (
     return {
         invoiceId: invoice.invoiceId || '-',
         srfNumber: invoice.srfNumber || '-',
+        leadOwner: invoice.leadOwner || '-',
         buyerName: invoice.buyerName || '-',
         address: invoice.address || '-',
         state: invoice.state || '-',
@@ -73,6 +77,7 @@ const rowsToMatrix = (rows: InvoiceExportRow[]) =>
     rows.map((row) => [
         row.invoiceId,
         row.srfNumber,
+        row.leadOwner,
         row.buyerName,
         row.address,
         row.state,
@@ -92,6 +97,7 @@ const buildFilterSummary = (filters: InvoiceExportFilters, totalRecords: number)
     const appliedFilters: Array<[string, string | undefined]> = [
         ['State', filters.state],
         ['Branch Name', filters.branchName],
+        ['Lead Owner', filters.leadOwner],
         ['From Date', filters.dateFrom ? formatDateForExport(filters.dateFrom) : undefined],
         ['To Date', filters.dateTo ? formatDateForExport(filters.dateTo) : undefined],
         ['Search', filters.search],
@@ -124,6 +130,7 @@ type CardField = {
 
 const getInvoiceCardFields = (row: InvoiceExportRow): CardField[] => [
     { label: 'Customer Name', value: row.buyerName, fullWidth: true },
+    { label: 'Lead Owner', value: row.leadOwner },
     { label: 'Address', value: row.address, fullWidth: true },
     { label: 'State', value: row.state },
     { label: 'Branch Name', value: row.branchName },

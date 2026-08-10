@@ -8,6 +8,7 @@ export const ReportPdfPageDeclaration: React.FC<{
     engineerId?: string;
     engineerName?: string;
     rpId?: string;
+    reportStatus?: string;
     authorizedSignatoryName?: string;
     authorizedSignatorySignature?: string;
 }> = ({
@@ -17,16 +18,19 @@ export const ReportPdfPageDeclaration: React.FC<{
     engineerId,
     engineerName,
     rpId,
+    reportStatus,
     authorizedSignatoryName,
     authorizedSignatorySignature,
 }) => {
     const rpIdDisplay =
         rpId?.trim() && rpId.trim().toUpperCase() !== "N/A" ? rpId.trim() : "";
+    const isReportAccepted = String(reportStatus || "").toLowerCase() === "accepted";
     const [generatedQr, setGeneratedQr] = useState("");
 
     useEffect(() => {
         const id = engineerId?.trim();
-        if (!id) {
+        // Generate Testing Engineer QR only after QA report is accepted
+        if (!isReportAccepted || !id) {
             setGeneratedQr("");
             return;
         }
@@ -35,9 +39,11 @@ export const ReportPdfPageDeclaration: React.FC<{
         QRCode.toDataURL(signedUrl, { width: 180, margin: 1, errorCorrectionLevel: "M" })
             .then(setGeneratedQr)
             .catch(() => setGeneratedQr(""));
-    }, [engineerId, rpIdDisplay]);
+    }, [engineerId, rpIdDisplay, isReportAccepted]);
 
-    const qrSrc = generatedQr || (qrCode?.trim() ? qrCode.trim() : "");
+    const qrSrc = isReportAccepted
+        ? (generatedQr || (qrCode?.trim() ? qrCode.trim() : ""))
+        : "";
 
     return (
     <div className="report-pdf-declaration-block" style={{ position: "relative", minHeight: "100%", height: "100%", paddingTop: "8mm", display: "flex", flexDirection: "column" }}>

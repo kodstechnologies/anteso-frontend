@@ -39,6 +39,7 @@ export type OrderExportFilters = {
     district?: string;
     emailAddress?: string;
     contactNumber?: string;
+    leadOwner?: string;
     dateFrom?: string;
     dateTo?: string;
     search?: string;
@@ -120,6 +121,7 @@ const buildFilterSummary = (filters: OrderExportFilters, totalRecords: number) =
         ['District', filters.district],
         ['Customer Email', filters.emailAddress],
         ['Customer Mobile', filters.contactNumber],
+        ['Lead Owner', filters.leadOwner],
         ['From Date', filters.dateFrom ? formatDateForExport(filters.dateFrom) : undefined],
         ['To Date', filters.dateTo ? formatDateForExport(filters.dateTo) : undefined],
         ['Search', filters.search],

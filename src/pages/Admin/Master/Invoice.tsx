@@ -41,6 +41,7 @@ interface Invoice {
   status?: 'Paid' | 'Pending';
   createdAt?: string;
   branchName?: string;
+  leadOwner?: string;
 }
 
 const FilterSelect = ({
@@ -83,11 +84,13 @@ const Invoices: React.FC = () => {
   const [dateTo, setDateTo] = useState('');
   const [stateFilter, setStateFilter] = useState('');
   const [branchFilter, setBranchFilter] = useState('');
+  const [leadOwnerFilter, setLeadOwnerFilter] = useState('');
   const [exporting, setExporting] = useState<'pdf' | 'excel' | 'word' | null>(null);
 
-  const [filterOptions, setFilterOptions] = useState<{ states: string[]; branchNames: string[] }>({
+  const [filterOptions, setFilterOptions] = useState<{ states: string[]; branchNames: string[]; leadOwners: string[] }>({
     states: [],
     branchNames: [],
+    leadOwners: [],
   });
 
   const [page, setPage] = useState<number>(1);
@@ -114,6 +117,7 @@ const Invoices: React.FC = () => {
         const res = await getAllInvoices({
           state: stateFilter,
           branchName: branchFilter,
+          leadOwner: leadOwnerFilter,
         });
         console.log("Full API response:", res);
 
@@ -134,12 +138,12 @@ const Invoices: React.FC = () => {
         const formattedData: Invoice[] = invoicesData.map((item: any) => ({
           ...item,
           status: item.payment?.paymentStatus === 'paid' ? 'Paid' : 'Pending',
+          leadOwner: item.leadOwner || 'N/A',
         }));
 
         setItems(formattedData);
 
-        // Lock in filter options on initial load when no filter is applied
-        if (!stateFilter && !branchFilter) {
+        if (!stateFilter && !branchFilter && !leadOwnerFilter) {
           const states = Array.from(
             new Set(formattedData.map((item) => item.state).filter(Boolean))
           ).sort() as string[];
@@ -148,7 +152,11 @@ const Invoices: React.FC = () => {
             new Set(formattedData.map((item) => item.branchName).filter(Boolean))
           ).sort() as string[];
 
-          setFilterOptions({ states, branchNames });
+          setFilterOptions({
+            states,
+            branchNames,
+            leadOwners: Array.isArray(res.data?.filters?.leadOwners) ? res.data.filters.leadOwners : [],
+          });
         }
 
         console.log(`Loaded ${formattedData.length} invoices`);
@@ -160,7 +168,7 @@ const Invoices: React.FC = () => {
       }
     };
     fetchInvoices();
-  }, [stateFilter, branchFilter]);
+  }, [stateFilter, branchFilter, leadOwnerFilter]);
 
   // Filter records based on search and date range (state and branchName are filtered on backend)
   const filteredRecords = useMemo(() => {
@@ -224,7 +232,7 @@ const Invoices: React.FC = () => {
   // Reset to page 1 when filters or page size change
   useEffect(() => {
     setPage(1);
-  }, [search, pageSize, dateFrom, dateTo, stateFilter, branchFilter]);
+  }, [search, pageSize, dateFrom, dateTo, stateFilter, branchFilter, leadOwnerFilter]);
 
   // Clear all filters
   const clearFilters = () => {
@@ -233,6 +241,7 @@ const Invoices: React.FC = () => {
     setDateTo('');
     setStateFilter('');
     setBranchFilter('');
+    setLeadOwnerFilter('');
     setPage(1);
   };
 
@@ -281,6 +290,7 @@ const Invoices: React.FC = () => {
       dateFrom,
       dateTo,
       search,
+      leadOwner: leadOwnerFilter,
     };
 
     try {
@@ -301,7 +311,7 @@ const Invoices: React.FC = () => {
     }
   };
 
-  const hasActiveFilters = search || dateFrom || dateTo || stateFilter || branchFilter;
+  const hasActiveFilters = search || dateFrom || dateTo || stateFilter || branchFilter || leadOwnerFilter;
 
   const breadcrumbItems: BreadcrumbItem[] = [
     { label: 'Dashboard', to: '/', icon: <IconHome /> },
@@ -360,7 +370,14 @@ const Invoices: React.FC = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+                <FilterSelect
+                  title="Lead Owner"
+                  label="All Lead Owners"
+                  value={leadOwnerFilter}
+                  options={filterOptions.leadOwners}
+                  onChange={setLeadOwnerFilter}
+                />
                 <FilterSelect
                   title="State"
                   label="All States"
@@ -445,6 +462,7 @@ const Invoices: React.FC = () => {
                 columns={[
                   { accessor: 'invoiceId', title: 'Invoice ID', sortable: true },
                   { accessor: 'srfNumber', title: 'SRF No', sortable: true },
+                  { accessor: 'leadOwner', title: 'Lead Owner', sortable: true },
 
                   { accessor: 'buyerName', title: 'Customer Name', sortable: true },
                   { accessor: 'address', title: 'Address', sortable: true },

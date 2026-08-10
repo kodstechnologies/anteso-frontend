@@ -1,5 +1,5 @@
 import React from "react";
-import AntesoQRCode from "../../../assets/quotationImg/qrcode.png";
+import AntesoQRCode from "../../../assets/quotationImg/quotationQR.jpeg";
 import Signature from "../../../assets/quotationImg/signature.png";
 
 const QuotationFooter: React.FC = () => {

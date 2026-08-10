@@ -69,15 +69,18 @@ const Payments = () => {
   const [paymentTypeFilter, setPaymentTypeFilter] = useState('');
   const [paymentModeFilter, setPaymentModeFilter] = useState('');
   const [branchFilter, setBranchFilter] = useState('');
+  const [leadOwnerFilter, setLeadOwnerFilter] = useState('');
 
   const [filterOptions, setFilterOptions] = useState<{
     paymentTypes: string[];
     paymentModes: string[];
     branchNames: string[];
+    leadOwners: string[];
   }>({
     paymentTypes: ['advance', 'balance', 'complete'],
     paymentModes: ['Cash', 'Bank transfer', 'Cheque', 'UPI', 'Other'],
     branchNames: [],
+    leadOwners: [],
   });
 
   const [loading, setLoading] = useState(false);
@@ -105,6 +108,7 @@ const Payments = () => {
           paymentType: paymentTypeFilter,
           paymentMode: paymentModeFilter,
           branchName: branchFilter,
+          leadOwner: leadOwnerFilter,
         });
         console.log("🚀 ~ res:", res)
         const backendPayments = res.data.payments.map((p: any) => ({
@@ -119,11 +123,11 @@ const Payments = () => {
           screenshotUrl: p.screenshot || null,
           paymentMode: p.paymentMode || 'N/A',
           branchName: p.branchName || 'N/A',
+          leadOwner: p.leadOwner || 'N/A',
         }));
         setItems(backendPayments);
 
-        // Lock in branch options on initial load when filters are empty
-        if (!paymentTypeFilter && !paymentModeFilter && !branchFilter) {
+        if (!paymentTypeFilter && !paymentModeFilter && !branchFilter && !leadOwnerFilter) {
           const branchNames = Array.from(
             new Set(backendPayments.map((p: any) => p.branchName).filter(Boolean))
           ).sort() as string[];
@@ -131,6 +135,7 @@ const Payments = () => {
           setFilterOptions(prev => ({
             ...prev,
             branchNames,
+            leadOwners: Array.isArray(res.data?.filters?.leadOwners) ? res.data.filters.leadOwners : prev.leadOwners,
           }));
         }
       } catch (err) {
@@ -140,7 +145,7 @@ const Payments = () => {
       }
     };
     fetchPayments();
-  }, [paymentTypeFilter, paymentModeFilter, branchFilter]);
+  }, [paymentTypeFilter, paymentModeFilter, branchFilter, leadOwnerFilter]);
 
   const filteredRecords = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -177,7 +182,7 @@ const Payments = () => {
 
   useEffect(() => {
     setPage(1);
-  }, [search, pageSize, dateFrom, dateTo, paymentTypeFilter, paymentModeFilter, branchFilter]);
+  }, [search, pageSize, dateFrom, dateTo, paymentTypeFilter, paymentModeFilter, branchFilter, leadOwnerFilter]);
 
   // Clear all filters
   const clearFilters = () => {
@@ -187,6 +192,7 @@ const Payments = () => {
     setPaymentTypeFilter('');
     setPaymentModeFilter('');
     setBranchFilter('');
+    setLeadOwnerFilter('');
   };
 
   const handleDeleteClick = (id: string) => {
@@ -225,6 +231,7 @@ const Payments = () => {
       dateFrom,
       dateTo,
       search,
+      leadOwner: leadOwnerFilter,
     };
 
     try {
@@ -245,7 +252,7 @@ const Payments = () => {
     }
   };
 
-  const hasActiveFilters = search || dateFrom || dateTo || paymentTypeFilter || paymentModeFilter || branchFilter;
+  const hasActiveFilters = search || dateFrom || dateTo || paymentTypeFilter || paymentModeFilter || branchFilter || leadOwnerFilter;
 
   const breadcrumbItems: BreadcrumbItem[] = [
     { label: 'Dashboard', to: '/', icon: <IconHome /> },
@@ -304,7 +311,14 @@ const Payments = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-6">
+                <FilterSelect
+                  title="Lead Owner"
+                  label="All Lead Owners"
+                  value={leadOwnerFilter}
+                  options={filterOptions.leadOwners}
+                  onChange={setLeadOwnerFilter}
+                />
                 <FilterSelect
                   title="Payment Type"
                   label="All Types"
@@ -379,6 +393,7 @@ const Payments = () => {
               columns={[
                 { accessor: 'paymentId', title: 'Payment ID', sortable: true },
                 { accessor: 'srfClient', title: 'SRF No.', sortable: true },
+                { accessor: 'leadOwner', title: 'Lead Owner', sortable: true },
 
                 { accessor: 'totalAmount', title: 'Total Amount', sortable: true },
                 { accessor: 'paymentAmount', title: 'Payment Amount', sortable: true },

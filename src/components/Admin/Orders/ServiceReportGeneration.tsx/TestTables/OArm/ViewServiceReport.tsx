@@ -60,6 +60,7 @@ interface ReportData {
   toolsUsed?: Tool[];
   qrCode?: string;
   engineerId?: string;
+  reportStatus?: string;
   notes?: Note[];
   pages?: string;
   authorizedSignatoryName?: string;
@@ -157,6 +158,7 @@ const ViewServiceReportOArm: React.FC = () => {
           const assignedTools = normalizeTools(toolsRes?.data?.toolsAssigned || []);
           const mergedTools = mergeTools(headerTools, assignedTools);
           const detailsData = detailsRes?.data?.data || detailsRes?.data || {};
+          const detailsFirstQaTest = Array.isArray(detailsData?.qaTests) ? detailsData.qaTests[0] : null;
           const srfKey = data?.srfNumber || detailsData?.srfNumber || "";
           const cachedOrderBySrfRaw = srfKey ? localStorage.getItem(`order-basic-by-srf-${srfKey}`) : null;
           const cachedOrderBySrf = cachedOrderBySrfRaw ? JSON.parse(cachedOrderBySrfRaw) : {};
@@ -211,6 +213,7 @@ const ViewServiceReportOArm: React.FC = () => {
             toolsUsed: mergedTools,
             qrCode: data.qrCode || "",
             engineerId: String(detailsData?.engineerAssigned?._id || detailsData?.engineerAssigned?.id || ""),
+            reportStatus: String(detailsFirstQaTest?.reportStatus || data.reportStatus || "pending"),
 
             notes: data.notes || defaultNotes,
             authorizedSignatoryName:
@@ -1397,6 +1400,7 @@ const ViewServiceReportOArm: React.FC = () => {
               engineerId={report.engineerId}
               engineerName={report.engineerNameRPId}
               rpId={report.rpId}
+              reportStatus={report.reportStatus}
               authorizedSignatoryName={report.authorizedSignatoryName}
               authorizedSignatorySignature={report.authorizedSignatorySignature}
             />

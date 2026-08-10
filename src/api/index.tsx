@@ -1,6 +1,7 @@
 import axios from 'axios'
 import { log } from 'console';
 import Cookies from 'js-cookie';
+import { resetExpiringCalibrationAlert } from '../utils/showExpiringCalibrationAlert';
 
 const VITE_BACKEND_LOCALHOST_API_URL = import.meta.env.VITE_BACKEND_API_URL;
 const VITE_BACKEND_API_URL_OTP = import.meta.env.VITE_BACKEND_API_URL_OTP;
@@ -169,6 +170,7 @@ export const logoutUser = async () => {
         // Clear accessToken and refreshToken from cookies
         Cookies.remove('accessToken');
         Cookies.remove('refreshToken');
+        resetExpiringCalibrationAlert();
 
         // Redirect to login page
         window.location.href = '/login';
@@ -709,6 +711,7 @@ export const getAllEnquiry = async (filters?: EnquiryListFilters) => {
         if (filters?.branch?.trim()) params.branch = filters.branch.trim();
         if (filters?.emailAddress?.trim()) params.emailAddress = filters.emailAddress.trim();
         if (filters?.contactNumber?.trim()) params.contactNumber = filters.contactNumber.trim();
+        if (filters?.leadOwner?.trim()) params.leadOwner = filters.leadOwner.trim();
 
         const res = await api.get('/enquiry/get-all', {
             params,
@@ -733,6 +736,7 @@ export type EnquiryListFilters = {
     branch?: string;
     emailAddress?: string;
     contactNumber?: string;
+    leadOwner?: string;
 };
 
 export type EnquiryFilterOptions = {
@@ -742,6 +746,7 @@ export type EnquiryFilterOptions = {
     branches: string[];
     emailAddresses: string[];
     contactNumbers: string[];
+    leadOwners: string[];
 };
 
 export const getQuotationByCustomerAndEnquiryId = async (customerId: any, enquiryId: any) => {
@@ -1438,6 +1443,7 @@ export type OrderListFilters = {
     district?: string;
     emailAddress?: string;
     contactNumber?: string;
+    leadOwner?: string;
 };
 
 export type OrderFilterOptions = {
@@ -1446,6 +1452,7 @@ export type OrderFilterOptions = {
     districts: string[];
     emailAddresses: string[];
     contactNumbers: string[];
+    leadOwners: string[];
 };
 
 export const getAllOrders = async (filters?: OrderListFilters) => {
@@ -1458,6 +1465,7 @@ export const getAllOrders = async (filters?: OrderListFilters) => {
         if (filters?.district?.trim()) params.district = filters.district.trim();
         if (filters?.emailAddress?.trim()) params.emailAddress = filters.emailAddress.trim();
         if (filters?.contactNumber?.trim()) params.contactNumber = filters.contactNumber.trim();
+        if (filters?.leadOwner?.trim()) params.leadOwner = filters.leadOwner.trim();
 
         const res = await api.get(`/orders/get-all`, {
             params,
@@ -2279,13 +2287,14 @@ export const getPaymentsBySrf = async (srfNumber: string) => {
 };
 
 
-export const getAllPayments = async (filters?: { paymentType?: string; paymentMode?: string; branchName?: string }) => {
+export const getAllPayments = async (filters?: { paymentType?: string; paymentMode?: string; branchName?: string; leadOwner?: string }) => {
     try {
         const token = Cookies.get('accessToken')
         const params: Record<string, string> = {};
         if (filters?.paymentType?.trim()) params.paymentType = filters.paymentType.trim();
         if (filters?.paymentMode?.trim()) params.paymentMode = filters.paymentMode.trim();
         if (filters?.branchName?.trim()) params.branchName = filters.branchName.trim();
+        if (filters?.leadOwner?.trim()) params.leadOwner = filters.leadOwner.trim();
 
         const res = await api.get(`/payment/get-all-payments`, {
             params,
@@ -2637,12 +2646,13 @@ export const createInvoice = async (invoiceData: any) => {
     }
 };
 
-export const getAllInvoices = async (filters?: { state?: string; branchName?: string }) => {
+export const getAllInvoices = async (filters?: { state?: string; branchName?: string; leadOwner?: string }) => {
     try {
         const token = Cookies.get("accessToken")
         const params: Record<string, string> = {};
         if (filters?.state?.trim()) params.state = filters.state.trim();
         if (filters?.branchName?.trim()) params.branchName = filters.branchName.trim();
+        if (filters?.leadOwner?.trim()) params.leadOwner = filters.leadOwner.trim();
 
         const res = await api.get(`/invoice/get-all-invoices`, {
             params,

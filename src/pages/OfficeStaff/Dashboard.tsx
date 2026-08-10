@@ -2,6 +2,7 @@
 import React, { useEffect } from 'react';
 import { useDispatch } from 'react-redux';
 import { setPageTitle } from '../../store/themeConfigSlice';
+import { showExpiringCalibrationAlert } from '../../utils/showExpiringCalibrationAlert';
 import {
     LineChart,
     Line,
@@ -34,6 +35,7 @@ const Dashboard: React.FC = () => {
 
     useEffect(() => {
         dispatch(setPageTitle('Dashboard'));
+        showExpiringCalibrationAlert();
     }, [dispatch]);
 
     return (

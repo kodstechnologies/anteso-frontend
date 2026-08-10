@@ -16,6 +16,7 @@ import { formatDateForExport, formatGeneratedAtForExport, getExportFileNameDateS
 export type EnquiryExportRow = {
     enquiryId: string;
     createdAt: string;
+    leadOwner: string;
     hospitalName: string;
     fullAddress: string;
     city: string;
@@ -38,6 +39,7 @@ export type EnquiryExportFilters = {
     branch?: string;
     emailAddress?: string;
     contactNumber?: string;
+    leadOwner?: string;
     dateFrom?: string;
     dateTo?: string;
     search?: string;
@@ -46,6 +48,7 @@ export type EnquiryExportFilters = {
 const ENQUIRY_EXPORT_HEADERS = [
     'ENQ ID',
     'Created At',
+    'Lead Owner',
     'Hospital Name',
     'Full Address',
     'City',
@@ -64,6 +67,7 @@ const ENQUIRY_EXPORT_HEADERS = [
 export const mapEnquiryToExportRow = (item: Record<string, any>): EnquiryExportRow => ({
     enquiryId: item.enquiryID || item.enquiryId || '-',
     createdAt: formatDateForExport(item.createdAt),
+    leadOwner: item.leadOwner || item.leadOwnerName || '-',
     hospitalName: item.hName || item.hospitalName || '-',
     fullAddress: item.fullAddress || '-',
     city: item.city || '-',
@@ -83,6 +87,7 @@ const rowsToMatrix = (rows: EnquiryExportRow[]) =>
     rows.map((row) => [
         row.enquiryId,
         row.createdAt,
+        row.leadOwner,
         row.hospitalName,
         row.fullAddress,
         row.city,
@@ -112,6 +117,7 @@ const buildFilterSummary = (filters: EnquiryExportFilters, totalRecords: number)
         ['Branch Name', filters.branch],
         ['Email', filters.emailAddress],
         ['Phone', filters.contactNumber],
+        ['Lead Owner', filters.leadOwner],
         ['From Date', filters.dateFrom ? formatDateForExport(filters.dateFrom) : undefined],
         ['To Date', filters.dateTo ? formatDateForExport(filters.dateTo) : undefined],
         ['Search', filters.search],
@@ -144,6 +150,7 @@ type CardField = {
 
 const getEnquiryCardFields = (row: EnquiryExportRow): CardField[] => [
     { label: 'Created At', value: row.createdAt },
+    { label: 'Lead Owner', value: row.leadOwner },
     { label: 'Quotation', value: row.quotationStatus },
     { label: 'Hospital Name', value: row.hospitalName, fullWidth: true },
     { label: 'Full Address', value: row.fullAddress, fullWidth: true },

@@ -17,6 +17,7 @@ import { formatCurrencyForExport, formatCurrencyForPdf } from './formatCurrency'
 export type PaymentExportRow = {
     paymentId: string;
     srfClient: string;
+    leadOwner: string;
     totalAmount: string;
     paymentAmount: string;
     paymentType: string;
@@ -30,6 +31,7 @@ export type PaymentExportFilters = {
     paymentType?: string;
     paymentMode?: string;
     branchName?: string;
+    leadOwner?: string;
     dateFrom?: string;
     dateTo?: string;
     search?: string;
@@ -38,6 +40,7 @@ export type PaymentExportFilters = {
 const PAYMENT_EXPORT_HEADERS = [
     'Payment ID',
     'SRF No.',
+    'Lead Owner',
     'Total Amount',
     'Payment Amount',
     'Payment Type',
@@ -55,6 +58,7 @@ export const mapPaymentToExportRow = (
     return {
         paymentId: payment.paymentId || '-',
         srfClient: payment.srfClient || '-',
+        leadOwner: payment.leadOwner || '-',
         totalAmount: formatCurrency(payment.totalAmount),
         paymentAmount: formatCurrency(payment.paymentAmount),
         paymentType: payment.paymentType || '-',
@@ -69,6 +73,7 @@ const rowsToMatrix = (rows: PaymentExportRow[]) =>
     rows.map((row) => [
         row.paymentId,
         row.srfClient,
+        row.leadOwner,
         row.totalAmount,
         row.paymentAmount,
         row.paymentType,
@@ -89,6 +94,7 @@ const buildFilterSummary = (filters: PaymentExportFilters, totalRecords: number)
         ['Payment Type', filters.paymentType],
         ['Payment Mode', filters.paymentMode],
         ['Branch Name', filters.branchName],
+        ['Lead Owner', filters.leadOwner],
         ['From Date', filters.dateFrom ? formatDateForExport(filters.dateFrom) : undefined],
         ['To Date', filters.dateTo ? formatDateForExport(filters.dateTo) : undefined],
         ['Search', filters.search],
@@ -121,6 +127,7 @@ type CardField = {
 
 const getPaymentCardFields = (row: PaymentExportRow): CardField[] => [
     { label: 'SRF No.', value: row.srfClient },
+    { label: 'Lead Owner', value: row.leadOwner },
     { label: 'Total Amount', value: row.totalAmount, fullWidth: true },
     { label: 'Payment Amount', value: row.paymentAmount, fullWidth: true },
     { label: 'Payment Type', value: row.paymentType },

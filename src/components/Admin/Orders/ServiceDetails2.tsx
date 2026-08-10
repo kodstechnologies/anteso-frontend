@@ -523,27 +523,8 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
         }
     }, []);
 
-    const canAssignQARaw = (workType: { assignedTechnicianId?: string }, parentService: MachineData) => {
-        if (currentUserRole === "admin") return true;
-
-        // If the logged-in user is the QA Test staff for this service, allow them to edit QA Raw as well
-        const qaTestWorkType = parentService.workTypes.find((wt: any) => wt.name === "QA Test");
-        const isAssignedQATestStaff =
-            qaTestWorkType &&
-            qaTestWorkType.assignedStaffId &&
-            currentUserId &&
-            qaTestWorkType.assignedStaffId === currentUserId;
-
-        if (isAssignedQATestStaff) {
-            return true;
-        }
-
-        // Technicians / employees (or staff used for technicians) can manage QA Raw when it's unassigned or assigned to them
-        if (currentUserRole === "Technician" || currentUserRole === "Employee" || currentUserRole === "staff") {
-            return !workType.assignedTechnicianId || workType.assignedTechnicianId === currentUserId;
-        }
-
-        return false;
+    const canAssignQARaw = (_workType: { assignedTechnicianId?: string }, _parentService: MachineData) => {
+        return currentUserRole === "admin";
     };
 
     const canAssignQATest = (workType: { assignedStaffId?: string }) => {
@@ -554,9 +535,9 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
         return true;
     };
 
-    /** QA Test is only enabled after an engineer is assigned on the QA Raw row for the same machine. */
+    /** QA Test Report is only enabled after an engineer is assigned on the QA Test row for the same machine. */
     const isQARawEngineerAssigned = (parentService: MachineData) => {
-        const qaRaw = parentService.workTypes.find((wt) => wt.name === "QA Raw");
+        const qaRaw = parentService.workTypes.find((wt) => wt.name === "QA Test");
         if (!qaRaw) return false;
         return !!(
             qaRaw.assignedTechnicianId ||
@@ -620,7 +601,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                 // ---- QA Raw ----
                                 workTypes.push({
                                     id: `${cardId}-qa-raw`,
-                                    name: "QA Raw",
+                                    name: "QA Test",
                                     description: "",
                                     backendFields: {
                                         serialNo: machineData.serialNumber || machineData.equipmentNo || "N/A",
@@ -670,7 +651,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                 const qaTestStaff = workTypeDetail.QAtest?.officeStaff;
                                 workTypes.push({
                                     id: `${cardId}-qa-test`,
-                                    name: "QA Test",
+                                    name: "QA Test Report",
                                     description: "",
                                     reportNumber: "N/A",
                                     urlNumber: "N/A",
@@ -785,7 +766,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
 
                     if (service.workTypeName === "Quality Assurance Test") {
                         const qaRawWorkType = service.workTypes.find(
-                            (wt) => wt.name === "QA Raw"
+                            (wt) => wt.name === "QA Test"
                         );
 
                         if (qaRawWorkType && qaRawWorkType.backendFields) {
@@ -1063,7 +1044,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
             machineData.forEach((service) => {
                 service.workTypes.forEach((workType) => {
                     if (
-                        workType.name === "QA Raw" &&
+                        workType.name === "QA Test" &&
                         workType.assignedTechnicianId &&
                         !newAssignments[workType.id]?.employeeId
                     ) {
@@ -1091,7 +1072,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                     prev.map((s) => ({
                         ...s,
                         workTypes: s.workTypes.map((wt) => {
-                            if (wt.name === "QA Raw" && wt.assignedTechnicianId) {
+                            if (wt.name === "QA Test" && wt.assignedTechnicianId) {
                                 const tech = technicians.find((t) => t._id === wt.assignedTechnicianId);
                                 return tech ? { ...wt, assignedTechnicianName: tech.name } : wt;
                             }
@@ -1224,9 +1205,9 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
 
     const getWorkTypeIcon = (workType: string) => {
         switch (workType.toLowerCase()) {
-            case "qa raw":
-                return <Wrench className="h-4 w-4" />
             case "qa test":
+                return <Wrench className="h-4 w-4" />
+            case "qa test report":
                 return <Settings className="h-4 w-4" />
             case "elora":
                 return <Zap className="h-4 w-4" />
@@ -1281,6 +1262,10 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
     }
 
     const handleEmployeeAssign = async (workTypeId: string) => {
+        if (currentUserRole !== "admin") {
+            showMessage("Only admin can assign engineers.", "warning");
+            return;
+        }
         const employeeId = selectedEmployees[workTypeId]
         if (!employeeId || !orderId) return
 
@@ -1406,8 +1391,8 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
             const parentService = machineData.find((service) => service.workTypes.some((wt) => wt.id === workTypeId))
             if (!parentService) throw new Error("Parent service not found")
 
-            if (workType.name === "QA Test" && !isQARawEngineerAssigned(parentService)) {
-                showMessage("Assign an engineer in QA Raw first before enabling QA Test.", 'warning')
+            if (workType.name === "QA Test Report" && !isQARawEngineerAssigned(parentService)) {
+                showMessage("Assign an engineer in QA Test first before enabling QA Test Report.", 'warning')
                 return
             }
 
@@ -1736,8 +1721,8 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
             if (!workType) throw new Error("Work type not found")
             const parentService = machineData.find((service) => service.workTypes.some((wt) => wt.id === workTypeId))
             if (!parentService) throw new Error("Parent service not found")
-            if (workType.name === "QA Test" && !isQARawEngineerAssigned(parentService)) {
-                showMessage("Assign an engineer in QA Raw first before enabling QA Test.", 'warning')
+            if (workType.name === "QA Test Report" && !isQARawEngineerAssigned(parentService)) {
+                showMessage("Assign an engineer in QA Test first before enabling QA Test Report.", 'warning')
                 return
             }
             const serviceId = workType.id.split("-")[0]
@@ -1803,7 +1788,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
             }
 
             // Refresh report numbers after status update
-            if (isQATestService && workType.name === "QA Test") {
+            if (isQATestService && workType.name === "QA Test Report") {
                 await refreshReportNumbers(parentService.id, 'qatest', staffId);
             }
 
@@ -1856,7 +1841,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                 }
 
                 const cleanId = parentService.id.replace(/-0$/, "");
-                const firstQATest = parentService.workTypes.find((wt: any) => wt.name === "QA Raw");
+                const firstQATest = parentService.workTypes.find((wt: any) => wt.name === "QA Test");
                 const createdAt = workType.qaTestSubmittedAt || firstQATest?.backendFields?.createdAt || null;
                 const ulrNumber = reportNumbers[parentService.id]?.qatest?.reportULRNumber || firstQATest?.backendFields?.reportURLNumber || null;
 
@@ -2226,15 +2211,19 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
     const handleReassign = (workTypeId: string) => {
         const workType = machineData.flatMap((service) => service.workTypes).find((wt) => wt.id === workTypeId)
         if (!workType) return
+        if (workType.name === "QA Test" && currentUserRole !== "admin") {
+            showMessage("Only admin can reassign engineers.", "warning")
+            return
+        }
         const parentService = machineData.find((service) => service.workTypes.some((wt) => wt.id === workTypeId))
         if (!parentService) return
 
         let currentStatus = assignments[workTypeId]?.status || "pending"
-        if (workType.name === "QA Raw") {
+        if (workType.name === "QA Test") {
             const qaTestId = workTypeId.replace('-qa-raw', '-qa-test')
             const qaTestStatus = assignments[qaTestId]?.status || selectedStatuses[qaTestId] || "pending"
             if (qaTestStatus === "generated") {
-                showMessage("Cannot reassign QA Raw because QA Test status is generated!", 'warning')
+                showMessage("Cannot reassign QA Test because QA Test Report status is generated!", 'warning')
                 return
             }
         }
@@ -2615,7 +2604,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                     >
                                         <div className="px-6 pb-4">
                                             <div className="bg-gray-50 rounded-lg p-4 space-y-4">
-                                                {workType.name === "QA Raw" && service.workTypeName === "Quality Assurance Test" && (
+                                                {workType.name === "QA Test" && service.workTypeName === "Quality Assurance Test" && (
                                                     <div className="space-y-4">
                                                         {(!assignments[workType.id]?.isAssigned || assignments[workType.id]?.isReassigned) ? (
                                                             canAssignQARaw(workType, service) ? (
@@ -2679,7 +2668,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                 </div>
                                                             ) : (
                                                                 <div className="p-3 bg-gray-100 rounded-md text-sm text-gray-600">
-                                                                    Only admin or technicians can assign engineers to QA Raw.
+                                                                    Only admin can assign or reassign engineers to QA Raw.
                                                                 </div>
                                                             )
                                                         ) : (
@@ -2951,11 +2940,11 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                         )}
                                                     </div>
                                                 )}
-                                                {workType.name === "QA Test" && service.workTypeName === "Quality Assurance Test" && (
+                                                {workType.name === "QA Test Report" && service.workTypeName === "Quality Assurance Test" && (
                                                     <div className={`space-y-4 ${!isQARawEngineerAssigned(service) ? "opacity-60 pointer-events-none" : ""}`}>
                                                         {!isQARawEngineerAssigned(service) ? (
                                                             <div className="p-3 bg-amber-50 rounded-md border border-amber-200 text-sm text-amber-800 pointer-events-auto">
-                                                                Assign an engineer in <strong>QA Raw</strong> first to enable QA Test.
+                                                                Assign an engineer in <strong>QA Test</strong> first to enable QA Test Report.
                                                             </div>
                                                         ) : !assignments[workType.id]?.isAssigned ? (
                                                             canAssignQATest(workType) ? (
@@ -3151,7 +3140,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                                                 }
 
                                                                                                 const cleanId = service.id.replace(/-0$/, "");
-                                                                                                const firstQATest = service.workTypes.find((wt: any) => wt.name === "QA Raw");
+                                                                                                const firstQATest = service.workTypes.find((wt: any) => wt.name === "QA Test");
                                                                                                 const createdAt = workType.qaTestSubmittedAt ||
                                                                                                     firstQATest?.backendFields?.createdAt ||
                                                                                                     null;
@@ -3316,7 +3305,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                         )}
                                                     </div>
                                                 )}
-                                                {(workType.name !== "QA Raw" && workType.name !== "QA Test") && (
+                                                {(workType.name !== "QA Test" && workType.name !== "QA Test Report") && (
                                                     <div className="space-y-4">
                                                         {!assignments[workType.id]?.isAssigned ? (
                                                             <div className="space-y-3">

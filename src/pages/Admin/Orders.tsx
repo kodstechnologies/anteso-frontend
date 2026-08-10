@@ -49,6 +49,7 @@ const emptyFilterOptions: OrderFilterOptions = {
     districts: [],
     emailAddresses: [],
     contactNumbers: [],
+    leadOwners: [],
 };
 
 const FilterSelect = ({
@@ -91,6 +92,7 @@ const Orders = () => {
     const [district, setDistrict] = useState('');
     const [emailAddress, setEmailAddress] = useState('');
     const [contactNumber, setContactNumber] = useState('');
+    const [leadOwner, setLeadOwner] = useState('');
     const [filterOptions, setFilterOptions] = useState<OrderFilterOptions>(emptyFilterOptions);
     const [loading, setLoading] = useState(false);
     const [exporting, setExporting] = useState<'pdf' | 'excel' | 'word' | null>(null);
@@ -134,10 +136,11 @@ const Orders = () => {
             district,
             emailAddress,
             contactNumber,
+            leadOwner,
         };
         fetchOrders(filters);
         setPage(1);
-    }, [branchName, city, district, emailAddress, contactNumber]);
+    }, [branchName, city, district, emailAddress, contactNumber, leadOwner]);
 
     // ✅ Clear all filters
     const clearFilters = () => {
@@ -149,6 +152,7 @@ const Orders = () => {
         setDistrict('');
         setEmailAddress('');
         setContactNumber('');
+        setLeadOwner('');
         setPage(1);
     };
 
@@ -160,7 +164,8 @@ const Orders = () => {
         city ||
         district ||
         emailAddress ||
-        contactNumber;
+        contactNumber ||
+        leadOwner;
 
     // ✅ Open Confirm Modal
     const handleDeleteClick = (id: string) => {
@@ -269,6 +274,7 @@ const Orders = () => {
         dateFrom,
         dateTo,
         search,
+        leadOwner,
     };
 
     const handleExport = async (type: 'pdf' | 'excel' | 'word') => {
@@ -348,7 +354,14 @@ const Orders = () => {
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+                                <FilterSelect
+                                    title="Lead Owner"
+                                    label="All Lead Owners"
+                                    value={leadOwner}
+                                    options={filterOptions.leadOwners}
+                                    onChange={setLeadOwner}
+                                />
                                 <FilterSelect
                                     title="Branch Name"
                                     label="All Branches"

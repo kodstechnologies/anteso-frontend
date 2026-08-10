@@ -65,6 +65,7 @@ export interface ReportData {
   notes?: Note[];
   qrCode?: string;
   engineerId?: string;
+  reportStatus?: string;
   category: string;
   authorizedSignatoryName?: string;
   authorizedSignatorySignature?: string;
@@ -239,8 +240,11 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
             slNumber: data.slNumber || "N/A",
             condition: data.condition || "OK",
             testingProcedureNumber: data.testingProcedureNumber || "N/A",
-            engineerNameRPId: data.engineerNameRPId || "N/A",
-            rpId: pickRpId(data),
+            engineerNameRPId:
+              detailsData?.engineerAssigned?.name ||
+              data.engineerNameRPId ||
+              "N/A",
+            rpId: pickRpId(detailsData) || pickRpId(data),
             pages: data.pages || "N/A",
             testDate: data.testDate || "",
             testDueDate: data.testDueDate || "",
@@ -253,6 +257,7 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
             // notes: data.notes || defaultNotes,
             qrCode: data.qrCode || "",
             engineerId: String(detailsData?.engineerAssigned?._id || detailsData?.engineerAssigned?.id || ""),
+            reportStatus: String(detailsFirstQaTest?.reportStatus || data.reportStatus || "pending"),
             category: data.category || "N/A",
             authorizedSignatoryName:
               (typeof data.authorizedSignatory === "object" && data.authorizedSignatory?.name) ||
@@ -2062,9 +2067,11 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
             <ReportPdfPageDeclaration
               todayDate={todayDate}
               customerCity={placeValue}
+              qrCode={report.qrCode}
               engineerId={report.engineerId}
               engineerName={report.engineerNameRPId}
               rpId={report.rpId}
+              reportStatus={report.reportStatus}
               authorizedSignatoryName={report.authorizedSignatoryName}
               authorizedSignatorySignature={report.authorizedSignatorySignature}
             />

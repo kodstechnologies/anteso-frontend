@@ -77,6 +77,7 @@ interface ReportData {
   toolsUsed?: Tool[];
   qrCode?: string;
   engineerId?: string;
+  reportStatus?: string;
   notes?: Note[];
   category: string;
   reportULRNumber?: string;
@@ -219,6 +220,7 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
             .map((tool, idx) => ({ ...tool, slNumber: String(idx + 1) }));
         };
         const detailsData = detailsRes?.data?.data || detailsRes?.data || {};
+        const detailsFirstQaTest = Array.isArray(detailsData?.qaTests) ? detailsData.qaTests[0] : null;
         const srfKey = response?.data?.srfNumber || detailsData?.srfNumber || "";
         const cachedOrderBySrfRaw = srfKey ? localStorage.getItem(`order-basic-by-srf-${srfKey}`) : null;
         const cachedOrderBySrf = cachedOrderBySrfRaw ? JSON.parse(cachedOrderBySrfRaw) : {};
@@ -273,6 +275,7 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
             toolsUsed: mergedTools,
             qrCode: data.qrCode || "",
             engineerId: String(detailsData?.engineerAssigned?._id || detailsData?.engineerAssigned?.id || ""),
+            reportStatus: String(detailsFirstQaTest?.reportStatus || data.reportStatus || "pending"),
             notes: data.notes || defaultNotes,
             authorizedSignatoryName:
               (typeof data.authorizedSignatory === "object" && data.authorizedSignatory?.name) ||
@@ -2047,6 +2050,7 @@ const ViewServiceReportFixedRadioFluro: React.FC = () => {
               engineerId={report.engineerId}
               engineerName={report.engineerNameRPId}
               rpId={report.rpId}
+              reportStatus={report.reportStatus}
               authorizedSignatoryName={report.authorizedSignatoryName}
               authorizedSignatorySignature={report.authorizedSignatorySignature}
             />
