@@ -26,7 +26,7 @@ const Dropdown = (props : any, forwardedRef: any) => {
 
         setVisibility(false);
     };
-
+    
     useEffect(() => {
         document.addEventListener('mousedown', handleDocumentClick);
         return () => {
