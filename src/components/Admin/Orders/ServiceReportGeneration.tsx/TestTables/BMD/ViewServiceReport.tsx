@@ -10,6 +10,12 @@ import { ReportPdfPageFooterEnd } from "../RadiographyFixed/component/FooterEnd"
 import { ReportPdfPageNoteQR } from "../RadiographyFixed/component/NoteQR";
 import { ReportPdfPageDeclaration } from "../RadiographyFixed/component/Declaration";
 import { evaluateTotalFiltrationPassFail } from "../totalFiltrationPassFail";
+import {
+  EmbeddedViewReportPdfProps,
+  getEmbeddedReportContentId,
+  saveGeneratedReportPdfToDb,
+  useEmbeddedReportPdfAutoSave,
+} from "../shared/embeddedViewReportPdf";
 // Removed individual test API imports as we are now using aggregated header
 
 

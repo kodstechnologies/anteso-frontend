@@ -10,6 +10,7 @@ import { ReportPdfPageFooterEnd } from "../RadiographyFixed/component/FooterEnd"
 import { ReportPdfPageNoteQR } from "../RadiographyFixed/component/NoteQR";
 import { ReportPdfPageDeclaration } from "../RadiographyFixed/component/Declaration";
 import { evaluateTotalFiltrationPassFail } from "../totalFiltrationPassFail";
+import { EmbeddedViewReportPdfProps, getEmbeddedReportContentId, saveGeneratedReportPdfToDb, useEmbeddedReportPdfAutoSave } from "../shared/embeddedViewReportPdf";
 
 interface Tool {
   slNumber: string;
