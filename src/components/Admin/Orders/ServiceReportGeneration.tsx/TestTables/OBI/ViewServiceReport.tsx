@@ -1,8 +1,14 @@
 // src/components/reports/ViewServiceReportOBI.tsx
 import React, { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { getReportHeaderForOBI, getDetails, getTools } from "../../../../../../api";
+import { getReportHeaderForOBI, getDetails, getTools , saveReportPdfForOBI } from "../../../../../../api";
 import { generatePDF } from "../../../../../../utils/generatePDF";
+import {
+  EmbeddedViewReportPdfProps,
+  getEmbeddedReportContentId,
+  saveGeneratedReportPdfToDb,
+  useEmbeddedReportPdfAutoSave,
+} from "../shared/embeddedViewReportPdf";
 import MainTestTableForOBI, { generateOBISummaryRows } from "./MainTestTableForOBI";
 import { ReportPdfPageHeader, type ReportPdfPageHeaderData } from "../RadiographyFixed/component/Header";
 import { ReportPdfPageFooter } from "../RadiographyFixed/component/Footer";
@@ -273,9 +279,21 @@ function normalizeOBIRadiationProtectionSurvey(survey: any) {
   return { ...survey, locations: normalizedLocations };
 }
 
-const ViewServiceReportOBI: React.FC = () => {
+interface ViewServiceReportOBIProps extends EmbeddedViewReportPdfProps {}
+
+const ViewServiceReportOBI: React.FC<ViewServiceReportOBIProps> = ({
+  serviceIdProp,
+  embedded = false,
+  refreshKey = 0,
+  onReportLoaded,
+  autoSavePdfToken = 0,
+  onPdfSaveComplete,
+  saveReportPdf = saveReportPdfForOBI,
+  pdfFilenamePrefix = "OBI",
+}) => {
   const [searchParams] = useSearchParams();
-  const serviceId = searchParams.get("serviceId");
+  const serviceId = serviceIdProp || searchParams.get("serviceId");
+  const reportContentId = getEmbeddedReportContentId(embedded);
   const isToolUnexpired = (validTillRaw: string): boolean => {
     if (!validTillRaw) return false;
     const parsed = new Date(validTillRaw);
@@ -294,6 +312,7 @@ const ViewServiceReportOBI: React.FC = () => {
     return false;
   })();
   const [notFound, setNotFound] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [testData, setTestData] = useState<any>({});
   const [calculatedPages, setCalculatedPages] = useState<string>("");
   const [ulrNumber, setUlrNumber] = useState<string>("N/A");
@@ -307,7 +326,11 @@ const ViewServiceReportOBI: React.FC = () => {
       }
 
       try {
-        setLoading(true);
+        if (!embedded || !report) {
+          setLoading(true);
+        } else if (embedded) {
+          setIsRefreshing(true);
+        }
         const [response, detailsRes, toolsRes] = await Promise.all([
           getReportHeaderForOBI(serviceId),
           getDetails(serviceId).catch(() => null),
@@ -382,6 +405,10 @@ const ViewServiceReportOBI: React.FC = () => {
             detailsLeadOwner?.name ||
             ""
           ).trim();
+
+
+          setNotFound(false);
+
 
           setReport({
             customerName: data.customerName || "N/A",
@@ -746,6 +773,7 @@ const ViewServiceReportOBI: React.FC = () => {
           pagesCount += Math.ceil(detailedPages);
 
           setCalculatedPages(String(pagesCount));
+          onReportLoaded?.();
         } else {
           setNotFound(true);
         }
@@ -754,11 +782,12 @@ const ViewServiceReportOBI: React.FC = () => {
         setNotFound(true);
       } finally {
         setLoading(false);
+        setIsRefreshing(false);
       }
     };
 
     fetchReport();
-  }, [serviceId]);
+  }, [serviceId, refreshKey]);
 
   useEffect(() => {
     if (loading || notFound) return;
@@ -825,34 +854,52 @@ const ViewServiceReportOBI: React.FC = () => {
     return String(v);
   };
   const todayDate = new Date().toLocaleDateString("en-GB");
+  useEmbeddedReportPdfAutoSave({
+    embedded,
+    autoSavePdfToken,
+    serviceId,
+    report,
+    loading,
+    isRefreshing,
+    reportContentId,
+    pdfFilenamePrefix,
+    saveReportPdf,
+    onPdfSaveComplete,
+  });
+
 
   const downloadPDF = async () => {
     try {
-      await generatePDF({
-        elementId: "report-content",
-        filename: `OBI-Report-${report?.testReportNumber || "report"}.pdf`,
-        buttonSelector: ".download-pdf-btn",
+      if (!serviceId || !report) return;
+      await saveGeneratedReportPdfToDb({
+        serviceId,
+        reportContentId,
+        testReportNumber: report.testReportNumber,
+        pdfFilenamePrefix,
+        saveReportPdf,
       });
     } catch (error) {
       console.error("PDF Error:", error);
       alert("Failed to generate PDF. Please try again.");
     }
   };
-
-  if (loading) return <div className="min-h-screen flex items-center justify-center text-2xl font-semibold">Loading OBI Report...</div>;
-
-  if (notFound || !report) {
+  if (!embedded) {
+    if (loading) return <div className="min-h-screen flex items-center justify-center text-2xl font-semibold">Loading OBI Report...</div>;
+    if (notFound || !report) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="bg-white p-10 rounded-lg shadow-xl text-center">
-          <h2 className="text-2xl font-bold text-red-600 mb-4">Report Not Found</h2>
-          <p>Please save the OBI report header first.</p>
-          <button onClick={() => window.history.back()} className="mt-6 px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-            Go Back
-          </button>
-        </div>
-      </div>
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+    <div className="bg-white p-10 rounded-lg shadow-xl text-center">
+    <h2 className="text-2xl font-bold text-red-600 mb-4">Report Not Found</h2>
+    <p>Please save the OBI report header first.</p>
+    <button onClick={() => window.history.back()} className="mt-6 px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+    Go Back
+    </button>
+    </div>
+    </div>
     );
+    }
+  } else if (!report || isRefreshing) {
+    return null;
   }
 
   const toolsArray = (report.toolsUsed || []).filter((tool) => isToolUnexpired(tool.calibrationValidTill));
@@ -1237,7 +1284,9 @@ const ViewServiceReportOBI: React.FC = () => {
   return (
     <>
       {/* Floating Buttons */}
-      <div className="fixed bottom-8 right-8 print:hidden z-50 flex flex-col gap-4">
+      {!embedded && (
+
+        <div className="fixed bottom-8 right-8 print:hidden z-50 flex flex-col gap-4">
         {/* <button onClick={() => window.print()} className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xl py-5 px-12 rounded-xl shadow-2xl">
           Print
         </button> */}
@@ -1245,8 +1294,9 @@ const ViewServiceReportOBI: React.FC = () => {
           Download PDF
         </button>
       </div>
+      )}
 
-      <div id="report-content" className="fixed-report-pdf">
+      <div id={reportContentId} className="fixed-report-pdf">
         <ReportPage>
           <h1 className="text-center font-bold underline mb-2" style={{ fontSize: "15px" }}>
             QA TEST REPORT FOR ON-BOARD IMAGING (OBI)

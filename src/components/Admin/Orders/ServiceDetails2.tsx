@@ -63,6 +63,24 @@ const isQAWorkType = (workTypeName: string) => {
     return workTypeName === "Quality Assurance Test" || workTypeName === "Quality assurance testing";
 }
 
+const isLicenseOfOperationWorkType = (workTypeName: string) => {
+    const name = (workTypeName || "").toLowerCase().trim();
+    return name === "license for operation" || name === "licence of operation" || name === "license of operation" || name === "licence for operation";
+}
+
+const toDateInputValue = (value?: string | Date | null) => {
+    if (!value) return "";
+    if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}/.test(value)) {
+        return value.slice(0, 10);
+    }
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return "";
+    const year = parsed.getFullYear();
+    const month = String(parsed.getMonth() + 1).padStart(2, "0");
+    const day = String(parsed.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+}
+
 const getFilteredStatusOptions = (workTypeName: string) => {
     if (isQAWorkType(workTypeName)) {
         return statusOptions;
@@ -311,6 +329,8 @@ interface MachineData {
         procNoOrPoNo?: string | null
         procExpiryDate?: string | null
         formattedProcExpiryDate?: string | null
+        licenseValidFrom?: string | null
+        licenseValidTill?: string | null
     }>
     rawPhoto?: string[]
     workOrderCopy?: string | null
@@ -432,6 +452,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
     const [customerFeedback, setCustomerFeedback] = useState<string>("")
     const [additionalServices, setAdditionalServices] = useState<AdditionalServiceItem[]>([])
     const [orderPaymentType, setOrderPaymentType] = useState<string | null>(null)
+    const [licenseValidity, setLicenseValidity] = useState<Record<string, { validFrom: string; validTill: string }>>({})
 
     type ReportData = {
         qaTestReportNumber: string;
@@ -698,6 +719,8 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                     assignedStaffId: workTypeDetail.elora?.officeStaff?._id || undefined,
                                     assignedStaffName: workTypeDetail.elora?.officeStaff?.name,
                                     assignmentStatus: workTypeDetail.elora?.officeStaff?.status,
+                                    licenseValidFrom: workTypeDetail.licenseValidFrom || null,
+                                    licenseValidTill: workTypeDetail.licenseValidTill || null,
                                     // ✅ Include the common fields for other work types
                                     ...commonFields,
                                 });
@@ -754,6 +777,21 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
             // Machine Data + Reports
             // ------------------------
             setMachineData(allTransformedData);
+
+            setLicenseValidity((prev) => {
+                const next = { ...prev };
+                allTransformedData.forEach((service) => {
+                    service.workTypes.forEach((wt) => {
+                        if (wt.licenseValidFrom || wt.licenseValidTill) {
+                            next[wt.id] = {
+                                validFrom: toDateInputValue(wt.licenseValidFrom),
+                                validTill: toDateInputValue(wt.licenseValidTill),
+                            };
+                        }
+                    });
+                });
+                return next;
+            });
 
             // Initialize report numbers with proper remark handling
             setReportNumbers((prevReportNumbers) => {
@@ -1729,11 +1767,32 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
             const workTypeName = parentService.workTypeName || "Unknown Work Type";
             const isQATestService = parentService.workTypeName === "Quality Assurance Test"
 
+            if (newStatus === "complete" && isLicenseOfOperationWorkType(workTypeName)) {
+                const dates = licenseValidity[workTypeId];
+                if (!dates?.validFrom || !dates?.validTill) {
+                    showModal("Warning", "License valid from and license valid till are mandatory for complete status!");
+                    return
+                }
+                if (new Date(dates.validTill) < new Date(dates.validFrom)) {
+                    showModal("Warning", "License valid till cannot be before license valid from!");
+                    return
+                }
+            }
+
             let response;
             if (newStatus === "complete" || newStatus === "generated" || newStatus === "paid") {
                 // For non-QA work types, we need to pass the actual work type name from the parent service
                 // For QA work types, we should pass the specific work type (QA Test or QA Raw)
                 const workTypeNameForReport = isQATestService ? workType.name : workTypeName;
+                const payload: Record<string, string> = {};
+                if (isLicenseOfOperationWorkType(workTypeName)) {
+                    if (licenseValidity[workTypeId]?.validFrom) {
+                        payload.licenseValidFrom = licenseValidity[workTypeId].validFrom;
+                    }
+                    if (licenseValidity[workTypeId]?.validTill) {
+                        payload.licenseValidTill = licenseValidity[workTypeId].validTill;
+                    }
+                }
 
                 response = await completeStatusAndReport(
                     staffId,
@@ -1741,7 +1800,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                     serviceId,
                     workTypeName,
                     newStatus,
-                    {},
+                    payload,
                     uploadedFiles[workTypeId],
                     getWorkTypeIdentifier(workTypeName), // Normalize to 'qatest' or 'elora'
                 )
@@ -1792,11 +1851,21 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                 await refreshReportNumbers(parentService.id, 'qatest', staffId);
             }
 
-            // Update machineData to sync the card status (header)
+            // Update machineData to sync the card status (header) and license dates
             setMachineData((prev: any) =>
-                prev.map((s: any) =>
-                    s.id === workTypeId ? { ...s, status: newStatus } : s
-                )
+                prev.map((s: any) => ({
+                    ...s,
+                    status: s.id === workTypeId ? newStatus : s.status,
+                    workTypes: (s.workTypes || []).map((wt: any) =>
+                        wt.id === workTypeId
+                            ? {
+                                ...wt,
+                                licenseValidFrom: licenseValidity[workTypeId]?.validFrom || wt.licenseValidFrom,
+                                licenseValidTill: licenseValidity[workTypeId]?.validTill || wt.licenseValidTill,
+                            }
+                            : wt
+                    ),
+                }))
             )
 
             const newAssignments = {
@@ -3449,6 +3518,53 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                     selectedStatuses[workType.id] === "paid"
                                                                 ) && (
                                                                         <div className="space-y-3 p-3 bg-blue-50 rounded-md border border-blue-200">
+                                                                            {isLicenseOfOperationWorkType(service.workTypeName) && (
+                                                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                                                    <div>
+                                                                                        <label className="block text-sm font-medium text-blue-700">
+                                                                                            License Valid From <span className="text-red-500">*</span>
+                                                                                        </label>
+                                                                                        <input
+                                                                                            type="date"
+                                                                                            required
+                                                                                            value={licenseValidity[workType.id]?.validFrom || ""}
+                                                                                            onChange={(e) => {
+                                                                                                const value = e.target.value;
+                                                                                                setLicenseValidity((prev) => ({
+                                                                                                    ...prev,
+                                                                                                    [workType.id]: {
+                                                                                                        validFrom: value,
+                                                                                                        validTill: prev[workType.id]?.validTill || "",
+                                                                                                    },
+                                                                                                }));
+                                                                                            }}
+                                                                                            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                                                        />
+                                                                                    </div>
+                                                                                    <div>
+                                                                                        <label className="block text-sm font-medium text-blue-700">
+                                                                                            License Valid Till <span className="text-red-500">*</span>
+                                                                                        </label>
+                                                                                        <input
+                                                                                            type="date"
+                                                                                            required
+                                                                                            min={licenseValidity[workType.id]?.validFrom || undefined}
+                                                                                            value={licenseValidity[workType.id]?.validTill || ""}
+                                                                                            onChange={(e) => {
+                                                                                                const value = e.target.value;
+                                                                                                setLicenseValidity((prev) => ({
+                                                                                                    ...prev,
+                                                                                                    [workType.id]: {
+                                                                                                        validFrom: prev[workType.id]?.validFrom || "",
+                                                                                                        validTill: value,
+                                                                                                    },
+                                                                                                }));
+                                                                                            }}
+                                                                                            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                                                        />
+                                                                                    </div>
+                                                                                </div>
+                                                                            )}
                                                                             <label className="block text-sm font-medium text-blue-700">
                                                                                 Upload File
                                                                             </label>

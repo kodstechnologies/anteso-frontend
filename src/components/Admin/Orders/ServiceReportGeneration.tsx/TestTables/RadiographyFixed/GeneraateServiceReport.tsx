@@ -7,6 +7,7 @@ import toast from "react-hot-toast";
 import {
   getDetails,
   getTools,
+  getAssignedToolsForEngineerByMachine,
   saveReportHeaderForRadiographyFixed,
   getReportHeaderForRadiographyFixed,
   getRadiationProfileWidthByServiceId,
@@ -22,6 +23,10 @@ import {
   getRadiationLeakageLevelByServiceIdForRadiographyFixed,
   getRadiationProtectionSurveyByServiceIdForRadiographyFixed,
 } from "../../../../../../api";
+import ViewServiceReportRadiographyFixed from "./ViewServiceReport";
+import { useReportPdfSaveOnHeader } from "../shared/useReportPdfSaveOnHeader";
+import ReportPdfCaptureHost from "../shared/ReportPdfCaptureHost";
+import { saveReportPdfForRadiographyFixed } from "../../../../../../api";
 import * as XLSX from "xlsx";
 import { createRadiographyFixedUploadableExcel, RadiographyFixedExportData } from "./exportRadiographyFixedToExcel";
 import { TestExportRegistryProvider, useTestExportRegistry } from "../shared/TestExportRegistry";
@@ -147,6 +152,7 @@ const RadiographyFixedContent: React.FC<RadiographyFixedProps> = ({ serviceId, q
     "Name, Address & Contact detail is provided by Customer.",
   ];
   const [notes, setNotes] = useState<string[]>(defaultNotes);
+  const pdfSave = useReportPdfSaveOnHeader();
 
   // Check localStorage for timer preference on mount. When QA Raw spreadsheet URL(s) are provided, skip modal — config will be set from Excel (or soft-fail restores modal).
   useEffect(() => {
@@ -205,12 +211,17 @@ const RadiographyFixedContent: React.FC<RadiographyFixedProps> = ({ serviceId, q
 
       try {
         setLoading(true);
-        const [detailsRes, toolsRes] = await Promise.all([
-          getDetails(serviceId),
-          getTools(serviceId),
-        ]);
-
+        const detailsRes = await getDetails(serviceId);
+        
         const data = detailsRes.data;
+        
+        // Get engineerId and machineType for the new API
+        const engineerId = data.engineerAssigned?._id || data.engineerAssigned;
+        const machineType = data.machineType;
+        
+        // Fetch tools using the new API
+        const toolsRes = await getAssignedToolsForEngineerByMachine(engineerId, machineType);
+
         const firstTest = data.qaTests[0];
 
         setDetails(data);
@@ -258,8 +269,10 @@ const RadiographyFixedContent: React.FC<RadiographyFixedProps> = ({ serviceId, q
           authorizedSignatory: "",
         });
 
-        // Map tools (supports both API shapes: data.toolsAssigned and data.data.toolsAssigned)
-        const assignedTools = toolsRes?.data?.data?.toolsAssigned || toolsRes?.data?.toolsAssigned || [];
+        // Map tools from new API response (toolsAssigned is directly in data)
+        const assignedTools = toolsRes?.data?.toolsAssigned || [];
+        console.log("--------------------------------------------------",assignedTools)
+
         const mappedTools: Standard[] = assignedTools
           .map((t: any) => ({
             nomenclature: t.nomenclature,
@@ -1988,8 +2001,10 @@ const RadiographyFixedContent: React.FC<RadiographyFixedProps> = ({ serviceId, q
       };
 
       await saveReportHeaderForRadiographyFixed(serviceId, payload);
+      await pdfSave.saveReportPdfAfterHeader();
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 4000);
+      toast.success("Report header saved successfully");
     } catch (err: any) {
       setSaveError(err?.response?.data?.message || "Failed to save report header");
     } finally {
@@ -2055,6 +2070,18 @@ const RadiographyFixedContent: React.FC<RadiographyFixedProps> = ({ serviceId, q
 
   return (
     <div className="max-w-7xl mx-auto bg-white shadow-lg rounded-xl p-8 mt-8">
+      <ReportPdfCaptureHost
+        active={pdfSave.pdfCaptureActive}
+        serviceId={serviceId}
+        refreshKey={pdfSave.reportPreviewRefreshKey}
+        autoSavePdfToken={pdfSave.autoSavePdfToken}
+        onReportLoaded={pdfSave.onReportLoaded}
+        onPdfSaveComplete={pdfSave.onPdfSaveComplete}
+        ViewComponent={ViewServiceReportRadiographyFixed}
+        saveReportPdf={saveReportPdfForRadiographyFixed}
+        pdfFilenamePrefix="RadiographyFixed"
+      />
+
       <h1 className="text-3xl font-bold text-center text-gray-800 mb-8">
         Generate Radiography (Fixed) QA Test Report
       </h1>

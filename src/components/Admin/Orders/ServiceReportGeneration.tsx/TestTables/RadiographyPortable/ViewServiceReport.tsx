@@ -1,7 +1,7 @@
 // src/components/reports/ViewServiceReportRadiographyPortable.tsx
 import React, { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { getReportHeaderForRadiographyPortable, saveReportHeader, getDetails, getTools } from "../../../../../../api";
+import { getReportHeaderForRadiographyPortable, saveReportHeader, getDetails, getTools , saveReportPdfForRadiographyPortable } from "../../../../../../api";
 import { generatePDF, estimateReportPages } from "../../../../../../utils/generatePDF";
 import MainTestTableForRadiographyPortable from "./MainTestTableForRadiographyPortable";
 import { ReportPdfPageHeader } from "../RadiographyFixed/component/Header";
@@ -87,9 +87,21 @@ const defaultNotes: Note[] = [
   { slNo: "5.7", text: "Name, Address & Contact detail is provided by Customer." },
 ];
 
-const ViewServiceReportRadiographyPortable: React.FC = () => {
+interface ViewServiceReportRadiographyPortableProps extends EmbeddedViewReportPdfProps {}
+
+const ViewServiceReportRadiographyPortable: React.FC<ViewServiceReportRadiographyPortableProps> = ({
+  serviceIdProp,
+  embedded = false,
+  refreshKey = 0,
+  onReportLoaded,
+  autoSavePdfToken = 0,
+  onPdfSaveComplete,
+  saveReportPdf = saveReportPdfForRadiographyPortable,
+  pdfFilenamePrefix = "RadiographyPortable",
+}) => {
   const [searchParams] = useSearchParams();
-  const serviceId = searchParams.get("serviceId");
+  const serviceId = serviceIdProp || searchParams.get("serviceId");
+  const reportContentId = getEmbeddedReportContentId(embedded);
 
   const pickUlr = (src: any): string => {
     if (!src || typeof src !== "object") return "";
@@ -120,6 +132,7 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
     return false;
   })();
   const [notFound, setNotFound] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [testData, setTestData] = useState<any>({});
 
   useEffect(() => {
@@ -131,7 +144,11 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
       }
 
       try {
-        setLoading(true);
+        if (!embedded || !report) {
+          setLoading(true);
+        } else if (embedded) {
+          setIsRefreshing(true);
+        }
         const [response, detailsRes, toolsRes] = await Promise.all([
           getReportHeaderForRadiographyPortable(serviceId),
           getDetails(serviceId),
@@ -202,6 +219,9 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
           );
           const assignedTools = normalizeTools(toolsRes?.data?.toolsAssigned || []);
           const mergedTools = mergeTools(headerTools, assignedTools);
+
+          setNotFound(false);
+
           setReport({
             customerName: data.customerName || "N/A",
             address: data.address || "N/A",
@@ -267,6 +287,7 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
             outputConsistency: data.ConsistencyOfRadiationOutputRadiographyPortable || null,
             radiationLeakageLevel: data.RadiationLeakageLevelRadiographyPortable || null,
           });
+          onReportLoaded?.();
         } else {
           setNotFound(true);
         }
@@ -275,72 +296,60 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
         setNotFound(true);
       } finally {
         setLoading(false);
+        setIsRefreshing(false);
       }
     };
 
     fetchReport();
-  }, [serviceId]);
+  }, [serviceId, refreshKey]);
 
   const formatDate = (dateStr: string) => (!dateStr ? "-" : new Date(dateStr).toLocaleDateString("en-GB"));
+  useEmbeddedReportPdfAutoSave({
+    embedded,
+    autoSavePdfToken,
+    serviceId,
+    report,
+    loading,
+    isRefreshing,
+    reportContentId,
+    pdfFilenamePrefix,
+    saveReportPdf,
+    onPdfSaveComplete,
+  });
+
 
   const downloadPDF = async () => {
     try {
-      await generatePDF({
-        elementId: "report-content",
-        filename: `RadiographyPortable-Report-${report?.testReportNumber || "report"}.pdf`,
-        buttonSelector: ".download-pdf-btn",
+      if (!serviceId || !report) return;
+      await saveGeneratedReportPdfToDb({
+        serviceId,
+        reportContentId,
+        testReportNumber: report.testReportNumber,
+        pdfFilenamePrefix,
+        saveReportPdf,
       });
-      const pageCount = estimateReportPages("report-content");
-      const response = await getReportHeaderForRadiographyPortable(serviceId!);
-      if (response?.exists && response?.data && report) {
-        const d = response.data as any;
-        const payload = {
-          customerName: d.customerName,
-          address: d.address,
-          srfNumber: d.srfNumber,
-          srfDate: d.srfDate,
-          testReportNumber: d.testReportNumber,
-          issueDate: d.issueDate,
-          nomenclature: d.nomenclature,
-          make: d.make,
-          model: d.model,
-          slNumber: d.slNumber,
-          condition: d.condition,
-          testingProcedureNumber: d.testingProcedureNumber,
-          engineerNameRPId: d.engineerNameRPId,
-          rpId: d.rpId,
-          testDate: d.testDate,
-          testDueDate: d.testDueDate,
-          location: d.location,
-          temperature: d.temperature,
-          humidity: d.humidity,
-          toolsUsed: d.toolsUsed,
-          notes: d.notes,
-          pages: String(pageCount),
-        };
-        await saveReportHeader(serviceId!, payload);
-        setReport((prev) => (prev ? { ...prev, pages: String(pageCount) } : null));
-      }
     } catch (error) {
       console.error("PDF Error:", error);
       alert("Failed to generate PDF. Please try again.");
     }
   };
-
-  if (loading) return <div className="min-h-screen flex items-center justify-center text-2xl font-semibold">Loading Radiography Portable Report...</div>;
-
-  if (notFound || !report) {
+  if (!embedded) {
+    if (loading) return <div className="min-h-screen flex items-center justify-center text-2xl font-semibold">Loading Radiography Portable Report...</div>;
+    if (notFound || !report) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="bg-white p-10 rounded-lg shadow-xl text-center">
-          <h2 className="text-2xl font-bold text-red-600 mb-4">Report Not Found</h2>
-          <p>Please generate and save the report header first.</p>
-          <button onClick={() => window.history.back()} className="mt-6 px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-            Go Back
-          </button>
-        </div>
-      </div>
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+    <div className="bg-white p-10 rounded-lg shadow-xl text-center">
+    <h2 className="text-2xl font-bold text-red-600 mb-4">Report Not Found</h2>
+    <p>Please generate and save the report header first.</p>
+    <button onClick={() => window.history.back()} className="mt-6 px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+    Go Back
+    </button>
+    </div>
+    </div>
     );
+    }
+  } else if (!report || isRefreshing) {
+    return null;
   }
 
   const toolsArray = report.toolsUsed || [];
@@ -469,7 +478,9 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
   return (
     <>
       {/* Floating Buttons */}
-      <div className="fixed bottom-8 right-8 print:hidden z-50 flex flex-col gap-4">
+      {!embedded && (
+
+        <div className="fixed bottom-8 right-8 print:hidden z-50 flex flex-col gap-4">
         {/* <button onClick={() => window.print()} className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xl py-5 px-12 rounded-xl shadow-2xl">
           Print
         </button> */}
@@ -477,8 +488,9 @@ const ViewServiceReportRadiographyPortable: React.FC = () => {
           Download PDF
         </button>
       </div>
+      )}
 
-      <div id="report-content" className="fixed-report-pdf">
+      <div id={reportContentId} className="fixed-report-pdf">
         {/* PAGE 1 - MAIN REPORT */}
         <ReportPage>
           <div className="report-pdf-main" style={{ width: "100%" }}>

@@ -23,12 +23,15 @@ import {
   getRadiationLeakageLevelByServiceIdForRadiographyMobileHT,
   getRadiationProtectionSurveyByServiceIdForRadiographyMobileHT,
   saveTimerPreference,
-} from "../../../../../../api";
+    saveReportPdfForRadiographyMobileHT } from "../../../../../../api";
 import { createRadiographyMobileHTUploadableExcel, RadiographyMobileHTExportData } from "./exportRadiographyMobileHTToExcel";
 import { TestExportRegistryProvider, useTestExportRegistry } from "../shared/TestExportRegistry";
 import { isExcelFileUrl, resolvePrefillSpreadsheetUrls } from "../../../../../../utils/spreadsheetFile";
 import { normalizeCsvComparisonOperator } from "../shared/parseRadiographyStyleTableFormat";
 
+import { useReportPdfSaveOnHeader } from "../shared/useReportPdfSaveOnHeader";
+import ReportPdfCaptureHost from "../shared/ReportPdfCaptureHost";
+import ViewServiceReportRadiographyMobileHT from "./ViewServiceReport";
 import Standards from "../../Standards";
 import Notes from "../../Notes";
 
@@ -87,6 +90,7 @@ const RadiographyMobileHTContent: React.FC<RadiographyMobileHTProps> = ({ servic
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const pdfSave = useReportPdfSaveOnHeader();
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -2086,6 +2090,8 @@ const RadiographyMobileHTContent: React.FC<RadiographyMobileHTProps> = ({ servic
       };
 
       await saveReportHeaderForRadiographyMobileHT(serviceId, payload);
+      await pdfSave.saveReportPdfAfterHeader();
+      toast.success("Report header saved successfully");
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 4000);
     } catch (err: any) {
@@ -2153,6 +2159,18 @@ const RadiographyMobileHTContent: React.FC<RadiographyMobileHTProps> = ({ servic
 
   return (
     <div className="max-w-7xl mx-auto bg-white shadow-lg rounded-xl p-8 mt-8">
+
+      <ReportPdfCaptureHost
+        active={pdfSave.pdfCaptureActive}
+        serviceId={serviceId}
+        refreshKey={pdfSave.reportPreviewRefreshKey}
+        autoSavePdfToken={pdfSave.autoSavePdfToken}
+        onReportLoaded={pdfSave.onReportLoaded}
+        onPdfSaveComplete={pdfSave.onPdfSaveComplete}
+        ViewComponent={ViewServiceReportRadiographyMobileHT}
+        saveReportPdf={saveReportPdfForRadiographyMobileHT}
+        pdfFilenamePrefix="RadiographyMobileHT"
+      />
       <h1 className="text-3xl font-bold text-center text-gray-800 mb-8">
         Generate Radiography (Mobile) with HT QA Test Report
       </h1>

@@ -1444,6 +1444,13 @@ export type OrderListFilters = {
     emailAddress?: string;
     contactNumber?: string;
     leadOwner?: string;
+    search?: string;
+    dateFrom?: string;
+    dateTo?: string;
+    page?: number;
+    limit?: number;
+    sortBy?: string;
+    sortDirection?: 'asc' | 'desc';
 };
 
 export type OrderFilterOptions = {
@@ -1482,6 +1489,40 @@ export const getAllOrders = async (filters?: OrderListFilters) => {
         );
     }
 }
+
+export const getOrdersWeb = async (filters?: OrderListFilters) => {
+    try {
+        const token = Cookies.get('accessToken');
+        const params: Record<string, string | number> = {};
+
+        if (filters?.branchName?.trim()) params.branchName = filters.branchName.trim();
+        if (filters?.city?.trim()) params.city = filters.city.trim();
+        if (filters?.district?.trim()) params.district = filters.district.trim();
+        if (filters?.emailAddress?.trim()) params.emailAddress = filters.emailAddress.trim();
+        if (filters?.contactNumber?.trim()) params.contactNumber = filters.contactNumber.trim();
+        if (filters?.leadOwner?.trim()) params.leadOwner = filters.leadOwner.trim();
+        if (filters?.search?.trim()) params.search = filters.search.trim();
+        if (filters?.dateFrom?.trim()) params.dateFrom = filters.dateFrom.trim();
+        if (filters?.dateTo?.trim()) params.dateTo = filters.dateTo.trim();
+        if (filters?.page) params.page = filters.page;
+        if (filters?.limit) params.limit = filters.limit;
+        if (filters?.sortBy?.trim()) params.sortBy = filters.sortBy.trim();
+        if (filters?.sortDirection) params.sortDirection = filters.sortDirection;
+
+        const res = await api.get(`/orders/orders-web`, {
+            params,
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
+        return res.data;
+    } catch (error: any) {
+        console.error("Failed to fetch paginated orders:", error);
+        throw new Error(
+            error?.response?.data?.message || "Failed to fetch orders"
+        );
+    }
+};
 export const getBasicDetailsByOrderId = async (id: any) => {
     try {
         const token = Cookies.get('accessToken')
@@ -3835,6 +3876,21 @@ export const getDealerOrders = async () => {
     }
 }
 
+export const getDealerManufacturerBranches = async () => {
+    try {
+        const token = Cookies.get('accessToken');
+        const res = await api.get(`/invoice/get-dealer-manufacturer-branches`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
+        return res.data;
+    } catch (error) {
+        console.error("🚀 ~ getDealerManufacturerBranches ~ error:", error);
+        throw error;
+    }
+}
+
 export const getQuotationHistory = async (id: any) => {
     try {
         const token = Cookies.get('accessToken');
@@ -3897,6 +3953,18 @@ export const getDetails = async (serviceId: any) => {
     }
 }
 
+export const uploadReportPdf = async (serviceId: string, pdfBlob: Blob, filename = "service-report.pdf") => {
+    try {
+        const formData = new FormData();
+        formData.append('pdf', pdfBlob, filename);
+        const res = await api.post(`/service-report/upload-report-pdf/${serviceId}`, formData);
+        return res.data;
+    } catch (error) {
+        console.error("🚀 ~ uploadReportPdf ~ error:", error);
+        throw error;
+    }
+}
+
 /** Public (no auth) — engineer doc1 for signed-page QR scan */
 export const getPublicEngineerSignature = async (engineerId: string) => {
     try {
@@ -3918,6 +3986,25 @@ export const getTools = async (serviceId: any) => {
         return res.data;
     } catch (error) {
         console.error("🚀 ~ getDetails ~ error:", error);
+        throw error;
+    }
+}
+
+export const getAssignedToolsForEngineerByMachine = async (engineerId: string, machineType: string) => {
+    try {
+        const token = Cookies.get('accessToken');
+        const res = await api.get(`/tools/assigned-tools-by-engineer-machine`, {
+            params: {
+                engineerId,
+                machineType,
+            },
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
+        return res.data;
+    } catch (error) {
+        console.error("🚀 ~ getAssignedToolsForEngineerByMachine ~ error:", error);
         throw error;
     }
 }
@@ -9413,6 +9500,72 @@ export const saveReportHeaderForRadiographyFixed = async (serviceId: string, pay
     });
     return res.data;
 };
+
+export const saveReportPdfForRadiographyFixed = async (serviceId: string, reportPdfBase64: string) => {
+    const token = Cookies.get("accessToken");
+    const res = await api.put(
+        `/service-report/radiography-fixed/report-header/${serviceId}`,
+        { reportPdfBase64 },
+        {
+            headers: { Authorization: `Bearer ${token}` },
+            maxBodyLength: Infinity,
+            maxContentLength: Infinity,
+        }
+    );
+    return res.data;
+};
+
+const saveReportPdfToHeader = async (
+    routePath: string,
+    serviceId: string,
+    reportPdfBase64: string,
+    params?: Record<string, string>
+) => {
+    const token = Cookies.get("accessToken");
+    const url = routePath
+        ? `/service-report/${routePath}/report-header/${serviceId}`
+        : `/service-report/report-header/${serviceId}`;
+    const res = await api.put(
+        url,
+        { reportPdfBase64 },
+        {
+            headers: { Authorization: `Bearer ${token}` },
+            params,
+            maxBodyLength: Infinity,
+            maxContentLength: Infinity,
+        }
+    );
+    return res.data;
+};
+
+export const saveReportPdfForBMD = (serviceId: string, reportPdfBase64: string) =>
+    saveReportPdfToHeader("bmd", serviceId, reportPdfBase64);
+export const saveReportPdfForCTScan = (serviceId: string, reportPdfBase64: string) =>
+    saveReportPdfToHeader("ct-scan", serviceId, reportPdfBase64);
+export const saveReportPdfForCBCT = (serviceId: string, reportPdfBase64: string) =>
+    saveReportPdfToHeader("dental-cone-beam-ct", serviceId, reportPdfBase64);
+export const saveReportPdfForDentalHandHeld = (serviceId: string, reportPdfBase64: string) =>
+    saveReportPdfToHeader("dental-hand-held", serviceId, reportPdfBase64);
+export const saveReportPdfForDentalIntra = (serviceId: string, reportPdfBase64: string) =>
+    saveReportPdfToHeader("dental-intra", serviceId, reportPdfBase64);
+export const saveReportPdfForFixedRadioFluro = (serviceId: string, reportPdfBase64: string) =>
+    saveReportPdfToHeader("fixed-radio-fluro", serviceId, reportPdfBase64);
+export const saveReportPdfForInventionalRadiology = (serviceId: string, reportPdfBase64: string) =>
+    saveReportPdfToHeader("inventional-radiology", serviceId, reportPdfBase64);
+export const saveReportPdfForMammography = (serviceId: string, reportPdfBase64: string) =>
+    saveReportPdfToHeader("mammography", serviceId, reportPdfBase64);
+export const saveReportPdfForOArm = (serviceId: string, reportPdfBase64: string) =>
+    saveReportPdfToHeader("", serviceId, reportPdfBase64);
+export const saveReportPdfForOBI = (serviceId: string, reportPdfBase64: string) =>
+    saveReportPdfToHeader("obi", serviceId, reportPdfBase64);
+export const saveReportPdfForOPG = (serviceId: string, reportPdfBase64: string) =>
+    saveReportPdfToHeader("opg", serviceId, reportPdfBase64);
+export const saveReportPdfForRadiographyMobile = (serviceId: string, reportPdfBase64: string) =>
+    saveReportPdfToHeader("radiography-mobile", serviceId, reportPdfBase64);
+export const saveReportPdfForRadiographyMobileHT = (serviceId: string, reportPdfBase64: string) =>
+    saveReportPdfToHeader("radiography-mobile-ht", serviceId, reportPdfBase64);
+export const saveReportPdfForRadiographyPortable = (serviceId: string, reportPdfBase64: string) =>
+    saveReportPdfToHeader("radiography-portable", serviceId, reportPdfBase64);
 
 // Accuracy of Irradiation Time - Radiography Fixed
 export const addAccuracyOfIrradiationTimeForRadiographyFixed = async (serviceId: string, payload: any) => {

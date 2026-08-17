@@ -13,8 +13,14 @@ import {
   getTubeHousingLeakageByServiceIdForDentalHandHeld,
   getRadiationProtectionSurveyByServiceIdForDentalHandHeld,
   getTools
-} from "../../../../../../api";
+, saveReportPdfForDentalHandHeld } from "../../../../../../api";
 import { generatePDF } from "../../../../../../utils/generatePDF";
+import {
+  EmbeddedViewReportPdfProps,
+  getEmbeddedReportContentId,
+  saveGeneratedReportPdfToDb,
+  useEmbeddedReportPdfAutoSave,
+} from "../shared/embeddedViewReportPdf";
 import MainTestTableForDentalHandHeld from "./MainTestTableForDentalHandHeld";
 import { ReportPdfPageHeader } from "../RadiographyFixed/component/Header";
 import { ReportPdfPageFooter } from "../RadiographyFixed/component/Footer";
@@ -88,13 +94,26 @@ const defaultNotes: Note[] = [
   { slNo: "5.7", text: "Name, Address & Contact detail is provided by Customer." },
 ];
 
-const ViewServiceReportDentalHandHeld: React.FC = () => {
+interface ViewServiceReportDentalHandHeldProps extends EmbeddedViewReportPdfProps {}
+
+const ViewServiceReportDentalHandHeld: React.FC<ViewServiceReportDentalHandHeldProps> = ({
+  serviceIdProp,
+  embedded = false,
+  refreshKey = 0,
+  onReportLoaded,
+  autoSavePdfToken = 0,
+  onPdfSaveComplete,
+  saveReportPdf = saveReportPdfForDentalHandHeld,
+  pdfFilenamePrefix = "DentalHandHeld",
+}) => {
   const [searchParams] = useSearchParams();
-  const serviceId = searchParams.get("serviceId");
+  const serviceId = serviceIdProp || searchParams.get("serviceId");
+  const reportContentId = getEmbeddedReportContentId(embedded);
 
   const [loading, setLoading] = useState(true);
   const [report, setReport] = useState<ReportData | null>(null);
   const [notFound, setNotFound] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [testData, setTestData] = useState<any>({});
 
   useEffect(() => {
@@ -106,7 +125,11 @@ const ViewServiceReportDentalHandHeld: React.FC = () => {
       }
 
       try {
-        setLoading(true);
+        if (!embedded || !report) {
+          setLoading(true);
+        } else if (embedded) {
+          setIsRefreshing(true);
+        }
 
         // Fetch report header + service details
         const [response, detailsRes, toolsRes] = await Promise.all([
@@ -375,6 +398,9 @@ const ViewServiceReportDentalHandHeld: React.FC = () => {
               },
             };
           };
+
+          setNotFound(false);
+
           setReport({
             ...data,
             city: data.city || detailsData?.city || "",
@@ -488,6 +514,7 @@ const ViewServiceReportDentalHandHeld: React.FC = () => {
             ),
             _isNoTimerMode: isNoTimerMode,
           });
+          onReportLoaded?.();
         } else {
           setNotFound(true);
         }
@@ -496,11 +523,12 @@ const ViewServiceReportDentalHandHeld: React.FC = () => {
         setNotFound(true);
       } finally {
         setLoading(false);
+        setIsRefreshing(false);
       }
     };
 
     fetchReport();
-  }, [serviceId]);
+  }, [serviceId, refreshKey]);
 
   const formatDate = (dateStr: string) => (!dateStr ? "-" : new Date(dateStr).toLocaleDateString("en-GB"));
   const displayValue = (v: any) => {
@@ -540,33 +568,52 @@ const ViewServiceReportDentalHandHeld: React.FC = () => {
     }
     return formatToleranceOperatorSymbol(tol, fallback);
   };
+  useEmbeddedReportPdfAutoSave({
+    embedded,
+    autoSavePdfToken,
+    serviceId,
+    report,
+    loading,
+    isRefreshing,
+    reportContentId,
+    pdfFilenamePrefix,
+    saveReportPdf,
+    onPdfSaveComplete,
+  });
+
 
   const downloadPDF = async () => {
     try {
-      await generatePDF({
-        elementId: "report-content",
-        filename: `DentalHandHeld-Report-${report?.testReportNumber || "report"}.pdf`,
-        buttonSelector: ".download-pdf-btn",
+      if (!serviceId || !report) return;
+      await saveGeneratedReportPdfToDb({
+        serviceId,
+        reportContentId,
+        testReportNumber: report.testReportNumber,
+        pdfFilenamePrefix,
+        saveReportPdf,
       });
     } catch (error) {
       console.error("PDF Error:", error);
       alert("Failed to generate PDF. Please try again.");
     }
   };
-
-  if (loading) return <div className="min-h-screen flex items-center justify-center text-2xl">Loading Report...</div>;
-  if (notFound || !report) {
+  if (!embedded) {
+    if (loading) return <div className="min-h-screen flex items-center justify-center text-2xl">Loading Report...</div>;
+    if (notFound || !report) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="bg-white p-10 rounded-lg shadow-xl text-center">
-          <h2 className="text-2xl font-bold text-red-600 mb-4">Report Not Found</h2>
-          <p>Please generate and save the report header first.</p>
-          <button onClick={() => window.history.back()} className="mt-6 px-8 py-3 bg-blue-600 text-white rounded-lg">
-            Go Back
-          </button>
-        </div>
-      </div>
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+    <div className="bg-white p-10 rounded-lg shadow-xl text-center">
+    <h2 className="text-2xl font-bold text-red-600 mb-4">Report Not Found</h2>
+    <p>Please generate and save the report header first.</p>
+    <button onClick={() => window.history.back()} className="mt-6 px-8 py-3 bg-blue-600 text-white rounded-lg">
+    Go Back
+    </button>
+    </div>
+    </div>
     );
+    }
+  } else if (!report || isRefreshing) {
+    return null;
   }
 
   const toolsArray = report.toolsUsed || [];
@@ -665,7 +712,9 @@ const ViewServiceReportDentalHandHeld: React.FC = () => {
   return (
     <>
       {/* Floating Buttons */}
-      <div className="fixed bottom-8 right-8 print:hidden z-50 flex flex-col gap-4">
+      {!embedded && (
+
+        <div className="fixed bottom-8 right-8 print:hidden z-50 flex flex-col gap-4">
         {/* <button onClick={() => window.print()} className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xl py-5 px-12 rounded-xl shadow-2xl">
           Print
         </button> */}
@@ -673,8 +722,9 @@ const ViewServiceReportDentalHandHeld: React.FC = () => {
           Download PDF
         </button>
       </div>
+      )}
 
-      <div id="report-content" className="fixed-report-pdf">
+      <div id={reportContentId} className="fixed-report-pdf">
         {/* PAGE 1 - MAIN REPORT */}
         <ReportPage>
           <h1 className="text-center font-bold underline mb-2" style={{ fontSize: "15px" }}>

@@ -42,17 +42,20 @@ interface OptionType {
 //     designation: string;
 // }
 interface HospitalDetails {
+    srfNumber?: string;
     hospitalName: string;
     fullAddress: string;
     city: string;
-    // district: string;
+    district?: string;
     state: string;
     pinCode: string;
-    // branchName?: string;
+    branchName?: string;
     contactPersonName: string;
     emailAddress: string;
     contactNumber: string;
     designation: string;
+    leadOwner?: any;
+    leadOwnerName?: string;
 }
 
 // Constants
@@ -94,6 +97,29 @@ const View = () => {
         { label: 'Orders', to: '/admin/orders', icon: <IconBox /> },
         { label: 'View', icon: <IconBook /> },
     ];
+    const unwrapBasicDetails = (res: any): HospitalDetails | null => {
+        if (!res) return null;
+        if (res.hospitalName || res.srfNumber || res.fullAddress) return res;
+        if (res.data && (res.data.hospitalName || res.data.srfNumber || res.data.fullAddress || res.data.city)) {
+            return res.data;
+        }
+        return res.data || res;
+    };
+
+    const getDetailValue = (key: string, source?: Partial<HospitalDetails> | null) => {
+        if (key === 'leadOwnerName') {
+            if (source?.leadOwnerName) return String(source.leadOwnerName);
+            const owner = source?.leadOwner as any;
+            if (owner && typeof owner === 'object') return owner.name || '';
+            if (typeof owner === 'string') return owner;
+            return '';
+        }
+        const raw = source?.[key as keyof HospitalDetails] as any;
+        if (raw === null || raw === undefined || raw === "") return "";
+        if (typeof raw === "object") return raw.name || raw.label || "";
+        return String(raw);
+    };
+
     useEffect(() => {
         const fetchData = async () => {
             if (!orderId) return;
@@ -101,25 +127,29 @@ const View = () => {
                 setLoading(true);
                 const res = await getBasicDetailsByOrderId(orderId);
                 console.log("🚀 ~ fetchData ~ res:", res)
-                setDetails(res.data);
-                setFormData(res.data); // initialize form with current values
+                const basicDetails = unwrapBasicDetails(res);
+                setDetails(basicDetails);
+                setFormData(basicDetails || {});
 
                 // Cache lead owner/manufacturer context by SRF for report view fallbacks.
-                const srfNumber = res?.data?.srfNumber;
+                const srfNumber = basicDetails?.srfNumber;
                 if (srfNumber) {
                     localStorage.setItem(
                         `order-basic-by-srf-${srfNumber}`,
                         JSON.stringify({
-                            leadOwner: res?.data?.leadOwner || null,
-                            manufacturerName: res?.data?.manufacturerName || "",
-                            hospitalName: res?.data?.hospitalName || "",
-                            fullAddress: res?.data?.fullAddress || "",
+                            leadOwner: basicDetails?.leadOwner || basicDetails?.leadOwnerName || null,
+                            manufacturerName: (basicDetails as any)?.manufacturerName || "",
+                            hospitalName: basicDetails?.hospitalName || "",
+                            fullAddress: basicDetails?.fullAddress || "",
                         })
                     );
                 }
-                // ... your PDF & WorkOrder fetch logic
-                const resPdf = await getPdfForAcceptQuotation(orderId);
-                setPdfUrl(resPdf.data.pdfUrl || '');
+                try {
+                    const resPdf = await getPdfForAcceptQuotation(orderId);
+                    setPdfUrl(resPdf.data.pdfUrl || '');
+                } catch (pdfError) {
+                    console.error("Failed to fetch quotation PDF:", pdfError);
+                }
             } catch (error) {
                 console.error("Failed to fetch data:", error);
                 toast.error("Failed to load order details");
@@ -218,27 +248,39 @@ const View = () => {
             try {
                 const resDetails = await getBasicDetailsByOrderId(orderId);
                 console.log("🚀 ~ fetchData ~ resDetails:", resDetails)
-                setDetails(resDetails.data);
+                const basicDetails = unwrapBasicDetails(resDetails);
+                if (basicDetails) {
+                    setDetails(basicDetails);
+                    setFormData(basicDetails);
+                }
 
-                const srfNumber = resDetails?.data?.srfNumber;
+                const srfNumber = basicDetails?.srfNumber;
                 if (srfNumber) {
                     localStorage.setItem(
                         `order-basic-by-srf-${srfNumber}`,
                         JSON.stringify({
-                            leadOwner: resDetails?.data?.leadOwner || null,
-                            manufacturerName: resDetails?.data?.manufacturerName || "",
-                            hospitalName: resDetails?.data?.hospitalName || "",
-                            fullAddress: resDetails?.data?.fullAddress || "",
+                            leadOwner: basicDetails?.leadOwner || basicDetails?.leadOwnerName || null,
+                            manufacturerName: (basicDetails as any)?.manufacturerName || "",
+                            hospitalName: basicDetails?.hospitalName || "",
+                            fullAddress: basicDetails?.fullAddress || "",
                         })
                     );
                 }
 
-                const resPdf = await getPdfForAcceptQuotation(orderId);
-                setPdfUrl(resPdf.data.pdfUrl || '');
+                try {
+                    const resPdf = await getPdfForAcceptQuotation(orderId);
+                    setPdfUrl(resPdf.data.pdfUrl || '');
+                } catch (pdfError) {
+                    console.error("Failed to fetch quotation PDF:", pdfError);
+                }
 
-                const resWorkOrder = await getWorkOrderCopy(orderId);
-                console.log("🚀 ~ fetchData ~ resWorkOrder:", resWorkOrder)
-                setWorkOrderCopyUrl(resWorkOrder || '');
+                try {
+                    const resWorkOrder = await getWorkOrderCopy(orderId);
+                    console.log("🚀 ~ fetchData ~ resWorkOrder:", resWorkOrder)
+                    setWorkOrderCopyUrl(resWorkOrder || '');
+                } catch (workOrderError) {
+                    console.error("Failed to fetch work order copy:", workOrderError);
+                }
             } catch (error) {
                 console.error("Failed to fetch data:", error);
             }
@@ -263,6 +305,8 @@ const View = () => {
     if (loading && !details) return <div className="text-gray-600 p-6">Loading...</div>;
 
     const fields = [
+        { label: 'SRF Number', key: 'srfNumber', placeholder: 'SRF number' },
+        { label: 'Lead Owner', key: 'leadOwnerName', placeholder: 'Lead owner' },
         { label: 'Hospital Name', key: 'hospitalName', placeholder: 'Enter hospital name' },
         { label: 'Full Address', key: 'fullAddress', placeholder: 'Enter full address' },
         { label: 'City', key: 'city', placeholder: 'Enter city' },
@@ -381,7 +425,7 @@ const View = () => {
                                         <input
                                             type="text"
                                             name={field.key}
-                                            value={formData[field.key as keyof HospitalDetails] || ''}
+                                            value={getDetailValue(field.key, formData)}
                                             onChange={handleInputChange}
                                             onInput={(e: React.ChangeEvent<HTMLInputElement>) => {
                                                 // Restrict pinCode (6 digits) and contactNumber (10 digits)
@@ -395,7 +439,7 @@ const View = () => {
                                             maxLength={field.key === 'pinCode' ? 6 : field.key === 'contactNumber' ? 10 : undefined}
                                             placeholder={field.placeholder}
                                             className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow shadow-sm disabled:bg-gray-100 disabled:text-gray-500"
-                                            disabled={loading}
+                                            disabled={loading || field.key === 'srfNumber' || field.key === 'leadOwnerName'}
                                         />
 
                                         {/* Optional: show digit counter for better UX */}
@@ -408,7 +452,7 @@ const View = () => {
                                     </div>
                                 ) : (
                                     <div className="text-base font-medium text-gray-800 break-words min-h-[1.5rem]">
-                                        {details?.[field.key as keyof HospitalDetails] || (
+                                        {getDetailValue(field.key, details) || (
                                             <span className="text-gray-400 italic">—</span>
                                         )}
                                     </div>

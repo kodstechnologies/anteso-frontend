@@ -1,10 +1,19 @@
 // src/components/reports/ViewServiceReportRadiographyFixed.tsx
 import React, { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { getDetails, getReportHeaderForRadiographyFixed, getTools } from "../../../../../../api";
-
-
+import {
+  getDetails,
+  getReportHeaderForRadiographyFixed,
+  getTools,
+  saveReportPdfForRadiographyFixed,
+} from "../../../../../../api";
 import { generatePDF } from "../../../../../../utils/generatePDF";
+import {
+  EmbeddedViewReportPdfProps,
+  getEmbeddedReportContentId,
+  saveGeneratedReportPdfToDb,
+  useEmbeddedReportPdfAutoSave,
+} from "../shared/embeddedViewReportPdf";
 import MainTestTableForRadiographyFixed, { generateRadiographySummaryRows } from "./MainTestTableForRadiographyFixed";
 import { ReportPdfPageHeader } from "./component/Header";
 import { ReportPdfPageFooter } from "./component/Footer";
@@ -87,9 +96,21 @@ export interface ReportData {
 /** Company footer — repeated at the bottom of each PDF page section. */
 
 
-const ViewServiceReportRadiographyFixed: React.FC = () => {
+interface ViewServiceReportProps extends EmbeddedViewReportPdfProps {}
+
+const ViewServiceReportRadiographyFixed: React.FC<ViewServiceReportProps> = ({
+  serviceIdProp,
+  embedded = false,
+  refreshKey = 0,
+  onReportLoaded,
+  autoSavePdfToken = 0,
+  onPdfSaveComplete,
+  saveReportPdf = saveReportPdfForRadiographyFixed,
+  pdfFilenamePrefix = "RadiographyFixed",
+}) => {
   const [searchParams] = useSearchParams();
-  const serviceId = searchParams.get("serviceId");
+  const serviceId = serviceIdProp || searchParams.get("serviceId");
+  const reportContentId = getEmbeddedReportContentId(embedded);
   const pickRpId = (obj: any): string =>
     obj?.rpId || obj?.rpid || obj?.rpID || obj?.RPId || obj?.RPID || obj?.engineerAssigned?.rpId || obj?.engineerAssigned?.RPId || "N/A";
   const isToolUnexpired = (validTillRaw: string): boolean => {
@@ -105,6 +126,7 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [report, setReport] = useState<ReportData | null>(null);
   const [notFound, setNotFound] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [testData, setTestData] = useState<any>({});
   const [calculatedPages, setCalculatedPages] = useState<string>("");
   // Prefer DB-saved timer preference; fall back to localStorage
@@ -126,13 +148,17 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
       }
 
       try {
-        setLoading(true);
+        if (!embedded || !report) {
+          setLoading(true);
+        } else if (embedded) {
+          setIsRefreshing(true);
+        }
         const [response, detailsRes, toolsRes] = await Promise.all([
           getReportHeaderForRadiographyFixed(serviceId),
           getDetails(serviceId),
           getTools(serviceId).catch(() => null),
         ]);
-        
+
         console.log("toolsRes----->", toolsRes);
         const normalizeTools = (raw: any): Tool[] => {
           if (!Array.isArray(raw)) return [];
@@ -201,6 +227,7 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
         ).trim();
 
         if (response?.exists && response?.data) {
+          setNotFound(false);
           const data = response.data;
           const headerTools = normalizeTools(
             data.toolsUsed || data.tools || data.standards || data.toolsAssigned
@@ -281,6 +308,7 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
             radiationLeakageLevel: data.RadiationLeakageLevelRadiographyFixed || null,
             radiationProtectionSurvey: data.RadiationProtectionSurveyRadiographyFixed || null,
           });
+          onReportLoaded?.();
 
         } else {
           setNotFound(true);
@@ -290,11 +318,12 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
         setNotFound(true);
       } finally {
         setLoading(false);
+        setIsRefreshing(false);
       }
     };
 
     fetchReport();
-  }, [serviceId]);
+  }, [serviceId, refreshKey]);
 
   // Recompute page count from current in-memory test data so dynamic updates
   // immediately reflect in "No. of pages" before re-downloading PDF.
@@ -306,6 +335,19 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
     const pagesCount = 8 + summaryPagesCount;
     setCalculatedPages(String(pagesCount));
   }, [testData, hasTimer, loading, notFound]);
+
+  useEmbeddedReportPdfAutoSave({
+    embedded,
+    autoSavePdfToken,
+    serviceId,
+    report,
+    loading,
+    isRefreshing,
+    reportContentId,
+    pdfFilenamePrefix,
+    saveReportPdf,
+    onPdfSaveComplete,
+  });
 
   const formatDate = (dateStr: string) => (!dateStr ? "-" : new Date(dateStr).toLocaleDateString("en-GB"));
   /** kVp tolerance sign from Total Filtration / AOP save payload ({ sign, value }). */
@@ -399,10 +441,13 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
 
   const downloadPDF = async () => {
     try {
-      await generatePDF({
-        elementId: "report-content",
-        filename: `RadiographyFixed-Report-${report?.testReportNumber || "report"}.pdf`,
-        buttonSelector: ".download-pdf-btn",
+      if (!serviceId || !report) return;
+      await saveGeneratedReportPdfToDb({
+        serviceId,
+        reportContentId,
+        testReportNumber: report.testReportNumber,
+        pdfFilenamePrefix,
+        saveReportPdf,
       });
     } catch (error) {
       console.error("PDF Error:", error);
@@ -410,20 +455,30 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
     }
   };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center text-2xl font-semibold">Loading Radiography Fixed Report...</div>;
-
-  if (notFound || !report) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="bg-white p-10 rounded-lg shadow-xl text-center">
-          <h2 className="text-2xl font-bold text-red-600 mb-4">Report Not Found</h2>
-          <p>Please generate and save the report header first.</p>
-          <button onClick={() => window.history.back()} className="mt-6 px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-            Go Back
-          </button>
+  if (!embedded) {
+    if (loading) {
+      return (
+        <div className="min-h-screen flex items-center justify-center text-2xl font-semibold">
+          Loading Radiography Fixed Report...
         </div>
-      </div>
-    );
+      );
+    }
+
+    if (notFound || !report) {
+      return (
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="bg-white p-10 rounded-lg shadow-xl text-center">
+            <h2 className="text-2xl font-bold text-red-600 mb-4">Report Not Found</h2>
+            <p>Please generate and save the report header first.</p>
+            <button onClick={() => window.history.back()} className="mt-6 px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+              Go Back
+            </button>
+          </div>
+        </div>
+      );
+    }
+  } else if (!report || isRefreshing) {
+    return null;
   }
 
   const toolsArray = (report.toolsUsed || []).filter((tool) => isToolUnexpired(tool.calibrationValidTill));
@@ -466,14 +521,15 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
 
   return (
     <>
-      {/* Floating Buttons */}
-      <div className="fixed bottom-8 right-8 print:hidden z-50 flex flex-col gap-4">
-        <button onClick={downloadPDF} className="download-pdf-btn bg-green-600 hover:bg-green-700 text-white font-bold text-xl py-5 px-12 rounded-xl shadow-2xl">
-          Download PDF
-        </button>
-      </div>
+      {!embedded && (
+        <div className="fixed bottom-8 right-8 print:hidden z-50 flex flex-col gap-4">
+          <button onClick={downloadPDF} className="download-pdf-btn bg-green-600 hover:bg-green-700 text-white font-bold text-xl py-5 px-12 rounded-xl shadow-2xl">
+            Download PDF
+          </button>
+        </div>
+      )}
 
-      <div id="report-content" className="fixed-report-pdf">
+      <div id={reportContentId} className="fixed-report-pdf">
         {/* PAGE 1 - MAIN REPORT */}
         <ReportPage>
           <h1 className="text-center font-bold underline mb-2" style={{ fontSize: "15px" }}>
@@ -499,7 +555,7 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
                   <div className="flex-1 break-words">{value}</div>
                 </div>
               ))}
-              </div>
+            </div>
           </section>
 
           {/* Reference */}
@@ -539,7 +595,7 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
                 ...(report.category && report.category !== "N/A" ? [["Category", report.category]] : []),
                 ["Condition of Test Item", report.condition],
                 ["Testing Procedure No.", report.testingProcedureNumber || "-"],
-                ["Engineer’s Name", report.engineerNameRPId || "-"],
+                ["Engineer's Name", report.engineerNameRPId || "-"],
                 ["RP ID", report.rpId || "-"],
                 ["No. of pages", calculatedPages || report.pages || "-"],
                 ["QA Test Date", formatDate(report.testDate)],
@@ -649,7 +705,7 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
                   srcIdx--;
                 }
                 const sourceRow = allRows[srcIdx];
-                
+
                 // Count how many rows of this same parameter group are in this current chunk
                 let groupCountInStore = 0;
                 for (let k = 0; k < chunk.length; k++) {
@@ -674,10 +730,10 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
             return (
               <ReportPage key={`summary-page-${pageIdx}`}>
                 <div style={{ width: "100%", flex: 1 }}>
-                  <MainTestTableForRadiographyFixed 
-                    testData={testData} 
-                    hasTimer={hasTimer} 
-                    rows={displayRows} 
+                  <MainTestTableForRadiographyFixed
+                    testData={testData}
+                    hasTimer={hasTimer}
+                    rows={displayRows}
                     isContinuation={pageIdx > 0}
                   />
                 </div>
@@ -1041,11 +1097,11 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
                     : [];
                   const fallbackRows = Array.isArray(testData.totalFilteration?.measurements)
                     ? testData.totalFilteration.measurements.map((row: any) => ({
-                        setKV: row.appliedKvp || row.setKV || "",
-                        measuredValues: Array.isArray(row.measuredValues) ? row.measuredValues : [],
-                        avgKvp: row.averageKvp || "",
-                        remarks: row.remarks || "",
-                      }))
+                      setKV: row.appliedKvp || row.setKV || "",
+                      measuredValues: Array.isArray(row.measuredValues) ? row.measuredValues : [],
+                      avgKvp: row.averageKvp || "",
+                      remarks: row.remarks || "",
+                    }))
                     : [];
                   const rows = primaryRows.length > 0 ? primaryRows : fallbackRows;
                   const stationLabels =
@@ -1182,246 +1238,246 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
               const xUnitLabel = isMaLoading ? "X (mGy/(mA*s))" : "X (mGy/mAs)";
 
               return (
-              <div className="mb-4 test-section">
-                <TestSectionTitle
-                  num={detailedSeq(7)}
-                  title={linearityTitle}
-                />
-                {t1 && (
-                      <div style={{ marginBottom: "20px" }}>
-                        <p style={{ fontSize: "11px", fontWeight: "bold", marginBottom: "10px" }}>Test Conditions:</p>
-                        <table style={{ ...tableStyle, width: "100%" }}>
-                          <thead>
-                            <tr>
-                              <th style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", padding: "1px 12px" })}>
-                                FDD (cm)
+                <div className="mb-4 test-section">
+                  <TestSectionTitle
+                    num={detailedSeq(7)}
+                    title={linearityTitle}
+                  />
+                  {t1 && (
+                    <div style={{ marginBottom: "20px" }}>
+                      <p style={{ fontSize: "11px", fontWeight: "bold", marginBottom: "10px" }}>Test Conditions:</p>
+                      <table style={{ ...tableStyle, width: "100%" }}>
+                        <thead>
+                          <tr>
+                            <th style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", padding: "1px 12px" })}>
+                              FDD (cm)
+                            </th>
+                            <th style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", padding: "1px 12px" })}>
+                              kV
+                            </th>
+                            {isMaLoading && (
+                              <th
+                                style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", padding: "1px 12px" })}
+                              >
+                                Time (sec)
                               </th>
-                              <th style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", padding: "1px 12px" })}>
-                                kV
-                              </th>
-                              {isMaLoading && (
-                                <th
-                                  style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", padding: "1px 12px" })}
-                                >
-                                  Time (sec)
-                                </th>
-                              )}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            <tr>
+                            )}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr>
+                            <td style={cellStyle({ border: "0.1px solid #666", padding: "1px 12px" })}>
+                              {t1?.fcd || "-"}
+                            </td>
+                            <td style={cellStyle({ border: "0.1px solid #666", padding: "1px 12px" })}>
+                              {t1?.kv || "-"}
+                            </td>
+                            {isMaLoading && (
                               <td style={cellStyle({ border: "0.1px solid #666", padding: "1px 12px" })}>
-                                {t1?.fcd || "-"}
+                                {t1?.time || "-"}
                               </td>
-                              <td style={cellStyle({ border: "0.1px solid #666", padding: "1px 12px" })}>
-                                {t1?.kv || "-"}
-                              </td>
-                              {isMaLoading && (
-                                <td style={cellStyle({ border: "0.1px solid #666", padding: "1px 12px" })}>
-                                  {t1?.time || "-"}
-                                </td>
-                              )}
-                            </tr>
-                          </tbody>
-                        </table>
-                      </div>
-                )}
-                {testData.linearityOfMasLoading.table2?.length > 0 &&
-                  (() => {
-                    const rows = testData.linearityOfMasLoading.table2;
-                    const tolVal = parseFloat(testData.linearityOfMasLoading.tolerance ?? "0.1") || 0.1;
-                    const tolOp = testData.linearityOfMasLoading.toleranceOperator ?? "<=";
-                    const fmtV = (val: any) => {
-                      if (val === undefined || val === null) return "-";
-                      const s = String(val).trim();
-                      return s === "" || s === "—" || s === "undefined" || s === "null" ? "-" : s;
-                    };
-                    const xValues: number[] = [];
-                    const processedRows = rows.map((row: any) => {
-                      const outputs = (row.measuredOutputs ?? [])
-                        .map((v: any) => parseFloat(v))
-                        .filter((v: number) => !isNaN(v) && v > 0);
-                      const avg =
-                        outputs.length > 0 ? outputs.reduce((a: number, b: number) => a + b, 0) / outputs.length : null;
-                      const avgDisplay = avg !== null ? parseFloat(avg.toFixed(4)).toFixed(4) : "—";
-                      const mAsLabel = String(row.mAsApplied ?? row.mAsRange ?? row.ma ?? row.mA ?? "");
-                      const match = mAsLabel.match(/(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)/);
-                      const stationVal = match ? (parseFloat(match[1]) + parseFloat(match[2])) / 2 : parseFloat(mAsLabel) || 0;
-                      const denom = isMaLoading ? stationVal * timeVal : stationVal;
-                      const x = avg !== null && denom > 0 ? avg / denom : null;
-                      const xDisplay = x !== null ? parseFloat(x.toFixed(4)).toFixed(4) : "—";
-                      if (x !== null) xValues.push(parseFloat(x.toFixed(4)));
-                      return { ...row, _avgDisplay: avgDisplay, _xDisplay: xDisplay };
-                    });
-                    const hasData = xValues.length > 0;
-                    const xMax = hasData ? parseFloat(Math.max(...xValues).toFixed(4)).toFixed(4) : "—";
-                    const xMin = hasData ? parseFloat(Math.min(...xValues).toFixed(4)).toFixed(4) : "—";
-                    const colNum =
-                      hasData && xMax !== "—" && xMin !== "—" && parseFloat(xMax) + parseFloat(xMin) > 0
-                        ? Math.abs(parseFloat(xMax) - parseFloat(xMin)) / (parseFloat(xMax) + parseFloat(xMin))
-                        : 0;
-                    const col = hasData && colNum > 0 ? parseFloat(colNum.toFixed(4)).toFixed(4) : "—";
-                    let pass = false;
-                    if (hasData && col !== "—") {
-                      const cv = parseFloat(col);
-                      switch (tolOp) {
-                        case "<":
-                          pass = cv < tolVal;
-                          break;
-                        case ">":
-                          pass = cv > tolVal;
-                          break;
-                        case "<=":
-                          pass = cv <= tolVal;
-                          break;
-                        case ">=":
-                          pass = cv >= tolVal;
-                          break;
-                        default:
-                          pass = cv <= tolVal;
+                            )}
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                  {testData.linearityOfMasLoading.table2?.length > 0 &&
+                    (() => {
+                      const rows = testData.linearityOfMasLoading.table2;
+                      const tolVal = parseFloat(testData.linearityOfMasLoading.tolerance ?? "0.1") || 0.1;
+                      const tolOp = testData.linearityOfMasLoading.toleranceOperator ?? "<=";
+                      const fmtV = (val: any) => {
+                        if (val === undefined || val === null) return "-";
+                        const s = String(val).trim();
+                        return s === "" || s === "—" || s === "undefined" || s === "null" ? "-" : s;
+                      };
+                      const xValues: number[] = [];
+                      const processedRows = rows.map((row: any) => {
+                        const outputs = (row.measuredOutputs ?? [])
+                          .map((v: any) => parseFloat(v))
+                          .filter((v: number) => !isNaN(v) && v > 0);
+                        const avg =
+                          outputs.length > 0 ? outputs.reduce((a: number, b: number) => a + b, 0) / outputs.length : null;
+                        const avgDisplay = avg !== null ? parseFloat(avg.toFixed(4)).toFixed(4) : "—";
+                        const mAsLabel = String(row.mAsApplied ?? row.mAsRange ?? row.ma ?? row.mA ?? "");
+                        const match = mAsLabel.match(/(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)/);
+                        const stationVal = match ? (parseFloat(match[1]) + parseFloat(match[2])) / 2 : parseFloat(mAsLabel) || 0;
+                        const denom = isMaLoading ? stationVal * timeVal : stationVal;
+                        const x = avg !== null && denom > 0 ? avg / denom : null;
+                        const xDisplay = x !== null ? parseFloat(x.toFixed(4)).toFixed(4) : "—";
+                        if (x !== null) xValues.push(parseFloat(x.toFixed(4)));
+                        return { ...row, _avgDisplay: avgDisplay, _xDisplay: xDisplay };
+                      });
+                      const hasData = xValues.length > 0;
+                      const xMax = hasData ? parseFloat(Math.max(...xValues).toFixed(4)).toFixed(4) : "—";
+                      const xMin = hasData ? parseFloat(Math.min(...xValues).toFixed(4)).toFixed(4) : "—";
+                      const colNum =
+                        hasData && xMax !== "—" && xMin !== "—" && parseFloat(xMax) + parseFloat(xMin) > 0
+                          ? Math.abs(parseFloat(xMax) - parseFloat(xMin)) / (parseFloat(xMax) + parseFloat(xMin))
+                          : 0;
+                      const col = hasData && colNum > 0 ? parseFloat(colNum.toFixed(4)).toFixed(4) : "—";
+                      let pass = false;
+                      if (hasData && col !== "—") {
+                        const cv = parseFloat(col);
+                        switch (tolOp) {
+                          case "<":
+                            pass = cv < tolVal;
+                            break;
+                          case ">":
+                            pass = cv > tolVal;
+                            break;
+                          case "<=":
+                            pass = cv <= tolVal;
+                            break;
+                          case ">=":
+                            pass = cv >= tolVal;
+                            break;
+                          default:
+                            pass = cv <= tolVal;
+                        }
                       }
-                    }
-                    const remarks = hasData && col !== "—" ? (pass ? "Pass" : "Fail") : "—";
-                    const measHeadersRaw = testData.linearityOfMasLoading.measHeaders || [];
-                    const maxOutLen = Math.max(
-                      0,
-                      ...processedRows.map((r: any) => (r.measuredOutputs || []).length),
-                      Array.isArray(measHeadersRaw) ? measHeadersRaw.length : 0,
-                    );
-                    const measHeaders =
-                      Array.isArray(measHeadersRaw) && measHeadersRaw.length > 0
-                        ? [
+                      const remarks = hasData && col !== "—" ? (pass ? "Pass" : "Fail") : "—";
+                      const measHeadersRaw = testData.linearityOfMasLoading.measHeaders || [];
+                      const maxOutLen = Math.max(
+                        0,
+                        ...processedRows.map((r: any) => (r.measuredOutputs || []).length),
+                        Array.isArray(measHeadersRaw) ? measHeadersRaw.length : 0,
+                      );
+                      const measHeaders =
+                        Array.isArray(measHeadersRaw) && measHeadersRaw.length > 0
+                          ? [
                             ...measHeadersRaw.map((h: string, i: number) => h || `Meas ${i + 1}`),
                             ...Array.from(
                               { length: Math.max(0, maxOutLen - measHeadersRaw.length) },
                               (_, i) => `Meas ${measHeadersRaw.length + i + 1}`,
                             ),
                           ]
-                        : Array.from({ length: Math.max(maxOutLen, 3) }, (_, i) => `Meas ${i + 1}`);
-                    return (
-                      <div style={{ marginBottom: "4px" }}>
-                        <table style={{ ...tableStyle, fontSize: "10px" }}>
-                          <thead>
-                            <tr>
-                              <th style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px" })}>
-                                {stationColumnLabel}
-                              </th>
-                              <th
-                                colSpan={measHeaders.length}
-                                style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px" })}
-                              >
-                                Output (mGy)
-                              </th>
-                              <th style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px" })}>
-                                Avg Output
-                              </th>
-                              <th style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px" })}>
-                                {xUnitLabel}
-                              </th>
-                              <th style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px" })}>
-                                X MAX
-                              </th>
-                              <th style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px" })}>
-                                X MIN
-                              </th>
-                              <th style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px" })}>
-                                CoL
-                              </th>
-                              <th style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px" })}>
-                                Remarks
-                              </th>
-                            </tr>
-                            <tr>
-                              <th style={cellStyle({ border: "0.1px solid #666", fontSize: "10px" })}></th>
-                              {measHeaders.map((h: string, idx: number) => (
+                          : Array.from({ length: Math.max(maxOutLen, 3) }, (_, i) => `Meas ${i + 1}`);
+                      return (
+                        <div style={{ marginBottom: "4px" }}>
+                          <table style={{ ...tableStyle, fontSize: "10px" }}>
+                            <thead>
+                              <tr>
+                                <th style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px" })}>
+                                  {stationColumnLabel}
+                                </th>
                                 <th
-                                  key={idx}
+                                  colSpan={measHeaders.length}
                                   style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px" })}
                                 >
-                                  {h || `Meas ${idx + 1}`}
+                                  Output (mGy)
                                 </th>
-                              ))}
-                              <th style={cellStyle({ border: "0.1px solid #666", fontSize: "10px" })}></th>
-                              <th style={cellStyle({ border: "0.1px solid #666", fontSize: "10px" })}></th>
-                              <th style={cellStyle({ border: "0.1px solid #666", fontSize: "10px" })}></th>
-                              <th style={cellStyle({ border: "0.1px solid #666", fontSize: "10px" })}></th>
-                              <th style={cellStyle({ border: "0.1px solid #666", fontSize: "10px" })}></th>
-                              <th style={cellStyle({ border: "0.1px solid #666", fontSize: "10px" })}></th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {processedRows.map((row: any, i: number) => (
-                              <tr key={i}>
-                                <td style={cellStyle({ border: "0.1px solid #666", fontSize: "10px" })}>
-                                  {fmtV(row.mAsApplied ?? row.mAsRange)}
-                                </td>
-                                {measHeaders.map((_: string, idx: number) => (
-                                  <td key={idx} style={cellStyle({ border: "0.1px solid #666", fontSize: "10px" })}>
-                                    {fmtV(row.measuredOutputs?.[idx])}
-                                  </td>
-                                ))}
-                                <td style={cellStyle({ border: "0.1px solid #666", fontSize: "10px" })}>
-                                  {row._avgDisplay}
-                                </td>
-                                <td style={cellStyle({ border: "0.1px solid #666", fontSize: "10px" })}>
-                                  {row._xDisplay}
-                                </td>
-                                {i === 0 ? (
-                                  <>
-                                    <td
-                                      rowSpan={rows.length}
-                                      style={cellStyle({
-                                        border: "0.1px solid #666",
-                                        fontSize: "10px",
-                                        verticalAlign: "middle",
-                                      })}
-                                    >
-                                      {xMax}
-                                    </td>
-                                    <td
-                                      rowSpan={rows.length}
-                                      style={cellStyle({
-                                        border: "0.1px solid #666",
-                                        fontSize: "10px",
-                                        verticalAlign: "middle",
-                                      })}
-                                    >
-                                      {xMin}
-                                    </td>
-                                    <td
-                                      rowSpan={rows.length}
-                                      style={cellStyle({
-                                        border: "0.1px solid #666",
-                                        fontSize: "10px",
-                                        verticalAlign: "middle",
-                                      })}
-                                    >
-                                      {col}
-                                    </td>
-                                    <td
-                                      rowSpan={rows.length}
-                                      style={cellStyle({
-                                        border: "0.1px solid #666",
-                                        fontSize: "10px",
-                                        verticalAlign: "middle",
-                                      })}
-                                    >
-                                      {remarks}
-                                    </td>
-                                  </>
-                                ) : null}
+                                <th style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px" })}>
+                                  Avg Output
+                                </th>
+                                <th style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px" })}>
+                                  {xUnitLabel}
+                                </th>
+                                <th style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px" })}>
+                                  X MAX
+                                </th>
+                                <th style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px" })}>
+                                  X MIN
+                                </th>
+                                <th style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px" })}>
+                                  CoL
+                                </th>
+                                <th style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px" })}>
+                                  Remarks
+                                </th>
                               </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                        <p style={{ fontSize: "10px", marginTop: "2px" }}>
-                          <strong>Tolerance (CoL):</strong> {testData.linearityOfMasLoading.toleranceOperator || "≤"}{" "}
-                          {testData.linearityOfMasLoading.tolerance || "0.1"}
-                        </p>
-                      </div>
-                    );
-                  })()}
-              </div>
+                              <tr>
+                                <th style={cellStyle({ border: "0.1px solid #666", fontSize: "10px" })}></th>
+                                {measHeaders.map((h: string, idx: number) => (
+                                  <th
+                                    key={idx}
+                                    style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px" })}
+                                  >
+                                    {h || `Meas ${idx + 1}`}
+                                  </th>
+                                ))}
+                                <th style={cellStyle({ border: "0.1px solid #666", fontSize: "10px" })}></th>
+                                <th style={cellStyle({ border: "0.1px solid #666", fontSize: "10px" })}></th>
+                                <th style={cellStyle({ border: "0.1px solid #666", fontSize: "10px" })}></th>
+                                <th style={cellStyle({ border: "0.1px solid #666", fontSize: "10px" })}></th>
+                                <th style={cellStyle({ border: "0.1px solid #666", fontSize: "10px" })}></th>
+                                <th style={cellStyle({ border: "0.1px solid #666", fontSize: "10px" })}></th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {processedRows.map((row: any, i: number) => (
+                                <tr key={i}>
+                                  <td style={cellStyle({ border: "0.1px solid #666", fontSize: "10px" })}>
+                                    {fmtV(row.mAsApplied ?? row.mAsRange)}
+                                  </td>
+                                  {measHeaders.map((_: string, idx: number) => (
+                                    <td key={idx} style={cellStyle({ border: "0.1px solid #666", fontSize: "10px" })}>
+                                      {fmtV(row.measuredOutputs?.[idx])}
+                                    </td>
+                                  ))}
+                                  <td style={cellStyle({ border: "0.1px solid #666", fontSize: "10px" })}>
+                                    {row._avgDisplay}
+                                  </td>
+                                  <td style={cellStyle({ border: "0.1px solid #666", fontSize: "10px" })}>
+                                    {row._xDisplay}
+                                  </td>
+                                  {i === 0 ? (
+                                    <>
+                                      <td
+                                        rowSpan={rows.length}
+                                        style={cellStyle({
+                                          border: "0.1px solid #666",
+                                          fontSize: "10px",
+                                          verticalAlign: "middle",
+                                        })}
+                                      >
+                                        {xMax}
+                                      </td>
+                                      <td
+                                        rowSpan={rows.length}
+                                        style={cellStyle({
+                                          border: "0.1px solid #666",
+                                          fontSize: "10px",
+                                          verticalAlign: "middle",
+                                        })}
+                                      >
+                                        {xMin}
+                                      </td>
+                                      <td
+                                        rowSpan={rows.length}
+                                        style={cellStyle({
+                                          border: "0.1px solid #666",
+                                          fontSize: "10px",
+                                          verticalAlign: "middle",
+                                        })}
+                                      >
+                                        {col}
+                                      </td>
+                                      <td
+                                        rowSpan={rows.length}
+                                        style={cellStyle({
+                                          border: "0.1px solid #666",
+                                          fontSize: "10px",
+                                          verticalAlign: "middle",
+                                        })}
+                                      >
+                                        {remarks}
+                                      </td>
+                                    </>
+                                  ) : null}
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                          <p style={{ fontSize: "10px", marginTop: "2px" }}>
+                            <strong>Tolerance (CoL):</strong> {testData.linearityOfMasLoading.toleranceOperator || "≤"}{" "}
+                            {testData.linearityOfMasLoading.tolerance || "0.1"}
+                          </p>
+                        </div>
+                      );
+                    })()}
+                </div>
               );
             })()}
 
@@ -1475,7 +1531,7 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
                     };
                     return (
                       <div style={{ marginBottom: "4px" }}>
-                         <p style={{ fontSize: "10px", fontWeight: "bold", marginBottom: "10px" }}>2. Output Measurement</p>
+                        <p style={{ fontSize: "10px", fontWeight: "bold", marginBottom: "10px" }}>2. Output Measurement</p>
                         <table style={{ ...tableStyle, fontSize: "10px", tableLayout: "auto" }}>
                           <thead>
                             <tr>
@@ -1739,50 +1795,50 @@ const ViewServiceReportRadiographyFixed: React.FC = () => {
                             ></th>
                           </tr>
                         </thead>
-                      <tbody>
-                        {testData.radiationLeakageLevel.leakageMeasurements.map((row: any, i: number) => {
-                          const maValue = parseFloat(
-                            testData.radiationLeakageLevel.ma || testData.radiationLeakageLevel.settings?.ma || "0"
-                          );
-                          const workloadValue = parseFloat(testData.radiationLeakageLevel.workload || "0");
-                          const values = [row.left, row.right, row.front, row.back, row.top]
-                            .map((v) => parseFloat(v) || 0)
-                            .filter((v) => v > 0);
-                          const rowMax = values.length > 0 ? Math.max(...values) : 0;
-                          let calcMR = "-",
-                            calcMGy = "-",
-                            remark = row.remark || "-";
-                          if (rowMax > 0 && maValue > 0 && workloadValue > 0) {
-                            const resMR = (workloadValue * rowMax) / (60 * maValue);
-                            calcMR = resMR.toFixed(3);
-                            calcMGy = (resMR / 114).toFixed(4);
-                            if (remark === "-" || !remark) {
-                              remark =
-                                resMR / 114 <= (parseFloat(testData.radiationLeakageLevel.toleranceValue) || 1.0)
-                                  ? "Pass"
-                                  : "Fail";
+                        <tbody>
+                          {testData.radiationLeakageLevel.leakageMeasurements.map((row: any, i: number) => {
+                            const maValue = parseFloat(
+                              testData.radiationLeakageLevel.ma || testData.radiationLeakageLevel.settings?.ma || "0"
+                            );
+                            const workloadValue = parseFloat(testData.radiationLeakageLevel.workload || "0");
+                            const values = [row.left, row.right, row.front, row.back, row.top]
+                              .map((v) => parseFloat(v) || 0)
+                              .filter((v) => v > 0);
+                            const rowMax = values.length > 0 ? Math.max(...values) : 0;
+                            let calcMR = "-",
+                              calcMGy = "-",
+                              remark = row.remark || "-";
+                            if (rowMax > 0 && maValue > 0 && workloadValue > 0) {
+                              const resMR = (workloadValue * rowMax) / (60 * maValue);
+                              calcMR = resMR.toFixed(3);
+                              calcMGy = (resMR / 114).toFixed(4);
+                              if (remark === "-" || !remark) {
+                                remark =
+                                  resMR / 114 <= (parseFloat(testData.radiationLeakageLevel.toleranceValue) || 1.0)
+                                    ? "Pass"
+                                    : "Fail";
+                              }
                             }
-                          }
-                          return (
-                            <tr key={i}>
-                              <th
-                                scope="row"
-                                style={cellStyle({ border: "0.1px solid #666", fontSize: "9px", fontWeight: 700 })}
-                              >
-                                {row.location || "-"}
-                              </th>
-                              {["left", "right", "front", "back", "top"].map((k) => (
-                                <td key={k} style={cellStyle({ border: "0.1px solid #666", fontSize: "9px" })}>
-                                  {(row as any)[k] || "-"}
-                                </td>
-                              ))}
-                              <td style={cellStyle({ border: "0.1px solid #666", fontSize: "9px" })}>{calcMR}</td>
-                              <td style={cellStyle({ border: "0.1px solid #666", fontSize: "9px" })}>{calcMGy}</td>
-                              <td style={cellStyle({ border: "0.1px solid #666", fontSize: "9px" })}>{remark}</td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
+                            return (
+                              <tr key={i}>
+                                <th
+                                  scope="row"
+                                  style={cellStyle({ border: "0.1px solid #666", fontSize: "9px", fontWeight: 700 })}
+                                >
+                                  {row.location || "-"}
+                                </th>
+                                {["left", "right", "front", "back", "top"].map((k) => (
+                                  <td key={k} style={cellStyle({ border: "0.1px solid #666", fontSize: "9px" })}>
+                                    {(row as any)[k] || "-"}
+                                  </td>
+                                ))}
+                                <td style={cellStyle({ border: "0.1px solid #666", fontSize: "9px" })}>{calcMR}</td>
+                                <td style={cellStyle({ border: "0.1px solid #666", fontSize: "9px" })}>{calcMGy}</td>
+                                <td style={cellStyle({ border: "0.1px solid #666", fontSize: "9px" })}>{remark}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
                       </table>
                     </div>
                   )}

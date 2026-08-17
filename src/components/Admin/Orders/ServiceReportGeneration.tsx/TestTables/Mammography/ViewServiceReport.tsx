@@ -16,13 +16,19 @@ import {
   getEquipmentSettingByServiceIdForMammography,
   getMaximumRadiationLevelByServiceIdForMammography,
   getTools,
-} from "../../../../../../api";
+saveReportPdfForMammography } from "../../../../../../api";
 import MainTestTableForMammography, {
   generateMammographySummaryRows,
   getMammographySummarySectionNumbers,
   MAMMOGRAPHY_SUMMARY_PARAMETERS,
 } from "../../TestTables/Mammography/MainTestTableForMammogaphy";
 import { generatePDF } from "../../../../../../utils/generatePDF";
+import {
+  EmbeddedViewReportPdfProps,
+  getEmbeddedReportContentId,
+  saveGeneratedReportPdfToDb,
+  useEmbeddedReportPdfAutoSave,
+} from "../shared/embeddedViewReportPdf";
 import { ReportPdfPageHeader } from "../RadiographyFixed/component/Header";
 import { ReportPdfPageFooter } from "../RadiographyFixed/component/Footer";
 import { ReportPdfPageFooterEnd } from "../RadiographyFixed/component/FooterEnd";
@@ -224,13 +230,26 @@ function normalizeMammographyRadiationProtectionSurvey(survey: any) {
   return { ...survey, locations };
 }
 
-const ViewServiceReportMammography: React.FC = () => {
+interface ViewServiceReportMammographyProps extends EmbeddedViewReportPdfProps {}
+
+const ViewServiceReportMammography: React.FC<ViewServiceReportMammographyProps> = ({
+  serviceIdProp,
+  embedded = false,
+  refreshKey = 0,
+  onReportLoaded,
+  autoSavePdfToken = 0,
+  onPdfSaveComplete,
+  saveReportPdf = saveReportPdfForMammography,
+  pdfFilenamePrefix = "Mammography",
+}) => {
   const [searchParams] = useSearchParams();
-  const serviceId = searchParams.get("serviceId");
+  const serviceId = serviceIdProp || searchParams.get("serviceId");
+  const reportContentId = getEmbeddedReportContentId(embedded);
 
   const [loading, setLoading] = useState(true);
   const [report, setReport] = useState<ReportData | null>(null);
   const [notFound, setNotFound] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const [testData, setTestData] = useState<any>({
     accuracyOfOperatingPotential: null,
@@ -306,7 +325,11 @@ const ViewServiceReportMammography: React.FC = () => {
         return;
       }
       try {
-        setLoading(true)
+        if (!embedded || !report) {
+          setLoading(true);
+        } else if (embedded) {
+          setIsRefreshing(true);
+        }
         const [response, detailsRes, toolsRes] = await Promise.all([
           getReportHeaderForMammography(serviceId),
           getDetails(serviceId).catch(() => null),
@@ -395,6 +418,10 @@ const ViewServiceReportMammography: React.FC = () => {
             ulrFromCache = "";
           }
           const resolvedUlr = ulrFromHeader || ulrFromDetails || ulrFromCache || "N/A";
+
+
+          setNotFound(false);
+
 
           setReport({
             customerName: data.customerName || "N/A",
@@ -776,6 +803,7 @@ const ViewServiceReportMammography: React.FC = () => {
             equipmentSetting: equipmentSettingRes || data.EquipmentSettingMammography || null,
             maximumRadiationLevel: maxRadiationRes || data.MaximumRadiationLevelMammography || null,
           });
+          onReportLoaded?.();
         } else {
           setNotFound(true);
         }
@@ -784,11 +812,12 @@ const ViewServiceReportMammography: React.FC = () => {
         setNotFound(true);
       } finally {
         setLoading(false);
+        setIsRefreshing(false);
       }
     };
 
     fetchReport();
-  }, [serviceId]);
+  }, [serviceId, refreshKey]);
 
   // Recompute page count from current in-memory test data so dynamic updates
   // immediately reflect in "No. of pages" before re-downloading PDF.
@@ -843,34 +872,52 @@ const ViewServiceReportMammography: React.FC = () => {
         return value <= threshold;
     }
   };
+  useEmbeddedReportPdfAutoSave({
+    embedded,
+    autoSavePdfToken,
+    serviceId,
+    report,
+    loading,
+    isRefreshing,
+    reportContentId,
+    pdfFilenamePrefix,
+    saveReportPdf,
+    onPdfSaveComplete,
+  });
+
 
   const downloadPDF = async () => {
     try {
-      await generatePDF({
-        elementId: 'report-content',
-        filename: `Mammography-Report-${report?.testReportNumber || 'report'}.pdf`,
-        buttonSelector: '.download-pdf-btn',
+      if (!serviceId || !report) return;
+      await saveGeneratedReportPdfToDb({
+        serviceId,
+        reportContentId,
+        testReportNumber: report.testReportNumber,
+        pdfFilenamePrefix,
+        saveReportPdf,
       });
     } catch (error) {
-      console.error('PDF Error:', error);
-      // Error handling is done in the utility function
+      console.error("PDF Error:", error);
+      alert("Failed to generate PDF. Please try again.");
     }
   };
-
-  if (loading) return <div className="min-h-screen flex items-center justify-center text-2xl font-semibold">Loading Mammography Report...</div>;
-
-  if (notFound || !report) {
+  if (!embedded) {
+    if (loading) return <div className="min-h-screen flex items-center justify-center text-2xl font-semibold">Loading Mammography Report...</div>;
+    if (notFound || !report) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="bg-white p-10 rounded-lg shadow-xl text-center">
-          <h2 className="text-2xl font-bold text-red-600 mb-4">Report Not Found</h2>
-          <p>Please generate and save the report header first.</p>
-          <button onClick={() => window.history.back()} className="mt-6 px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-            Go Back
-          </button>
-        </div>
-      </div>
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+    <div className="bg-white p-10 rounded-lg shadow-xl text-center">
+    <h2 className="text-2xl font-bold text-red-600 mb-4">Report Not Found</h2>
+    <p>Please generate and save the report header first.</p>
+    <button onClick={() => window.history.back()} className="mt-6 px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+    Go Back
+    </button>
+    </div>
+    </div>
     );
+    }
+  } else if (!report || isRefreshing) {
+    return null;
   }
 
   const toolsArray = (report.toolsUsed || []).map((tool: any) => {
@@ -1275,7 +1322,9 @@ const ViewServiceReportMammography: React.FC = () => {
 
   return (
     <>
-      <div className="fixed bottom-8 right-8 print:hidden z-50 flex flex-col gap-4">
+      {!embedded && (
+
+        <div className="fixed bottom-8 right-8 print:hidden z-50 flex flex-col gap-4">
         {/* <button onClick={() => window.print()} className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xl py-5 px-12 rounded-xl shadow-2xl">
           Print
         </button> */}
@@ -1283,8 +1332,9 @@ const ViewServiceReportMammography: React.FC = () => {
           Download PDF
         </button>
       </div>
+      )}
 
-      <div id="report-content" className="fixed-report-pdf">
+      <div id={reportContentId} className="fixed-report-pdf">
         {/* PAGE 1 - MAIN REPORT */}
         <ReportPage>
           <h1 className="text-center font-bold underline mb-2" style={{ fontSize: "15px" }}>

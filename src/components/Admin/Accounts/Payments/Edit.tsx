@@ -45,6 +45,18 @@ const normalizePaymentMode = (mode?: string) => {
   return match || "";
 };
 
+const isCompletePaymentValid = (paymentAmount: number | string, totalAmount: number) => {
+  const paid = Number(paymentAmount || 0);
+  const total = Number(totalAmount || 0);
+  return paid > 0 && total > 0 && paid === total;
+};
+
+const completePaymentTypeTest = (value: string | undefined, context: Yup.TestContext) => {
+  if (value !== "complete") return true;
+  const { paymentAmount, totalAmount } = context.parent as { paymentAmount?: number | string; totalAmount?: number };
+  return isCompletePaymentValid(paymentAmount ?? 0, Number(totalAmount || 0));
+};
+
 // Validation Schema
 const validationSchema = Yup.object().shape({
   srfClient: Yup.string().required("Please select SRF and Client"),
@@ -55,7 +67,13 @@ const validationSchema = Yup.object().shape({
     .required("Payment amount is required")
     .positive("Must be positive")
     .max(Yup.ref('totalAmount'), 'Payment cannot exceed total amount'),
-  paymentType: Yup.string().required("Please select payment type"),
+  paymentType: Yup.string()
+    .required("Please select payment type")
+    .test(
+      "complete-requires-full-payment",
+      "Complete payment type requires payment amount to equal total amount",
+      completePaymentTypeTest
+    ),
   paymentMode: Yup.string().required("Please select payment mode"),
   utrNumber: Yup.string(),
   screenshot: Yup.mixed().nullable(),
@@ -179,7 +197,7 @@ const Edit: React.FC = () => {
         validationSchema={validationSchema}
         onSubmit={handleSubmit}
       >
-        {({ setFieldValue, values, errors, submitCount, isSubmitting }) => (
+        {({ setFieldValue, setFieldError, values, errors, submitCount, isSubmitting }) => (
             <Form className="space-y-5">
               <div className="panel">
                 <h5 className="font-semibold text-lg mb-4">Payment Details</h5>
@@ -226,6 +244,13 @@ const Edit: React.FC = () => {
                           showMessage("Payment cannot exceed total amount", "warning");
                         } else {
                           setFieldValue("paymentAmount", value);
+                          if (values.paymentType === "complete" && value !== Number(values.totalAmount)) {
+                            setFieldValue("paymentType", "");
+                            setFieldError(
+                              "paymentType",
+                              "Complete payment type requires payment amount to equal total amount"
+                            );
+                          }
                         }
                       }}
                     />
@@ -235,7 +260,28 @@ const Edit: React.FC = () => {
                   {/* Payment Type */}
                   <div className={submitCount && errors.paymentType ? "has-error" : submitCount ? "has-success" : ""}>
                     <label htmlFor="paymentType">Payment Type</label>
-                    <Field as="select" name="paymentType" className="form-select w-full">
+                    <Field
+                      as="select"
+                      name="paymentType"
+                      className="form-select w-full"
+                      onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
+                        const selected = e.target.value;
+                        if (selected === "complete" && !isCompletePaymentValid(values.paymentAmount, values.totalAmount)) {
+                          showMessage(
+                            "Complete payment type requires payment amount to equal total amount",
+                            "error"
+                          );
+                          setFieldError(
+                            "paymentType",
+                            "Complete payment type requires payment amount to equal total amount"
+                          );
+                          setFieldValue("paymentType", values.paymentType || "");
+                          return;
+                        }
+                        setFieldError("paymentType", undefined);
+                        setFieldValue("paymentType", selected);
+                      }}
+                    >
                       <option value="">Select type</option>
                       {paymentTypes.map((type) => (
                         <option key={type} value={type}>

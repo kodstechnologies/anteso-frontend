@@ -6,12 +6,15 @@ import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import toast from "react-hot-toast";
 import AuthorizedSignatorySelect from "../../AuthorizedSignatorySelect";
 
+import { useReportPdfSaveOnHeader } from "../shared/useReportPdfSaveOnHeader";
+import ReportPdfCaptureHost from "../shared/ReportPdfCaptureHost";
+import ViewServiceReportMammography from "./ViewServiceReport";
 import Standards from "../../Standards";
 import Notes from "../../Notes";
 
 import {
     getDetails,
-    getTools,
+    getAssignedToolsForEngineerByMachine,
     saveReportHeaderForMammography,
     getReportHeaderForMammography,
     getAccuracyOfOperatingPotentialByServiceIdForMammography,
@@ -27,7 +30,7 @@ import {
     getMaximumRadiationLevelByServiceIdForMammography,
     proxyFile,
   saveTimerPreference,
-} from "../../../../../../api";
+    saveReportPdfForMammography } from "../../../../../../api";
 import * as XLSX from "xlsx";
 import { createMammographySavedExcel, MammographySavedExportData } from "./exportMammographySavedToExcel";
 import { isExcelFileUrl, resolvePrefillSpreadsheetUrls } from "../../../../../../utils/spreadsheetFile";
@@ -148,6 +151,16 @@ interface DetailsResponse {
     qaTests: Array<{ createdAt: string; qaTestReportNumber: string }>;
 }
 
+const isToolUnexpired = (validTillRaw: string): boolean => {
+    if (!validTillRaw) return false;
+    const parsed = new Date(validTillRaw);
+    if (Number.isNaN(parsed.getTime())) return false;
+    const today = new Date();
+    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const validTillDate = new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
+    return validTillDate >= todayStart;
+};
+
 const GenerateReportMammographyContent: React.FC<{ serviceId: string; csvFileUrl?: string | null; csvFileUrls?: string[]; qaTestDate?: string | null }> = ({ serviceId, csvFileUrl, csvFileUrls, qaTestDate }) => {
     const exportRegistry = useTestExportRegistry();
     const firstNonEmptyString = (...values: any[]): string => {
@@ -164,6 +177,7 @@ const GenerateReportMammographyContent: React.FC<{ serviceId: string; csvFileUrl
 
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+  const pdfSave = useReportPdfSaveOnHeader();
     const [saveSuccess, setSaveSuccess] = useState(false);
     const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -1632,10 +1646,12 @@ const GenerateReportMammographyContent: React.FC<{ serviceId: string; csvFileUrl
 
             try {
                 setLoading(true);
-                const [detailsRes, toolsRes] = await Promise.all([
-                    getDetails(serviceId),
-                    getTools(serviceId),
-                ]);
+                const detailsRes = await getDetails(serviceId);
+                const engineerId = detailsRes.data?.engineerAssigned?._id || detailsRes.data?.engineerAssigned;
+                const machineType = detailsRes.data?.machineType;
+                const toolsRes = engineerId && machineType
+                    ? await getAssignedToolsForEngineerByMachine(engineerId, machineType)
+                    : null;
 
                 const data = detailsRes.data;
                 const firstTest = Array.isArray(data.qaTests) && data.qaTests.length > 0 ? data.qaTests[0] : null;
@@ -1702,8 +1718,9 @@ const GenerateReportMammographyContent: React.FC<{ serviceId: string; csvFileUrl
                     authorizedSignatory: "",
                 });
 
-                const mappedTools: Standard[] = toolsRes.data.toolsAssigned.map((t: any, i: number) => ({
-                    slNumber: String(i + 1),
+                const assignedTools = toolsRes?.data?.toolsAssigned || toolsRes?.toolsAssigned || [];
+                const mappedTools: Standard[] = assignedTools
+                    .map((t: any) => ({
                     nomenclature: t.nomenclature,
                     make: t.manufacturer || t.make || "",
                     model: t.model || "",
@@ -1711,9 +1728,14 @@ const GenerateReportMammographyContent: React.FC<{ serviceId: string; csvFileUrl
                     range: t.range || "",
                     certificate: t.certificate || null,
                     calibrationCertificateNo: t.calibrationCertificateNo || "",
-                    calibrationValidTill: t.calibrationValidTill.split("T")[0],
+                    calibrationValidTill: (t.calibrationValidTill || "").split("T")[0],
                     uncertainity: t.uncertainity || "",
-                }));
+                    }))
+                    .filter((t: any) => isToolUnexpired(t.calibrationValidTill))
+                    .map((t: any, i: number) => ({
+                        ...t,
+                        slNumber: String(i + 1),
+                    }));
                 console.log("🚀 ~ fetchInitialData ~ mappedTools:", mappedTools)
 
                 setTools(mappedTools);
@@ -1879,6 +1901,8 @@ const GenerateReportMammographyContent: React.FC<{ serviceId: string; csvFileUrl
             };
 
             await saveReportHeaderForMammography(serviceId, payload);
+      await pdfSave.saveReportPdfAfterHeader();
+      toast.success("Report header saved successfully");
             setSaveSuccess(true);
             setTimeout(() => setSaveSuccess(false), 5000);
         } catch (err: any) {
@@ -2013,6 +2037,17 @@ const GenerateReportMammographyContent: React.FC<{ serviceId: string; csvFileUrl
 
     return (
         <div className="max-w-7xl mx-auto bg-white shadow-lg rounded-xl p-8 mt-8">
+            <ReportPdfCaptureHost
+                active={pdfSave.pdfCaptureActive}
+                serviceId={serviceId}
+                refreshKey={pdfSave.reportPreviewRefreshKey}
+                autoSavePdfToken={pdfSave.autoSavePdfToken}
+                onReportLoaded={pdfSave.onReportLoaded}
+                onPdfSaveComplete={pdfSave.onPdfSaveComplete}
+                ViewComponent={ViewServiceReportMammography}
+                saveReportPdf={saveReportPdfForMammography}
+                pdfFilenamePrefix="Mammography"
+            />
             <h1 className="text-3xl font-bold text-center text-gray-800 mb-8">
                 Generate Mammography QA Test Report
             </h1>

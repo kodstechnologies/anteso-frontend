@@ -12,7 +12,7 @@ import Notes from "../../Notes";
 
 import {
   getDetails,
-  getTools,
+  getAssignedToolsForEngineerByMachine,
   saveReportHeaderForCArm,
   getReportHeaderForCArm,
   getAccuracyOfIrradiationTimeByServiceIdForCArm,
@@ -102,6 +102,16 @@ interface CArmProps {
   csvFileUrls?: string[];
 }
 
+const isToolUnexpired = (validTillRaw: string): boolean => {
+  if (!validTillRaw) return false;
+  const parsed = new Date(validTillRaw);
+  if (Number.isNaN(parsed.getTime())) return false;
+  const today = new Date();
+  const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const validTillDate = new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
+  return validTillDate >= todayStart;
+};
+
 const CArmContent: React.FC<CArmProps> = ({ serviceId, csvFileUrl, csvFileUrls }) => {
   const exportRegistry = useTestExportRegistry();
   const navigate = useNavigate();
@@ -156,10 +166,12 @@ const CArmContent: React.FC<CArmProps> = ({ serviceId, csvFileUrl, csvFileUrls }
     const fetchAll = async () => {
       try {
         setLoading(true);
-        const [detRes, toolRes] = await Promise.all([
-          getDetails(serviceId),
-          getTools(serviceId),
-        ]);
+        const detRes = await getDetails(serviceId);
+        const engineerId = detRes.data?.engineerAssigned?._id || detRes.data?.engineerAssigned;
+        const machineType = detRes.data?.machineType;
+        const toolRes = engineerId && machineType
+          ? await getAssignedToolsForEngineerByMachine(engineerId, machineType)
+          : null;
 
         setDetails(detRes.data);
         const data = detRes.data;
@@ -201,9 +213,9 @@ const CArmContent: React.FC<CArmProps> = ({ serviceId, csvFileUrl, csvFileUrls }
           authorizedSignatory: "",
         });
 
-        const mapped: Standard[] = toolRes.data.toolsAssigned.map(
-          (t: any, idx: number) => ({
-            slNumber: String(idx + 1),
+        const assignedTools = toolRes?.data?.toolsAssigned || toolRes?.toolsAssigned || [];
+        const mapped: Standard[] = assignedTools
+          .map((t: any) => ({
             nomenclature: t.nomenclature,
             make: t.manufacturer,
             model: t.model,
@@ -211,10 +223,14 @@ const CArmContent: React.FC<CArmProps> = ({ serviceId, csvFileUrl, csvFileUrls }
             range: t.range,
             certificate: t.certificate ?? "",
             calibrationCertificateNo: t.calibrationCertificateNo,
-            calibrationValidTill: t.calibrationValidTill.split("T")[0],
+            calibrationValidTill: (t.calibrationValidTill || "").split("T")[0],
             uncertainity: "",
-          })
-        );
+          }))
+          .filter((t: any) => isToolUnexpired(t.calibrationValidTill))
+          .map((t: any, idx: number) => ({
+            ...t,
+            slNumber: String(idx + 1),
+          }));
         setTools(mapped);
       } catch (err: any) {
         console.error(err);

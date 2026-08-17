@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import {
     getReportHeaderForDentalHandHeld,
     saveReportHeaderForDentalHandHeld,
-    getTools,
+    getAssignedToolsForEngineerByMachine,
     getDetails,
     proxyFile,
     getAccuracyOfOperatingPotentialByServiceIdForDentalHandHeld,
@@ -16,7 +16,7 @@ import {
     getTubeHousingLeakageByServiceIdForDentalHandHeld,
     getRadiationProtectionSurveyByServiceIdForDentalHandHeld,
   saveTimerPreference,
-} from "../../../../../../api";
+    saveReportPdfForDentalHandHeld } from "../../../../../../api";
 import { Disclosure } from "@headlessui/react";
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import toast from "react-hot-toast";
@@ -24,6 +24,9 @@ import AuthorizedSignatorySelect from "../../AuthorizedSignatorySelect";
 import * as XLSX from "xlsx";
 import { isExcelFileUrl, resolvePrefillSpreadsheetUrls } from "../../../../../../utils/spreadsheetFile";
 
+import { useReportPdfSaveOnHeader } from "../shared/useReportPdfSaveOnHeader";
+import ReportPdfCaptureHost from "../shared/ReportPdfCaptureHost";
+import ViewServiceReportDentalHandHeld from "./ViewServiceReport";
 import Standards from "../../Standards";
 import Notes from "../../Notes";
 
@@ -81,6 +84,16 @@ interface DentalProps {
     csvFileUrls?: string[];
 }
 
+const isToolUnexpired = (validTillRaw: string): boolean => {
+    if (!validTillRaw) return false;
+    const parsed = new Date(validTillRaw);
+    if (Number.isNaN(parsed.getTime())) return false;
+    const today = new Date();
+    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const validTillDate = new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
+    return validTillDate >= todayStart;
+};
+
 const GenerateReportForDentalHandHeldContent: React.FC<DentalProps> = ({ serviceId, qaTestDate, csvFileUrl: csvFileUrlFromProps, csvFileUrls }) => {
     const exportRegistry = useTestExportRegistry();
     const navigate = useNavigate();
@@ -90,6 +103,7 @@ const GenerateReportForDentalHandHeldContent: React.FC<DentalProps> = ({ service
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
+  const pdfSave = useReportPdfSaveOnHeader();
     const [saveSuccess, setSaveSuccess] = useState(false);
     const [saveError, setSaveError] = useState<string | null>(null);
     const [csvUploading, setCsvUploading] = useState(false);
@@ -144,10 +158,12 @@ const GenerateReportForDentalHandHeldContent: React.FC<DentalProps> = ({ service
         const fetchAll = async () => {
             try {
                 setLoading(true);
-                const [detRes, toolRes] = await Promise.all([
-                    getDetails(serviceId),
-                    getTools(serviceId),
-                ]);
+                const detRes = await getDetails(serviceId);
+                const engineerId = detRes.data?.engineerAssigned?._id || detRes.data?.engineerAssigned;
+                const machineType = detRes.data?.machineType;
+                const toolRes = engineerId && machineType
+                    ? await getAssignedToolsForEngineerByMachine(engineerId, machineType)
+                    : null;
 
                 const data = detRes.data;
                 setDetails(data);
@@ -185,9 +201,9 @@ const GenerateReportForDentalHandHeldContent: React.FC<DentalProps> = ({ service
                     authorizedSignatory: "",
                 });
 
-                const mapped: Standard[] = toolRes.data.toolsAssigned.map(
-                    (t: any, idx: number) => ({
-                        slNumber: String(idx + 1),
+                const assignedTools = toolRes?.data?.toolsAssigned || toolRes?.toolsAssigned || [];
+                const mapped: Standard[] = assignedTools
+                    .map((t: any) => ({
                         nomenclature: t.nomenclature,
                         make: t.manufacturer || t.make,
                         model: t.model,
@@ -195,10 +211,14 @@ const GenerateReportForDentalHandHeldContent: React.FC<DentalProps> = ({ service
                         range: t.range,
                         certificate: t.certificate ?? "",
                         calibrationCertificateNo: t.calibrationCertificateNo,
-                        calibrationValidTill: t.calibrationValidTill.split("T")[0],
+                        calibrationValidTill: (t.calibrationValidTill || "").split("T")[0],
                         uncertainity: "",
-                    })
-                );
+                    }))
+                    .filter((t: any) => isToolUnexpired(t.calibrationValidTill))
+                    .map((t: any, idx: number) => ({
+                        ...t,
+                        slNumber: String(idx + 1),
+                    }));
                 setTools(mapped);
             } catch (err: any) {
                 console.error(err);
@@ -417,6 +437,8 @@ const GenerateReportForDentalHandHeldContent: React.FC<DentalProps> = ({ service
             };
 
             await saveReportHeaderForDentalHandHeld(serviceId, payload);
+      await pdfSave.saveReportPdfAfterHeader();
+      toast.success("Report header saved successfully");
             setSaveSuccess(true);
             setTimeout(() => setSaveSuccess(false), 4000);
             toast.success("Report header saved!");
@@ -1120,6 +1142,18 @@ const GenerateReportForDentalHandHeldContent: React.FC<DentalProps> = ({ service
 
     return (
         <div className="max-w-6xl mx-auto bg-white shadow-md rounded-xl p-8 mt-6">
+
+            <ReportPdfCaptureHost
+              active={pdfSave.pdfCaptureActive}
+              serviceId={serviceId}
+              refreshKey={pdfSave.reportPreviewRefreshKey}
+              autoSavePdfToken={pdfSave.autoSavePdfToken}
+              onReportLoaded={pdfSave.onReportLoaded}
+              onPdfSaveComplete={pdfSave.onPdfSaveComplete}
+              ViewComponent={ViewServiceReportDentalHandHeld}
+              saveReportPdf={saveReportPdfForDentalHandHeld}
+              pdfFilenamePrefix="DentalHandHeld"
+            />
             <h1 className="text-2xl font-bold text-gray-800 mb-6 text-center">
                 Generate QA Test Report - Dental Hand-held
             </h1>

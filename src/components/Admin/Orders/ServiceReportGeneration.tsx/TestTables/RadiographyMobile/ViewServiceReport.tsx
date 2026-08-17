@@ -1,8 +1,14 @@
 // src/components/reports/ViewServiceReportRadiographyMobile.tsx
 import React, { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { getReportHeaderForRadiographyMobile, getAccuracyOfOperatingPotentialByServiceIdForRadiographyMobile, getDetails, getTools } from "../../../../../../api";
+import { getReportHeaderForRadiographyMobile, getAccuracyOfOperatingPotentialByServiceIdForRadiographyMobile, getDetails, getTools , saveReportPdfForRadiographyMobile } from "../../../../../../api";
 import { generatePDF } from "../../../../../../utils/generatePDF";
+import {
+  EmbeddedViewReportPdfProps,
+  getEmbeddedReportContentId,
+  saveGeneratedReportPdfToDb,
+  useEmbeddedReportPdfAutoSave,
+} from "../shared/embeddedViewReportPdf";
 import MainTestTableForRadiographyMobile from "./MainTestTableForRadiographyMobile";
 import { ReportPdfPageHeader } from "../RadiographyFixed/component/Header";
 import { ReportPdfPageFooter } from "../RadiographyFixed/component/Footer";
@@ -87,9 +93,21 @@ const defaultNotes: Note[] = [
   { slNo: "5.7", text: "Name, Address & Contact detail is provided by Customer." },
 ];
 
-const ViewServiceReportRadiographyMobile: React.FC = () => {
+interface ViewServiceReportRadiographyMobileProps extends EmbeddedViewReportPdfProps {}
+
+const ViewServiceReportRadiographyMobile: React.FC<ViewServiceReportRadiographyMobileProps> = ({
+  serviceIdProp,
+  embedded = false,
+  refreshKey = 0,
+  onReportLoaded,
+  autoSavePdfToken = 0,
+  onPdfSaveComplete,
+  saveReportPdf = saveReportPdfForRadiographyMobile,
+  pdfFilenamePrefix = "RadiographyMobile",
+}) => {
   const [searchParams] = useSearchParams();
-  const serviceId = searchParams.get("serviceId");
+  const serviceId = serviceIdProp || searchParams.get("serviceId");
+  const reportContentId = getEmbeddedReportContentId(embedded);
   const pickRpId = (obj: any): string =>
     obj?.rpId || obj?.rpid || obj?.rpID || obj?.RPId || obj?.engineerAssigned?.rpId || "N/A";
 
@@ -121,6 +139,7 @@ const ViewServiceReportRadiographyMobile: React.FC = () => {
     return false;
   })();
   const [notFound, setNotFound] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [testData, setTestData] = useState<any>({});
   const [calculatedPages, setCalculatedPages] = useState<string>("");
 
@@ -133,7 +152,11 @@ const ViewServiceReportRadiographyMobile: React.FC = () => {
       }
 
       try {
-        setLoading(true);
+        if (!embedded || !report) {
+          setLoading(true);
+        } else if (embedded) {
+          setIsRefreshing(true);
+        }
         const [response, detailsRes, toolsRes] = await Promise.all([
           getReportHeaderForRadiographyMobile(serviceId),
           getDetails(serviceId),
@@ -204,6 +227,9 @@ const ViewServiceReportRadiographyMobile: React.FC = () => {
           );
           const assignedTools = normalizeTools(toolsRes?.data?.toolsAssigned || []);
           const mergedTools = mergeTools(headerTools, assignedTools);
+
+          setNotFound(false);
+
           setReport({
             customerName: data.customerName || "N/A",
             address: data.address || "N/A",
@@ -305,6 +331,7 @@ const ViewServiceReportRadiographyMobile: React.FC = () => {
           });
           pagesCount += Math.ceil(detailedPages);
           setCalculatedPages(String(pagesCount));
+          onReportLoaded?.();
         } else {
           setNotFound(true);
         }
@@ -313,11 +340,12 @@ const ViewServiceReportRadiographyMobile: React.FC = () => {
         setNotFound(true);
       } finally {
         setLoading(false);
+        setIsRefreshing(false);
       }
     };
 
     fetchReport();
-  }, [serviceId]);
+  }, [serviceId, refreshKey]);
 
   const formatDate = (dateStr: string) => (!dateStr ? "-" : new Date(dateStr).toLocaleDateString("en-GB"));
   const todayDate = new Date().toLocaleDateString("en-GB");
@@ -432,34 +460,52 @@ const ViewServiceReportRadiographyMobile: React.FC = () => {
     border: "0.1px solid #666",
     textAlign: "center",
   };
+  useEmbeddedReportPdfAutoSave({
+    embedded,
+    autoSavePdfToken,
+    serviceId,
+    report,
+    loading,
+    isRefreshing,
+    reportContentId,
+    pdfFilenamePrefix,
+    saveReportPdf,
+    onPdfSaveComplete,
+  });
+
 
   const downloadPDF = async () => {
     try {
-      await generatePDF({
-        elementId: "report-content",
-        filename: `RadiographyMobile-Report-${report?.testReportNumber || "report"}.pdf`,
-        buttonSelector: ".download-pdf-btn",
+      if (!serviceId || !report) return;
+      await saveGeneratedReportPdfToDb({
+        serviceId,
+        reportContentId,
+        testReportNumber: report.testReportNumber,
+        pdfFilenamePrefix,
+        saveReportPdf,
       });
     } catch (error) {
       console.error("PDF Error:", error);
       alert("Failed to generate PDF. Please try again.");
     }
   };
-
-  if (loading) return <div className="min-h-screen flex items-center justify-center text-2xl font-semibold">Loading Radiography Mobile Report...</div>;
-
-  if (notFound || !report) {
+  if (!embedded) {
+    if (loading) return <div className="min-h-screen flex items-center justify-center text-2xl font-semibold">Loading Radiography Mobile Report...</div>;
+    if (notFound || !report) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="bg-white p-10 rounded-lg shadow-xl text-center">
-          <h2 className="text-2xl font-bold text-red-600 mb-4">Report Not Found</h2>
-          <p>Please generate and save the report header first.</p>
-          <button onClick={() => window.history.back()} className="mt-6 px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-            Go Back
-          </button>
-        </div>
-      </div>
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+    <div className="bg-white p-10 rounded-lg shadow-xl text-center">
+    <h2 className="text-2xl font-bold text-red-600 mb-4">Report Not Found</h2>
+    <p>Please generate and save the report header first.</p>
+    <button onClick={() => window.history.back()} className="mt-6 px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+    Go Back
+    </button>
+    </div>
+    </div>
     );
+    }
+  } else if (!report || isRefreshing) {
+    return null;
   }
 
   const toolsArray = report.toolsUsed || [];
@@ -468,7 +514,9 @@ const ViewServiceReportRadiographyMobile: React.FC = () => {
   return (
     <>
       {/* Floating Buttons */}
-      <div className="fixed bottom-8 right-8 print:hidden z-50 flex flex-col gap-4">
+      {!embedded && (
+
+        <div className="fixed bottom-8 right-8 print:hidden z-50 flex flex-col gap-4">
         {/* <button onClick={() => window.print()} className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xl py-5 px-12 rounded-xl shadow-2xl">
           Print
         </button> */}
@@ -476,8 +524,9 @@ const ViewServiceReportRadiographyMobile: React.FC = () => {
           Download PDF
         </button>
       </div>
+      )}
 
-      <div id="report-content" className="fixed-report-pdf">
+      <div id={reportContentId} className="fixed-report-pdf">
         {/* PAGE 1 - MAIN REPORT */}
         <ReportPage>
           <div className="report-pdf-main" style={{ width: "100%" }}>

@@ -485,7 +485,7 @@ const ViewQuotation: React.FC = () => {
         {
             key: "amount",
             label: "TOTAL",
-            class: "ltr:text-right rtl:text-left",
+            class: "ltr:text-right rtl:text-left whitespace-nowrap w-[18%] min-w-[6.5rem]",
         },
     ]
     const bcolumns = [
@@ -661,7 +661,7 @@ const ViewQuotation: React.FC = () => {
                                                         <td className="px-0.5 py-0 text-[.6rem] border border-black" style={{ lineHeight: "0.6rem" }}>{item.title}</td>
                                                         <td className="px-0.5 py-0 text-[.6rem] border border-black" style={{ lineHeight: "0.6rem" }}>{item.description}</td>
                                                         <td className="px-0.5 py-0 text-[.6rem] text-right border border-black" style={{ lineHeight: "0.6rem" }}>{item.quantity}</td>
-                                                        <td className="px-0.5 py-0 text-[.6rem] text-right border border-black" style={{ lineHeight: "0.6rem" }}>₹ {item.amount}</td>
+                                                        <td className="px-1 py-0 text-[.6rem] text-right border border-black whitespace-nowrap w-[18%] min-w-[6.5rem]" style={{ lineHeight: "0.6rem" }}>₹ {item.amount}</td>
                                                     </tr>
                                                 ))}
                                             </tbody>

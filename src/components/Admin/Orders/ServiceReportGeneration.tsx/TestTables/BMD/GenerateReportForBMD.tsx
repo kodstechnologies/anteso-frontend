@@ -7,12 +7,15 @@ import toast from "react-hot-toast";
 import AuthorizedSignatorySelect from "../../AuthorizedSignatorySelect";
 import * as XLSX from "xlsx";
 
+import { useReportPdfSaveOnHeader } from "../shared/useReportPdfSaveOnHeader";
+import ReportPdfCaptureHost from "../shared/ReportPdfCaptureHost";
+import ViewServiceReportBMD from "./ViewServiceReport";
 import Standards from "../../Standards";
 import Notes from "../../Notes";
 
 import {
     getDetails,
-    getTools,
+    getAssignedToolsForEngineerByMachine,
     saveReportHeaderForBMD,
     getReportHeaderForBMD,
     getAccuracyOfIrradiationTimeByServiceIdForBMD,
@@ -23,7 +26,7 @@ import {
     getRadiationLeakageLevelByServiceIdForBMD,
     getRadiationProtectionSurveyByServiceIdForBmd,
     proxyFile,
-} from "../../../../../../api";
+    saveReportPdfForBMD } from "../../../../../../api";
 import { createBMDSavedExcel, BMDSavedExportData } from "./exportBMDSavedToExcel";
 import { TestExportRegistryProvider, useTestExportRegistry } from "../shared/TestExportRegistry";
 import { isExcelFileUrl, resolvePrefillSpreadsheetUrls } from "../../../../../../utils/spreadsheetFile";
@@ -131,6 +134,16 @@ const mapTotalFiltrationPageToAccuracyOp = (tf: any) => {
   };
 };
 
+const isToolUnexpired = (validTillRaw: string): boolean => {
+  if (!validTillRaw) return false;
+  const parsed = new Date(validTillRaw);
+  if (Number.isNaN(parsed.getTime())) return false;
+  const today = new Date();
+  const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const validTillDate = new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
+  return validTillDate >= todayStart;
+};
+
 const GenerateReportForBMDContent: React.FC<BMDProps> = ({ serviceId, csvFileUrl, csvFileUrls, qaTestDate }) => {
   const exportRegistry = useTestExportRegistry();
   const navigate = useNavigate();
@@ -140,6 +153,7 @@ const GenerateReportForBMDContent: React.FC<BMDProps> = ({ serviceId, csvFileUrl
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const pdfSave = useReportPdfSaveOnHeader();
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [csvUploading, setCsvUploading] = useState(false);
@@ -1393,10 +1407,12 @@ const GenerateReportForBMDContent: React.FC<BMDProps> = ({ serviceId, csvFileUrl
     const fetchAll = async () => {
       try {
         setLoading(true);
-        const [detRes, toolRes] = await Promise.all([
-          getDetails(serviceId),
-          getTools(serviceId),
-        ]);
+        const detRes = await getDetails(serviceId);
+        const engineerId = detRes.data?.engineerAssigned?._id || detRes.data?.engineerAssigned;
+        const machineType = detRes.data?.machineType;
+        const toolRes = engineerId && machineType
+          ? await getAssignedToolsForEngineerByMachine(engineerId, machineType)
+          : null;
 
         const data = detRes.data;
         const firstTest = data.qaTests[0];
@@ -1443,9 +1459,9 @@ const GenerateReportForBMDContent: React.FC<BMDProps> = ({ serviceId, csvFileUrl
           authorizedSignatory: "",
         });
 
-        const mapped: Standard[] = toolRes.data.toolsAssigned.map(
-          (t: any, idx: number) => ({
-            slNumber: String(idx + 1),
+        const assignedTools = toolRes?.data?.toolsAssigned || toolRes?.toolsAssigned || [];
+        const mapped: Standard[] = assignedTools
+          .map((t: any) => ({
             nomenclature: t.nomenclature,
             make: t.manufacturer || t.make,
             model: t.model,
@@ -1453,10 +1469,14 @@ const GenerateReportForBMDContent: React.FC<BMDProps> = ({ serviceId, csvFileUrl
             range: t.range,
             certificate: t.certificate ?? "",
             calibrationCertificateNo: t.calibrationCertificateNo,
-            calibrationValidTill: t.calibrationValidTill.split("T")[0],
+            calibrationValidTill: (t.calibrationValidTill || "").split("T")[0],
             uncertainity: "",
-          })
-        );
+          }))
+          .filter((t: any) => isToolUnexpired(t.calibrationValidTill))
+          .map((t: any, idx: number) => ({
+            ...t,
+            slNumber: String(idx + 1),
+          }));
         setTools(mapped);
       } catch (err: any) {
         console.error(err);
@@ -1654,6 +1674,8 @@ const GenerateReportForBMDContent: React.FC<BMDProps> = ({ serviceId, csvFileUrl
       };
 
       await saveReportHeaderForBMD(serviceId, payload);
+      await pdfSave.saveReportPdfAfterHeader();
+      toast.success("Report header saved successfully");
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 4000);
     } catch (err: any) {
@@ -1877,6 +1899,18 @@ const GenerateReportForBMDContent: React.FC<BMDProps> = ({ serviceId, csvFileUrl
 
   return (
     <div className="max-w-6xl mx-auto bg-white shadow-md rounded-xl p-8 mt-6">
+
+      <ReportPdfCaptureHost
+        active={pdfSave.pdfCaptureActive}
+        serviceId={serviceId}
+        refreshKey={pdfSave.reportPreviewRefreshKey}
+        autoSavePdfToken={pdfSave.autoSavePdfToken}
+        onReportLoaded={pdfSave.onReportLoaded}
+        onPdfSaveComplete={pdfSave.onPdfSaveComplete}
+        ViewComponent={ViewServiceReportBMD}
+        saveReportPdf={saveReportPdfForBMD}
+        pdfFilenamePrefix="BMD"
+      />
       <h1 className="text-3xl font-bold text-center text-gray-800 mb-8">
         Generate QA Test Report - BMD/DEXA
       </h1>

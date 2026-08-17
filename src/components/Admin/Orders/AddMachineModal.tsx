@@ -42,7 +42,7 @@ const STANDARD_MACHINE_TYPES = [
 const MACHINE_TYPES = [...STANDARD_MACHINE_TYPES, "Others"];
 
 const WORK_TYPES = [
-    { value: "Quality Assurance Test", label: "Quality Assurance Test (QA Raw + QA Test)" },
+    { value: "Quality Assurance Test", label: "Quality Assurance Test" },
     { value: "License for Operation", label: "License for Operation" },
     { value: "Decommissioning", label: "Decommissioning" },
     { value: "Decommissioning and Recommissioning", label: "Decommissioning and Recommissioning" },

@@ -5,14 +5,17 @@ import toast from "react-hot-toast";
 import AuthorizedSignatorySelect from "../../AuthorizedSignatorySelect";
 import { Disclosure } from "@headlessui/react";
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
-import { getRadiationProfileWidthByServiceId, saveReportHeaderForOPG, getReportHeaderForOPG, getAccuracyOfOperatingPotentialByServiceIdForOPG, getAccuracyOfIrradiationTimeByServiceIdForOPG, getLinearityOfMaLoadingByServiceIdForOPG, getConsistencyOfRadiationOutputByServiceIdForOPG, getRadiationLeakageLevelByServiceIdForOPG, getRadiationProtectionSurveyByServiceIdForOPG, getDetails, getTools, proxyFile,
+import { getRadiationProfileWidthByServiceId, saveReportHeaderForOPG, getReportHeaderForOPG, getAccuracyOfOperatingPotentialByServiceIdForOPG, getAccuracyOfIrradiationTimeByServiceIdForOPG, getLinearityOfMaLoadingByServiceIdForOPG, getConsistencyOfRadiationOutputByServiceIdForOPG, getRadiationLeakageLevelByServiceIdForOPG, getRadiationProtectionSurveyByServiceIdForOPG, getDetails, getAssignedToolsForEngineerByMachine, proxyFile,
   saveTimerPreference,
-} from "../../../../../../api";
+    saveReportPdfForOPG } from "../../../../../../api";
 import * as XLSX from 'xlsx';
 import { createOPGUploadableExcel } from './exportOPGToExcel';
 import { isExcelFileUrl, resolvePrefillSpreadsheetUrls } from '../../../../../../utils/spreadsheetFile';
 import { TestExportRegistryProvider, useTestExportRegistry } from "../shared/TestExportRegistry";
 
+import { useReportPdfSaveOnHeader } from "../shared/useReportPdfSaveOnHeader";
+import ReportPdfCaptureHost from "../shared/ReportPdfCaptureHost";
+import ViewServiceReportOPG from "./ViewServiceReport";
 import Standards from "../../Standards";
 import Notes from "../../Notes";
 
@@ -50,12 +53,23 @@ interface DetailsResponse {
     qaTests: Array<{ createdAt: string; qaTestReportNumber: string }>;
 }
 
+const isToolUnexpired = (validTillRaw: string): boolean => {
+    if (!validTillRaw) return false;
+    const parsed = new Date(validTillRaw);
+    if (Number.isNaN(parsed.getTime())) return false;
+    const today = new Date();
+    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const validTillDate = new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
+    return validTillDate >= todayStart;
+};
+
 const OPGContent: React.FC<{ serviceId: string; qaTestDate?: string | null; csvFileUrl?: string | null; csvFileUrls?: string[] }> = ({ serviceId, qaTestDate, csvFileUrl, csvFileUrls }) => {
     const navigate = useNavigate();
     const exportRegistry = useTestExportRegistry();
 
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+  const pdfSave = useReportPdfSaveOnHeader();
     const [saveSuccess, setSaveSuccess] = useState(false);
     const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -263,10 +277,12 @@ const OPGContent: React.FC<{ serviceId: string; qaTestDate?: string | null; csvF
 
             try {
                 setLoading(true);
-                const [detailsRes, toolsRes] = await Promise.all([
-                    getDetails(serviceId),
-                    getTools(serviceId),
-                ]);
+                const detailsRes = await getDetails(serviceId);
+                const engineerId = detailsRes.data?.engineerAssigned?._id || detailsRes.data?.engineerAssigned;
+                const machineType = detailsRes.data?.machineType;
+                const toolsRes = engineerId && machineType
+                    ? await getAssignedToolsForEngineerByMachine(engineerId, machineType)
+                    : null;
 
                 const data = detailsRes.data;
                 const firstTest = data.qaTests[0];
@@ -306,9 +322,9 @@ const OPGContent: React.FC<{ serviceId: string; qaTestDate?: string | null; csvF
                     authorizedSignatory: "",
                 });
 
-                // Map tools
-                const mappedTools: Standard[] = toolsRes.data.toolsAssigned.map((t: any, i: number) => ({
-                    slNumber: String(i + 1),
+                const assignedTools = toolsRes?.data?.toolsAssigned || toolsRes?.toolsAssigned || [];
+                const mappedTools: Standard[] = assignedTools
+                    .map((t: any) => ({
                     nomenclature: t.nomenclature,
                     make: t.manufacturer || t.make,
                     model: t.model,
@@ -316,9 +332,14 @@ const OPGContent: React.FC<{ serviceId: string; qaTestDate?: string | null; csvF
                     range: t.range,
                     certificate: t.certificate || null,
                     calibrationCertificateNo: t.calibrationCertificateNo,
-                    calibrationValidTill: t.calibrationValidTill.split("T")[0],
-                    // uncertainity: "",
-                }));
+                    calibrationValidTill: (t.calibrationValidTill || "").split("T")[0],
+                    uncertainity: "",
+                    }))
+                    .filter((t: any) => isToolUnexpired(t.calibrationValidTill))
+                    .map((t: any, i: number) => ({
+                        ...t,
+                        slNumber: String(i + 1),
+                    }));
 
                 setTools(mappedTools);
             } catch (err: any) {
@@ -442,6 +463,8 @@ const OPGContent: React.FC<{ serviceId: string; qaTestDate?: string | null; csvF
             };
 
             await saveReportHeaderForOPG(serviceId, payload);
+      await pdfSave.saveReportPdfAfterHeader();
+      toast.success("Report header saved successfully");
             setSaveSuccess(true);
             setTimeout(() => setSaveSuccess(false), 4000);
         } catch (err: any) {
@@ -803,6 +826,18 @@ const OPGContent: React.FC<{ serviceId: string; qaTestDate?: string | null; csvF
 
     return (
         <div className="max-w-7xl mx-auto bg-white shadow-lg rounded-xl p-8 mt-8">
+
+      <ReportPdfCaptureHost
+        active={pdfSave.pdfCaptureActive}
+        serviceId={serviceId}
+        refreshKey={pdfSave.reportPreviewRefreshKey}
+        autoSavePdfToken={pdfSave.autoSavePdfToken}
+        onReportLoaded={pdfSave.onReportLoaded}
+        onPdfSaveComplete={pdfSave.onPdfSaveComplete}
+        ViewComponent={ViewServiceReportOPG}
+        saveReportPdf={saveReportPdfForOPG}
+        pdfFilenamePrefix="OPG"
+      />
             <h1 className="text-3xl font-bold text-center text-gray-800 mb-8">
                 Generate OPG QA Test Report
             </h1>

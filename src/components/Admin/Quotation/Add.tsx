@@ -388,7 +388,7 @@ const AddQuotation: React.FC = () => {
     const [quotationNumber, setQuotationNumber] = useState("QUO001")
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [dealers, setDealers] = useState<any[]>([])   // store dealers here
-    const [isDiscountApplied, setIsDiscountApplied] = useState(true);
+    const [isDiscountApplied, setIsDiscountApplied] = useState(false);
     const [modalOpen, setModalOpen] = useState(false);
     const [modalMessage, setModalMessage] = useState("");
     const [manufacturers, setManufacturers] = useState<any[]>([]) // NEW

@@ -24,13 +24,16 @@ import {
     getRadiationProtectionSurveyByServiceIdForCTScan,
     getTablePositionByServiceIdForCTScan,
     getGantryTiltByServiceIdForCTScan,
-} from "../../../../../../api";
-import { getDetails, getTools } from "../../../../../../api";
+    saveReportPdfForCTScan } from "../../../../../../api";
+import { getDetails, getAssignedToolsForEngineerByMachine } from "../../../../../../api";
 import { createCTScanUploadableExcel, CTScanExportData } from "./exportCTScanToExcel";
 import { isExcelFileUrl, resolvePrefillSpreadsheetUrls } from "../../../../../../utils/spreadsheetFile";
 import { normalizeCsvComparisonOperator } from "../shared/parseRadiographyStyleTableFormat";
 import { TestExportRegistryProvider, useTestExportRegistry } from "../shared/TestExportRegistry";
 
+import { useReportPdfSaveOnHeader } from "../shared/useReportPdfSaveOnHeader";
+import ReportPdfCaptureHost from "../shared/ReportPdfCaptureHost";
+import ViewServiceReportCTScan from "./ViewServiceReport";
 import Standards from "../../Standards";
 import Notes from "../../Notes";
 
@@ -71,7 +74,7 @@ interface DetailsResponse {
     machineType: string;
     machineModel: string;
     serialNumber: string;
-    engineerAssigned: { name: string };
+    engineerAssigned: { name: string; _id?: string };
     qaTests: Array<{ createdAt: string; qaTestReportNumber: string }>;
 }
 
@@ -80,9 +83,19 @@ type CTScanReportProps = { serviceId: string; qaTestDate?: string | null; create
 const CTScanReportContent: React.FC<CTScanReportProps> = ({ serviceId, qaTestDate, createdAt, csvFileUrl, csvFileUrls }) => {
     const exportRegistry = useTestExportRegistry();
     const navigate = useNavigate();
+    const isToolUnexpired = (validTillRaw: string): boolean => {
+        if (!validTillRaw) return false;
+        const parsed = new Date(validTillRaw);
+        if (Number.isNaN(parsed.getTime())) return false;
+        const today = new Date();
+        const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+        const validTillDate = new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
+        return validTillDate >= todayStart;
+    };
 
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+  const pdfSave = useReportPdfSaveOnHeader();
     const [saveSuccess, setSaveSuccess] = useState(false);
     const [saveError, setSaveError] = useState<string | null>(null);
     const [csvUploading, setCsvUploading] = useState(false);
@@ -161,12 +174,14 @@ const CTScanReportContent: React.FC<CTScanReportProps> = ({ serviceId, qaTestDat
 
             try {
                 setLoading(true);
-                const [detailsRes, toolsRes] = await Promise.all([
-                    getDetails(serviceId),
-                    getTools(serviceId),
-                ]);
+                const detailsRes = await getDetails(serviceId);
 
                 const data = detailsRes.data;
+                const engineerId = data.engineerAssigned?._id || data.engineerAssigned;
+                const machineType = data.machineType;
+                const toolsRes = engineerId && machineType
+                    ? await getAssignedToolsForEngineerByMachine(engineerId, machineType)
+                    : null;
                 const firstTest = data.qaTests[0];
 
                 setDetails(data);
@@ -205,19 +220,24 @@ const CTScanReportContent: React.FC<CTScanReportProps> = ({ serviceId, qaTestDat
                     authorizedSignatory: "",
                 });
 
-                // Map tools
-                const mappedTools: Standard[] = toolsRes.data.toolsAssigned.map((t: any, i: number) => ({
-                    slNumber: String(i + 1),
-                    nomenclature: t.nomenclature,
-                    make: t.manufacturer || t.make,
-                    model: t.model,
-                    SrNo: t.SrNo,
-                    range: t.range,
-                    certificate: t.certificate || null,
-                    calibrationCertificateNo: t.calibrationCertificateNo,
-                    calibrationValidTill: t.calibrationValidTill.split("T")[0],
-                    // uncertainity: "",
-                }));
+                const assignedTools = toolsRes?.data?.toolsAssigned || toolsRes?.toolsAssigned || [];
+                const mappedTools: Standard[] = assignedTools
+                    .map((t: any) => ({
+                        nomenclature: t.nomenclature,
+                        make: t.manufacturer || t.make,
+                        model: t.model,
+                        SrNo: t.SrNo,
+                        range: t.range,
+                        certificate: t.certificate || null,
+                        calibrationCertificateNo: t.calibrationCertificateNo,
+                        calibrationValidTill: (t.calibrationValidTill || "").split("T")[0],
+                        uncertainity: "",
+                    }))
+                    .filter((t: any) => isToolUnexpired(t.calibrationValidTill))
+                    .map((t: any, i: number) => ({
+                        ...t,
+                        slNumber: String(i + 1),
+                    }));
 
                 setTools(mappedTools);
             } catch (err: any) {
@@ -356,6 +376,8 @@ const CTScanReportContent: React.FC<CTScanReportProps> = ({ serviceId, qaTestDat
 
             const headerTubeId = tubeType === "double" ? "A" : null;
             await saveReportHeaderForCTScan(serviceId, payload, headerTubeId);
+      await pdfSave.saveReportPdfAfterHeader();
+      toast.success("Report header saved successfully");
             setSaveSuccess(true);
             setTimeout(() => setSaveSuccess(false), 4000);
         } catch (err: any) {
@@ -1389,6 +1411,18 @@ const CTScanReportContent: React.FC<CTScanReportProps> = ({ serviceId, qaTestDat
 
     return (
         <div className="max-w-7xl mx-auto bg-white shadow-lg rounded-xl p-8 mt-8">
+
+      <ReportPdfCaptureHost
+        active={pdfSave.pdfCaptureActive}
+        serviceId={serviceId}
+        refreshKey={pdfSave.reportPreviewRefreshKey}
+        autoSavePdfToken={pdfSave.autoSavePdfToken}
+        onReportLoaded={pdfSave.onReportLoaded}
+        onPdfSaveComplete={pdfSave.onPdfSaveComplete}
+        ViewComponent={ViewServiceReportCTScan}
+        saveReportPdf={saveReportPdfForCTScan}
+        pdfFilenamePrefix="CTScan"
+      />
             <h1 className="text-3xl font-bold text-center text-gray-800 mb-8">
                 Generate CT-Scan QA Test Report
             </h1>

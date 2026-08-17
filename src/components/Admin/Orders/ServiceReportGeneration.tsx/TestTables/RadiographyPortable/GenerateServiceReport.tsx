@@ -21,7 +21,7 @@ import {
   getConsistencyOfRadiationOutputByServiceIdForRadiographyPortable,
   getRadiationLeakageLevelByServiceIdForRadiographyPortable,
   saveTimerPreference,
-} from "../../../../../../api";
+    saveReportPdfForRadiographyPortable } from "../../../../../../api";
 import { createRadiographyPortableUploadableExcel, RadiographyPortableExportData } from "./exportRadiographyPortableToExcel";
 import { TestExportRegistryProvider, useTestExportRegistry } from "../shared/TestExportRegistry";
 import {
@@ -32,6 +32,9 @@ import {
 } from "./parsePortableTableFormat";
 import { isExcelFileUrl, resolvePrefillSpreadsheetUrls } from "../../../../../../utils/spreadsheetFile";
 
+import { useReportPdfSaveOnHeader } from "../shared/useReportPdfSaveOnHeader";
+import ReportPdfCaptureHost from "../shared/ReportPdfCaptureHost";
+import ViewServiceReportRadiographyPortable from "./ViewServiceReport";
 import Standards from "../../Standards";
 import Notes from "../../Notes";
 
@@ -79,6 +82,7 @@ const RadiographyPortableContent: React.FC<RadiographyPortableProps> = ({ servic
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const pdfSave = useReportPdfSaveOnHeader();
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [csvUploading, setCsvUploading] = useState(false);
@@ -377,6 +381,8 @@ const RadiographyPortableContent: React.FC<RadiographyPortableProps> = ({ servic
       };
 
       await saveReportHeaderForRadiographyPortable(serviceId, payload);
+      await pdfSave.saveReportPdfAfterHeader();
+      toast.success("Report header saved successfully");
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 4000);
     } catch (err: any) {
@@ -1337,6 +1343,18 @@ const RadiographyPortableContent: React.FC<RadiographyPortableProps> = ({ servic
 
   return (
     <div className="max-w-7xl mx-auto bg-white shadow-lg rounded-xl p-8 mt-8">
+
+      <ReportPdfCaptureHost
+        active={pdfSave.pdfCaptureActive}
+        serviceId={serviceId}
+        refreshKey={pdfSave.reportPreviewRefreshKey}
+        autoSavePdfToken={pdfSave.autoSavePdfToken}
+        onReportLoaded={pdfSave.onReportLoaded}
+        onPdfSaveComplete={pdfSave.onPdfSaveComplete}
+        ViewComponent={ViewServiceReportRadiographyPortable}
+        saveReportPdf={saveReportPdfForRadiographyPortable}
+        pdfFilenamePrefix="RadiographyPortable"
+      />
       <h1 className="text-3xl font-bold text-center text-gray-800 mb-8">
         Generate Radiography (Portable) QA Test Report
       </h1>

@@ -1,7 +1,7 @@
 // src/components/reports/ViewServiceReportCBCT.tsx
 import React, { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { getDetails, getReportHeaderForCBCT, getRadiationProtectionSurveyByServiceIdForCBCT, getTools } from "../../../../../../api";
+import { getDetails, getReportHeaderForCBCT, getRadiationProtectionSurveyByServiceIdForCBCT, getTools , saveReportPdfForCBCT } from "../../../../../../api";
 import { estimateReportPages, generatePDF } from "../../../../../../utils/generatePDF";
 import MainTestTableForDentalConeBeamCT from "./MainTestTableForDentalConeBeamCT";
 import { ReportPdfPageHeader, type ReportPdfPageHeaderData } from "../RadiographyFixed/component/Header";
@@ -112,13 +112,26 @@ const pickUlrFromQaTests = (qaTests: any): string => {
   return "";
 };
 
-const ViewServiceReportCBCT: React.FC = () => {
+interface ViewServiceReportCBCTProps extends EmbeddedViewReportPdfProps {}
+
+const ViewServiceReportCBCT: React.FC<ViewServiceReportCBCTProps> = ({
+  serviceIdProp,
+  embedded = false,
+  refreshKey = 0,
+  onReportLoaded,
+  autoSavePdfToken = 0,
+  onPdfSaveComplete,
+  saveReportPdf = saveReportPdfForCBCT,
+  pdfFilenamePrefix = "CBCT",
+}) => {
   const [searchParams] = useSearchParams();
-  const serviceId = searchParams.get("serviceId");
+  const serviceId = serviceIdProp || searchParams.get("serviceId");
+  const reportContentId = getEmbeddedReportContentId(embedded);
 
   const [loading, setLoading] = useState(true);
   const [report, setReport] = useState<ReportData | null>(null);
   const [notFound, setNotFound] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [testData, setTestData] = useState<any>({});
   const [totalPages, setTotalPages] = useState<number>(1);
 
@@ -131,7 +144,11 @@ const ViewServiceReportCBCT: React.FC = () => {
       }
 
       try {
-        setLoading(true);
+        if (!embedded || !report) {
+          setLoading(true);
+        } else if (embedded) {
+          setIsRefreshing(true);
+        }
         const [response, detailsRes, toolsRes] = await Promise.all([
           getReportHeaderForCBCT(serviceId),
           getDetails(serviceId).catch(() => null),
@@ -225,6 +242,10 @@ const ViewServiceReportCBCT: React.FC = () => {
             }
             return NaN;
           };
+
+
+          setNotFound(false);
+
 
           setReport({
             customerName: data.customerName || "N/A",
@@ -496,6 +517,7 @@ const ViewServiceReportCBCT: React.FC = () => {
               },
             }));
           }
+          onReportLoaded?.();
         } else {
           setNotFound(true);
         }
@@ -504,11 +526,12 @@ const ViewServiceReportCBCT: React.FC = () => {
         setNotFound(true);
       } finally {
         setLoading(false);
+        setIsRefreshing(false);
       }
     };
 
     fetchReport();
-  }, [serviceId]);
+  }, [serviceId, refreshKey]);
 
   const formatDate = (dateStr: string) => (!dateStr ? "-" : new Date(dateStr).toLocaleDateString("en-GB"));
 
@@ -519,34 +542,52 @@ const ViewServiceReportCBCT: React.FC = () => {
     }, 50);
     return () => clearTimeout(timer);
   }, [loading, report, notFound, testData]);
+  useEmbeddedReportPdfAutoSave({
+    embedded,
+    autoSavePdfToken,
+    serviceId,
+    report,
+    loading,
+    isRefreshing,
+    reportContentId,
+    pdfFilenamePrefix,
+    saveReportPdf,
+    onPdfSaveComplete,
+  });
+
 
   const downloadPDF = async () => {
     try {
-      await generatePDF({
-        elementId: "report-content",
-        filename: `CBCT-Report-${report?.testReportNumber || "report"}.pdf`,
-        buttonSelector: ".download-pdf-btn",
+      if (!serviceId || !report) return;
+      await saveGeneratedReportPdfToDb({
+        serviceId,
+        reportContentId,
+        testReportNumber: report.testReportNumber,
+        pdfFilenamePrefix,
+        saveReportPdf,
       });
     } catch (error) {
       console.error("PDF Error:", error);
       alert("Failed to generate PDF. Please try again.");
     }
   };
-
-  if (loading) return <div className="min-h-screen flex items-center justify-center text-2xl font-semibold">Loading CBCT Report...</div>;
-
-  if (notFound || !report) {
+  if (!embedded) {
+    if (loading) return <div className="min-h-screen flex items-center justify-center text-2xl font-semibold">Loading CBCT Report...</div>;
+    if (notFound || !report) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="bg-white p-10 rounded-lg shadow-xl text-center">
-          <h2 className="text-2xl font-bold text-red-600 mb-4">Report Not Found</h2>
-          <p>Please save the CBCT report header first.</p>
-          <button onClick={() => window.history.back()} className="mt-6 px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-            Go Back
-          </button>
-        </div>
-      </div>
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+    <div className="bg-white p-10 rounded-lg shadow-xl text-center">
+    <h2 className="text-2xl font-bold text-red-600 mb-4">Report Not Found</h2>
+    <p>Please save the CBCT report header first.</p>
+    <button onClick={() => window.history.back()} className="mt-6 px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+    Go Back
+    </button>
+    </div>
+    </div>
     );
+    }
+  } else if (!report || isRefreshing) {
+    return null;
   }
 
   const toolsArray = report.toolsUsed || [];
@@ -631,7 +672,9 @@ const ViewServiceReportCBCT: React.FC = () => {
   return (
     <>
       {/* Floating Buttons */}
-      <div className="fixed bottom-8 right-8 print:hidden z-50 flex flex-col gap-4">
+      {!embedded && (
+
+        <div className="fixed bottom-8 right-8 print:hidden z-50 flex flex-col gap-4">
         {/* <button onClick={() => window.print()} className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xl py-5 px-12 rounded-xl shadow-2xl">
           Print
         </button> */}
@@ -639,8 +682,9 @@ const ViewServiceReportCBCT: React.FC = () => {
           Download PDF
         </button>
       </div>
+      )}
 
-      <div id="report-content" className="fixed-report-pdf">
+      <div id={reportContentId} className="fixed-report-pdf">
         {/* PAGE 1 - MAIN REPORT */}
         <ReportPage>
           <h1 className="text-center font-bold underline mb-2" style={{ fontSize: "15px" }}>

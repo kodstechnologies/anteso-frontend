@@ -25,8 +25,8 @@ import {
     getRadiationProtectionSurveyByServiceIdForFixedRadioFluro,
     getExposureRateByServiceIdForFixedRadioFluro,
   saveTimerPreference,
-} from "../../../../../../api";
-import { getDetails, getTools } from "../../../../../../api";
+    saveReportPdfForFixedRadioFluro } from "../../../../../../api";
+import { getDetails, getAssignedToolsForEngineerByMachine } from "../../../../../../api";
 import { createFixedRadioFluroUploadableExcel, FixedRadioFluroExportData } from "./exportFixedRadioFluroToExcel";
 import { TestExportRegistryProvider, useTestExportRegistry } from "../shared/TestExportRegistry";
 import {
@@ -36,6 +36,9 @@ import {
 } from "./parseFixedRadioFluroTableFormat";
 import { isExcelFileUrl, resolvePrefillSpreadsheetUrls } from "../../../../../../utils/spreadsheetFile";
 
+import { useReportPdfSaveOnHeader } from "../shared/useReportPdfSaveOnHeader";
+import ReportPdfCaptureHost from "../shared/ReportPdfCaptureHost";
+import ViewServiceReportFixedRadioFluro from "./ViewServiceReport";
 import Standards from "../../Standards";
 import Notes from "../../Notes";
 
@@ -88,12 +91,23 @@ interface RadioFluroProps {
     createdAt?: string | null;
 }
 
+const isToolUnexpired = (validTillRaw: string): boolean => {
+    if (!validTillRaw) return false;
+    const parsed = new Date(validTillRaw);
+    if (Number.isNaN(parsed.getTime())) return false;
+    const today = new Date();
+    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const validTillDate = new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
+    return validTillDate >= todayStart;
+};
+
 const RadioFluroContent: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, csvFileUrls, qaTestDate, createdAt }) => {
     const exportRegistry = useTestExportRegistry();
     const navigate = useNavigate();
 
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+  const pdfSave = useReportPdfSaveOnHeader();
     const [saveSuccess, setSaveSuccess] = useState(false);
     const [saveError, setSaveError] = useState<string | null>(null);
     const [csvUploading, setCsvUploading] = useState(false);
@@ -170,10 +184,12 @@ const RadioFluroContent: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, c
 
             try {
                 setLoading(true);
-                const [detailsRes, toolsRes] = await Promise.all([
-                    getDetails(serviceId),
-                    getTools(serviceId),
-                ]);
+                const detailsRes = await getDetails(serviceId);
+                const engineerId = detailsRes.data?.engineerAssigned?._id || detailsRes.data?.engineerAssigned;
+                const machineType = detailsRes.data?.machineType;
+                const toolsRes = engineerId && machineType
+                    ? await getAssignedToolsForEngineerByMachine(engineerId, machineType)
+                    : null;
 
                 const data = detailsRes.data;
                 const firstTest = data.qaTests[0];
@@ -220,9 +236,9 @@ const RadioFluroContent: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, c
                     category: data.category || "",
                 });
 
-                // Map tools
-                const mappedTools: Standard[] = toolsRes.data.toolsAssigned.map((t: any, i: number) => ({
-                    slNumber: String(i + 1),
+                const assignedTools = toolsRes?.data?.toolsAssigned || toolsRes?.toolsAssigned || [];
+                const mappedTools: Standard[] = assignedTools
+                    .map((t: any) => ({
                     nomenclature: t.nomenclature,
                     make: t.manufacturer || t.make,
                     model: t.model,
@@ -230,9 +246,14 @@ const RadioFluroContent: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, c
                     range: t.range,
                     certificate: t.certificate || null,
                     calibrationCertificateNo: t.calibrationCertificateNo,
-                    calibrationValidTill: t.calibrationValidTill.split("T")[0],
+                    calibrationValidTill: (t.calibrationValidTill || "").split("T")[0],
                     uncertainity: "",
-                }));
+                    }))
+                    .filter((t: any) => isToolUnexpired(t.calibrationValidTill))
+                    .map((t: any, i: number) => ({
+                        ...t,
+                        slNumber: String(i + 1),
+                    }));
 
                 setTools(mappedTools);
 
@@ -1653,6 +1674,8 @@ const RadioFluroContent: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, c
             };
 
             await saveReportHeaderForFixedRadioFluro(serviceId, payload);
+      await pdfSave.saveReportPdfAfterHeader();
+      toast.success("Report header saved successfully");
             setSaveSuccess(true);
             setTimeout(() => setSaveSuccess(false), 4000);
         } catch (err: any) {
@@ -1795,6 +1818,18 @@ const RadioFluroContent: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, c
 
     return (
         <div className="max-w-7xl mx-auto bg-white shadow-lg rounded-xl p-8 mt-8">
+
+      <ReportPdfCaptureHost
+        active={pdfSave.pdfCaptureActive}
+        serviceId={serviceId}
+        refreshKey={pdfSave.reportPreviewRefreshKey}
+        autoSavePdfToken={pdfSave.autoSavePdfToken}
+        onReportLoaded={pdfSave.onReportLoaded}
+        onPdfSaveComplete={pdfSave.onPdfSaveComplete}
+        ViewComponent={ViewServiceReportFixedRadioFluro}
+        saveReportPdf={saveReportPdfForFixedRadioFluro}
+        pdfFilenamePrefix="FixedRadioFluro"
+      />
             <h1 className="text-3xl font-bold text-center text-gray-800 mb-8">
                 Generate Radiography and Fluoroscopy QA Test Report
             </h1>

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { DataTable, type DataTableSortStatus } from 'mantine-datatable';
 import IconPlus from '../../components/Icon/IconPlus';
@@ -10,7 +10,7 @@ import IconRefresh from '../../components/Icon/IconRefresh';
 import Breadcrumb, { BreadcrumbItem } from '../../components/common/Breadcrumb';
 import { useDispatch } from 'react-redux';
 import { setPageTitle } from '../../store/themeConfigSlice';
-import { getAllOrders, deleteOrder, type OrderListFilters, type OrderFilterOptions } from '../../api';
+import { getAllOrders, getOrdersWeb, deleteOrder, type OrderListFilters, type OrderFilterOptions } from '../../api';
 import { showMessage } from '../../components/common/ShowMessage';
 import ConfirmModal from '../../components/common/ConfirmModal';
 import { formatCreatedAtDisplay, isInDateRange } from '../../utils/tableDateFilter';
@@ -97,6 +97,7 @@ const Orders = () => {
     const [loading, setLoading] = useState(false);
     const [exporting, setExporting] = useState<'pdf' | 'excel' | 'word' | null>(null);
     const [records, setRecords] = useState<Order[]>([]);
+    const [totalRecords, setTotalRecords] = useState(0);
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
     const [sortStatus, setSortStatus] = useState<DataTableSortStatus>({
@@ -110,11 +111,28 @@ const Orders = () => {
 
     const dispatch = useDispatch();
 
-    const fetchOrders = async (filters: OrderListFilters = {}) => {
+    const fetchOrders = async (overrides: Partial<OrderListFilters> = {}) => {
         try {
             setLoading(true);
-            const data = await getAllOrders(filters);
+            const filters: OrderListFilters = {
+                branchName,
+                city,
+                district,
+                emailAddress,
+                contactNumber,
+                leadOwner,
+                search,
+                dateFrom,
+                dateTo,
+                page,
+                limit: pageSize,
+                sortBy: String(sortStatus.columnAccessor || 'createdAt'),
+                sortDirection: sortStatus.direction,
+                ...overrides,
+            };
+            const data = await getOrdersWeb(filters);
             setRecords(data.orders || []);
+            setTotalRecords(data.totalRecords ?? data.orders?.length ?? 0);
             setFilterOptions(data.filters || emptyFilterOptions);
         } catch (error) {
             console.error('Failed to fetch orders:', error);
@@ -127,20 +145,11 @@ const Orders = () => {
     // ✅ Fetch Orders on Mount
     useEffect(() => {
         dispatch(setPageTitle('Orders'));
-        fetchOrders();
     }, [dispatch]);
+
     useEffect(() => {
-        const filters: OrderListFilters = {
-            branchName,
-            city,
-            district,
-            emailAddress,
-            contactNumber,
-            leadOwner,
-        };
-        fetchOrders(filters);
-        setPage(1);
-    }, [branchName, city, district, emailAddress, contactNumber, leadOwner]);
+        fetchOrders();
+    }, [branchName, city, district, emailAddress, contactNumber, leadOwner, search, dateFrom, dateTo, page, pageSize, sortStatus]);
 
     // ✅ Clear all filters
     const clearFilters = () => {
@@ -200,65 +209,10 @@ const Orders = () => {
         setOrderToDelete(null);
     };
 
-    // ✅ Filter records based on search
-    const filteredRecords = useMemo(() => {
-        const q = search.toLowerCase().trim();
-        return records.filter((item) => {
-            const matchesSearch =
-                !q ||
-                Object.values(item).some((val) => {
-                    if (val === null || val === undefined) return false;
-                    return String(val).toLowerCase().includes(q);
-                });
-            const matchesDate = isInDateRange(item.createdAt, dateFrom, dateTo);
-            return matchesSearch && matchesDate;
-        });
-    }, [records, search, dateFrom, dateTo]);
-
-    // ✅ Sort filtered records
-    const sortedRecords = useMemo(() => {
-        const data = [...filteredRecords];
-
-        if (sortStatus.columnAccessor) {
-            data.sort((a, b) => {
-                const aValue = a[sortStatus.columnAccessor];
-                const bValue = b[sortStatus.columnAccessor];
-
-                // 🔥 Special handling for dates
-                if (sortStatus.columnAccessor === 'createdAt') {
-                    const aDate = aValue ? new Date(aValue).getTime() : 0;
-                    const bDate = bValue ? new Date(bValue).getTime() : 0;
-
-                    return sortStatus.direction === 'asc'
-                        ? aDate - bDate
-                        : bDate - aDate;
-                }
-
-                // 🔹 Default string sorting
-                const aString = String(aValue ?? '').toLowerCase();
-                const bString = String(bValue ?? '').toLowerCase();
-
-                return sortStatus.direction === 'asc'
-                    ? aString.localeCompare(bString)
-                    : bString.localeCompare(aString);
-            });
-        }
-
-        return data;
-    }, [filteredRecords, sortStatus]);
-
-
-    // ✅ Get paginated records
-    const paginatedRecords = useMemo(() => {
-        const start = (page - 1) * pageSize;
-        const end = start + pageSize;
-        return sortedRecords.slice(start, end);
-    }, [sortedRecords, page, pageSize]);
-
-    // ✅ Reset to first page when search changes or pageSize changes
+    // ✅ Reset to first page when filters/search/sort change
     useEffect(() => {
         setPage(1);
-    }, [search, pageSize, dateFrom, dateTo]);
+    }, [branchName, city, district, emailAddress, contactNumber, leadOwner, search, dateFrom, dateTo, pageSize, sortStatus.columnAccessor, sortStatus.direction]);
 
     const breadcrumbItems: BreadcrumbItem[] = [
         { label: 'Dashboard', to: '/', icon: <IconHome /> },
@@ -278,19 +232,44 @@ const Orders = () => {
     };
 
     const handleExport = async (type: 'pdf' | 'excel' | 'word') => {
-        if (!sortedRecords.length) {
+        if (!totalRecords) {
             showMessage('No orders available to export for the applied filters', 'error');
             return;
         }
 
         try {
             setExporting(type);
+            const allData = await getAllOrders({
+                branchName,
+                city,
+                district,
+                emailAddress,
+                contactNumber,
+                leadOwner,
+            });
+            const q = search.toLowerCase().trim();
+            const exportRecords = (allData.orders || []).filter((item: Order) => {
+                const matchesSearch =
+                    !q ||
+                    Object.values(item).some((val) => {
+                        if (val === null || val === undefined) return false;
+                        return String(val).toLowerCase().includes(q);
+                    });
+                const matchesDate = isInDateRange(item.createdAt, dateFrom, dateTo);
+                return matchesSearch && matchesDate;
+            });
+
+            if (!exportRecords.length) {
+                showMessage('No orders available to export for the applied filters', 'error');
+                return;
+            }
+
             if (type === 'pdf') {
-                exportOrdersToPdf(sortedRecords, exportFilters);
+                exportOrdersToPdf(exportRecords, exportFilters);
             } else if (type === 'excel') {
-                exportOrdersToExcel(sortedRecords, exportFilters);
+                exportOrdersToExcel(exportRecords, exportFilters);
             } else {
-                await exportOrdersToWord(sortedRecords, exportFilters);
+                await exportOrdersToWord(exportRecords, exportFilters);
             }
             showMessage(`Orders exported as ${type.toUpperCase()} successfully`, 'success');
         } catch (error) {
@@ -321,7 +300,7 @@ const Orders = () => {
                                     type="button"
                                     onClick={() => handleExport('pdf')}
                                     className="btn btn-outline-primary h-[38px]"
-                                    disabled={loading || exporting !== null || sortedRecords.length === 0}
+                                    disabled={loading || exporting !== null || totalRecords === 0}
                                 >
                                     {exporting === 'pdf' ? 'Exporting PDF...' : 'Export PDF'}
                                 </button>
@@ -329,7 +308,7 @@ const Orders = () => {
                                     type="button"
                                     onClick={() => handleExport('excel')}
                                     className="btn btn-outline-success h-[38px]"
-                                    disabled={loading || exporting !== null || sortedRecords.length === 0}
+                                    disabled={loading || exporting !== null || totalRecords === 0}
                                 >
                                     {exporting === 'excel' ? 'Exporting Excel...' : 'Export Excel'}
                                 </button>
@@ -337,7 +316,7 @@ const Orders = () => {
                                     type="button"
                                     onClick={() => handleExport('word')}
                                     className="btn btn-outline-info h-[38px]"
-                                    disabled={loading || exporting !== null || sortedRecords.length === 0}
+                                    disabled={loading || exporting !== null || totalRecords === 0}
                                 >
                                     {exporting === 'word' ? 'Exporting Word...' : 'Export Word'}
                                 </button>
@@ -349,7 +328,7 @@ const Orders = () => {
                                 <div>
                                     <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200">Filter Orders</h3>
                                     <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                                        {sortedRecords.length} record(s) match the current filters
+                                        {totalRecords} record(s) match the current filters
                                     </p>
                                 </div>
                             </div>
@@ -447,7 +426,7 @@ const Orders = () => {
                     <div className="bg-white/60 dark:bg-white/10 backdrop-blur-md border border-gray-200 dark:border-white/10 rounded-xl shadow-md overflow-auto">
                         <DataTable
                             className="whitespace-nowrap table-hover"
-                            records={paginatedRecords}
+                            records={records}
                             fetching={loading}
                             columns={[
                                 {
@@ -514,7 +493,7 @@ const Orders = () => {
                                 },
                             ]}
                             highlightOnHover
-                            totalRecords={filteredRecords.length}
+                            totalRecords={totalRecords}
                             recordsPerPage={pageSize}
                             page={page}
                             onPageChange={setPage}

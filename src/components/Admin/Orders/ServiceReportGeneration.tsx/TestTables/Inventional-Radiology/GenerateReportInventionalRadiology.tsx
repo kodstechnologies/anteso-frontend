@@ -8,12 +8,15 @@ import AuthorizedSignatorySelect from "../../AuthorizedSignatorySelect";
 import * as XLSX from "xlsx";
 import { normalizeCsvComparisonOperator } from "../shared/parseRadiographyStyleTableFormat";
 
+import { useReportPdfSaveOnHeader } from "../shared/useReportPdfSaveOnHeader";
+import ReportPdfCaptureHost from "../shared/ReportPdfCaptureHost";
+import ViewServiceReport from "./ViewServiceReport";
 import Standards from "../../Standards";
 import Notes from "../../Notes";
 
 import {
   getDetails,
-  getTools,
+  getAssignedToolsForEngineerByMachine,
   saveReportHeaderForInventionalRadiology,
   getReportHeaderForInventionalRadiology,
   proxyFile,
@@ -30,7 +33,7 @@ import {
   getTubeHousingLeakageByServiceIdForInventionalRadiology,
   getRadiationProtectionSurveyByServiceIdForInventionalRadiology,
   getMeasurementOfMaLinearityByServiceIdForInventionalRadiology,
-} from "../../../../../../api";
+    saveReportPdfForInventionalRadiology } from "../../../../../../api";
 
 // Test-table imports
 import AccuracyOfIrradiationTime from "./AccuracyOfIrradiationTime";
@@ -106,6 +109,16 @@ interface InventionalRadiologyProps {
   csvFileUrls?: string[];
 }
 
+const isToolUnexpired = (validTillRaw: string): boolean => {
+  if (!validTillRaw) return false;
+  const parsed = new Date(validTillRaw);
+  if (Number.isNaN(parsed.getTime())) return false;
+  const today = new Date();
+  const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const validTillDate = new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
+  return validTillDate >= todayStart;
+};
+
 const InventionalRadiologyContent: React.FC<InventionalRadiologyProps> = ({ serviceId, qaTestDate, csvFileUrl: csvFileUrlProp, csvFileUrls: csvFileUrlsProp }) => {
   const exportRegistry = useTestExportRegistry();
   const navigate = useNavigate();
@@ -131,6 +144,7 @@ const InventionalRadiologyContent: React.FC<InventionalRadiologyProps> = ({ serv
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const pdfSave = useReportPdfSaveOnHeader();
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [showTubeModal, setShowTubeModal] = useState(true); // Show tube selection modal first
@@ -1134,10 +1148,12 @@ const InventionalRadiologyContent: React.FC<InventionalRadiologyProps> = ({ serv
     const fetchAll = async () => {
       try {
         setLoading(true);
-        const [detRes, toolRes] = await Promise.all([
-          getDetails(serviceId),
-          getTools(serviceId),
-        ]);
+        const detRes = await getDetails(serviceId);
+        const engineerId = detRes.data?.engineerAssigned?._id || detRes.data?.engineerAssigned;
+        const machineType = detRes.data?.machineType;
+        const toolRes = engineerId && machineType
+          ? await getAssignedToolsForEngineerByMachine(engineerId, machineType)
+          : null;
 
         const data = detRes.data;
         const firstTest = data.qaTests?.[0];
@@ -1180,9 +1196,9 @@ const InventionalRadiologyContent: React.FC<InventionalRadiologyProps> = ({ serv
           authorizedSignatory: "",
         });
 
-        const mapped: Standard[] = toolRes.data.toolsAssigned.map(
-          (t: any, idx: number) => ({
-            slNumber: String(idx + 1),
+        const assignedTools = toolRes?.data?.toolsAssigned || toolRes?.toolsAssigned || [];
+        const mapped: Standard[] = assignedTools
+          .map((t: any) => ({
             nomenclature: t.nomenclature,
             make: t.manufacturer,
             model: t.model,
@@ -1190,12 +1206,16 @@ const InventionalRadiologyContent: React.FC<InventionalRadiologyProps> = ({ serv
             range: t.range,
             certificate: t.certificate ?? "",
             calibrationCertificateNo: t.calibrationCertificateNo,
-            calibrationValidTill: t.calibrationValidTill.split("T")[0],
+            calibrationValidTill: (t.calibrationValidTill || "").split("T")[0],
             uncertainity: "",
-          })
-        );
+          }))
+          .filter((t: any) => isToolUnexpired(t.calibrationValidTill))
+          .map((t: any, idx: number) => ({
+            ...t,
+            slNumber: String(idx + 1),
+          }));
         setTools(mapped);
-        setOriginalTools(toolRes.data.toolsAssigned || []);
+        setOriginalTools(assignedTools);
 
         // Load existing report header data if available
         try {
@@ -1446,6 +1466,8 @@ const InventionalRadiologyContent: React.FC<InventionalRadiologyProps> = ({ serv
 
       const headerTubeId = tubeType === "double" ? "frontal" : null;
       await saveReportHeaderForInventionalRadiology(serviceId, payload, headerTubeId);
+      await pdfSave.saveReportPdfAfterHeader();
+      toast.success("Report header saved successfully");
       setSaveSuccess(true);
       toast.success("Report header saved successfully!");
       setTimeout(() => setSaveSuccess(false), 4000);
@@ -1533,6 +1555,18 @@ const InventionalRadiologyContent: React.FC<InventionalRadiologyProps> = ({ serv
 
   return (
     <div className="max-w-6xl mx-auto bg-white shadow-md rounded-xl p-8 mt-6">
+
+      <ReportPdfCaptureHost
+        active={pdfSave.pdfCaptureActive}
+        serviceId={serviceId}
+        refreshKey={pdfSave.reportPreviewRefreshKey}
+        autoSavePdfToken={pdfSave.autoSavePdfToken}
+        onReportLoaded={pdfSave.onReportLoaded}
+        onPdfSaveComplete={pdfSave.onPdfSaveComplete}
+        ViewComponent={ViewServiceReport}
+        saveReportPdf={saveReportPdfForInventionalRadiology}
+        pdfFilenamePrefix="InventionalRadiology"
+      />
       <h1 className="text-2xl font-bold text-gray-800 mb-6 text-center">
         Generate QA Test Report - Interventional Radiology
       </h1>

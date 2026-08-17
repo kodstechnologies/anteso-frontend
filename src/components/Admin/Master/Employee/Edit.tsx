@@ -44,6 +44,8 @@ type FormValues = {
   email: string;
   phone: string;
   role: RoleValue | 'Engineer' | 'Office Staff';
+  originalRole: RoleValue;
+  password: string;
   tools: string[];
   issueDates: Record<string, string>;
   status: StatusValue | 'Active' | 'Inactive';
@@ -58,6 +60,9 @@ type FormValues = {
   doc3?: File | string | null;
 };
 
+const isOfficeStaffRole = (role: string): boolean =>
+  (role || '').toLowerCase().replace(/\s+/g, '-') === 'office-staff';
+
 const schema = Yup.object({
   name: Yup.string().required('Please fill the Field'),
   email: Yup.string().email('Invalid email').required('Please fill the Email'),
@@ -65,6 +70,31 @@ const schema = Yup.object({
     .matches(/^[0-9]{10}$/, 'Phone number must be exactly 10 digits')
     .required('Please fill the Field'),
   role: Yup.string().required('Please fill the Field'),
+  password: Yup.string().test(
+    'office-staff-password',
+    'Password is required for office staff',
+    function (value) {
+      const role = String(this.parent.role || '');
+      if (!isOfficeStaffRole(role)) return true;
+
+      const originalRole = String(this.parent.originalRole || '');
+      const trimmed = (value || '').trim();
+
+      if (isOfficeStaffRole(originalRole)) {
+        if (!trimmed) return true;
+        return trimmed.length >= 6
+          ? true
+          : this.createError({ message: 'Password must be at least 6 characters long' });
+      }
+
+      if (!trimmed) {
+        return this.createError({ message: 'Password is required for office staff' });
+      }
+      return trimmed.length >= 6
+        ? true
+        : this.createError({ message: 'Password must be at least 6 characters long' });
+    }
+  ),
   tools: Yup.array().of(Yup.string()).notRequired(),
 
   issueDates: Yup.object().notRequired(),
@@ -77,7 +107,7 @@ const schema = Yup.object({
 });
 
 const normalizeRole = (r: string): RoleValue =>
-  (r || '').toLowerCase() === 'engineer' ? 'engineer' : 'office-staff';
+  (r || '').toLowerCase().replace(/\s+/g, '-') === 'engineer' ? 'engineer' : 'office-staff';
 
 const normalizeStatus = (s: string): StatusValue =>
   (s || '').toLowerCase() === 'inactive' ? 'inactive' : 'active';
@@ -152,6 +182,8 @@ const EditEngineer = () => {
           email: emp.email || '',
           phone: String(emp.phone ?? ''),
           role: normalizeRole(emp.technicianType),
+          originalRole: normalizeRole(emp.technicianType),
+          password: '',
           tools,
           issueDates,
           status: normalizeStatus(emp.status),
@@ -250,6 +282,10 @@ const EditEngineer = () => {
             }))
             : [],
       };
+
+      if (technicianType === 'office-staff' && values.password?.trim()) {
+        payload.password = values.password.trim();
+      }
 
       // Only send new files if they are File objects
       if (values.doc1 instanceof File) payload.doc1 = values.doc1;
@@ -386,7 +422,7 @@ const EditEngineer = () => {
                       }}
                     >
                       <option value="" disabled>Open this select menu</option>
-                      <option value="office staff">Office Staff</option>
+                      <option value="office-staff">Office Staff</option>
                       <option value="engineer">Engineer</option>
                     </Field>
                     {submitCount > 0 && errors.role && (
@@ -437,6 +473,27 @@ const EditEngineer = () => {
                   </div>
                 </div>
               </div>
+
+              {/* ---------- Password (Office Staff only) ---------- */}
+              {isOfficeStaffRole(String(values.role)) && (
+                <div className="panel">
+                  <h5 className="font-semibold text-lg mb-4">Login Password</h5>
+                  <div className={submitCount > 0 && errors.password ? 'has-error' : ''}>
+                    <label htmlFor="password">Password</label>
+                    <Field
+                      name="password"
+                      type="password"
+                      id="password"
+                      className="form-input"
+                      placeholder={isOfficeStaffRole(String(initVals.role)) ? 'Leave blank to keep current password' : 'Enter Password'}
+                      autoComplete="new-password"
+                    />
+                    {submitCount > 0 && errors.password && (
+                      <div className="text-danger mt-1">{String(errors.password)}</div>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* ---------- DOCUMENT UPLOADS (Engineer) ---------- */}
               {(values.role || '').toLowerCase() === 'engineer' && (

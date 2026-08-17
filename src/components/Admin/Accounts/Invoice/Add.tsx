@@ -3,7 +3,7 @@ import { Field, Form, Formik, ErrorMessage, FieldArray, useFormikContext, FieldP
 import * as Yup from 'yup';
 import { Link, useNavigate } from 'react-router-dom';
 import Select from 'react-select';
-import { getAllSrfNumber, getAllDetails, createInvoice, getDealerOrders, getAllManufacturer } from '../../../../api';
+import { getAllSrfNumber, getAllDetails, createInvoice, getDealerManufacturerBranches, getAllManufacturer } from '../../../../api';
 import { showMessage } from '../../../../components/common/ShowMessage';
 
 // Define interfaces for type safety
@@ -13,6 +13,7 @@ interface OptionType {
   category?: string;
   leadType?: string;
   orderId?: string;
+  branchName?: string;
 }
 
 interface ServiceItem {
@@ -138,7 +139,11 @@ const machineOptions: OptionType[] = [
 // Validation Schema
 const InvoiceSchema = Yup.object().shape({
   type: Yup.string().required('Invoice Type is required'),
-  srfNumber: Yup.string().required('SRF Number is required'),
+  srfNumber: Yup.string().when('type', {
+    is: 'Dealer/Manufacturer',
+    then: (schema) => schema.required('Branch Name is required'),
+    otherwise: (schema) => schema.required('SRF Number is required'),
+  }),
   buyerName: Yup.string().required('Buyer Name is required'),
   address: Yup.string().required('Address is required'),
   state: Yup.string().required('State is required'),
@@ -365,6 +370,7 @@ const AutoCalculateTotals: React.FC = () => {
 
 const Add = () => {
   const [srfOptions, setSrfOptions] = useState<OptionType[]>([]);
+  const [branchOptions, setBranchOptions] = useState<OptionType[]>([]);
   const [orderMap, setOrderMap] = useState<Record<string, string>>({});
   const [manufacturers, setManufacturers] = useState<any[]>([]);
   const [orderId, setOrderId] = useState<string>('');
@@ -401,28 +407,22 @@ const Add = () => {
           });
         }
 
-        // Dealer + Manufacturer orders (same API; leadType distinguishes)
-        const dealerRes = await getDealerOrders();
-        if (dealerRes?.success && Array.isArray(dealerRes.data)) {
-          const dmOptions = dealerRes.data
-            .filter((item: any) => {
-              const leadType = String(item?.leadType || '').trim().toLowerCase();
-              return leadType === 'dealer' || leadType === 'manufacturer';
-            })
-            .map((item: any) => {
-              const leadType = String(item?.leadType || '').trim().toLowerCase();
-              const tag = leadType === 'manufacturer' ? '(Manufacturer)' : '(Dealer)';
-              return {
-                label: `${item.srfNumber} ${tag}`,
-                value: item.srfNumber,
-                category: 'Dealer/Manufacturer',
-                leadType: leadType === 'manufacturer' ? 'Manufacturer' : 'Dealer',
-                orderId: item._id,
-              };
-            });
-          options = [...options, ...dmOptions];
-          dmOptions.forEach((item: any) => {
-            map[`Dealer/Manufacturer::${item.value}`] = item.orderId;
+        // Dealer + Manufacturer branches (lead owner is dealer or manufacturer)
+        const branchRes = await getDealerManufacturerBranches();
+        if (branchRes?.success && Array.isArray(branchRes.data)) {
+          const branchOpts = branchRes.data.map((item: any) => ({
+            label: `${item.branchName || 'N/A'} (${item.srfNumber}, ${item.leadOwner})`,
+            value: item.srfNumber,
+            category: 'Dealer/Manufacturer',
+            leadType: item.leadType,
+            orderId: item.orderId,
+            branchName: item.branchName,
+          }));
+          setBranchOptions(branchOpts);
+          branchOpts.forEach((item: OptionType) => {
+            if (item.orderId) {
+              map[`Dealer/Manufacturer::${item.value}`] = item.orderId;
+            }
           });
         }
 
@@ -597,7 +597,11 @@ const Add = () => {
         }}
       >
         {({ values, setFieldValue }) => {
-          const selectedSRF = srfOptions.find(
+          const isDealerManufacturerType = values.type === 'Dealer/Manufacturer';
+          const selectionOptions = isDealerManufacturerType
+            ? branchOptions
+            : srfOptions.filter((opt) => !values.type || opt.category === values.type);
+          const selectedSRF = selectionOptions.find(
             (opt) => opt.value === values.srfNumber && (!values.type || opt.category === values.type)
           );
           const isDealer = selectedSRF?.leadType === 'Dealer';
@@ -638,7 +642,9 @@ const Add = () => {
               </div>
 
               <div>
-                <label htmlFor="srfNumber" className="block mb-1 font-medium">SRF Number</label>
+                <label htmlFor="srfNumber" className="block mb-1 font-medium">
+                  {isDealerManufacturerType ? 'Branch Name' : 'SRF Number'}
+                </label>
                 <Field
                   as="select"
                   name="srfNumber"
@@ -647,7 +653,7 @@ const Add = () => {
                     const selectedValue = e.target.value;
                     setFieldValue('srfNumber', selectedValue);
                     const selectedOrderId = orderMap[`${values.type}::${selectedValue}`];
-                    const selectedOption = srfOptions.find(
+                    const selectedOption = selectionOptions.find(
                       (opt) => opt.value === selectedValue && opt.category === values.type
                     );
                     setOrderId(selectedOrderId || '');
@@ -802,17 +808,14 @@ const Add = () => {
                     }
                   }}
                 >
-                  <option value="">Select SRF Number</option>
-                  {srfOptions
-                    .filter((opt) => {
-                      if (!values.type) return true;
-                      return opt.category === values.type;
-                    })
-                    .map((opt) => (
-                      <option key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </option>
-                    ))}
+                  <option value="">
+                    {isDealerManufacturerType ? 'Select Branch Name' : 'Select SRF Number'}
+                  </option>
+                  {selectionOptions.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
                 </Field>
                 <ErrorMessage name="srfNumber" component="div" className="text-red-500 text-sm mt-1" />
               </div>

@@ -25,13 +25,16 @@ import {
     getLowContrastSensitivityByServiceIdForOBI,
     proxyFile,
   saveTimerPreference,
-} from "../../../../../../api";
-import { getDetails, getTools } from "../../../../../../api";
+    saveReportPdfForOBI } from "../../../../../../api";
+import { getDetails, getAssignedToolsForEngineerByMachine } from "../../../../../../api";
 import { createOBISavedExcel, OBISavedExportData } from "./exportOBISavedToExcel";
 import { isExcelFileUrl, resolvePrefillSpreadsheetUrls } from "../../../../../../utils/spreadsheetFile";
 import { normalizeCsvComparisonOperator } from "../shared/parseRadiographyStyleTableFormat";
 import { TestExportRegistryProvider, useTestExportRegistry } from "../shared/TestExportRegistry";
 
+import { useReportPdfSaveOnHeader } from "../shared/useReportPdfSaveOnHeader";
+import ReportPdfCaptureHost from "../shared/ReportPdfCaptureHost";
+import ViewServiceReportOBI from "./ViewServiceReport";
 import Standards from "../../Standards";
 import Notes from "../../Notes";
 
@@ -77,12 +80,23 @@ interface DetailsResponse {
 
 type OBIProps = { serviceId: string; csvFileUrl?: string | null; csvFileUrls?: string[]; qaTestDate?: string | null };
 
+const isToolUnexpired = (validTillRaw: string): boolean => {
+    if (!validTillRaw) return false;
+    const parsed = new Date(validTillRaw);
+    if (Number.isNaN(parsed.getTime())) return false;
+    const today = new Date();
+    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const validTillDate = new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
+    return validTillDate >= todayStart;
+};
+
 const OBIContent: React.FC<OBIProps> = ({ serviceId, csvFileUrl, csvFileUrls, qaTestDate }) => {
     const exportRegistry = useTestExportRegistry();
     const navigate = useNavigate();
 
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+  const pdfSave = useReportPdfSaveOnHeader();
     const [saveSuccess, setSaveSuccess] = useState(false);
     const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -210,10 +224,12 @@ const OBIContent: React.FC<OBIProps> = ({ serviceId, csvFileUrl, csvFileUrls, qa
 
             try {
                 setLoading(true);
-                const [detailsRes, toolsRes] = await Promise.all([
-                    getDetails(serviceId),
-                    getTools(serviceId),
-                ]);
+                const detailsRes = await getDetails(serviceId);
+                const engineerId = detailsRes.data?.engineerAssigned?._id || detailsRes.data?.engineerAssigned;
+                const machineType = detailsRes.data?.machineType;
+                const toolsRes = engineerId && machineType
+                    ? await getAssignedToolsForEngineerByMachine(engineerId, machineType)
+                    : null;
 
                 const data = detailsRes.data;
                 console.log("data", data);
@@ -261,9 +277,9 @@ const OBIContent: React.FC<OBIProps> = ({ serviceId, csvFileUrl, csvFileUrls, qa
                     authorizedSignatory: "",
                 });
 
-                // Map tools
-                const mappedTools: Standard[] = toolsRes.data.toolsAssigned.map((t: any, i: number) => ({
-                    slNumber: String(i + 1),
+                const assignedTools = toolsRes?.data?.toolsAssigned || toolsRes?.toolsAssigned || [];
+                const mappedTools: Standard[] = assignedTools
+                    .map((t: any) => ({
                     nomenclature: t.nomenclature,
                     make: t.manufacturer || t.make,
                     model: t.model,
@@ -271,12 +287,17 @@ const OBIContent: React.FC<OBIProps> = ({ serviceId, csvFileUrl, csvFileUrls, qa
                     range: t.range,
                     certificate: t.certificate || null,
                     calibrationCertificateNo: t.calibrationCertificateNo,
-                    calibrationValidTill: t.calibrationValidTill.split("T")[0],
+                    calibrationValidTill: (t.calibrationValidTill || "").split("T")[0],
                     uncertainity: "",
-                }));
+                    }))
+                    .filter((t: any) => isToolUnexpired(t.calibrationValidTill))
+                    .map((t: any, i: number) => ({
+                        ...t,
+                        slNumber: String(i + 1),
+                    }));
 
                 setTools(mappedTools);
-                setOriginalTools(toolsRes.data.toolsAssigned || []);
+                setOriginalTools(assignedTools);
 
                 // Load existing report header data if available
                 try {
@@ -2103,6 +2124,8 @@ const OBIContent: React.FC<OBIProps> = ({ serviceId, csvFileUrl, csvFileUrls, qa
             };
 
             await saveReportHeaderForOBI(serviceId, payload);
+      await pdfSave.saveReportPdfAfterHeader();
+      toast.success("Report header saved successfully");
             setSaveSuccess(true);
             toast.success("Report header saved successfully!");
             setTimeout(() => setSaveSuccess(false), 4000);
@@ -2296,6 +2319,18 @@ const OBIContent: React.FC<OBIProps> = ({ serviceId, csvFileUrl, csvFileUrls, qa
 
     return (
         <div className="max-w-7xl mx-auto bg-white shadow-lg rounded-xl p-8 mt-8">
+
+      <ReportPdfCaptureHost
+        active={pdfSave.pdfCaptureActive}
+        serviceId={serviceId}
+        refreshKey={pdfSave.reportPreviewRefreshKey}
+        autoSavePdfToken={pdfSave.autoSavePdfToken}
+        onReportLoaded={pdfSave.onReportLoaded}
+        onPdfSaveComplete={pdfSave.onPdfSaveComplete}
+        ViewComponent={ViewServiceReportOBI}
+        saveReportPdf={saveReportPdfForOBI}
+        pdfFilenamePrefix="OBI"
+      />
             <h1 className="text-3xl font-bold text-center text-gray-800 mb-8">
                 Generate On-Board Imaging (OBI) QA Test Report
             </h1>

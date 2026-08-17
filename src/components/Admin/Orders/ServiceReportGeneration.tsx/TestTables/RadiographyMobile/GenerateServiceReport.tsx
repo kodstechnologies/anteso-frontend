@@ -21,11 +21,14 @@ import {
   getConsistencyOfRadiationOutputByServiceIdForRadiographyMobile,
   getRadiationLeakageLevelByServiceIdForRadiographyMobile,
   saveTimerPreference,
-} from "../../../../../../api";
+    saveReportPdfForRadiographyMobile } from "../../../../../../api";
 import { createRadiographyMobileUploadableExcel, RadiographyMobileExportData } from "./exportRadiographyMobileToExcel";
 import { TestExportRegistryProvider, useTestExportRegistry } from "../shared/TestExportRegistry";
 import { isExcelFileUrl, resolvePrefillSpreadsheetUrls } from "../../../../../../utils/spreadsheetFile";
 
+import { useReportPdfSaveOnHeader } from "../shared/useReportPdfSaveOnHeader";
+import ReportPdfCaptureHost from "../shared/ReportPdfCaptureHost";
+import ViewServiceReportRadiographyMobile from "./ViewServiceReport";
 import Standards from "../../Standards";
 import Notes from "../../Notes";
 
@@ -77,6 +80,7 @@ const RadiographyMobileContent: React.FC<RadiographyMobileProps> = ({ serviceId,
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const pdfSave = useReportPdfSaveOnHeader();
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -454,6 +458,8 @@ const RadiographyMobileContent: React.FC<RadiographyMobileProps> = ({ serviceId,
           : defaultNotes.map((text, i) => ({ slNo: `5.${i + 1}`, text })),
       };
       await saveReportHeaderForRadiographyMobile(serviceId, payload);
+      await pdfSave.saveReportPdfAfterHeader();
+      toast.success("Report header saved successfully");
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 4000);
     } catch (err: any) {
@@ -1857,6 +1863,18 @@ const RadiographyMobileContent: React.FC<RadiographyMobileProps> = ({ serviceId,
 
   return (
     <div className="max-w-7xl mx-auto bg-white shadow-lg rounded-xl p-8 mt-8">
+
+      <ReportPdfCaptureHost
+        active={pdfSave.pdfCaptureActive}
+        serviceId={serviceId}
+        refreshKey={pdfSave.reportPreviewRefreshKey}
+        autoSavePdfToken={pdfSave.autoSavePdfToken}
+        onReportLoaded={pdfSave.onReportLoaded}
+        onPdfSaveComplete={pdfSave.onPdfSaveComplete}
+        ViewComponent={ViewServiceReportRadiographyMobile}
+        saveReportPdf={saveReportPdfForRadiographyMobile}
+        pdfFilenamePrefix="RadiographyMobile"
+      />
       <h1 className="text-3xl font-bold text-center text-gray-800 mb-8">
         Generate Radiography (Mobile) QA Test Report
       </h1>

@@ -7,12 +7,15 @@ import toast from "react-hot-toast";
 import AuthorizedSignatorySelect from "../../AuthorizedSignatorySelect";
 import * as XLSX from "xlsx";
 
+import { useReportPdfSaveOnHeader } from "../shared/useReportPdfSaveOnHeader";
+import ReportPdfCaptureHost from "../shared/ReportPdfCaptureHost";
+import ViewServiceReportDentalIntra from "./ViewServiceReport";
 import Standards from "../../Standards";
 import Notes from "../../Notes";
 
-import { getDetails, getTools, saveReportHeaderForDentalIntra, getReportHeaderForDentalIntra, proxyFile,
+import { getDetails, getAssignedToolsForEngineerByMachine, saveReportHeaderForDentalIntra, getReportHeaderForDentalIntra, proxyFile,
   saveTimerPreference,
-} from "../../../../../../api";
+    saveReportPdfForDentalIntra } from "../../../../../../api";
 
 // Test-table imports
 import AccuracyOfOperatingPotential from "./AccuracyOfOperatingPotential";
@@ -97,6 +100,16 @@ interface DentalProps {
     csvFileUrls?: string[];
 }
 
+const isToolUnexpired = (validTillRaw: string): boolean => {
+    if (!validTillRaw) return false;
+    const parsed = new Date(validTillRaw);
+    if (Number.isNaN(parsed.getTime())) return false;
+    const today = new Date();
+    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const validTillDate = new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
+    return validTillDate >= todayStart;
+};
+
 const GenerateReportForDentalContent: React.FC<DentalProps> = ({ serviceId, qaTestDate, csvFileUrl, csvFileUrls }) => {
     const exportRegistry = useTestExportRegistry();
     const navigate = useNavigate();
@@ -106,6 +119,7 @@ const GenerateReportForDentalContent: React.FC<DentalProps> = ({ serviceId, qaTe
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
+  const pdfSave = useReportPdfSaveOnHeader();
     const [saveSuccess, setSaveSuccess] = useState(false);
     const [saveError, setSaveError] = useState<string | null>(null);
     const [csvUploading, setCsvUploading] = useState(false);
@@ -159,10 +173,12 @@ const GenerateReportForDentalContent: React.FC<DentalProps> = ({ serviceId, qaTe
         const fetchAll = async () => {
             try {
                 setLoading(true);
-                const [detRes, toolRes] = await Promise.all([
-                    getDetails(serviceId),
-                    getTools(serviceId),
-                ]);
+                const detRes = await getDetails(serviceId);
+                const engineerId = detRes.data?.engineerAssigned?._id || detRes.data?.engineerAssigned;
+                const machineType = detRes.data?.machineType;
+                const toolRes = engineerId && machineType
+                    ? await getAssignedToolsForEngineerByMachine(engineerId, machineType)
+                    : null;
 
                 const data = detRes.data;
                 setDetails(data);
@@ -199,9 +215,9 @@ const GenerateReportForDentalContent: React.FC<DentalProps> = ({ serviceId, qaTe
                     authorizedSignatory: "",
                 });
 
-                const mapped: Standard[] = toolRes.data.toolsAssigned.map(
-                    (t: any, idx: number) => ({
-                        slNumber: String(idx + 1),
+                const assignedTools = toolRes?.data?.toolsAssigned || toolRes?.toolsAssigned || [];
+                const mapped: Standard[] = assignedTools
+                    .map((t: any) => ({
                         nomenclature: t.nomenclature,
                         make: t.manufacturer || t.make,
                         model: t.model,
@@ -209,10 +225,14 @@ const GenerateReportForDentalContent: React.FC<DentalProps> = ({ serviceId, qaTe
                         range: t.range,
                         certificate: t.certificate ?? "",
                         calibrationCertificateNo: t.calibrationCertificateNo,
-                        calibrationValidTill: t.calibrationValidTill.split("T")[0],
+                        calibrationValidTill: (t.calibrationValidTill || "").split("T")[0],
                         uncertainity: "",
-                    })
-                );
+                    }))
+                    .filter((t: any) => isToolUnexpired(t.calibrationValidTill))
+                    .map((t: any, idx: number) => ({
+                        ...t,
+                        slNumber: String(idx + 1),
+                    }));
                 setTools(mapped);
             } catch (err: any) {
                 console.error(err);
@@ -427,6 +447,8 @@ const GenerateReportForDentalContent: React.FC<DentalProps> = ({ serviceId, qaTe
             };
 
             await saveReportHeaderForDentalIntra(serviceId, payload);
+      await pdfSave.saveReportPdfAfterHeader();
+      toast.success("Report header saved successfully");
             setSaveSuccess(true);
             setTimeout(() => setSaveSuccess(false), 4000);
         } catch (err: any) {
@@ -1123,6 +1145,18 @@ const GenerateReportForDentalContent: React.FC<DentalProps> = ({ serviceId, qaTe
 
     return (
         <div className="max-w-6xl mx-auto bg-white shadow-md rounded-xl p-8 mt-6">
+
+            <ReportPdfCaptureHost
+              active={pdfSave.pdfCaptureActive}
+              serviceId={serviceId}
+              refreshKey={pdfSave.reportPreviewRefreshKey}
+              autoSavePdfToken={pdfSave.autoSavePdfToken}
+              onReportLoaded={pdfSave.onReportLoaded}
+              onPdfSaveComplete={pdfSave.onPdfSaveComplete}
+              ViewComponent={ViewServiceReportDentalIntra}
+              saveReportPdf={saveReportPdfForDentalIntra}
+              pdfFilenamePrefix="DentalIntra"
+            />
             <h1 className="text-2xl font-bold text-gray-800 mb-6 text-center">
                 Generate QA Test Report - Dental Intra
             </h1>

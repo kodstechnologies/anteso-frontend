@@ -6,7 +6,48 @@ export interface GeneratePDFOptions {
   filename: string;
   buttonSelector?: string;
   onProgress?: (message: string) => void;
+  skipDownload?: boolean;
+  scale?: number;
+  captureOffScreen?: boolean;
 }
+
+const prepareElementForCapture = (element: HTMLElement, captureOffScreen = false): (() => void) => {
+  const parent = element.parentElement;
+  const saved = {
+    element: element.style.cssText,
+    parent: parent?.style.cssText || "",
+  };
+
+  element.style.position = "fixed";
+  element.style.left = captureOffScreen ? "-10000px" : "0";
+  element.style.top = "0";
+  element.style.zIndex = captureOffScreen ? "-1" : "999999";
+  element.style.opacity = "1";
+  element.style.visibility = "visible";
+  element.style.pointerEvents = "none";
+  element.style.background = "#ffffff";
+  element.style.width = element.style.width || "210mm";
+
+  if (parent) {
+    parent.style.position = "fixed";
+    parent.style.left = captureOffScreen ? "-10000px" : "0";
+    parent.style.top = "0";
+    parent.style.width = "210mm";
+    parent.style.height = "auto";
+    parent.style.overflow = "visible";
+    parent.style.opacity = "1";
+    parent.style.visibility = "visible";
+    parent.style.zIndex = captureOffScreen ? "-1" : "999998";
+    parent.style.pointerEvents = "none";
+  }
+
+  return () => {
+    element.style.cssText = saved.element;
+    if (parent) {
+      parent.style.cssText = saved.parent;
+    }
+  };
+};
 
 const blobToDataUrl = (blob: Blob): Promise<string> =>
   new Promise((resolve, reject) => {
@@ -273,12 +314,15 @@ export const generatePDF = async ({
   elementId,
   filename,
   buttonSelector = '.download-pdf-btn',
-  onProgress
-}: GeneratePDFOptions): Promise<void> => {
+  onProgress,
+  skipDownload = false,
+  scale = 2,
+  captureOffScreen = false,
+}: GeneratePDFOptions): Promise<Blob | null> => {
   const element = document.getElementById(elementId);
   if (!element) {
     console.error(`Element with id "${elementId}" not found`);
-    return;
+    return null;
   }
 
   // Find the button to show loading state
@@ -295,8 +339,11 @@ export const generatePDF = async ({
     }
   };
 
+  let restoreCaptureStyles: (() => void) | undefined;
+
   try {
     updateButton('Preparing Report...', true);
+    restoreCaptureStyles = prepareElementForCapture(element, captureOffScreen);
 
     // Detect if the report uses the shell-based pagination system
     const shells = element.querySelectorAll('.report-pdf-page-shell, .report-pdf-last-page-shell');
@@ -350,7 +397,7 @@ export const generatePDF = async ({
 
         try {
           const canvas = await html2canvas(shell, {
-          scale: 2,
+          scale,
           useCORS: true,
           logging: false,
           backgroundColor: '#ffffff',
@@ -431,7 +478,12 @@ export const generatePDF = async ({
         }
       }
 
-      pdf.save(filename);
+      const generatedBlob = pdf.output('blob');
+      if (!skipDownload) {
+        pdf.save(filename);
+      }
+      updateButton(originalButtonText, false);
+      return generatedBlob;
     } else {
       /**
        * FALLBACK: CONTINUOUS CAPTURE (OLD)
@@ -442,9 +494,10 @@ export const generatePDF = async ({
       const restoreFns = applyImageDataUrlMap(element, imageDataUrlMap);
       await waitForImagesToDecode(element);
 
+      let generatedBlob: Blob | null = null;
       try {
       const canvas = await html2canvas(element, {
-        scale: 2,
+        scale,
         useCORS: true,
         logging: false,
         backgroundColor: '#ffffff',
@@ -484,17 +537,26 @@ export const generatePDF = async ({
         heightLeft -= pageHeight;
       }
 
-      pdf.save(filename);
+      generatedBlob = pdf.output('blob');
+      if (!skipDownload) {
+        pdf.save(filename);
+      }
       } finally {
         restoreFns.forEach((restore) => restore());
       }
+      updateButton(originalButtonText, false);
+      return generatedBlob;
     }
-
-    updateButton(originalButtonText, false);
   } catch (error) {
     console.error('PDF Generation Error:', error);
     updateButton(originalButtonText, false);
     throw error;
+  } finally {
+    try {
+      restoreCaptureStyles?.();
+    } catch {
+      // ignore restore errors
+    }
   }
 };
 
