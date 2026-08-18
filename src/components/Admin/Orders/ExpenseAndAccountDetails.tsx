@@ -57,7 +57,14 @@ const ExpenseAndAccountDetails = ({ orderId }: { orderId: string }) => {
       try {
         setLoadingTracks(true);
         const res = await getTrackExpensesByOrderId(orderId);
-        setTrackExpenses(Array.isArray(res?.data) ? res.data : []);
+        const list = Array.isArray(res)
+          ? res
+          : Array.isArray(res?.data)
+            ? res.data
+            : Array.isArray(res?.data?.data)
+              ? res.data.data
+              : [];
+        setTrackExpenses(list);
       } catch (error) {
         console.error("❌ Error fetching tracked expenses:", error);
         setTrackExpenses([]);
@@ -106,10 +113,8 @@ const ExpenseAndAccountDetails = ({ orderId }: { orderId: string }) => {
                     <p className="font-medium text-gray-800">{formatMoney(doc.totalRequiredAmount)}</p>
                   </div>
                   <div>
-                    <p className="text-xs uppercase text-gray-500 font-semibold">Cost / Revenue</p>
-                    <p className="font-medium text-gray-800">
-                      {formatMoney(doc.cost)} / {formatMoney(doc.revenue)}
-                    </p>
+                    <p className="text-xs uppercase text-gray-500 font-semibold">Cost</p>
+                    <p className="font-medium text-gray-800">{formatMoney(doc.cost)}</p>
                   </div>
                 </div>
 
@@ -121,10 +126,8 @@ const ExpenseAndAccountDetails = ({ orderId }: { orderId: string }) => {
                         <th className="px-3 py-2">Technician</th>
                         <th className="px-3 py-2">QA Test Done At</th>
                         <th className="px-3 py-2">Trip</th>
-                        <th className="px-3 py-2">No. of Machines</th>
                         <th className="px-3 py-2">Total Required</th>
                         <th className="px-3 py-2">Cost</th>
-                        <th className="px-3 py-2">Revenue</th>
                         <th className="px-3 py-2">Expenses</th>
                       </tr>
                     </thead>
@@ -137,10 +140,8 @@ const ExpenseAndAccountDetails = ({ orderId }: { orderId: string }) => {
                           </td>
                           <td className="px-3 py-2 text-gray-700">{formatDate(item.qaTestDoneAt)}</td>
                           <td className="px-3 py-2 text-gray-700">{item.trip?.tripName || "—"}</td>
-                          <td className="px-3 py-2 text-gray-700">{item.noOfMachines || 0}</td>
                           <td className="px-3 py-2 text-gray-700">{formatMoney(item.totalRequiredAmount)}</td>
                           <td className="px-3 py-2 text-gray-700">{formatMoney(item.cost)}</td>
-                          <td className="px-3 py-2 text-gray-700">{formatMoney(item.revenue)}</td>
                           <td className="px-3 py-2 text-gray-700">
                             {(item.expenses || []).length ? (
                               <div className="space-y-1">

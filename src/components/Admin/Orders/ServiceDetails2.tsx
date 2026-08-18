@@ -1748,10 +1748,6 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
             showModal('Warning', "Cannot go back to previous status!");
             return
         }
-        if (isFileUploadMandatory(newStatus) && !uploadedFiles[workTypeId]) {
-            showModal('Warning', "File upload is mandatory for complete status!");
-            return
-        }
 
         try {
             setAssigningStaff((prev) => ({ ...prev, [workTypeId]: true }))
@@ -1759,12 +1755,19 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
             if (!workType) throw new Error("Work type not found")
             const parentService = machineData.find((service) => service.workTypes.some((wt) => wt.id === workTypeId))
             if (!parentService) throw new Error("Parent service not found")
+            const workTypeName = parentService.workTypeName || "Unknown Work Type";
+            const identifier = getWorkTypeIdentifier(workTypeName);
+            const hasExistingReport = Boolean(reportNumbers[parentService.id]?.[identifier]?.reportUrl);
+            if (isFileUploadMandatory(newStatus) && !uploadedFiles[workTypeId] && !hasExistingReport) {
+                showModal('Warning', "File upload is mandatory for complete status!");
+                setAssigningStaff((prev) => ({ ...prev, [workTypeId]: false }))
+                return
+            }
             if (workType.name === "QA Test Report" && !isQARawEngineerAssigned(parentService)) {
                 showMessage("Assign an engineer in QA Test first before enabling QA Test Report.", 'warning')
                 return
             }
             const serviceId = workType.id.split("-")[0]
-            const workTypeName = parentService.workTypeName || "Unknown Work Type";
             const isQATestService = parentService.workTypeName === "Quality Assurance Test"
 
             if (newStatus === "complete" && isLicenseOfOperationWorkType(workTypeName)) {
@@ -3476,7 +3479,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                     </div>
                                                                 </div>
                                                                 {editingWorkType[workType.id] && (
-                                                                    <div className="p-3 bg-blue-50 rounded-md border border-blue-200">
+                                                                    <div className="p-3 bg-blue-50 rounded-md border border-blue-200 space-y-3">
                                                                         <div className="flex gap-2 items-center">
                                                                             <label className="text-sm font-medium text-blue-700">Update Status:</label>
                                                                             <select
@@ -3511,6 +3514,69 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                                 Cancel
                                                                             </button>
                                                                         </div>
+                                                                        {isLicenseOfOperationWorkType(service.workTypeName) && (
+                                                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                                                <div>
+                                                                                    <label className="block text-sm font-medium text-blue-700">
+                                                                                        License Valid From <span className="text-red-500">*</span>
+                                                                                    </label>
+                                                                                    <input
+                                                                                        type="date"
+                                                                                        required
+                                                                                        value={licenseValidity[workType.id]?.validFrom || ""}
+                                                                                        onChange={(e) => {
+                                                                                            const value = e.target.value;
+                                                                                            setLicenseValidity((prev) => ({
+                                                                                                ...prev,
+                                                                                                [workType.id]: {
+                                                                                                    validFrom: value,
+                                                                                                    validTill: prev[workType.id]?.validTill || "",
+                                                                                                },
+                                                                                            }));
+                                                                                        }}
+                                                                                        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                                                    />
+                                                                                </div>
+                                                                                <div>
+                                                                                    <label className="block text-sm font-medium text-blue-700">
+                                                                                        License Valid Till <span className="text-red-500">*</span>
+                                                                                    </label>
+                                                                                    <input
+                                                                                        type="date"
+                                                                                        required
+                                                                                        min={licenseValidity[workType.id]?.validFrom || undefined}
+                                                                                        value={licenseValidity[workType.id]?.validTill || ""}
+                                                                                        onChange={(e) => {
+                                                                                            const value = e.target.value;
+                                                                                            setLicenseValidity((prev) => ({
+                                                                                                ...prev,
+                                                                                                [workType.id]: {
+                                                                                                    validFrom: prev[workType.id]?.validFrom || "",
+                                                                                                    validTill: value,
+                                                                                                },
+                                                                                            }));
+                                                                                        }}
+                                                                                        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                                                    />
+                                                                                </div>
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                )}
+                                                                {isLicenseOfOperationWorkType(service.workTypeName) && !editingWorkType[workType.id] && (
+                                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-gray-50 rounded-md border border-gray-200">
+                                                                        <div>
+                                                                            <label className="block text-sm font-medium text-gray-600">License Valid From</label>
+                                                                            <p className="mt-1 text-sm font-medium text-gray-800">
+                                                                                {licenseValidity[workType.id]?.validFrom || "—"}
+                                                                            </p>
+                                                                        </div>
+                                                                        <div>
+                                                                            <label className="block text-sm font-medium text-gray-600">License Valid Till</label>
+                                                                            <p className="mt-1 text-sm font-medium text-gray-800">
+                                                                                {licenseValidity[workType.id]?.validTill || "—"}
+                                                                            </p>
+                                                                        </div>
                                                                     </div>
                                                                 )}
                                                                 {(selectedStatuses[workType.id] === "complete" ||
@@ -3518,60 +3584,13 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                     selectedStatuses[workType.id] === "paid"
                                                                 ) && (
                                                                         <div className="space-y-3 p-3 bg-blue-50 rounded-md border border-blue-200">
-                                                                            {isLicenseOfOperationWorkType(service.workTypeName) && (
-                                                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                                                                    <div>
-                                                                                        <label className="block text-sm font-medium text-blue-700">
-                                                                                            License Valid From <span className="text-red-500">*</span>
-                                                                                        </label>
-                                                                                        <input
-                                                                                            type="date"
-                                                                                            required
-                                                                                            value={licenseValidity[workType.id]?.validFrom || ""}
-                                                                                            onChange={(e) => {
-                                                                                                const value = e.target.value;
-                                                                                                setLicenseValidity((prev) => ({
-                                                                                                    ...prev,
-                                                                                                    [workType.id]: {
-                                                                                                        validFrom: value,
-                                                                                                        validTill: prev[workType.id]?.validTill || "",
-                                                                                                    },
-                                                                                                }));
-                                                                                            }}
-                                                                                            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                                                        />
-                                                                                    </div>
-                                                                                    <div>
-                                                                                        <label className="block text-sm font-medium text-blue-700">
-                                                                                            License Valid Till <span className="text-red-500">*</span>
-                                                                                        </label>
-                                                                                        <input
-                                                                                            type="date"
-                                                                                            required
-                                                                                            min={licenseValidity[workType.id]?.validFrom || undefined}
-                                                                                            value={licenseValidity[workType.id]?.validTill || ""}
-                                                                                            onChange={(e) => {
-                                                                                                const value = e.target.value;
-                                                                                                setLicenseValidity((prev) => ({
-                                                                                                    ...prev,
-                                                                                                    [workType.id]: {
-                                                                                                        validFrom: prev[workType.id]?.validFrom || "",
-                                                                                                        validTill: value,
-                                                                                                    },
-                                                                                                }));
-                                                                                            }}
-                                                                                            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                                                        />
-                                                                                    </div>
-                                                                                </div>
-                                                                            )}
                                                                             <label className="block text-sm font-medium text-blue-700">
                                                                                 Upload File
                                                                             </label>
                                                                             <input
                                                                                 type="file"
                                                                                 accept=".pdf,application/pdf"
-                                                                                required
+                                                                                required={!reportNumbers[service.id]?.[getWorkTypeIdentifier(service.workTypeName)]?.reportUrl}
                                                                                 onChange={(e) => {
                                                                                     const file = e.target.files?.[0]
                                                                                     if (file) {
