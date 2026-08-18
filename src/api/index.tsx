@@ -2870,6 +2870,23 @@ export const getPaymentDeyailsByOrderId = async (orderId: any) => {
     }
 }
 
+export const getTrackExpensesByOrderId = async (orderId: string) => {
+    try {
+        const token = Cookies.get("accessToken");
+        const res = await api.get(`/orders/track-expenses/${orderId}`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
+        return res.data;
+    } catch (error: any) {
+        console.error("🚀 ~ getTrackExpensesByOrderId ~ error:", error);
+        throw new Error(
+            error?.response?.data?.message || "Failed to fetch tracked expenses"
+        );
+    }
+}
+
 export const staffLogin = async (payload: any) => {
     try {
         const res = await api.post('/auth/staff-login', payload)
@@ -3887,6 +3904,25 @@ export const getDealerManufacturerBranches = async () => {
         return res.data;
     } catch (error) {
         console.error("🚀 ~ getDealerManufacturerBranches ~ error:", error);
+        throw error;
+    }
+}
+
+export const getHospitalsByLeadOwnerBranches = async (leadOwnerId: string, branchNames: string[]) => {
+    try {
+        const token = Cookies.get('accessToken');
+        const res = await api.get(`/invoice/get-hospitals-by-lead-owner-branches`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+            params: {
+                leadOwnerId,
+                branchNames: (branchNames || []).join(','),
+            },
+        });
+        return res.data;
+    } catch (error) {
+        console.error("🚀 ~ getHospitalsByLeadOwnerBranches ~ error:", error);
         throw error;
     }
 }

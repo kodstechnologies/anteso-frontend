@@ -3,7 +3,7 @@ import { Field, Form, Formik, ErrorMessage, FieldArray, useFormikContext, FieldP
 import * as Yup from 'yup';
 import { Link, useNavigate } from 'react-router-dom';
 import Select from 'react-select';
-import { getAllSrfNumber, getAllDetails, createInvoice, getDealerManufacturerBranches, getAllManufacturer } from '../../../../api';
+import { getAllSrfNumber, getAllDetails, createInvoice, getDealerManufacturerBranches, getHospitalsByLeadOwnerBranches, getAllManufacturer } from '../../../../api';
 import { showMessage } from '../../../../components/common/ShowMessage';
 
 // Define interfaces for type safety
@@ -25,6 +25,7 @@ interface ServiceItem {
   /** Line total for the machine (same meaning as order service totalAmount). */
   totalAmount?: number;
   hsnno?: string;
+  serialNumber?: string;
 }
 
 interface AdditionalService {
@@ -37,18 +38,44 @@ interface DealerHospital {
   partyCode?: string;
   hospitalName?: string;
   city?: string;
+  district?: string;
   dealerState?: string;
   modelNo?: string;
+  serialNo?: string;
   amount?: number;
   travelCostType?: string;
   travelCostPrice?: number;
+  orderId?: string;
+  srfNumber?: string;
+  branchName?: string;
   services?: ServiceItem[];
   additionalServices?: AdditionalService[];
+}
+
+interface LeadOwnerBranch {
+  branchName: string;
+  orderIds?: string[];
+  srfNumbers?: string[];
+}
+
+interface LeadOwnerOption {
+  leadOwnerId: string;
+  leadOwner: string;
+  leadType: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  travelCost?: string;
+  cost?: number;
+  srfNumbers?: string[];
+  branches: LeadOwnerBranch[];
 }
 
 interface FormValues {
   type: string;
   srfNumber: string;
+  leadOwnerId: string;
+  branchNames: string[];
   buyerName: string;
   address: string;
   state: string;
@@ -141,9 +168,21 @@ const InvoiceSchema = Yup.object().shape({
   type: Yup.string().required('Invoice Type is required'),
   srfNumber: Yup.string().when('type', {
     is: 'Dealer/Manufacturer',
-    then: (schema) => schema.required('Branch Name is required'),
+    then: (schema) => schema.notRequired(),
     otherwise: (schema) => schema.required('SRF Number is required'),
   }),
+  leadOwnerId: Yup.string().when('type', {
+    is: 'Dealer/Manufacturer',
+    then: (schema) => schema.required('Lead owner is required'),
+    otherwise: (schema) => schema.notRequired(),
+  }),
+  branchNames: Yup.array()
+    .of(Yup.string())
+    .when('type', {
+      is: 'Dealer/Manufacturer',
+      then: (schema) => schema.min(1, 'Select at least one branch'),
+      otherwise: (schema) => schema.notRequired(),
+    }),
   buyerName: Yup.string().required('Buyer Name is required'),
   address: Yup.string().required('Address is required'),
   state: Yup.string().required('State is required'),
@@ -368,14 +407,128 @@ const AutoCalculateTotals: React.FC = () => {
   return null;
 };
 
+const DEFAULT_TAXES = {
+  cgst: { checked: false, amount: 0 },
+  sgst: { checked: false, amount: 0 },
+  igst: { checked: true, amount: 18 },
+};
+
+const emptyDealerHospital = (): DealerHospital => ({
+  partyCode: '',
+  hospitalName: '',
+  city: '',
+  district: '',
+  dealerState: '',
+  modelNo: '',
+  serialNo: '',
+  amount: 0,
+  travelCostType: '',
+  travelCostPrice: 0,
+  orderId: '',
+  srfNumber: '',
+  branchName: '',
+  services: [],
+  additionalServices: [],
+});
+
+const mapOrderDetailsToDealerHospital = (
+  details: any,
+  leadType?: string,
+  manufacturers: any[] = []
+): DealerHospital => {
+  const enquiryServices = details?.quotation?.enquiry?.services || [];
+  const norm = (v: any) => String(v || '').trim().toLowerCase();
+  const resolveServiceTotal = (s: any) => {
+    const direct = Number(s?.totalAmount) || 0;
+    if (direct > 0) return direct;
+
+    const key = norm(s?.machineType);
+    const fromEnquiryExact = enquiryServices.find((es: any) => norm(es?.machineType) === key);
+    const fromEnquiryPartial = !fromEnquiryExact
+      ? enquiryServices.find((es: any) => {
+        const n = norm(es?.machineType);
+        return n && key && (n.includes(key) || key.includes(n));
+      })
+      : null;
+    const enquiryTotal = Number(fromEnquiryExact?.totalAmount || fromEnquiryPartial?.totalAmount) || 0;
+    if (enquiryTotal > 0) return enquiryTotal;
+
+    const qty = Number(s?.quantity) || 1;
+    const rate = Number(s?.price || s?.rate) || 0;
+    return qty * rate;
+  };
+
+  const mainSubtotal = (details.quotation?.subtotal || 0) - (details.advanceAmount || 0);
+  const sourceServices: any[] =
+    details.services?.length
+      ? details.services
+      : (details.quotation?.enquiry?.services || []);
+  const mappedServices: ServiceItem[] = sourceServices.length
+    ? sourceServices.map((s: any) => {
+      const qty = s.quantity || 1;
+      const total = resolveServiceTotal(s);
+      return {
+        machineType: s.machineType || '',
+        description: (s.workTypeDetails || []).map((w: any) => w.workType).join(', ') || '',
+        quantity: qty,
+        totalAmount: total,
+        rate: qty > 0 ? total / qty : 0,
+        hsnno: s.machineModel || s.hsnno || '',
+        serialNumber: s.serialNumber || '',
+      };
+    })
+    : [];
+  const sourceAdditional: any[] =
+    details.additionalServices?.length
+      ? details.additionalServices
+      : (details.quotation?.enquiry?.additionalServices || []);
+  const mappedAdditional: AdditionalService[] = sourceAdditional.length
+    ? sourceAdditional.map((as: any) => ({
+      name: as.name || '',
+      description: as.description || '',
+      totalAmount: as.totalAmount || 0,
+    }))
+    : [];
+
+  const selectedManufacturer =
+    leadType === 'Manufacturer'
+      ? manufacturers.find((m: any) => String(m._id) === String(details.leadOwner))
+      : null;
+  const fixedTravelCost =
+    selectedManufacturer?.cost != null && selectedManufacturer?.cost !== ''
+      ? Number(selectedManufacturer.cost)
+      : 0;
+
+  const models = [...new Set(mappedServices.map((s) => s.hsnno).filter(Boolean))];
+  const serials = [...new Set(mappedServices.map((s) => s.serialNumber).filter(Boolean))];
+
+  return {
+    partyCode: details.partyCodeOrSysId || '',
+    hospitalName: details.hospitalName || '',
+    city: details.city || '',
+    district: details.district || details.city || '',
+    dealerState: details.state || '',
+    modelNo: models.join(', '),
+    serialNo: serials.join(', '),
+    amount: mainSubtotal,
+    travelCostType: selectedManufacturer?.travelCost || '',
+    travelCostPrice: fixedTravelCost > 0 ? fixedTravelCost : 0,
+    orderId: details._id || '',
+    srfNumber: details.srfNumber || '',
+    branchName: details.branchName || 'N/A',
+    services: mappedServices,
+    additionalServices: mappedAdditional,
+  };
+};
+
 const Add = () => {
   const [srfOptions, setSrfOptions] = useState<OptionType[]>([]);
-  const [branchOptions, setBranchOptions] = useState<OptionType[]>([]);
+  const [leadOwnerOptions, setLeadOwnerOptions] = useState<LeadOwnerOption[]>([]);
   const [orderMap, setOrderMap] = useState<Record<string, string>>({});
   const [manufacturers, setManufacturers] = useState<any[]>([]);
   const [orderId, setOrderId] = useState<string>('');
+  const [orderIds, setOrderIds] = useState<string[]>([]);
   const navigate = useNavigate();
-  const sellerState = 'Maharashtra';
 
   // Fetch SRF numbers
   useEffect(() => {
@@ -407,23 +560,23 @@ const Add = () => {
           });
         }
 
-        // Dealer + Manufacturer branches (lead owner is dealer or manufacturer)
+        // Dealer + Manufacturer lead owners (grouped with branches and SRFs)
         const branchRes = await getDealerManufacturerBranches();
         if (branchRes?.success && Array.isArray(branchRes.data)) {
-          const branchOpts = branchRes.data.map((item: any) => ({
-            label: `${item.branchName || 'N/A'} (${item.srfNumber}, ${item.leadOwner})`,
-            value: item.srfNumber,
-            category: 'Dealer/Manufacturer',
-            leadType: item.leadType,
-            orderId: item.orderId,
-            branchName: item.branchName,
-          }));
-          setBranchOptions(branchOpts);
-          branchOpts.forEach((item: OptionType) => {
-            if (item.orderId) {
-              map[`Dealer/Manufacturer::${item.value}`] = item.orderId;
-            }
-          });
+          setLeadOwnerOptions(
+            branchRes.data.map((item: any) => ({
+              leadOwnerId: item.leadOwnerId,
+              leadOwner: item.leadOwner,
+              leadType: item.leadType,
+              address: item.address || '',
+              city: item.city || '',
+              state: item.state || '',
+              travelCost: item.travelCost || '',
+              cost: item.cost ?? 0,
+              srfNumbers: Array.isArray(item.srfNumbers) ? item.srfNumbers : [],
+              branches: Array.isArray(item.branches) ? item.branches : [],
+            }))
+          );
         }
 
         // Fetch manufacturers to resolve fixed travel cost for Manufacturer leadOwner
@@ -464,6 +617,8 @@ const Add = () => {
         initialValues={{
           type: '',
           srfNumber: '',
+          leadOwnerId: '',
+          branchNames: [],
           buyerName: '',
           address: '',
           state: '',
@@ -471,11 +626,11 @@ const Add = () => {
           remarks: '',
           subtotal: 0,
           grandTotal: 0,
-          taxes: { cgst: { checked: false, amount: 0 }, sgst: { checked: false, amount: 0 }, igst: { checked: false, amount: 0 } },
+          taxes: DEFAULT_TAXES,
           discountPercent: 0,
           services: [{ machineType: '', description: '', quantity: 1, rate: 0, totalAmount: 0, hsnno: '' }],
           additionalServices: [],
-          dealerHospitals: [{ partyCode: '', hospitalName: '', city: '', dealerState: '', modelNo: '', amount: 0, travelCostType: '', travelCostPrice: 0, services: [], additionalServices: [] }],
+          dealerHospitals: [emptyDealerHospital()],
         }}
         validationSchema={InvoiceSchema}
         onSubmit={async (values, { setSubmitting, resetForm }) => {
@@ -569,14 +724,28 @@ const Add = () => {
 
             const grandTotal = discountedSubtotal + gstAmount;
 
+            const joinedSrfs = [...new Set(
+              cleanedDealerHospitals.map((dh) => dh.srfNumber).filter((srf) => isNonEmptyText(srf))
+            )].join(', ');
+            const payloadOrderIds = values.type === 'Dealer/Manufacturer'
+              ? [...new Set([
+                  ...orderIds,
+                  ...cleanedDealerHospitals.map((dh) => dh.orderId).filter((id) => isNonEmptyText(id)),
+                ].filter(Boolean) as string[])]
+              : (orderId ? [orderId] : []);
+
             const payload = {
               ...values,
+              srfNumber: values.type === 'Dealer/Manufacturer' ? (joinedSrfs || values.srfNumber) : values.srfNumber,
               services: values.type === 'Customer' ? cleanedCustomerServices : [],
               additionalServices: values.type === 'Customer' ? cleanedCustomerAdditional : [],
               dealerHospitals: values.type === 'Dealer/Manufacturer' ? cleanedDealerHospitals : [],
               amount: grandTotal,
               grandTotal,
-              orderId,
+              orderId: payloadOrderIds[0] || orderId,
+              orderIds: payloadOrderIds,
+              leadOwnerId: values.leadOwnerId,
+              branchNames: values.branchNames,
               subtotal,
             };
             console.log('Payload to API:', JSON.stringify(payload, null, 2));
@@ -598,15 +767,55 @@ const Add = () => {
       >
         {({ values, setFieldValue }) => {
           const isDealerManufacturerType = values.type === 'Dealer/Manufacturer';
-          const selectionOptions = isDealerManufacturerType
-            ? branchOptions
-            : srfOptions.filter((opt) => !values.type || opt.category === values.type);
-          const selectedSRF = selectionOptions.find(
-            (opt) => opt.value === values.srfNumber && (!values.type || opt.category === values.type)
-          );
-          const isDealer = selectedSRF?.leadType === 'Dealer';
-          const isManufacturer = selectedSRF?.leadType === 'Manufacturer';
+          const selectionOptions = srfOptions.filter((opt) => !values.type || opt.category === values.type);
+          const selectedLeadOwner = leadOwnerOptions.find((opt) => opt.leadOwnerId === values.leadOwnerId);
+          const isDealer = selectedLeadOwner?.leadType === 'Dealer';
+          const isManufacturer = selectedLeadOwner?.leadType === 'Manufacturer';
           const dmHeading = isDealer ? "Dealer Details" : isManufacturer ? "Manufacturer Details" : "Dealer / Manufacturer Details";
+
+          const applyGstFromState = (_stateValue: string, gstRate = 18) => {
+            const rate = Number(gstRate) > 0 ? Number(gstRate) : 18;
+            setFieldValue('taxes.cgst.checked', false);
+            setFieldValue('taxes.cgst.amount', 0);
+            setFieldValue('taxes.sgst.checked', false);
+            setFieldValue('taxes.sgst.amount', 0);
+            setFieldValue('taxes.igst.checked', true);
+            setFieldValue('taxes.igst.amount', rate);
+          };
+
+          const loadHospitalsForBranches = async (
+            leadOwner: LeadOwnerOption | undefined,
+            branchNames: string[]
+          ) => {
+            if (!leadOwner || !branchNames.length) {
+              setFieldValue('dealerHospitals', [emptyDealerHospital()]);
+              setOrderIds([]);
+              setOrderId('');
+              return;
+            }
+            try {
+              const res = await getHospitalsByLeadOwnerBranches(leadOwner.leadOwnerId, branchNames);
+              const hospitals = Array.isArray(res?.data) ? res.data : [];
+              const mapped = hospitals.map((details: any) => {
+                const hospital = mapOrderDetailsToDealerHospital(details, leadOwner.leadType, manufacturers);
+                if (leadOwner.leadType === 'Manufacturer') {
+                  hospital.travelCostType = leadOwner.travelCost || hospital.travelCostType;
+                  const ownerCost = Number(leadOwner.cost) || 0;
+                  hospital.travelCostPrice = ownerCost > 0 ? ownerCost : hospital.travelCostPrice;
+                }
+                return hospital;
+              });
+              setFieldValue('dealerHospitals', mapped.length ? mapped : [emptyDealerHospital()]);
+              const ids = hospitals.map((h: any) => String(h._id || '')).filter(Boolean);
+              setOrderIds(ids);
+              setOrderId(ids[0] || '');
+              setFieldValue('discountPercent', hospitals[0]?.quotation?.discount || 0);
+              applyGstFromState(leadOwner.state || hospitals[0]?.state || '', hospitals[0]?.quotation?.gstRate || 18);
+            } catch (error) {
+              console.error('Error fetching hospital details for branches:', error);
+              showMessage('Failed to load hospital details for selected branches', 'error');
+            }
+          };
 
           return (
           <Form className="space-y-5">
@@ -623,14 +832,17 @@ const Add = () => {
                   onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
                     setFieldValue('type', e.target.value);
                     setFieldValue('srfNumber', '');
+                    setFieldValue('leadOwnerId', '');
+                    setFieldValue('branchNames', []);
                     setOrderId('');
+                    setOrderIds([]);
                     setFieldValue('buyerName', '');
                     setFieldValue('address', '');
                     setFieldValue('state', '');
                     setFieldValue('services', [{ machineType: '', description: '', quantity: 1, rate: 0, totalAmount: 0, hsnno: '' }]);
                     setFieldValue('additionalServices', []);
-                    setFieldValue('dealerHospitals', [{ partyCode: '', hospitalName: '', city: '', dealerState: '', modelNo: '', amount: 0, travelCostType: '', travelCostPrice: 0, services: [], additionalServices: [] }]);
-                    setFieldValue('taxes', { cgst: { checked: false, amount: 0 }, sgst: { checked: false, amount: 0 }, igst: { checked: false, amount: 0 } });
+                    setFieldValue('dealerHospitals', [emptyDealerHospital()]);
+                    setFieldValue('taxes', DEFAULT_TAXES);
                     setFieldValue('discountPercent', 0);
                   }}
                 >
@@ -641,10 +853,9 @@ const Add = () => {
                 <ErrorMessage name="type" component="div" className="text-red-500 text-sm mt-1" />
               </div>
 
+              {!isDealerManufacturerType && (
               <div>
-                <label htmlFor="srfNumber" className="block mb-1 font-medium">
-                  {isDealerManufacturerType ? 'Branch Name' : 'SRF Number'}
-                </label>
+                <label htmlFor="srfNumber" className="block mb-1 font-medium">SRF Number</label>
                 <Field
                   as="select"
                   name="srfNumber"
@@ -653,15 +864,12 @@ const Add = () => {
                     const selectedValue = e.target.value;
                     setFieldValue('srfNumber', selectedValue);
                     const selectedOrderId = orderMap[`${values.type}::${selectedValue}`];
-                    const selectedOption = selectionOptions.find(
-                      (opt) => opt.value === selectedValue && opt.category === values.type
-                    );
                     setOrderId(selectedOrderId || '');
+                    setOrderIds(selectedOrderId ? [selectedOrderId] : []);
 
                     if (selectedOrderId) {
                       try {
                         const res = await getAllDetails(selectedOrderId);
-                        // console.log("🚀 ~ SRF Number onChange ~ res:", res);
                         if (res?.success && res.data) {
                           const details = res.data;
                           const enquiryServices = details?.quotation?.enquiry?.services || [];
@@ -689,118 +897,37 @@ const Add = () => {
                           setFieldValue('address', details.fullAddress || details.address || '');
                           setFieldValue('state', details.state || '');
                           setFieldValue('discountPercent', details.quotation?.discount || 0);
+                          applyGstFromState(details.state || '', details.quotation?.gstRate || 18);
 
-                          const gstRate = details.quotation?.gstRate || 0;
-                          const isIntraState = details.state === sellerState;
-                          if (isIntraState) {
-                            setFieldValue('taxes.cgst.checked', true);
-                            setFieldValue('taxes.cgst.amount', gstRate / 2);
-                            setFieldValue('taxes.sgst.checked', true);
-                            setFieldValue('taxes.sgst.amount', gstRate / 2);
-                            setFieldValue('taxes.igst.checked', false);
-                            setFieldValue('taxes.igst.amount', 0);
+                          if (details.services?.length) {
+                            const mappedServices: ServiceItem[] = details.services.map((s: any) => {
+                              const qty = s.quantity || 1;
+                              const total = resolveServiceTotal(s);
+                              return {
+                                machineType: s.machineType || '',
+                                description: (s.workTypeDetails || []).map((w: any) => w.workType).join(', ') || '',
+                                quantity: qty,
+                                totalAmount: total,
+                                rate: qty > 0 ? total / qty : 0,
+                                hsnno: s.machineModel || '',
+                              };
+                            });
+                            setFieldValue('services', mappedServices);
                           } else {
-                            setFieldValue('taxes.igst.checked', true);
-                            setFieldValue('taxes.igst.amount', gstRate);
-                            setFieldValue('taxes.cgst.checked', false);
-                            setFieldValue('taxes.cgst.amount', 0);
-                            setFieldValue('taxes.sgst.checked', false);
-                            setFieldValue('taxes.sgst.amount', 0);
-                          }
-
-                          if (values.type === 'Customer') {
-                            if (details.services?.length) {
-                              const mappedServices: ServiceItem[] = details.services.map((s: any) => {
-                                const qty = s.quantity || 1;
-                                const total = resolveServiceTotal(s);
-                                return {
-                                  machineType: s.machineType || '',
-                                  description: (s.workTypeDetails || []).map((w: any) => w.workType).join(', ') || '',
-                                  quantity: qty,
-                                  totalAmount: total,
-                                  rate: qty > 0 ? total / qty : 0,
-                                  hsnno: s.machineModel || '',
-                                };
-                              });
-                              setFieldValue('services', mappedServices);
-                            } else {
-                              setFieldValue('services', [{ machineType: '', description: '', quantity: 1, rate: 0, totalAmount: 0, hsnno: '' }]);
-                            }
-
-                            if (details.additionalServices?.length) {
-                              const mappedAdditional: AdditionalService[] = details.additionalServices.map((as: any) => ({
-                                name: as.name || '',
-                                description: as.description || '',
-                                totalAmount: as.totalAmount || 0,
-                              }));
-                              setFieldValue('additionalServices', mappedAdditional);
-                            } else {
-                              setFieldValue('additionalServices', []);
-                            }
-                            setFieldValue('dealerHospitals', [{ partyCode: '', hospitalName: '', city: '', dealerState: '', modelNo: '', amount: 0, travelCostType: '', travelCostPrice: 0, services: [], additionalServices: [] }]);
-                          }
-                          else if (values.type === 'Dealer/Manufacturer') {
-                            let mainSubtotal = (details.quotation?.subtotal || 0) - (details.advanceAmount || 0);
-                            const sourceServices: any[] =
-                              details.services?.length
-                                ? details.services
-                                : (details.quotation?.enquiry?.services || []);
-                            const mappedServices: ServiceItem[] = sourceServices.length
-                              ? sourceServices.map((s: any) => {
-                                const qty = s.quantity || 1;
-                                const total = resolveServiceTotal(s);
-                                return {
-                                  machineType: s.machineType || '',
-                                  description: (s.workTypeDetails || []).map((w: any) => w.workType).join(', ') || '',
-                                  quantity: qty,
-                                  totalAmount: total,
-                                  rate: qty > 0 ? total / qty : 0,
-                                  hsnno: s.machineModel || '',
-                                };
-                              })
-                              : [];
-                            const sourceAdditional: any[] =
-                              details.additionalServices?.length
-                                ? details.additionalServices
-                                : (details.quotation?.enquiry?.additionalServices || []);
-                            const mappedAdditional: AdditionalService[] = sourceAdditional.length
-                              ? sourceAdditional.map((as: any) => ({
-                                name: as.name || '',
-                                description: as.description || '',
-                                totalAmount: as.totalAmount || 0,
-                              }))
-                              : [];
-
-                            // If lead owner is Manufacturer with fixed travel cost, keep it as separate travel fields.
-                            const selectedManufacturer =
-                              selectedOption?.leadType === 'Manufacturer'
-                                ? manufacturers.find((m: any) => String(m._id) === String(details.leadOwner))
-                                : null;
-                            const fixedTravelCost =
-                              selectedManufacturer?.cost != null &&
-                              selectedManufacturer?.cost !== ''
-                                ? Number(selectedManufacturer.cost)
-                                : 0;
-                            const dealerHospital: DealerHospital = {
-                              partyCode: details.partyCodeOrSysId || '',
-                              hospitalName: details.hospitalName || '',
-                              city: details.city || '',
-                              dealerState: details.state || '',
-                              modelNo: '',
-                              amount: mainSubtotal,
-                              travelCostType: selectedManufacturer?.travelCost || '',
-                              travelCostPrice: fixedTravelCost > 0 ? fixedTravelCost : 0,
-                              services: mappedServices,
-                              additionalServices: mappedAdditional,
-                            };
-                            setFieldValue('dealerHospitals', [dealerHospital]);
-                            setFieldValue('services', []);
-                            setFieldValue('additionalServices', []);
-                          } else {
-                            setFieldValue('dealerHospitals', [{ partyCode: '', hospitalName: '', city: '', dealerState: '', modelNo: '', amount: 0, travelCostType: '', travelCostPrice: 0, services: [], additionalServices: [] }]);
                             setFieldValue('services', [{ machineType: '', description: '', quantity: 1, rate: 0, totalAmount: 0, hsnno: '' }]);
+                          }
+
+                          if (details.additionalServices?.length) {
+                            const mappedAdditional: AdditionalService[] = details.additionalServices.map((as: any) => ({
+                              name: as.name || '',
+                              description: as.description || '',
+                              totalAmount: as.totalAmount || 0,
+                            }));
+                            setFieldValue('additionalServices', mappedAdditional);
+                          } else {
                             setFieldValue('additionalServices', []);
                           }
+                          setFieldValue('dealerHospitals', [emptyDealerHospital()]);
                         }
                       } catch (error) {
                         console.error('Error fetching details:', error);
@@ -808,9 +935,7 @@ const Add = () => {
                     }
                   }}
                 >
-                  <option value="">
-                    {isDealerManufacturerType ? 'Select Branch Name' : 'Select SRF Number'}
-                  </option>
+                  <option value="">Select SRF Number</option>
                   {selectionOptions.map((opt) => (
                     <option key={opt.value} value={opt.value}>
                       {opt.label}
@@ -819,6 +944,45 @@ const Add = () => {
                 </Field>
                 <ErrorMessage name="srfNumber" component="div" className="text-red-500 text-sm mt-1" />
               </div>
+              )}
+
+              {isDealerManufacturerType && (
+              <div className="md:col-span-2">
+                <label htmlFor="leadOwnerId" className="block mb-1 font-medium">Lead Owner</label>
+                <Field
+                  as="select"
+                  name="leadOwnerId"
+                  className="form-select"
+                  onChange={async (e: React.ChangeEvent<HTMLSelectElement>) => {
+                    const selectedId = e.target.value;
+                    setFieldValue('leadOwnerId', selectedId);
+                    setFieldValue('branchNames', []);
+                    setFieldValue('dealerHospitals', [emptyDealerHospital()]);
+                    setOrderIds([]);
+                    setOrderId('');
+                    const owner = leadOwnerOptions.find((opt) => opt.leadOwnerId === selectedId);
+                    if (owner) {
+                      setFieldValue('buyerName', owner.leadOwner || '');
+                      setFieldValue('address', owner.address || '');
+                      setFieldValue('state', owner.state || '');
+                      applyGstFromState(owner.state || '', 18);
+                    } else {
+                      setFieldValue('buyerName', '');
+                      setFieldValue('address', '');
+                      setFieldValue('state', '');
+                    }
+                  }}
+                >
+                  <option value="">Select Manufacturer / Dealer</option>
+                  {leadOwnerOptions.map((opt) => (
+                    <option key={opt.leadOwnerId} value={opt.leadOwnerId}>
+                      {`${opt.leadOwner} (${opt.leadType}) (${(opt.srfNumbers || []).join(', ') || 'No SRF'})`}
+                    </option>
+                  ))}
+                </Field>
+                <ErrorMessage name="leadOwnerId" component="div" className="text-red-500 text-sm mt-1" />
+              </div>
+              )}
 
               {['buyerName', 'address', 'state'].map((name) => (
                 <div key={name}>
@@ -828,6 +992,38 @@ const Add = () => {
                 </div>
               ))}
             </div>
+
+            {isDealerManufacturerType && selectedLeadOwner && (
+              <div className="panel">
+                <label className="block mb-2 font-medium">Branch Name</label>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                  {(selectedLeadOwner.branches || []).map((branch) => {
+                    const checked = values.branchNames.includes(branch.branchName);
+                    return (
+                      <label key={branch.branchName} className="flex items-center gap-2 font-normal">
+                        <input
+                          type="checkbox"
+                          className="form-checkbox"
+                          checked={checked}
+                          onChange={async (e) => {
+                            const nextBranches = e.target.checked
+                              ? [...values.branchNames, branch.branchName]
+                              : values.branchNames.filter((name) => name !== branch.branchName);
+                            setFieldValue('branchNames', nextBranches);
+                            await loadHospitalsForBranches(selectedLeadOwner, nextBranches);
+                          }}
+                        />
+                        <span>
+                          {branch.branchName}
+                          {(branch.srfNumbers || []).length > 0 ? ` (${(branch.srfNumbers || []).join(', ')})` : ''}
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+                <ErrorMessage name="branchNames" component="div" className="text-red-500 text-sm mt-1" />
+              </div>
+            )}
 
             {/* Services Section (for Customer invoices only) */}
             {values.type === 'Customer' && (
@@ -1037,8 +1233,15 @@ const Add = () => {
                 <FieldArray name="dealerHospitals">
                   {({ push, remove }) => (
                     <>
-                      {values.dealerHospitals.map((_, index) => (
-                        <div key={index} className="border rounded p-4 mb-4">
+                      {values.dealerHospitals.map((hospital, index) => (
+                        <div key={hospital.orderId || index} className="border rounded p-4 mb-4">
+                          {(hospital.hospitalName || hospital.srfNumber || hospital.branchName) && (
+                            <p className="text-sm text-gray-500 mb-3">
+                              {[hospital.hospitalName, hospital.branchName ? `Branch: ${hospital.branchName}` : '', hospital.srfNumber ? `SRF: ${hospital.srfNumber}` : '']
+                                .filter(Boolean)
+                                .join(' | ')}
+                            </p>
+                          )}
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end mb-4">
                             <div>
                               <label className="block mb-1 font-medium">Party Code</label>

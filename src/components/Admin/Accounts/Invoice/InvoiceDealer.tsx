@@ -2,10 +2,58 @@ import React, { useEffect, useState, useRef } from "react";
 import { getInvoiceById, uploadInvoice } from "../../../../api"; // added uploadInvoice API
 import antesoLogo from "../../../../assets/logo/anteso-logo2.png";
 import signature from "../../../../assets/quotationImg/signature.png";
-import qrcode from "../../../../assets/quotationImg/qrcode.png";
 import { useParams } from "react-router-dom";
 import html2pdf from "html2pdf.js";
 import { showMessage } from "../../../../components/common/ShowMessage"; // Adjust the import path as needed
+
+const ones = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"];
+const tens = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+
+const twoDigitWords = (n: number): string => {
+    if (n < 20) return ones[n];
+    const t = Math.floor(n / 10);
+    const o = n % 10;
+    return `${tens[t]}${o ? ` ${ones[o]}` : ""}`.trim();
+};
+
+const threeDigitWords = (n: number): string => {
+    const h = Math.floor(n / 100);
+    const rest = n % 100;
+    const parts: string[] = [];
+    if (h) parts.push(`${ones[h]} Hundred`);
+    if (rest) parts.push(twoDigitWords(rest));
+    return parts.join(" ");
+};
+
+const numberToIndianWords = (value: number): string => {
+    const amount = Math.round(Number(value) || 0);
+    if (amount === 0) return "Indian Rupees Zero Only";
+
+    const crore = Math.floor(amount / 10000000);
+    const lakh = Math.floor((amount % 10000000) / 100000);
+    const thousand = Math.floor((amount % 100000) / 1000);
+    const hundred = amount % 1000;
+
+    const parts: string[] = [];
+    if (crore) parts.push(`${threeDigitWords(crore)} Crore`);
+    if (lakh) parts.push(`${threeDigitWords(lakh)} Lakh`);
+    if (thousand) parts.push(`${threeDigitWords(thousand)} Thousand`);
+    if (hundred) parts.push(threeDigitWords(hundred));
+
+    return `Indian Rupees ${parts.join(" ")} Only`;
+};
+
+const stackedCell = (values: Array<string | undefined | null>) => {
+    const lines = values.map((v) => String(v || "").trim()).filter(Boolean);
+    if (!lines.length) return "-";
+    return (
+        <span className="block whitespace-pre-line break-all leading-[1.15] text-[7px]">
+            {lines.join("\n")}
+        </span>
+    );
+};
+
+const cellClass = "border border-black px-[2px] py-[2px] align-top break-words leading-[1.15] text-[7px]";
 
 const InvoiceDealer = () => {
     const { id } = useParams<{ id: string }>();
@@ -325,113 +373,87 @@ const InvoiceDealer = () => {
                                 )}
                             </>
                         ) : (
-                            /* Dealer Breakdown (already present, keep as-is) */
-                            <div className="mt-2 space-y-6">
-                                {invoice.dealerHospitals?.map((dh: any, dhIndex: number) => {
-                                    const hospitalServices = dh.services || [];
-                                    const hospitalAdditionalServices = dh.additionalServices || [];
-                                    const travelCostLine = hospitalAdditionalServices.find(
-                                        (as: any) => String(as?.name || "").trim().toLowerCase() === "travel cost"
-                                    );
-                                    const travelCostAmount = Number(travelCostLine?.totalAmount || dh?.travelCostPrice || 0);
+                            <div className="mt-2 overflow-x-auto">
+                                <table className="w-full table-fixed border border-black border-collapse text-[7px]">
+                                    <thead className="bg-gray-100">
+                                        <tr>
+                                            <th className="border border-black px-[2px] py-[2px] w-[5%] text-[7px] font-semibold leading-[1.15]">Sl No</th>
+                                            <th className="border border-black px-[2px] py-[2px] w-[10%] text-[7px] font-semibold leading-[1.15]">Party Code</th>
+                                            <th className="border border-black px-[2px] py-[2px] w-[16%] text-[7px] font-semibold leading-[1.15]">Name of the Hospital</th>
+                                            <th className="border border-black px-[2px] py-[2px] w-[10%] text-[7px] font-semibold leading-[1.15]">Location</th>
+                                            <th className="border border-black px-[2px] py-[2px] w-[10%] text-[7px] font-semibold leading-[1.15]">State</th>
+                                            <th className="border border-black px-[2px] py-[2px] w-[12%] text-[7px] font-semibold leading-[1.15]">Model</th>
+                                            <th className="border border-black px-[2px] py-[2px] w-[12%] text-[7px] font-semibold leading-[1.15]">Serial No</th>
+                                            <th className="border border-black px-[2px] py-[2px] w-[15%] text-[7px] font-semibold leading-[1.15]">Machine Type</th>
+                                            <th className="border border-black px-[2px] py-[2px] w-[10%] text-[7px] font-semibold leading-[1.15]">Amount</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {(invoice.dealerHospitals || []).map((dh: any, dhIndex: number) => {
+                                            const hospitalServices = Array.isArray(dh.services) ? dh.services : [];
+                                            const relatedOrder = (invoice.orders || []).find(
+                                                (o: any) => String(o?._id) === String(dh.orderId)
+                                            ) || invoice.order;
+                                            const location = dh.district || relatedOrder?.district || dh.city || dh.location || "-";
+                                            const machineTypes = hospitalServices.length
+                                                ? hospitalServices.map((s: any) => s.machineType)
+                                                : [dh.machineType];
+                                            const models = hospitalServices.length
+                                                ? hospitalServices.map((s: any) => s.hsnno || s.machineModel)
+                                                : [dh.modelNo];
+                                            const serials = hospitalServices.length
+                                                ? hospitalServices.map((s: any) => s.serialNumber)
+                                                : [dh.serialNo, dh.srNo];
+                                            const hospitalAmount = Number(
+                                                dh.amount ??
+                                                hospitalServices.reduce(
+                                                    (sum: number, s: any) => sum + Number(s.totalAmount ?? ((s.rate || 0) * (s.quantity || 0))),
+                                                    0
+                                                )
+                                            );
 
-                                    const hospitalSubtotal =
-                                        hospitalServices.reduce((sum: number, s: any) => sum + Number(s.totalAmount ?? (s.rate * s.quantity || 0)), 0) +
-                                        hospitalAdditionalServices.reduce((sum: number, as: any) => sum + (Number(as.totalAmount) || 0), 0);
-
-                                    return (
-                                        <div key={dhIndex} className="border border-black p-2">
-                                            {/* <div className="bg-gray-100 p-2 border-b border-black text-xs font-semibold">
-                                                <p><strong>Hospital:</strong> {dh.hospitalName} ({dh.partyCode})</p>
-                                                <p><strong>Location:</strong> {dh.location}, <strong>State:</strong> {dh.dealerState}</p>
-                                                <p><strong>Model:</strong> {dh.modelNo} | <strong>Sr. No:</strong> {dh.srNo || "-"}</p>
-                                            </div> */}
-
-                                            {hospitalServices.length > 0 && (
-                                                <div className="mt-2">
-                                                    <h4 className="font-bold text-xs mb-1">Services</h4>
-                                                    <table className="w-full table-fixed border border-black border-collapse text-[10px]">
-                                                        <thead className="bg-gray-50">
-                                                            <tr>
-                                                                <th className="border border-black px-1 py-1 text-xs w-[6%]">S No</th>
-                                                                <th className="border border-black px-1 py-1 text-xs w-[22%]">Machine Type</th>
-                                                                <th className="border border-black px-1 py-1 text-xs w-[28%]">Description</th>
-                                                                <th className="border border-black px-1 py-1 text-xs">HSN/SAC</th>
-                                                                <th className="border border-black px-1 py-1 text-xs">Qty</th>
-                                                                <th className="border border-black px-1 py-1 text-xs">Rate</th>
-                                                                <th className="border border-black px-1 py-1 text-xs">Amount</th>
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody>
-                                                            {hospitalServices.map((s: any, sIdx: number) => (
-                                                                <tr key={sIdx}>
-                                                                    <td className="border border-black px-1 py-1 w-[6%] text-center">{sIdx + 1}</td>
-                                                                    <td className="border border-black px-1 py-1 w-[22%] break-words whitespace-normal">{s.machineType || "-"}</td>
-                                                                    <td className="border border-black px-1 py-1 break-words">{s.description}</td>
-                                                                    <td className="border border-black px-1 py-1">{s.hsnno || "-"}</td>
-                                                                    <td className="border border-black px-1 py-1 text-right">{s.quantity || 0}</td>
-                                                                    <td className="border border-black px-1 py-1 text-right">₹{(s.rate || 0).toLocaleString("en-IN")}</td>
-                                                                    <td className="border border-black px-1 py-1 text-right">
-                                                                        ₹{Number(s.totalAmount ?? ((s.rate || 0) * (s.quantity || 0))).toLocaleString("en-IN")}
-                                                                    </td>
-                                                                </tr>
-                                                            ))}
-                                                        </tbody>
-                                                    </table>
-                                                </div>
-                                            )}
-
-                                            {hospitalAdditionalServices.length > 0 && (
-                                                <div className="mt-2">
-                                                    <h4 className="font-bold text-xs mb-1">Additional Services</h4>
-                                                    <table className="w-full table-fixed border border-black border-collapse text-[10px]">
-                                                        <thead className="bg-gray-50">
-                                                            <tr>
-                                                                <th className="border border-black px-1 py-1 text-xs w-[6%]">S No</th>
-                                                                <th className="border border-black px-1 py-1 text-xs w-[34%]">Name</th>
-                                                                <th className="border border-black px-1 py-1 text-xs w-[40%]">Description</th>
-                                                                <th className="border border-black px-1 py-1 text-xs">Amount</th>
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody>
-                                                            {hospitalAdditionalServices.map((as: any, asIdx: number) => (
-                                                                <tr key={asIdx}>
-                                                                    <td className="border border-black px-1 py-1 w-[6%] text-center">{asIdx + 1}</td>
-                                                                    <td className="border border-black px-1 py-1 w-[34%] break-words">{as.name}</td>
-                                                                    <td className="border border-black px-1 py-1">{as.description}</td>
-                                                                    <td className="border border-black px-1 py-1 text-right">
-                                                                        ₹{(Number(as.totalAmount) || 0).toLocaleString("en-IN")}
-                                                                    </td>
-                                                                </tr>
-                                                            ))}
-                                                        </tbody>
-                                                    </table>
-                                                </div>
-                                            )}
-
-                                            {travelCostAmount > 0 && (
-                                                <p className="text-xs font-semibold mt-2">
-                                                    Travel Cost Included: ₹{travelCostAmount.toLocaleString("en-IN")}
-                                                </p>
-                                            )}
-                                            {/* 
-                                            <div className="text-right mt-2 font-semibold text-xs">
-                                                <p>Subtotal for this hospital: ₹{hospitalSubtotal.toFixed(2).toLocaleString("en-IN")}</p>
-                                            </div> */}
-                                        </div>
-                                    );
-                                })}
+                                            return (
+                                                <tr key={dh.orderId || dhIndex}>
+                                                    <td className={`${cellClass} text-center`}>{dhIndex + 1}</td>
+                                                    <td className={cellClass}>{dh.partyCode || "-"}</td>
+                                                    <td className={cellClass}>{dh.hospitalName || "-"}</td>
+                                                    <td className={cellClass}>{location}</td>
+                                                    <td className={cellClass}>{dh.dealerState || relatedOrder?.state || "-"}</td>
+                                                    <td className={cellClass}>{stackedCell(models)}</td>
+                                                    <td className={cellClass}>{stackedCell(serials)}</td>
+                                                    <td className={cellClass}>{stackedCell(machineTypes)}</td>
+                                                    <td className={`${cellClass} text-right`}>
+                                                        ₹{hospitalAmount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
                             </div>
                         )}
                     </div>
 
+                    {!isCustomer && (
+                        <div className="mt-3 text-[11px]">
+                            <p><strong>Amount Chargeable (in words):</strong> {numberToIndianWords(total)}</p>
+                        </div>
+                    )}
+
                     <div className="text-right mt-4 space-y-1">
-                        <p><strong>Sub Total:</strong> ₹{((subTotal ?? 0).toFixed(2)).toLocaleString("en-IN")}</p>
-                        {discount > 0 && <p><strong>Discount:</strong> -₹{((discount).toFixed(2)).toLocaleString("en-IN")}</p>}
-                        {cgst > 0 && <p><strong>CGST:</strong> ₹{((cgst).toFixed(2)).toLocaleString("en-IN")}</p>}
-                        {sgst > 0 && <p><strong>SGST:</strong> ₹{((sgst).toFixed(2)).toLocaleString("en-IN")}</p>}
-                        {igst > 0 && <p><strong>IGST:</strong> ₹{((igst).toFixed(2)).toLocaleString("en-IN")}</p>}
-                        <p className="text-sm font-bold">Total: ₹{((total ?? 0).toFixed(2)).toLocaleString("en-IN")}</p>
+                        <p><strong>Sub Total:</strong> ₹{Number(subTotal || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                        {discount > 0 && <p><strong>Discount:</strong> -₹{Number(discount).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>}
+                        <p>
+                            <strong>
+                                {igst > 0 && cgst <= 0 && sgst <= 0
+                                    ? "GST (IGST @ 18%)"
+                                    : cgst > 0 || sgst > 0
+                                        ? "GST"
+                                        : "GST (IGST @ 18%)"}:
+                            </strong>{" "}
+                            ₹{Number(gst || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </p>
+                        <p className="text-sm font-bold">Total: ₹{Number(total || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                     </div>
 
                     <div className="flex flex-col md:flex-row justify-between gap-6 mt-auto text-[10px] sm:text-xs">
@@ -442,14 +464,15 @@ const InvoiceDealer = () => {
                             <p><strong>IFSC:</strong> HDFC0000711</p>
                             <p><strong>Branch:</strong> Pushpanjali Enclave, Pitampura New Delhi</p>
                         </div>
-                        <div>
-                            <img src={qrcode} alt="QR Code" className="h-20 w-20 object-contain" />
-                        </div>
                         <div className="text-right">
                             <p><strong>For ANTESO Biomedical OPC Pvt. Ltd.</strong></p>
                             <img src={signature} alt="Signature" className="h-14 ml-auto" />
                             <p><strong>Authorized Signatory</strong></p>
                         </div>
+                    </div>
+
+                    <div className="mt-4 pt-2 border-t border-black text-[10px] sm:text-xs text-center">
+                        Please make cheques payble to us :ANTESO Biomedical OPC Pvt. Ltd. For any Clarification this invoice, please email us on: accounts@antesobiomedicalopc.com
                     </div>
                 </div>
 
