@@ -1758,7 +1758,8 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
             const workTypeName = parentService.workTypeName || "Unknown Work Type";
             const identifier = getWorkTypeIdentifier(workTypeName);
             const hasExistingReport = Boolean(reportNumbers[parentService.id]?.[identifier]?.reportUrl);
-            if (isFileUploadMandatory(newStatus) && !uploadedFiles[workTypeId] && !hasExistingReport) {
+            const hasUploadedFile = Boolean(uploadedFiles[workTypeId] || assignments[workTypeId]?.uploadedFile);
+            if (isFileUploadMandatory(newStatus) && !hasUploadedFile && !hasExistingReport) {
                 showModal('Warning', "File upload is mandatory for complete status!");
                 setAssigningStaff((prev) => ({ ...prev, [workTypeId]: false }))
                 return
@@ -1804,7 +1805,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                     workTypeName,
                     newStatus,
                     payload,
-                    uploadedFiles[workTypeId],
+                    uploadedFiles[workTypeId] || assignments[workTypeId]?.uploadedFile || undefined,
                     getWorkTypeIdentifier(workTypeName), // Normalize to 'qatest' or 'elora'
                 )
 
@@ -2113,8 +2114,9 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
     //         setAssigningStaff((prev) => ({ ...prev, [workTypeId]: false }))
     //     }
     // }
-    const handleStatusUpdate = (workTypeId: string, newStatus: string) => {
-        if (isFileUploadMandatory(newStatus) && !uploadedFiles[workTypeId]) {
+    const handleStatusUpdate = (workTypeId: string, newStatus: string, justUploadedFile?: File) => {
+        const hasFile = Boolean(justUploadedFile || uploadedFiles[workTypeId] || assignments[workTypeId]?.uploadedFile);
+        if (isFileUploadMandatory(newStatus) && !hasFile) {
             showModal('Warning', "File upload is mandatory for complete status!");
             return
         }
@@ -2172,7 +2174,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
         const targetStatus = (parentService && isQAWorkType(parentService.workTypeName)) ? "generated" : "complete";
 
         setTimeout(() => {
-            handleStatusUpdate(workTypeId, targetStatus)
+            handleStatusUpdate(workTypeId, targetStatus, file)
         }, 1000)
     }
 

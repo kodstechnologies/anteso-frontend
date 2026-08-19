@@ -234,6 +234,7 @@ const OBIContent: React.FC<OBIProps> = ({ serviceId, csvFileUrl, csvFileUrls, qa
                 const data = detailsRes.data;
                 console.log("data", data);
                 const firstTest = data.qaTests?.[0];
+              
 
                 setDetails(data);
 
