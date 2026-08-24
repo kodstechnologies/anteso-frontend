@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { DataTable, type DataTableSortStatus } from 'mantine-datatable';
 import IconPlus from '../../components/Icon/IconPlus';
 import IconTrashLines from '../../components/Icon/IconTrashLines';
@@ -7,6 +7,7 @@ import IconEye from '../../components/Icon/IconEye';
 import IconHome from '../../components/Icon/IconHome';
 import IconBox from '../../components/Icon/IconBox';
 import IconRefresh from '../../components/Icon/IconRefresh';
+import IconClock from '../../components/Icon/IconClock';
 import Breadcrumb, { BreadcrumbItem } from '../../components/common/Breadcrumb';
 import { useDispatch } from 'react-redux';
 import { setPageTitle } from '../../store/themeConfigSlice';
@@ -84,6 +85,7 @@ const FilterSelect = ({
 );
 
 const Orders = () => {
+    const navigate = useNavigate();
     const [search, setSearch] = useState('');
     const [dateFrom, setDateFrom] = useState('');
     const [dateTo, setDateTo] = useState('');
@@ -291,9 +293,18 @@ const Orders = () => {
                     {/* Search + Create */}
                     <div className="mb-4.5 flex flex-col gap-4 px-5">
                         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                            <Link to={'create'} className="btn btn-primary w-fit gap-2">
-                                <IconPlus /> Create Order
-                            </Link>
+                            <div className="flex flex-wrap gap-2">
+                                <Link to={'create'} className="btn btn-primary w-fit gap-2">
+                                    <IconPlus /> Create Order
+                                </Link>
+                                <button
+                                    type="button"
+                                    onClick={() => navigate('/admin/orders/expiring-records')}
+                                    className="btn btn-warning w-fit gap-2"
+                                >
+                                    <IconClock /> Expiring Records
+                                </button>
+                            </div>
 
                             <div className="flex flex-wrap items-center gap-2">
                                 <button

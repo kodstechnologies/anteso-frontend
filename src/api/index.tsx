@@ -4045,6 +4045,24 @@ export const getAssignedToolsForEngineerByMachine = async (engineerId: string, m
     }
 }
 
+export const getExpiryReminders = async (type: 'qa' | 'license' | 'all' = 'all') => {
+    try {
+        const token = Cookies.get('accessToken');
+        const res = await api.get(`/expiry-reminders`, {
+            params: {
+                type,
+            },
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
+        return res.data;
+    } catch (error) {
+        console.error("🚀 ~ getExpiryReminders ~ error:", error);
+        throw error;
+    }
+}
+
 export const getActiveTechnicians = async () => {
     try {
         const token = Cookies.get('accessToken')

@@ -73,6 +73,7 @@ import AllLeavesForStaff from '../components/Admin/Master/Leave/AllLeavesForStaf
 import EditLeaveForStaff from '../components/Admin/Master/Leave/EditLeaveForStaff';
 //orders
 import Orders from '../pages/Admin/Orders';
+import ExpiringRecords from '../pages/Admin/ExpiringRecords';
 import EditOrder from '../components/Admin/Orders/Edit'
 import ViewOrder from '../components/Admin/Orders/View'
 import CreateOrder from '../components/Admin/Orders/Create'
@@ -784,6 +785,14 @@ const routes = [
         element: (
             <AdminProtected>
                 <Orders />
+            </AdminProtected>
+        ),
+    },
+    {
+        path: '/admin/orders/expiring-records',
+        element: (
+            <AdminProtected>
+                <ExpiringRecords />
             </AdminProtected>
         ),
     },
