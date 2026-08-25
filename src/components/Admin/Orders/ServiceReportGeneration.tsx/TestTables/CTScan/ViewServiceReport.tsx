@@ -427,7 +427,7 @@ const ViewServiceReportCTScan: React.FC<ViewServiceReportCTScanProps> = ({
     const type = tolerance.type || 'percent';
     const sign = tolerance.sign || 'both';
 
-    const signSymbol = sign === 'both' ? '�' : sign === 'plus' ? '+' : '-';
+    const signSymbol = sign === 'both' ? '±' : sign === 'plus' ? '+' : '-';
     const unit = type === 'percent' ? '%' : ' kVp';
     return `${signSymbol}${value}${unit}`;
   };
@@ -2074,13 +2074,13 @@ const ViewServiceReportCTScan: React.FC<ViewServiceReportCTScanProps> = ({
                 ["Sl. No.", report.slNumber],
                 ["Condition of Test Item", report.condition],
                 ["Testing Procedure No.", report.testingProcedureNumber || "-"],
-                ["Engineer�s Name", report.engineerNameRPId || "-"],
+                ["Engineer's Name", report.engineerNameRPId || "-"],
                 ["RP ID", report.rpId || "-"],
                 ["No. of pages", report.pages || "-"],
                 ["QA Test Date", formatDate(report.testDate)],
                 ["QA Test Due Date", formatDate(report.testDueDate)],
                 ["Testing done at Location", report.location],
-                ["Temperature (�C)", report.temperature || "-"],
+                ["Temperature (°C)", report.temperature || "-"],
                 ["Humidity in RH (%)", report.humidity || "-"],
               ].map(([label, value], index) => (
                 <div key={label} className="flex">
@@ -3526,7 +3526,7 @@ const ViewServiceReportCTScan: React.FC<ViewServiceReportCTScanProps> = ({
                           <tr key={i} className="text-center" style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
                             <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.actual || "-"}</td>
                             <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.measured || "-"}</td>
-                            <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{testData.gantryTilt.toleranceSign || "+/-"}{testData.gantryTilt.toleranceValue || "2"}�</td>
+                            <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{testData.gantryTilt.toleranceSign || "+/-"}{testData.gantryTilt.toleranceValue || "2"}°</td>
                             <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>
                               <span className={row.remark === "Pass" ? "text-green-600 font-bold" : row.remark === "Fail" ? "text-red-600 font-bold" : ""}>
                                 {row.remark || "-"}
