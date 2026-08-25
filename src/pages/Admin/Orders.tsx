@@ -11,7 +11,7 @@ import IconClock from '../../components/Icon/IconClock';
 import Breadcrumb, { BreadcrumbItem } from '../../components/common/Breadcrumb';
 import { useDispatch } from 'react-redux';
 import { setPageTitle } from '../../store/themeConfigSlice';
-import { getAllOrders, getOrdersWeb, deleteOrder, type OrderListFilters, type OrderFilterOptions } from '../../api';
+import { getAllOrders, getOrdersWeb, deleteOrder, getExpiryReminders, type OrderListFilters, type OrderFilterOptions } from '../../api';
 import { showMessage } from '../../components/common/ShowMessage';
 import ConfirmModal from '../../components/common/ConfirmModal';
 import { formatCreatedAtDisplay, isInDateRange } from '../../utils/tableDateFilter';
@@ -110,8 +110,25 @@ const Orders = () => {
     const [selectedRecords, setSelectedRecords] = useState<Order[]>([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [orderToDelete, setOrderToDelete] = useState<string | null>(null);
+    const [expiringRecordsCount, setExpiringRecordsCount] = useState(0);
 
     const dispatch = useDispatch();
+
+    const fetchExpiringRecordsCount = async () => {
+        try {
+            const response = await getExpiryReminders('all');
+            if (!response?.success) {
+                setExpiringRecordsCount(0);
+                return;
+            }
+            const qaCount = Number(response.qaCount ?? response.data?.qa?.length ?? 0);
+            const licenseCount = Number(response.licenseCount ?? response.data?.license?.length ?? 0);
+            setExpiringRecordsCount(qaCount + licenseCount);
+        } catch (error) {
+            console.error('Failed to fetch expiring records count:', error);
+            setExpiringRecordsCount(0);
+        }
+    };
 
     const fetchOrders = async (overrides: Partial<OrderListFilters> = {}) => {
         try {
@@ -147,6 +164,7 @@ const Orders = () => {
     // ✅ Fetch Orders on Mount
     useEffect(() => {
         dispatch(setPageTitle('Orders'));
+        fetchExpiringRecordsCount();
     }, [dispatch]);
 
     useEffect(() => {
@@ -300,9 +318,14 @@ const Orders = () => {
                                 <button
                                     type="button"
                                     onClick={() => navigate('/admin/orders/expiring-records')}
-                                    className="btn btn-warning w-fit gap-2"
+                                    className="btn btn-warning relative w-fit gap-2"
                                 >
                                     <IconClock /> Expiring Records
+                                    {expiringRecordsCount > 0 && (
+                                        <span className="absolute -right-2 -top-2 inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-danger px-1.5 py-0.5 text-xs font-bold text-white">
+                                            {expiringRecordsCount > 99 ? '99+' : expiringRecordsCount}
+                                        </span>
+                                    )}
                                 </button>
                             </div>
 

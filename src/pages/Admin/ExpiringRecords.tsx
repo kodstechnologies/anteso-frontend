@@ -50,6 +50,7 @@ const ExpiringRecords = () => {
     const [qaPage, setQaPage] = useState(1);
     const [qaPageSize, setQaPageSize] = useState(10);
     const [qaTotalRecords, setQaTotalRecords] = useState(0);
+    const [qaNotificationCount, setQaNotificationCount] = useState(0);
     const [qaDateFrom, setQaDateFrom] = useState('');
     const [qaDateTo, setQaDateTo] = useState('');
     const [qaSortStatus, setQaSortStatus] = useState<DataTableSortStatus>({
@@ -63,6 +64,7 @@ const ExpiringRecords = () => {
     const [licensePage, setLicensePage] = useState(1);
     const [licensePageSize, setLicensePageSize] = useState(10);
     const [licenseTotalRecords, setLicenseTotalRecords] = useState(0);
+    const [licenseNotificationCount, setLicenseNotificationCount] = useState(0);
     const [licenseDateFrom, setLicenseDateFrom] = useState('');
     const [licenseDateTo, setLicenseDateTo] = useState('');
     const [licenseSortStatus, setLicenseSortStatus] = useState<DataTableSortStatus>({
@@ -98,6 +100,7 @@ const ExpiringRecords = () => {
                 let filteredData = response.data.qa.filter((item: QAReportReminder) =>
                     isNotExpired(item.expiryDate)
                 );
+                setQaNotificationCount(filteredData.length);
                 
                 // Apply date filters
                 if (qaDateFrom || qaDateTo) {
@@ -133,10 +136,15 @@ const ExpiringRecords = () => {
                 
                 setQaReports(paginatedData);
                 setQaTotalRecords(filteredData.length);
+            } else {
+                setQaReports([]);
+                setQaTotalRecords(0);
+                setQaNotificationCount(0);
             }
         } catch (error) {
             console.error('Failed to fetch QA reports:', error);
             showMessage('Failed to fetch QA reports', 'error');
+            setQaNotificationCount(0);
         } finally {
             setQaLoading(false);
         }
@@ -153,6 +161,7 @@ const ExpiringRecords = () => {
                 let filteredData = response.data.license.filter((item: LicenseReminder) =>
                     isNotExpired(item.expiryDate)
                 );
+                setLicenseNotificationCount(filteredData.length);
                 
                 // Apply date filters
                 if (licenseDateFrom || licenseDateTo) {
@@ -188,10 +197,15 @@ const ExpiringRecords = () => {
                 
                 setLicenses(paginatedData);
                 setLicenseTotalRecords(filteredData.length);
+            } else {
+                setLicenses([]);
+                setLicenseTotalRecords(0);
+                setLicenseNotificationCount(0);
             }
         } catch (error) {
             console.error('Failed to fetch licenses:', error);
             showMessage('Failed to fetch licenses', 'error');
+            setLicenseNotificationCount(0);
         } finally {
             setLicenseLoading(false);
         }
@@ -267,6 +281,11 @@ const ExpiringRecords = () => {
                                 >
                                     <IconClock className="ltr:mr-2 rtl:ml-2" />
                                     <span className="text-md font-bold">QA Test Reports Reminders</span>
+                                    {qaNotificationCount > 0 && (
+                                        <span className="ml-2 inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-danger px-1.5 py-0.5 text-xs font-bold text-white">
+                                            {qaNotificationCount > 99 ? '99+' : qaNotificationCount}
+                                        </span>
+                                    )}
                                 </button>
                             )}
                         </Tab>
@@ -279,6 +298,11 @@ const ExpiringRecords = () => {
                                 >
                                     <IconClock className="ltr:mr-2 rtl:ml-2" />
                                     <span className="text-md font-bold">License Reminders</span>
+                                    {licenseNotificationCount > 0 && (
+                                        <span className="ml-2 inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-danger px-1.5 py-0.5 text-xs font-bold text-white">
+                                            {licenseNotificationCount > 99 ? '99+' : licenseNotificationCount}
+                                        </span>
+                                    )}
                                 </button>
                             )}
                         </Tab>
