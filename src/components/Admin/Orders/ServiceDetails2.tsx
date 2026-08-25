@@ -301,9 +301,13 @@ interface MachineData {
             partyCodeOrSysId?: string | null
             procNoOrPoNo?: string | null
             procExpiryDate?: string | null
+            testDate?: string | null
+            testDueDate?: string | null
         }
         reportUrl: any
         qaTestSubmittedAt?: string
+        testDate?: string | null
+        testDueDate?: string | null
         reportNumber?: string
         urlNumber?: string
         assignedTechnicianName?: string
@@ -388,6 +392,17 @@ const formatDate = (isoString?: string): string => {
     return new Date(isoString).toLocaleString("en-IN", {
         dateStyle: "medium",
         timeStyle: "short",
+    });
+};
+
+const formatDateOnly = (isoString?: string | null): string => {
+    if (!isoString) return "—";
+    const parsed = new Date(isoString);
+    if (Number.isNaN(parsed.getTime())) return "—";
+    return parsed.toLocaleDateString("en-GB", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
     });
 };
 export default function ServicesCard({ orderId }: ServicesCardProps) {
@@ -567,6 +582,42 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
         );
     };
 
+    const isValidReportNumber = (value?: string | null) => {
+        const normalized = String(value || "").trim();
+        return Boolean(normalized) && normalized.toUpperCase() !== "N/A";
+    };
+
+    /** QA Test Report stays disabled until Report ULR Number and QA Test Report Number exist. */
+    const hasQaReportNumbers = (parentService: MachineData) => {
+        const qaRaw = parentService.workTypes.find((wt) => wt.name === "QA Test");
+        if (!qaRaw) return false;
+        return (
+            isValidReportNumber(qaRaw.backendFields?.reportURLNumber) &&
+            isValidReportNumber(qaRaw.backendFields?.qaTestReportNumber)
+        );
+    };
+
+    const isQATestReportEnabled = (parentService: MachineData) =>
+        isQARawEngineerAssigned(parentService) && hasQaReportNumbers(parentService);
+
+    const getQATestReportDisabledMessage = (parentService: MachineData) => {
+        if (!isQARawEngineerAssigned(parentService)) {
+            return (
+                <>
+                    Assign an engineer in <strong>QA Test</strong> first to enable QA Test Report.
+                </>
+            );
+        }
+        if (!hasQaReportNumbers(parentService)) {
+            return (
+                <>
+                    <strong>Report ULR Number</strong> and <strong>QA Test Report Number</strong> are required before enabling QA Test Report.
+                </>
+            );
+        }
+        return null;
+    };
+
     const fetchMachineData = async () => {
         if (!orderId) {
             setError("Order ID is required");
@@ -684,6 +735,7 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                     completedAt: workTypeDetail.completedAt || undefined,
                                     statusHistory: workTypeDetail.QAtest?.statusHistory || workTypeDetail.statusHistory || [],
                                     qaTestSubmittedAt: workTypeDetail.QAtest?.qatestSubmittedAt || undefined,
+                                    testDueDate: workTypeDetail.QAtest?.testDueDate || null,
                                     // ✅ Include the common fields for QA Test too
                                     ...commonFields,
                                 });
@@ -1429,8 +1481,12 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
             const parentService = machineData.find((service) => service.workTypes.some((wt) => wt.id === workTypeId))
             if (!parentService) throw new Error("Parent service not found")
 
-            if (workType.name === "QA Test Report" && !isQARawEngineerAssigned(parentService)) {
-                showMessage("Assign an engineer in QA Test first before enabling QA Test Report.", 'warning')
+            if (workType.name === "QA Test Report" && !isQATestReportEnabled(parentService)) {
+                if (!isQARawEngineerAssigned(parentService)) {
+                    showMessage("Assign an engineer in QA Test first before enabling QA Test Report.", 'warning')
+                } else {
+                    showMessage("Report ULR Number and QA Test Report Number are required before enabling QA Test Report.", 'warning')
+                }
                 return
             }
 
@@ -1764,8 +1820,12 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                 setAssigningStaff((prev) => ({ ...prev, [workTypeId]: false }))
                 return
             }
-            if (workType.name === "QA Test Report" && !isQARawEngineerAssigned(parentService)) {
-                showMessage("Assign an engineer in QA Test first before enabling QA Test Report.", 'warning')
+            if (workType.name === "QA Test Report" && !isQATestReportEnabled(parentService)) {
+                if (!isQARawEngineerAssigned(parentService)) {
+                    showMessage("Assign an engineer in QA Test first before enabling QA Test Report.", 'warning')
+                } else {
+                    showMessage("Report ULR Number and QA Test Report Number are required before enabling QA Test Report.", 'warning')
+                }
                 return
             }
             const serviceId = workType.id.split("-")[0]
@@ -1855,20 +1915,21 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                 await refreshReportNumbers(parentService.id, 'qatest', staffId);
             }
 
-            // Update machineData to sync the card status (header) and license dates
+            // Update machineData to sync the card status (header), license dates, and QA due dates
+            const linkedQa = response?.data?.linkedReport;
             setMachineData((prev: any) =>
                 prev.map((s: any) => ({
                     ...s,
                     status: s.id === workTypeId ? newStatus : s.status,
-                    workTypes: (s.workTypes || []).map((wt: any) =>
-                        wt.id === workTypeId
-                            ? {
-                                ...wt,
-                                licenseValidFrom: licenseValidity[workTypeId]?.validFrom || wt.licenseValidFrom,
-                                licenseValidTill: licenseValidity[workTypeId]?.validTill || wt.licenseValidTill,
-                            }
-                            : wt
-                    ),
+                    workTypes: (s.workTypes || []).map((wt: any) => {
+                        if (wt.id !== workTypeId) return wt;
+                        return {
+                            ...wt,
+                            licenseValidFrom: licenseValidity[workTypeId]?.validFrom || wt.licenseValidFrom,
+                            licenseValidTill: licenseValidity[workTypeId]?.validTill || wt.licenseValidTill,
+                            testDueDate: linkedQa?.testDueDate || wt.testDueDate,
+                        };
+                    }),
                 }))
             )
 
@@ -3015,10 +3076,10 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                     </div>
                                                 )}
                                                 {workType.name === "QA Test Report" && service.workTypeName === "Quality Assurance Test" && (
-                                                    <div className={`space-y-4 ${!isQARawEngineerAssigned(service) ? "opacity-60 pointer-events-none" : ""}`}>
-                                                        {!isQARawEngineerAssigned(service) ? (
+                                                    <div className={`space-y-4 ${!isQATestReportEnabled(service) ? "opacity-60 pointer-events-none" : ""}`}>
+                                                        {!isQATestReportEnabled(service) ? (
                                                             <div className="p-3 bg-amber-50 rounded-md border border-amber-200 text-sm text-amber-800 pointer-events-auto">
-                                                                Assign an engineer in <strong>QA Test</strong> first to enable QA Test Report.
+                                                                {getQATestReportDisabledMessage(service)}
                                                             </div>
                                                         ) : !assignments[workType.id]?.isAssigned ? (
                                                             canAssignQATest(workType) ? (
@@ -3136,6 +3197,14 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                         Staff assigned at: {formatDate(workType.assignedAtStaff)}
                                                                     </span>
                                                                 </div>
+                                                                {workType.testDueDate && (
+                                                                    <div className="p-3 bg-amber-50 rounded-md border border-amber-200">
+                                                                        <label className="text-xs text-amber-700 font-medium">QA Test Due Date</label>
+                                                                        <p className="mt-1 text-sm font-medium text-amber-900">
+                                                                            {formatDateOnly(workType.testDueDate)}
+                                                                        </p>
+                                                                    </div>
+                                                                )}
                                                                 {canAssignQATest(workType) && editingWorkType[workType.id] && (
                                                                     <div className="p-3 bg-blue-50 rounded-md border border-blue-200">
                                                                         <div className="flex gap-2 items-center">
