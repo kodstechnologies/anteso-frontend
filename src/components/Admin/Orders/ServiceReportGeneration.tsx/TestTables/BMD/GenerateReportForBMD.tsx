@@ -1428,6 +1428,7 @@ const GenerateReportForBMDContent: React.FC<BMDProps> = ({ serviceId, csvFileUrl
           const testDate = new Date(testDateStr);
           const dueDate = new Date(testDate);
           dueDate.setFullYear(dueDate.getFullYear() + 2);
+          dueDate.setDate(dueDate.getDate() - 1);
           testDueDateStr = dueDate.toISOString().split("T")[0];
         }
 
@@ -1503,6 +1504,7 @@ const GenerateReportForBMDContent: React.FC<BMDProps> = ({ serviceId, csvFileUrl
             if (!isNaN(testDate.getTime())) {
               const dueDate = new Date(testDate);
               dueDate.setFullYear(dueDate.getFullYear() + 2);
+              dueDate.setDate(dueDate.getDate() - 1);
               calculatedTestDueDate = dueDate.toISOString().split("T")[0];
             }
           }
@@ -1578,6 +1580,7 @@ const GenerateReportForBMDContent: React.FC<BMDProps> = ({ serviceId, csvFileUrl
       if (!isNaN(testDate.getTime())) {
         const dueDate = new Date(testDate);
         dueDate.setFullYear(dueDate.getFullYear() + 2);
+        dueDate.setDate(dueDate.getDate() - 1);
         const dueDateStr = dueDate.toISOString().split("T")[0];
         setFormData(prev => {
           // Only update if it's different to avoid infinite loops

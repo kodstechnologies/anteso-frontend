@@ -74,6 +74,19 @@ const ExpiringRecords = () => {
         dispatch(setPageTitle('Expiring Records'));
     }, [dispatch]);
 
+    const startOfToday = () => {
+        const d = new Date();
+        d.setHours(0, 0, 0, 0);
+        return d;
+    };
+
+    const isNotExpired = (expiryDate?: string) => {
+        if (!expiryDate) return false;
+        const expiry = new Date(expiryDate);
+        expiry.setHours(0, 0, 0, 0);
+        return expiry.getTime() >= startOfToday().getTime();
+    };
+
     // Fetch QA Reports
     const fetchQAReports = async () => {
         try {
@@ -81,7 +94,10 @@ const ExpiringRecords = () => {
             const response = await getExpiryReminders('qa');
             
             if (response.success && response.data?.qa) {
-                let filteredData = response.data.qa;
+                // Auto-hide anything past expiry (even if API/cache returns it)
+                let filteredData = response.data.qa.filter((item: QAReportReminder) =>
+                    isNotExpired(item.expiryDate)
+                );
                 
                 // Apply date filters
                 if (qaDateFrom || qaDateTo) {
@@ -133,7 +149,10 @@ const ExpiringRecords = () => {
             const response = await getExpiryReminders('license');
             
             if (response.success && response.data?.license) {
-                let filteredData = response.data.license;
+                // Auto-hide anything past expiry (even if API/cache returns it)
+                let filteredData = response.data.license.filter((item: LicenseReminder) =>
+                    isNotExpired(item.expiryDate)
+                );
                 
                 // Apply date filters
                 if (licenseDateFrom || licenseDateTo) {

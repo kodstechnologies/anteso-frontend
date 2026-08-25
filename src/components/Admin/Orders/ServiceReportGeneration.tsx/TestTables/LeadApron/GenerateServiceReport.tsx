@@ -110,11 +110,12 @@ const LeadApron: React.FC<{ serviceId: string; qaTestDate?: string | null; creat
                 const testDateSource = firstTest?.qatestSubmittedAt || firstTest?.createdAt || qaTestDate;
                 const testDateValue = testDateSource ? (typeof testDateSource === "string" ? new Date(testDateSource).toISOString().split("T")[0] : "") : "";
 
-                // Calculate due date as 2 years from test date
+                // Calculate due date as 2 years from test date, minus 1 day
                 let testDueDateValue = "";
                 if (testDateValue) {
                     const testDate = new Date(testDateValue);
                     testDate.setFullYear(testDate.getFullYear() + 2);
+                    testDate.setDate(testDate.getDate() - 1);
                     testDueDateValue = testDate.toISOString().split("T")[0];
                 }
 

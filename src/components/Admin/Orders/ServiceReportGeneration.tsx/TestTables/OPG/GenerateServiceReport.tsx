@@ -132,6 +132,7 @@ const OPGContent: React.FC<{ serviceId: string; qaTestDate?: string | null; csvF
         const d = new Date(base);
         if (Number.isNaN(d.getTime())) return base;
         d.setFullYear(d.getFullYear() + years);
+        d.setDate(d.getDate() - 1);
         return d.toISOString().split("T")[0];
     };
 

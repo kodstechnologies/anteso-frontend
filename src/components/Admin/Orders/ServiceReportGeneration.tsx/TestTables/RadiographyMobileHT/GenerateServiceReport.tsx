@@ -213,6 +213,7 @@ const RadiographyMobileHTContent: React.FC<RadiographyMobileHTProps> = ({ servic
         if (testDateStr) {
           const d = new Date(testDateStr);
           d.setFullYear(d.getFullYear() + 2);
+          d.setDate(d.getDate() - 1);
           testDueDateStr = d.toISOString().split("T")[0];
         }
 

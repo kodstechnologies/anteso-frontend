@@ -236,6 +236,7 @@ const RadiographyFixedContent: React.FC<RadiographyFixedProps> = ({ serviceId, q
           testDate = qaTestDate.toISOString().split("T")[0];
           const dueDate = new Date(qaTestDate);
           dueDate.setFullYear(dueDate.getFullYear() + 2);
+          dueDate.setDate(dueDate.getDate() - 1);
           testDueDate = dueDate.toISOString().split("T")[0];
         }
 

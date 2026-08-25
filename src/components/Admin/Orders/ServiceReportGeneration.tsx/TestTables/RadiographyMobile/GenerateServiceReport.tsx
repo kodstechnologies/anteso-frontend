@@ -265,6 +265,7 @@ const RadiographyMobileContent: React.FC<RadiographyMobileProps> = ({ serviceId,
           testDate = qaDate.toISOString().split("T")[0];
           const due = new Date(qaDate);
           due.setFullYear(due.getFullYear() + 2);
+          due.setDate(due.getDate() - 1);
           testDueDate = due.toISOString().split("T")[0];
         }
 

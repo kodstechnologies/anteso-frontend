@@ -205,6 +205,7 @@ const RadioFluroContent: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, c
                     const testDate = new Date(testDateStr);
                     const dueDate = new Date(testDate);
                     dueDate.setFullYear(dueDate.getFullYear() + 2);
+                    dueDate.setDate(dueDate.getDate() - 1);
                     testDueDateStr = dueDate.toISOString().split("T")[0];
                 }
 
