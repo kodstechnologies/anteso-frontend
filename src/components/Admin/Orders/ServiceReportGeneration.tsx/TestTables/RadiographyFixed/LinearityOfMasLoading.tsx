@@ -415,37 +415,42 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
       </div>
 
       {/* Main Table */}
-      <div className="bg-white shadow-md rounded-lg overflow-hidden border border-gray-200">
-        <div className="px-6 py-4 bg-blue-50 border-b">
+      <div className="bg-white shadow-md rounded-lg border border-gray-200">
+        <div className="px-6 py-4 bg-blue-50 border-b rounded-t-lg">
           <h3 className="text-lg font-semibold text-blue-900">Linearity of Radiation Output Across mAs Ranges</h3>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
+        <div className="overflow-x-auto overscroll-x-contain touch-pan-x">
+          <table className="w-max min-w-full border-collapse divide-y divide-gray-200">
             <thead className="bg-blue-50">
               <tr>
-                <th rowSpan={2} className="px-6 py-3 text-left text-xs font-medium text-gray-700  border-r">mAs Range</th>
-                <th colSpan={measHeaders.length} className="px-6 py-3 text-center text-xs font-medium text-gray-700  border-r">
-                  <div className="flex items-center justify-between px-4">
+                <th
+                  rowSpan={2}
+                  className="sticky left-0 z-20 min-w-[140px] px-4 py-3 text-left text-xs font-medium text-gray-700 border-r bg-blue-50 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.12)]"
+                >
+                  mAs Range
+                </th>
+                <th colSpan={measHeaders.length} className="px-6 py-3 text-center text-xs font-medium text-gray-700 border-r">
+                  <div className="flex items-center justify-between gap-3 px-2 whitespace-nowrap">
                     <span>Radiation Output (mGy)</span>
                     {!isViewMode && (
-                      <button onClick={addMeasColumn} className="p-2 text-green-600 hover:bg-green-100 rounded-lg">
+                      <button type="button" onClick={addMeasColumn} className="p-2 text-green-600 hover:bg-green-100 rounded-lg shrink-0">
                         <Plus className="w-5 h-5" />
                       </button>
                     )}
                   </div>
                 </th>
-                <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700  border-r">Avg Output</th>
-                <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700  border-r">X (mGy/mAs)</th>
-                <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700  border-r">X MAX</th>
-                <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700  border-r">X MIN</th>
-                <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700  border-r">CoL</th>
-                <th rowSpan={2} className="px-6 py-3 text-center text-xs font-medium text-gray-700 ">Remarks</th>
+                <th rowSpan={2} className="min-w-[110px] px-4 py-3 text-center text-xs font-medium text-gray-700 border-r whitespace-nowrap">Avg Output</th>
+                <th rowSpan={2} className="min-w-[120px] px-4 py-3 text-center text-xs font-medium text-gray-700 border-r whitespace-nowrap">X (mGy/mAs)</th>
+                <th rowSpan={2} className="min-w-[100px] px-4 py-3 text-center text-xs font-medium text-gray-700 border-r whitespace-nowrap">X MAX</th>
+                <th rowSpan={2} className="min-w-[100px] px-4 py-3 text-center text-xs font-medium text-gray-700 border-r whitespace-nowrap">X MIN</th>
+                <th rowSpan={2} className="min-w-[90px] px-4 py-3 text-center text-xs font-medium text-gray-700 border-r whitespace-nowrap">CoL</th>
+                <th rowSpan={2} className="min-w-[110px] px-4 py-3 text-center text-xs font-medium text-gray-700 whitespace-nowrap">Remarks</th>
                 <th rowSpan={2} className="w-12"></th>
               </tr>
               <tr>
                 {measHeaders.map((h, i) => (
-                  <th key={i} className="px-3 py-3 text-center text-xs font-medium text-gray-600 border-r">
+                  <th key={i} className="min-w-[140px] px-3 py-3 text-center text-xs font-medium text-gray-600 border-r bg-blue-50">
                     <div className="flex items-center justify-center gap-2">
                       <input
                         type="text"
@@ -458,11 +463,11 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
                           });
                         }}
                         disabled={isViewMode}
-                        className={`w-24 px-2 py-1 text-xs border rounded focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''
+                        className={`w-24 min-w-[5.5rem] px-2 py-1 text-xs border rounded focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''
                           }`}
                       />
                       {measHeaders.length > 1 && !isViewMode && (
-                        <button onClick={() => removeMeasColumn(i)} className="text-red-600 hover:bg-red-100 p-1 rounded">
+                        <button type="button" onClick={() => removeMeasColumn(i)} className="text-red-600 hover:bg-red-100 p-1 rounded shrink-0">
                           <Trash2 className="w-4 h-4" />
                         </button>
                       )}
@@ -476,15 +481,14 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
                 const computed = processedRowById.get(row.id) || row;
                 return (
                 <tr key={row.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 border-r">
+                  <td className="sticky left-0 z-10 min-w-[140px] px-4 py-4 border-r bg-white shadow-[2px_0_4px_-2px_rgba(0,0,0,0.12)]">
                     <input
                       type="text"
                       value={row.mAsRange}
                       onChange={e => updateCell(row.id, 'mAsRange', e.target.value)}
                       disabled={isViewMode}
-                      className={`w-full px-3 py-2 text-center text-sm border rounded font-medium focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''
+                      className={`w-full min-w-[7rem] px-3 py-2 text-center text-sm border rounded font-medium focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''
                         }`}
-                      // placeholder="10 - 20"
                     />
                   </td>
                   {row.measuredOutputs.map((val, idx) => {
@@ -494,14 +498,14 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
                       : true;
 
                     return (
-                      <td key={idx} className={`px-3 py-4 text-center border-r ${hasValue && !isValid ? 'bg-red-100' : ''}`}>
+                      <td key={idx} className={`min-w-[140px] px-3 py-4 text-center border-r ${hasValue && !isValid ? 'bg-red-100' : ''}`}>
                         <input
                           type="number"
                           step="any"
                           value={val}
                           onChange={e => updateCell(row.id, idx, e.target.value)}
                           disabled={isViewMode}
-                          className={`w-24 px-3 py-2 text-center text-sm border rounded focus:ring-2 focus:ring-blue-500 ${isViewMode
+                          className={`w-24 min-w-[5.5rem] px-3 py-2 text-center text-sm border rounded focus:ring-2 focus:ring-blue-500 ${isViewMode
                             ? 'bg-gray-50 text-gray-500 cursor-not-allowed'
                             : hasValue && !isValid
                               ? 'border-red-500 bg-red-50'
@@ -511,20 +515,20 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
                       </td>
                     );
                   })}
-                  <td className="px-6 py-4 text-center font-bold border-r bg-gray-50">{computed.average}</td>
-                  <td className="px-6 py-4 text-center font-bold border-r bg-gray-50">{computed.x}</td>
+                  <td className="min-w-[110px] px-4 py-4 text-center font-bold border-r bg-gray-50 whitespace-nowrap">{computed.average}</td>
+                  <td className="min-w-[120px] px-4 py-4 text-center font-bold border-r bg-gray-50 whitespace-nowrap">{computed.x}</td>
                   {index === 0 && (
                     <>
-                      <td rowSpan={processedTable2.summary.rowSpan} className="px-6 py-4 text-center font-bold border-r bg-yellow-50 align-middle">
+                      <td rowSpan={processedTable2.summary.rowSpan} className="min-w-[100px] px-4 py-4 text-center font-bold border-r bg-yellow-50 align-middle whitespace-nowrap">
                         {processedTable2.summary.xMax}
                       </td>
-                      <td rowSpan={processedTable2.summary.rowSpan} className="px-6 py-4 text-center font-bold border-r bg-yellow-50 align-middle">
+                      <td rowSpan={processedTable2.summary.rowSpan} className="min-w-[100px] px-4 py-4 text-center font-bold border-r bg-yellow-50 align-middle whitespace-nowrap">
                         {processedTable2.summary.xMin}
                       </td>
-                      <td rowSpan={processedTable2.summary.rowSpan} className="px-6 py-4 text-center font-bold border-r bg-yellow-50 align-middle">
+                      <td rowSpan={processedTable2.summary.rowSpan} className="min-w-[90px] px-4 py-4 text-center font-bold border-r bg-yellow-50 align-middle whitespace-nowrap">
                         {processedTable2.summary.col}
                       </td>
-                      <td rowSpan={processedTable2.summary.rowSpan} className="px-6 py-4 text-center align-middle">
+                      <td rowSpan={processedTable2.summary.rowSpan} className="min-w-[110px] px-4 py-4 text-center align-middle">
                         <span className={`inline-block px-4 py-2 rounded-full text-sm font-bold ${processedTable2.summary.remarks === 'Pass' ? 'bg-green-100 text-green-800' :
                           processedTable2.summary.remarks === 'Fail' ? 'bg-red-100 text-red-800' :
                             'bg-gray-100 text-gray-600'
@@ -536,7 +540,7 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
                   )}
                   <td className="px-3 py-4 text-center">
                     {table2Rows.length > 1 && !isViewMode && (
-                      <button onClick={() => removeTable2Row(row.id)} className="text-red-600 hover:bg-red-50 p-2 rounded">
+                      <button type="button" onClick={() => removeTable2Row(row.id)} className="text-red-600 hover:bg-red-50 p-2 rounded">
                         <Trash2 className="w-5 h-5" />
                       </button>
                     )}
@@ -547,7 +551,7 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
           </table>
         </div>
 
-        <div className="px-6 py-4 bg-gray-50 border-t flex justify-between items-center">
+        <div className="px-6 py-4 bg-gray-50 border-t flex flex-wrap justify-between items-center gap-3 rounded-b-lg">
           {!isViewMode && (
             <button onClick={addTable2Row} className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium">
               <Plus className="w-5 h-5" /> Add mAs Range

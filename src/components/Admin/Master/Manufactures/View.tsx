@@ -54,7 +54,7 @@ interface ManufactureType {
     qaTests: QATest[];
     services: ApiService[];
     travel: 'actual' | 'fixed';
-    fixedCost?: number;
+    cost?: number;
 }
 
 const ManufacturerView: React.FC = () => {
@@ -89,8 +89,7 @@ const ManufacturerView: React.FC = () => {
                         })) ?? [],
                     services: data.services ?? [],
                     travel: data.travelCost === 'Actual Cost' ? 'actual' : 'fixed',
-                    fixedCost:
-                        data.travelCost === 'Fixed Cost' ? data.cost : undefined,
+                    cost: data.cost != null ? Number(data.cost) : undefined,
                 };
 
                 setManufacture(mapped);
@@ -218,13 +217,24 @@ const ManufacturerView: React.FC = () => {
                 {/* Travel Cost */}
                 <div className="mt-8">
                     <h2 className="text-lg font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                        <FaRupeeSign className="text-primary" /> Travel Cost Type
+                        <FaRupeeSign className="text-primary" /> Travel Cost
                     </h2>
-                    <p className="text-gray-600">
-                        {manufacture.travel === 'actual'
-                            ? 'Actual Cost'
-                            : `Fixed Cost ₹ ${manufacture.fixedCost ?? '-'}`}
-                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 text-sm">
+                        <Detail
+                            label="Travel Cost Type"
+                            value={manufacture.travel === 'actual' ? 'Actual Cost' : 'Fixed Cost'}
+                            icon={<FaRupeeSign />}
+                        />
+                        <Detail
+                            label="Cost"
+                            value={
+                                manufacture.cost != null && !Number.isNaN(manufacture.cost)
+                                    ? `₹ ${manufacture.cost}`
+                                    : '-'
+                            }
+                            icon={<FaRupeeSign />}
+                        />
+                    </div>
                 </div>
             </div>
         </div>

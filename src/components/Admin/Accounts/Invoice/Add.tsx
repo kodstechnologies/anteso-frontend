@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Field, Form, Formik, ErrorMessage, FieldArray, useFormikContext, FieldProps } from 'formik';
 import * as Yup from 'yup';
 import { Link, useNavigate } from 'react-router-dom';
@@ -70,6 +70,106 @@ interface LeadOwnerOption {
   srfNumbers?: string[];
   branches: LeadOwnerBranch[];
 }
+
+const formatLeadOwnerLabel = (opt: LeadOwnerOption) => {
+  // Show latest SRF only in brackets — dumping every SRF into <option> causes native-select flicker.
+  const latestSrf = (opt.srfNumbers && opt.srfNumbers[0]) || 'No SRF';
+  return `${opt.leadOwner} (${opt.leadType}) (${latestSrf})`;
+};
+
+const LeadOwnerNativeSelect = React.memo(function LeadOwnerNativeSelect({
+  value,
+  options,
+  onChange,
+}: {
+  value: string;
+  options: LeadOwnerOption[];
+  onChange: (selectedId: string) => void;
+}) {
+  return (
+    <select
+      id="leadOwnerId"
+      name="leadOwnerId"
+      className="form-select"
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+    >
+      <option value="">Select Manufacturer / Dealer</option>
+      {options.map((opt) => (
+        <option key={opt.leadOwnerId} value={opt.leadOwnerId}>
+          {formatLeadOwnerLabel(opt)}
+        </option>
+      ))}
+    </select>
+  );
+});
+
+const LeadOwnerSelectField: React.FC<{
+  options: LeadOwnerOption[];
+  setOrderId: (id: string) => void;
+  setOrderIds: (ids: string[]) => void;
+}> = ({ options, setOrderId, setOrderIds }) => {
+  const { values, setFieldValue } = useFormikContext<FormValues>();
+  const apiRef = useRef({ setFieldValue, setOrderId, setOrderIds, options });
+  apiRef.current = { setFieldValue, setOrderId, setOrderIds, options };
+
+  const handleChange = useCallback((selectedId: string) => {
+    const api = apiRef.current;
+    const owner = api.options.find((opt) => opt.leadOwnerId === selectedId);
+
+    api.setFieldValue('leadOwnerId', selectedId, false);
+    api.setFieldValue('branchNames', [], false);
+    api.setFieldValue(
+      'dealerHospitals',
+      [
+        {
+          partyCode: '',
+          hospitalName: '',
+          city: '',
+          district: '',
+          dealerState: '',
+          modelNo: '',
+          serialNo: '',
+          amount: 0,
+          travelCostType: '',
+          travelCostPrice: 0,
+          orderId: '',
+          srfNumber: '',
+          branchName: '',
+          services: [],
+          additionalServices: [],
+        },
+      ],
+      false
+    );
+    api.setOrderIds([]);
+    api.setOrderId('');
+
+    if (owner) {
+      api.setFieldValue('buyerName', owner.leadOwner || '', false);
+      api.setFieldValue('address', owner.address || '', false);
+      api.setFieldValue('state', owner.state || '', false);
+      api.setFieldValue('taxes.cgst.checked', false, false);
+      api.setFieldValue('taxes.cgst.amount', 0, false);
+      api.setFieldValue('taxes.sgst.checked', false, false);
+      api.setFieldValue('taxes.sgst.amount', 0, false);
+      api.setFieldValue('taxes.igst.checked', true, false);
+      api.setFieldValue('taxes.igst.amount', 18, false);
+    } else {
+      api.setFieldValue('buyerName', '', false);
+      api.setFieldValue('address', '', false);
+      api.setFieldValue('state', '', false);
+    }
+  }, []);
+
+  return (
+    <LeadOwnerNativeSelect
+      value={values.leadOwnerId}
+      options={options}
+      onChange={handleChange}
+    />
+  );
+};
 
 interface FormValues {
   type: string;
@@ -383,11 +483,17 @@ const AutoCalculateTotals: React.FC = () => {
 
     const grandTotal = discountedSubtotal + gstAmount;
 
-    setFieldValue('subtotal', subtotal);
-    setFieldValue('grandTotal', grandTotal);
-    setFieldValue('amount', grandTotal);
+    // Only write when values change — prevents Formik re-render loops that flicker the open select.
+    if (Number(values.subtotal) !== subtotal) {
+      setFieldValue('subtotal', subtotal, false);
+    }
+    if (Number(values.grandTotal) !== grandTotal) {
+      setFieldValue('grandTotal', grandTotal, false);
+    }
+    if (Number(values.amount) !== grandTotal) {
+      setFieldValue('amount', grandTotal, false);
+    }
 
-    // Update dealerHospitals amount for each entry
     if (values.type === 'Dealer/Manufacturer') {
       values.dealerHospitals.forEach((dh: DealerHospital, index: number) => {
         const dhServicesSubtotal = (dh.services || []).reduce(
@@ -399,10 +505,24 @@ const AutoCalculateTotals: React.FC = () => {
           0
         );
         const dhTravel = Number(dh.travelCostPrice) || 0;
-        setFieldValue(`dealerHospitals[${index}].amount`, dhServicesSubtotal + dhAdditionalSubtotal + dhTravel);
+        const nextAmount = dhServicesSubtotal + dhAdditionalSubtotal + dhTravel;
+        if (Number(dh.amount) !== nextAmount) {
+          setFieldValue(`dealerHospitals[${index}].amount`, nextAmount, false);
+        }
       });
     }
-  }, [values, setFieldValue]);
+  }, [
+    values.type,
+    values.services,
+    values.additionalServices,
+    values.dealerHospitals,
+    values.discountPercent,
+    values.taxes,
+    values.subtotal,
+    values.grandTotal,
+    values.amount,
+    setFieldValue,
+  ]);
 
   return null;
 };
@@ -519,11 +639,12 @@ const mapOrderDetailsToDealerHospital = (
     services: mappedServices,
     additionalServices: mappedAdditional,
   };
-};
+};  
 
 const Add = () => {
   const [srfOptions, setSrfOptions] = useState<OptionType[]>([]);
   const [leadOwnerOptions, setLeadOwnerOptions] = useState<LeadOwnerOption[]>([]);
+  const [leadOwnersLoading, setLeadOwnersLoading] = useState(true);
   const [orderMap, setOrderMap] = useState<Record<string, string>>({});
   const [manufacturers, setManufacturers] = useState<any[]>([]);
   const [orderId, setOrderId] = useState<string>('');
@@ -534,6 +655,7 @@ const Add = () => {
   useEffect(() => {
     const fetchSrfNumbers = async () => {
       try {
+        setLeadOwnersLoading(true);
         let options: OptionType[] = [];
         let map: Record<string, string> = {};
 
@@ -578,6 +700,7 @@ const Add = () => {
             }))
           );
         }
+        setLeadOwnersLoading(false);
 
         // Fetch manufacturers to resolve fixed travel cost for Manufacturer leadOwner
         const manufacturerRes = await getAllManufacturer().catch(() => null);
@@ -593,6 +716,7 @@ const Add = () => {
         setOrderMap(map);
       } catch (error) {
         console.error('Error fetching SRF numbers:', error);
+        setLeadOwnersLoading(false);
       }
     };
 
@@ -633,6 +757,8 @@ const Add = () => {
           dealerHospitals: [emptyDealerHospital()],
         }}
         validationSchema={InvoiceSchema}
+        validateOnChange={false}
+        validateOnBlur={false}
         onSubmit={async (values, { setSubmitting, resetForm }) => {
           try {
             console.log('Submitting form with values:', JSON.stringify(values, null, 2));
@@ -949,37 +1075,18 @@ const Add = () => {
               {isDealerManufacturerType && (
               <div className="md:col-span-2">
                 <label htmlFor="leadOwnerId" className="block mb-1 font-medium">Lead Owner</label>
-                <Field
-                  as="select"
-                  name="leadOwnerId"
-                  className="form-select"
-                  onChange={async (e: React.ChangeEvent<HTMLSelectElement>) => {
-                    const selectedId = e.target.value;
-                    setFieldValue('leadOwnerId', selectedId);
-                    setFieldValue('branchNames', []);
-                    setFieldValue('dealerHospitals', [emptyDealerHospital()]);
-                    setOrderIds([]);
-                    setOrderId('');
-                    const owner = leadOwnerOptions.find((opt) => opt.leadOwnerId === selectedId);
-                    if (owner) {
-                      setFieldValue('buyerName', owner.leadOwner || '');
-                      setFieldValue('address', owner.address || '');
-                      setFieldValue('state', owner.state || '');
-                      applyGstFromState(owner.state || '', 18);
-                    } else {
-                      setFieldValue('buyerName', '');
-                      setFieldValue('address', '');
-                      setFieldValue('state', '');
-                    }
-                  }}
-                >
-                  <option value="">Select Manufacturer / Dealer</option>
-                  {leadOwnerOptions.map((opt) => (
-                    <option key={opt.leadOwnerId} value={opt.leadOwnerId}>
-                      {`${opt.leadOwner} (${opt.leadType}) (${(opt.srfNumbers || []).join(', ') || 'No SRF'})`}
-                    </option>
-                  ))}
-                </Field>
+                {leadOwnersLoading ? (
+                  <div className="form-select flex items-center gap-2 text-gray-500 pointer-events-none">
+                    <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                    Loading lead owners...
+                  </div>
+                ) : (
+                  <LeadOwnerSelectField
+                    options={leadOwnerOptions}
+                    setOrderId={setOrderId}
+                    setOrderIds={setOrderIds}
+                  />
+                )}
                 <ErrorMessage name="leadOwnerId" component="div" className="text-red-500 text-sm mt-1" />
               </div>
               )}

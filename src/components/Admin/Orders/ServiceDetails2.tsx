@@ -68,6 +68,15 @@ const isLicenseOfOperationWorkType = (workTypeName: string) => {
     return name === "license for operation" || name === "licence of operation" || name === "license of operation" || name === "licence for operation";
 }
 
+const isEloraReportWorkType = (workTypeName: string) => {
+    const name = (workTypeName || "").toLowerCase().trim();
+    return (
+        isLicenseOfOperationWorkType(name) ||
+        name === "decommissioning" ||
+        name === "decommissioning and recommissioning"
+    );
+}
+
 const toDateInputValue = (value?: string | Date | null) => {
     if (!value) return "";
     if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}/.test(value)) {
@@ -1494,11 +1503,52 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
             const workTypeName = parentService.workTypeName || "Unknown Work Type";
 
             const isQATestService = parentService.workTypeName === "Quality Assurance Test"
+            const wantsCompleteStatus = status === "complete" || status === "generated" || status === "paid"
+            const hasUploadedFile = Boolean(uploadedFiles[workTypeId] || assignments[workTypeId]?.uploadedFile);
+
+            if (isEloraReportWorkType(workTypeName) && wantsCompleteStatus) {
+                if (!hasUploadedFile) {
+                    showModal("Warning", "File upload is mandatory for complete status!");
+                    return
+                }
+                if (status === "complete" && isLicenseOfOperationWorkType(workTypeName)) {
+                    const dates = licenseValidity[workTypeId];
+                    if (!dates?.validFrom || !dates?.validTill) {
+                        showModal("Warning", "License valid from and license valid till are mandatory for complete status!");
+                        return
+                    }
+                    if (new Date(dates.validTill) < new Date(dates.validFrom)) {
+                        showModal("Warning", "License valid till cannot be before license valid from!");
+                        return
+                    }
+                }
+            }
+
             let assignRes: any = null;
 
-            if (!isQATestService) {
+            if (!isQATestService && wantsCompleteStatus) {
+                const payload: Record<string, string> = {};
+                if (isLicenseOfOperationWorkType(workTypeName)) {
+                    if (licenseValidity[workTypeId]?.validFrom) {
+                        payload.licenseValidFrom = licenseValidity[workTypeId].validFrom;
+                    }
+                    if (licenseValidity[workTypeId]?.validTill) {
+                        payload.licenseValidTill = licenseValidity[workTypeId].validTill;
+                    }
+                }
+                assignRes = await completeStatusAndReport(
+                    staffId,
+                    orderId,
+                    serviceId,
+                    workTypeName,
+                    status,
+                    payload,
+                    uploadedFiles[workTypeId] || assignments[workTypeId]?.uploadedFile || undefined,
+                    getWorkTypeIdentifier(workTypeName),
+                )
+            } else if (!isQATestService) {
                 assignRes = await assignToOfficeStaffByElora(orderId, serviceId, staffId, workTypeName, status)
-            } else if (status === "complete" || status === "generated" || status === "paid") {
+            } else if (wantsCompleteStatus) {
                 const res = await completeStatusAndReport(
                     staffId,
                     orderId,
@@ -1835,10 +1885,12 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                 const dates = licenseValidity[workTypeId];
                 if (!dates?.validFrom || !dates?.validTill) {
                     showModal("Warning", "License valid from and license valid till are mandatory for complete status!");
+                    setAssigningStaff((prev) => ({ ...prev, [workTypeId]: false }))
                     return
                 }
                 if (new Date(dates.validTill) < new Date(dates.validFrom)) {
                     showModal("Warning", "License valid till cannot be before license valid from!");
+                    setAssigningStaff((prev) => ({ ...prev, [workTypeId]: false }))
                     return
                 }
             }
@@ -3502,6 +3554,83 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                                                                         {assigningStaff[workType.id] ? "Assigning..." : "Assign"}
                                                                     </button>
                                                                 </div>
+                                                                {(selectedStatuses[workType.id] === "complete" ||
+                                                                    selectedStatuses[workType.id] === "generated" ||
+                                                                    selectedStatuses[workType.id] === "paid") && (
+                                                                    <div className="space-y-3 p-3 bg-blue-50 rounded-md border border-blue-200">
+                                                                        {isLicenseOfOperationWorkType(service.workTypeName) && (
+                                                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                                                <div>
+                                                                                    <label className="block text-sm font-medium text-blue-700">
+                                                                                        License Valid From <span className="text-red-500">*</span>
+                                                                                    </label>
+                                                                                    <input
+                                                                                        type="date"
+                                                                                        required
+                                                                                        value={licenseValidity[workType.id]?.validFrom || ""}
+                                                                                        onChange={(e) => {
+                                                                                            const value = e.target.value;
+                                                                                            setLicenseValidity((prev) => ({
+                                                                                                ...prev,
+                                                                                                [workType.id]: {
+                                                                                                    validFrom: value,
+                                                                                                    validTill: prev[workType.id]?.validTill || "",
+                                                                                                },
+                                                                                            }));
+                                                                                        }}
+                                                                                        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                                                    />
+                                                                                </div>
+                                                                                <div>
+                                                                                    <label className="block text-sm font-medium text-blue-700">
+                                                                                        License Valid Till <span className="text-red-500">*</span>
+                                                                                    </label>
+                                                                                    <input
+                                                                                        type="date"
+                                                                                        required
+                                                                                        min={licenseValidity[workType.id]?.validFrom || undefined}
+                                                                                        value={licenseValidity[workType.id]?.validTill || ""}
+                                                                                        onChange={(e) => {
+                                                                                            const value = e.target.value;
+                                                                                            setLicenseValidity((prev) => ({
+                                                                                                ...prev,
+                                                                                                [workType.id]: {
+                                                                                                    validFrom: prev[workType.id]?.validFrom || "",
+                                                                                                    validTill: value,
+                                                                                                },
+                                                                                            }));
+                                                                                        }}
+                                                                                        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                                                    />
+                                                                                </div>
+                                                                            </div>
+                                                                        )}
+                                                                        <label className="block text-sm font-medium text-blue-700">
+                                                                            Upload File <span className="text-red-500">*</span>
+                                                                        </label>
+                                                                        <input
+                                                                            type="file"
+                                                                            accept=".pdf,application/pdf"
+                                                                            required
+                                                                            onChange={(e) => {
+                                                                                const file = e.target.files?.[0]
+                                                                                if (file) {
+                                                                                    handleFileUpload(workType.id, file)
+                                                                                    if (!file.name.toLowerCase().endsWith(".pdf") ||
+                                                                                        (file.type && file.type !== "application/pdf")) {
+                                                                                        e.target.value = ""
+                                                                                    }
+                                                                                }
+                                                                            }}
+                                                                            className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-blue-600 file:text-white hover:file:bg-blue-700"
+                                                                        />
+                                                                        {uploadedFiles[workType.id] && (
+                                                                            <p className="text-sm text-green-700">
+                                                                                Uploaded: {uploadedFiles[workType.id]?.name}
+                                                                            </p>
+                                                                        )}
+                                                                    </div>
+                                                                )}
                                                             </div>
                                                         ) : (
                                                             <div className="space-y-3">

@@ -1,4 +1,3 @@
-import PerfectScrollbar from 'react-perfect-scrollbar';
 import { useTranslation } from 'react-i18next';
 import { useDispatch, useSelector } from 'react-redux';
 import { NavLink, useLocation } from 'react-router-dom';
@@ -9,28 +8,13 @@ import { useState, useEffect } from 'react';
 import IconCaretsDown from '../Icon/IconCaretsDown';
 import IconCaretDown from '../Icon/IconCaretDown';
 import {
-    FiBook,
-    FiBox,
-    FiCreditCard,
-    FiDollarSign,
-    FiFileText,
-    FiGift,
     FiGrid,
     FiMessageSquare,
-    FiPlusSquare,
-    FiSettings,
-    FiShoppingBag,
-    FiShoppingCart,
-    FiSquare,
     FiUsers,
-    FiVideo,
 } from 'react-icons/fi';
 import { RiMoneyRupeeCircleLine } from "react-icons/ri";
 import Logo from '../../assets/logo/anteso-logo2.png';
-import IconMenuFontIcons from '../Icon/Menu/IconMenuFontIcons';
 import IconBook from '../Icon/IconBook';
-import IconBox from '../Icon/IconBox';
-import IconUser from '../Icon/IconUser';
 
 const Sidebar = () => {
     const [currentMenu, setCurrentMenu] = useState<string>('');
@@ -72,8 +56,8 @@ const Sidebar = () => {
     return (
         <div className={semidark ? 'dark' : ''}>
             <nav className={`sidebar fixed min-h-screen h-full top-0 bottom-0 w-[260px] shadow-[5px_0_25px_0_rgba(94,92,154,0.1)] z-50 transition-all duration-300 ${semidark ? 'text-white-dark' : ''}`}>
-                <div className="bg-white dark:bg-black h-full">
-                    <div className="flex justify-between items-center px-4 py-5">
+                <div className="bg-white dark:bg-black h-full flex flex-col">
+                    <div className="flex justify-between items-center px-4 py-5 shrink-0">
                         <NavLink to="/" className="main-logo flex items-center shrink-0 justify-center">
                             <img className="w-40" src={Logo} alt="logo" />
                         </NavLink>
@@ -85,8 +69,8 @@ const Sidebar = () => {
                             <IconCaretsDown className="m-auto rotate-90" />
                         </button>
                     </div>
-                    <PerfectScrollbar className="h-[calc(100vh-80px)] relative">
-                        <ul className="relative font-semibold space-y-0.5 p-4 py-0">
+                    <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
+                        <ul className="relative font-semibold space-y-0.5 p-4 py-0 pb-6">
                             <li className="nav-item">
                                 <ul>
                                     {/* Dashboard */}
@@ -257,7 +241,7 @@ const Sidebar = () => {
                                 </ul>
                             </li>
                         </ul>
-                    </PerfectScrollbar>
+                    </div>
                 </div>
             </nav>
         </div>

@@ -103,8 +103,8 @@ const Manufacturers = () => {
     const [pageSize, setPageSize] = useState(PAGE_SIZES[0]);
     const [selectedRecords, setSelectedRecords] = useState<any[]>([]);
     const [sortStatus, setSortStatus] = useState<DataTableSortStatus>({
-        columnAccessor: 'name',
-        direction: 'asc',
+        columnAccessor: 'createdAt',
+        direction: 'desc',
     });
 
     const fetchManufacturers = async (filters: ManufacturerListFilters = {}) => {
@@ -181,6 +181,12 @@ const Manufacturers = () => {
                 const aDate = a.mouValidity ? new Date(a.mouValidity).getTime() : 0;
                 const bDate = b.mouValidity ? new Date(b.mouValidity).getTime() : 0;
                 return sortStatus.direction === 'asc' ? aDate - bDate : bDate - aDate;
+            }
+
+            if (sortStatus.columnAccessor === 'createdAt') {
+                const aTime = new Date(a.createdAt || 0).getTime();
+                const bTime = new Date(b.createdAt || 0).getTime();
+                return sortStatus.direction === 'asc' ? aTime - bTime : bTime - aTime;
             }
 
             const aValue = a[sortStatus.columnAccessor];
