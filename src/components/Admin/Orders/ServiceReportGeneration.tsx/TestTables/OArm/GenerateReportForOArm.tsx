@@ -1259,7 +1259,7 @@ const OArmContent: React.FC<OArmProps> = ({ serviceId, csvFileUrl, csvFileUrls }
             { label: "Testing Procedure Number", name: "testingProcedureNumber", value: formData.testingProcedureNumber, readOnly: false },
             { label: "No. of Pages", name: "pages", value: formData.pages, readOnly: false },
             { label: "QA Test Date", name: "testDate", value: formData.testDate, type: "date", readOnly: false },
-            { label: "QA Test Due Date", name: "testDueDate", value: formData.testDueDate, type: "date", readOnly: false },
+            { label: "QA Test Due Date", name: "testDueDate", value: formData.testDueDate, type: "date", readOnly: true },
             { label: "Testing Done At Location", name: "location", value: formData.location, readOnly: false },
             { label: "Temperature (°C)", name: "temperature", value: formData.temperature, type: "number", readOnly: false },
             { label: "Humidity (RH %)", name: "humidity", value: formData.humidity, type: "number", readOnly: false },

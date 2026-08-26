@@ -2419,7 +2419,7 @@ const OBIContent: React.FC<OBIProps> = ({ serviceId, csvFileUrl, csvFileUrls, qa
                         { label: "Testing Procedure Number", name: "testingProcedureNumber" },
                         { label: "No. of Pages", name: "pages" },
                         { label: "Test Date", name: "testDate", type: "date" },
-                        { label: "Test Due Date", name: "testDueDate", type: "date" },
+                        { label: "Test Due Date", name: "testDueDate", type: "date", readOnly: true },
                         { label: "Location", name: "location" },
                         { label: "Temperature (°C)", name: "temperature", type: "number" },
                         { label: "Humidity (%)", name: "humidity", type: "number" },

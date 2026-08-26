@@ -76,17 +76,55 @@ const ExpiringRecords = () => {
         dispatch(setPageTitle('Expiring Records'));
     }, [dispatch]);
 
-    const startOfToday = () => {
-        const d = new Date();
-        d.setHours(0, 0, 0, 0);
-        return d;
+    const toDayStamp = (value?: string | Date) => {
+        if (!value) return null;
+        const d = new Date(value);
+        if (Number.isNaN(d.getTime())) return null;
+        const utcDateOnly =
+            d.getUTCHours() === 0 &&
+            d.getUTCMinutes() === 0 &&
+            d.getUTCSeconds() === 0 &&
+            d.getUTCMilliseconds() === 0;
+        if (utcDateOnly) {
+            return d.getUTCFullYear() * 10000 + (d.getUTCMonth() + 1) * 100 + d.getUTCDate();
+        }
+        return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
     };
 
-    const isNotExpired = (expiryDate?: string) => {
-        if (!expiryDate) return false;
-        const expiry = new Date(expiryDate);
-        expiry.setHours(0, 0, 0, 0);
-        return expiry.getTime() >= startOfToday().getTime();
+    const startOfToday = () => {
+        const d = new Date();
+        return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
+    };
+
+    const hasExplicitTime = (value?: string | Date) => {
+        if (!value) return false;
+        if (typeof value === 'string' && value.includes('T')) {
+            const timePart = value.split('T')[1]?.replace('Z', '') || '';
+            return !/^00:00(?::00(?:\.000)?)?$/.test(timePart);
+        }
+        const d = new Date(value);
+        if (Number.isNaN(d.getTime())) return false;
+        return !(
+            d.getUTCHours() === 0 &&
+            d.getUTCMinutes() === 0 &&
+            d.getUTCSeconds() === 0 &&
+            d.getUTCMilliseconds() === 0
+        );
+    };
+
+    // Keep on list through the due date; hide only after that calendar day
+    const isNotExpired = (item: { expiryDate?: string; status?: string }) => {
+        if (!item.expiryDate) return false;
+        if (hasExplicitTime(item.expiryDate)) {
+            const dt = new Date(item.expiryDate);
+            if (Number.isNaN(dt.getTime())) return false;
+            return dt.getTime() >= Date.now();
+        }
+        const expiryDay = toDayStamp(item.expiryDate);
+        if (expiryDay == null) return false;
+        if (expiryDay < startOfToday()) return false;
+        // If date is still valid, show even if status was wrongly marked expired
+        return true;
     };
 
     // Fetch QA Reports
@@ -96,9 +134,9 @@ const ExpiringRecords = () => {
             const response = await getExpiryReminders('qa');
             
             if (response.success && response.data?.qa) {
-                // Auto-hide anything past expiry (even if API/cache returns it)
+                // Auto-hide expired / past-due (even if API/cache returns them)
                 let filteredData = response.data.qa.filter((item: QAReportReminder) =>
-                    isNotExpired(item.expiryDate)
+                    isNotExpired(item)
                 );
                 setQaNotificationCount(filteredData.length);
                 
@@ -157,9 +195,9 @@ const ExpiringRecords = () => {
             const response = await getExpiryReminders('license');
             
             if (response.success && response.data?.license) {
-                // Auto-hide anything past expiry (even if API/cache returns it)
+                // Auto-hide expired / past-due (even if API/cache returns them)
                 let filteredData = response.data.license.filter((item: LicenseReminder) =>
-                    isNotExpired(item.expiryDate)
+                    isNotExpired(item)
                 );
                 setLicenseNotificationCount(filteredData.length);
                 
@@ -414,7 +452,9 @@ const ExpiringRecords = () => {
                                                 render: (record) => (
                                                     <span className={getDaysColor(record.daysRemaining)}>
                                                         {record.daysRemaining !== undefined
-                                                            ? `${record.daysRemaining} days`
+                                                            ? record.daysRemaining === 0
+                                                                ? 'Today'
+                                                                : `${record.daysRemaining} days`
                                                             : '-'}
                                                     </span>
                                                 ),
@@ -426,9 +466,11 @@ const ExpiringRecords = () => {
                                                 render: (record) => (
                                                     <span
                                                         className={`badge ${
-                                                            record.status === 'pending'
-                                                                ? 'badge-outline-warning'
-                                                                : 'badge-outline-success'
+                                                            record.status === 'expired'
+                                                                ? 'badge-outline-danger'
+                                                                : record.status === 'pending'
+                                                                  ? 'badge-outline-warning'
+                                                                  : 'badge-outline-success'
                                                         }`}
                                                     >
                                                         {record.status || '-'}
@@ -578,7 +620,9 @@ const ExpiringRecords = () => {
                                                 render: (record) => (
                                                     <span className={getDaysColor(record.daysRemaining)}>
                                                         {record.daysRemaining !== undefined
-                                                            ? `${record.daysRemaining} days`
+                                                            ? record.daysRemaining === 0
+                                                                ? 'Today'
+                                                                : `${record.daysRemaining} days`
                                                             : '-'}
                                                     </span>
                                                 ),
@@ -590,9 +634,11 @@ const ExpiringRecords = () => {
                                                 render: (record) => (
                                                     <span
                                                         className={`badge ${
-                                                            record.status === 'pending'
-                                                                ? 'badge-outline-warning'
-                                                                : 'badge-outline-success'
+                                                            record.status === 'expired'
+                                                                ? 'badge-outline-danger'
+                                                                : record.status === 'pending'
+                                                                  ? 'badge-outline-warning'
+                                                                  : 'badge-outline-success'
                                                         }`}
                                                     >
                                                         {record.status || '-'}

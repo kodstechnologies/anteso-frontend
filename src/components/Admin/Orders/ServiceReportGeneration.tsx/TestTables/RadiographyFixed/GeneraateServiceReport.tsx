@@ -2203,7 +2203,7 @@ const RadiographyFixedContent: React.FC<RadiographyFixedProps> = ({ serviceId, q
             { label: "RP Id", name: "rpId" },
             // { label: "No. of Pages", name: "pages" },
             { label: "Test Date", name: "testDate", type: "date" },
-            { label: "Test Due Date", name: "testDueDate", type: "date" },
+            { label: "Test Due Date", name: "testDueDate", type: "date", readOnly: true },
             { label: "Location", name: "location" },
             { label: "Temperature (°C)", name: "temperature", type: "number" },
             { label: "Humidity (%)", name: "humidity", type: "number" },

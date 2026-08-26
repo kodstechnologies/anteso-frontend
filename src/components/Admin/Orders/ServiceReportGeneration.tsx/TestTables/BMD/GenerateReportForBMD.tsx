@@ -2073,7 +2073,7 @@ const GenerateReportForBMDContent: React.FC<BMDProps> = ({ serviceId, csvFileUrl
             { label: "Testing Procedure Number", name: "testingProcedureNumber" },
             { label: "No. of Pages", name: "pages" },
             { label: "QA Test Date", name: "testDate", type: "date" },
-            { label: "QA Test Due Date", name: "testDueDate", type: "date" },
+            { label: "QA Test Due Date", name: "testDueDate", type: "date", readOnly: true },
             { label: "Testing Done At Location", name: "location" },
             { label: "Temperature (°C)", name: "temperature", type: "number" },
             { label: "Humidity (RH %)", name: "humidity", type: "number" },

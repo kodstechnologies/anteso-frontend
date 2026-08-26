@@ -183,17 +183,17 @@ const RadiographyPortableContent: React.FC<RadiographyPortableProps> = ({ servic
         setDetails(data);
 
         // SRF date = order created at; Test date = QA test submitted at (or createdAt)
-        // TEST: force Test Due Date to tomorrow at 10:30 AM (local)
+        // QA due date = 2 years minus 1 day from test date (local)
         const testDateSource = firstTest?.qatestSubmittedAt || firstTest?.createdAt;
         let testDate = "";
-        const tomorrowDue = new Date();
-        tomorrowDue.setDate(tomorrowDue.getDate() + 1);
-        tomorrowDue.setHours(10, 30, 0, 0);
-        const pad = (n: number) => String(n).padStart(2, "0");
-        const testDueDate = `${tomorrowDue.getFullYear()}-${pad(tomorrowDue.getMonth() + 1)}-${pad(tomorrowDue.getDate())}T${pad(tomorrowDue.getHours())}:${pad(tomorrowDue.getMinutes())}`;
+        let testDueDate = "";
         if (testDateSource) {
           const qaTestDate = new Date(testDateSource);
           testDate = qaTestDate.toISOString().split("T")[0];
+          const dueDate = new Date(qaTestDate);
+          dueDate.setFullYear(dueDate.getFullYear() + 2);
+          dueDate.setDate(dueDate.getDate() - 1);
+          testDueDate = dueDate.toISOString().split("T")[0];
         }
 
         // Pre-fill form from service details
@@ -276,14 +276,7 @@ const RadiographyPortableContent: React.FC<RadiographyPortableProps> = ({ servic
             condition: res.data.condition || prev.condition,
             testingProcedureNumber: res.data.testingProcedureNumber || prev.testingProcedureNumber,
             testDate: res.data.testDate || prev.testDate,
-            // TEST: keep Test Due Date as tomorrow 10:30 AM
-            testDueDate: (() => {
-              const d = new Date();
-              d.setDate(d.getDate() + 1);
-              d.setHours(10, 30, 0, 0);
-              const p = (n: number) => String(n).padStart(2, "0");
-              return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
-            })(),
+            testDueDate: res.data.testDueDate || prev.testDueDate,
             location: res.data.location || prev.location,
             temperature: res.data.temperature || prev.temperature,
             humidity: res.data.humidity || prev.humidity,
@@ -1494,7 +1487,7 @@ const RadiographyPortableContent: React.FC<RadiographyPortableProps> = ({ servic
             { label: "Testing Procedure Number", name: "testingProcedureNumber" },
             { label: "No. of Pages", name: "pages" },
             { label: "Test Date", name: "testDate", type: "date" },
-            { label: "Test Due Date", name: "testDueDate", type: "datetime-local" },
+            { label: "Test Due Date", name: "testDueDate", type: "date", readOnly: true },
             { label: "Location", name: "location" },
             { label: "Temperature (°C)", name: "temperature", type: "number" },
             { label: "Humidity (%)", name: "humidity", type: "number" },
