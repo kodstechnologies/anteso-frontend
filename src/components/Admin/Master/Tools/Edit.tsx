@@ -77,7 +77,6 @@ const EditTool = () => {
         srNo: Yup.string().required('Please fill the Field'),
         calibrationCertificateNo: Yup.string().required('Please fill the Field'),
         calibrationValidTill: Yup.string().required('Please fill the Field'),
-        range: Yup.string().required('Please fill the Field'),
         toolID: Yup.string().required('Please fill the Field'),
         engineerName: Yup.string().required('Please fill the Field'),
         issueDate: Yup.string().required('Please fill the Field'),
@@ -107,7 +106,6 @@ const EditTool = () => {
     //                 srNo: tool.SrNo || '',
     //                 calibrationCertificateNo: tool.calibrationCertificateNo || '',
     //                 calibrationValidTill: tool.calibrationValidTill?.split('T')[0] || '',
-    //                 range: tool.range || '',
     //                 toolID: tool.toolId || '',
     //                 engineerName: engineer?.name || '', // ✅ from engineer API
     //                 issueDate: engineerRes.tool?.issueDate?.split('T')[0] || '',
@@ -150,7 +148,6 @@ const EditTool = () => {
     //                 srNo: tool.SrNo || '',
     //                 calibrationCertificateNo: tool.calibrationCertificateNo || '',
     //                 calibrationValidTill: tool.calibrationValidTill?.split('T')[0] || '',
-    //                 range: tool.range || '',
     //                 toolID: tool.toolId || '',
     //                 engineerName: engineer?.name || 'Not Assigned', // fallback label
     //                 issueDate: toolIssueDate,
@@ -203,7 +200,6 @@ const EditTool = () => {
                     srNo: tool.SrNo || '',
                     calibrationCertificateNo: tool.calibrationCertificateNo || '',
                     calibrationValidTill: tool.calibrationValidTill?.split('T')[0] || '',
-                    range: tool.range || '',
                     toolID: tool.toolId || '',
                     engineerName: engineer?._id || '',
                     issueDate: toolIssueDate,
@@ -260,7 +256,6 @@ const EditTool = () => {
                             model: values.model,
                             calibrationCertificateNo: values.calibrationCertificateNo,
                             calibrationValidTill: values.calibrationValidTill,
-                            range: values.range,
                             certificate: values.certificate,
                             toolStatus: values.toolStatus,
                             technician: values.engineerName, // ObjectId from dropdown
@@ -368,15 +363,6 @@ const EditTool = () => {
                                     <label htmlFor="calibrationValidTill">Calibration Valid Till</label>
                                     <Field name="calibrationValidTill" type="date" className="form-input" />
                                     <ErrorMessage name="calibrationValidTill">
-                                        {(msg) => <div className="text-danger mt-1">{msg}</div>}
-                                    </ErrorMessage>
-                                </div>
-
-                                {/* Range */}
-                                <div className={submitCount ? 'has-success' : ''}>
-                                    <label htmlFor="range">Range</label>
-                                    <Field name="range" type="text" className="form-input" />
-                                    <ErrorMessage name="range">
                                         {(msg) => <div className="text-danger mt-1">{msg}</div>}
                                     </ErrorMessage>
                                 </div>

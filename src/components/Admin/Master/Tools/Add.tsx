@@ -15,7 +15,6 @@ interface ToolFormValues {
     SrNo: string;
     calibrationCertificateNo: string;
     calibrationValidTill: string;
-    range: string;
     certificate: File | null | string;
     applicableMachines: string[];
 }
@@ -29,7 +28,6 @@ const validationSchema = Yup.object().shape({
     SrNo: Yup.string().required('Please fill the field'),
     calibrationCertificateNo: Yup.string().required('Please fill the field'),
     calibrationValidTill: Yup.string().required('Please fill the field'),
-    range: Yup.string().required('Please fill the field'),
 });
 
 const toolOptions = [
@@ -148,7 +146,6 @@ const AddTool = () => {
         SrNo: '',
         calibrationCertificateNo: '',
         calibrationValidTill: '',
-        range: '',
         certificate: '',
         applicableMachines: [],
     };
@@ -282,7 +279,6 @@ const AddTool = () => {
                                     { name: 'model', label: 'Model' },
                                     { name: 'SrNo', label: 'Sr No' },
                                     { name: 'calibrationCertificateNo', label: 'Calibration Certificate Number' },
-                                    { name: 'range', label: 'Range' },
                                 ].map(({ name, label }) => (
                                     <div key={name} className={touched[name as keyof ToolFormValues] && errors[name as keyof ToolFormValues] ? 'has-error' : ''}>
                                         <label htmlFor={name}>{label}</label>

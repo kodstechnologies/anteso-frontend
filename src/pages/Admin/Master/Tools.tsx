@@ -220,7 +220,6 @@ const Tools = () => {
                                     sortable: true,
                                     render: ({ calibrationValidTill }) => dayjs(calibrationValidTill).format('DD-MM-YYYY'),
                                 },
-                                { accessor: 'range', sortable: true },
 
 
                                 // ✅ New Created By column
