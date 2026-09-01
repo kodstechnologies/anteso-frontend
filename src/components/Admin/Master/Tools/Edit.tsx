@@ -259,7 +259,8 @@ const EditTool = () => {
                             certificate: values.certificate,
                             toolStatus: values.toolStatus,
                             technician: values.engineerName, // ObjectId from dropdown
-                            submitDate: values.submitDate ? new Date(values.submitDate) : null, // ✅ Include submitDate
+                            issueDate: values.issueDate,
+                            submitDate: values.submitDate ? new Date(values.submitDate) : null,
                             applicableMachines: values.applicableMachines,
                         };
 
@@ -451,7 +452,18 @@ const EditTool = () => {
                                 <div className={submitCount ? 'has-success' : ''}>
                                     <label htmlFor="engineerName">Engineer Assigned</label>
 
-                                    <Field as="select" name="engineerName" className="form-select">
+                                    <Field
+                                        as="select"
+                                        name="engineerName"
+                                        className="form-select"
+                                        onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
+                                            const newEngineerId = e.target.value;
+                                            setFieldValue('engineerName', newEngineerId);
+                                            if (newEngineerId !== initialValues.engineerName) {
+                                                setFieldValue('submitDate', '');
+                                            }
+                                        }}
+                                    >
                                         <option value="">Select Engineer</option>
                                         {technicians.map((tech) => (
                                             <option key={tech._id} value={tech._id}>
