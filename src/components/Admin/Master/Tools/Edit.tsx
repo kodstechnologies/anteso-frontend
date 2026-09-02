@@ -256,6 +256,7 @@ const EditTool = () => {
                             model: values.model,
                             calibrationCertificateNo: values.calibrationCertificateNo,
                             calibrationValidTill: values.calibrationValidTill,
+                            toolId: values.toolID,
                             certificate: values.certificate,
                             toolStatus: values.toolStatus,
                             technician: values.engineerName, // ObjectId from dropdown
