@@ -763,7 +763,7 @@ const ViewServiceReportCArm: React.FC = () => {
             <table style={{ ...tableStyle, tableLayout: "fixed" }} className="compact-table">
               <thead>
                 <tr>
-                  {["Sl No.", "Nomenclature", "Make", "Model", "Sr. No.", "Range", "Certificate No.", "Valid Till"].map(
+                  {["Sl No.", "Nomenclature", "Make", "Model", "Sr. No.", "Certificate No.", "Valid Till"].map(
                     (h, i) => (
                       <th
                         key={h}
@@ -794,7 +794,7 @@ const ViewServiceReportCArm: React.FC = () => {
                       <td style={cellStyle({ border: "0.1px solid #666" })}>{tool.make || "-"}</td>
                       <td style={cellStyle({ border: "0.1px solid #666" })}>{tool.model || "-"}</td>
                       <td style={cellStyle({ border: "0.1px solid #666" })}>{tool.SrNo}</td>
-                      <td style={cellStyle({ border: "0.1px solid #666" })}>{tool.range}</td>
+                      
                       <td style={cellStyle({ border: "0.1px solid #666" })}>{tool.calibrationCertificateNo}</td>
                       <td style={cellStyle({ border: "0.1px solid #666" })}>{formatDate(tool.calibrationValidTill)}</td>
                     </tr>
