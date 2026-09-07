@@ -410,7 +410,13 @@ const AddDealer = () => {
                                     >
                                         <option value="">Select Machine</option>
                                         {machineOptions.map((machine, index) => (
-                                            <option key={index} value={machine}>
+                                            <option
+                                                key={index}
+                                                value={machine}
+                                                disabled={editableOptions.some(
+                                                    (o) => o.label.toLowerCase() === machine.toLowerCase()
+                                                )}
+                                            >
                                                 {machine}
                                             </option>
                                         ))}
@@ -428,7 +434,9 @@ const AddDealer = () => {
                                         onClick={() => {
                                             const trimmed = newQaTestName.trim();
                                             const formattedValue = trimmed.toUpperCase().replace(/\s+/g, '_');
-                                            const exists = editableOptions.some((opt) => opt.value === formattedValue);
+                                            const exists = editableOptions.some(
+                                                (opt) => opt.label.toLowerCase() === trimmed.toLowerCase()
+                                            );
                                             if (!trimmed) return showMessage('Please enter QA test name.', 'error');
                                             if (exists) return showMessage('This QA test already exists.', 'warning');
 

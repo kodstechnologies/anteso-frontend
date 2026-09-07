@@ -164,6 +164,7 @@ const AddEnquiry: React.FC = () => {
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [employeeOptions, setEmployeeOptions] = useState<{ label: string; value: string }[]>([]);
     const [dealerOptions, setDealerOptions] = useState<{ label: string; value: string }[]>([]);
+    const [dealers, setDealers] = useState<any[]>([]);
     const [states, setStates] = useState<StateType[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -200,7 +201,9 @@ const AddEnquiry: React.FC = () => {
         const fetchDealers = async () => {
             try {
                 const res = await getAllDealers();
-                const options = res.data.dealers.map((dealer: any) => ({
+                const dealerList = Array.isArray(res.data?.dealers) ? res.data.dealers : [];
+                setDealers(dealerList);
+                const options = dealerList.map((dealer: any) => ({
                     label: `${dealer.name} - dealer`,
                     value: dealer._id,
                 }));
@@ -557,6 +560,12 @@ const AddEnquiry: React.FC = () => {
                                             const isOthersSelected = selectedMachineType === "Others" ||
                                                 (!machineOptions.map(o => o.value).includes(selectedMachineType) && selectedMachineType);
 
+                                            const selectedLeadOwner = values.leadOwner;
+                                            const selectedDealer = dealers.find(d => String(d._id) === String(selectedLeadOwner));
+
+                                            const allowedTests = (selectedDealer?.qaTests || []).map((t: any) => t.testName);
+                                            const isRestricted = !!selectedDealer;
+
                                             return (
                                                 <div key={index} className="border border-gray-200 rounded-lg p-5 mb-6 relative">
                                                     {values.services.length > 1 && (
@@ -588,11 +597,18 @@ const AddEnquiry: React.FC = () => {
                                                                 }}
                                                             >
                                                                 <option value="">Select Machine Type</option>
-                                                                {machineOptions.map((option) => (
-                                                                    <option key={option.value} value={option.value}>
-                                                                        {option.label}
-                                                                    </option>
-                                                                ))}
+                                                                {machineOptions.map((option) => {
+                                                                    const isDisabled = isRestricted &&
+                                                                        option.value !== "" &&
+                                                                        option.value !== "Others" &&
+                                                                        !allowedTests.includes(option.value);
+
+                                                                    return (
+                                                                        <option key={option.value} value={option.value} disabled={isDisabled}>
+                                                                            {option.label}
+                                                                        </option>
+                                                                    );
+                                                                })}
                                                             </Field>
                                                             <ErrorMessage
                                                                 name={`services.${index}.machineType`}

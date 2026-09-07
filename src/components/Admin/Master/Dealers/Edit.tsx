@@ -194,7 +194,13 @@ const EditDealer = () => {
                                         >
                                             <option value="">Select Machine</option>
                                             {machineOptions.map((machine, i) => (
-                                                <option key={i} value={machine}>
+                                                <option
+                                                    key={i}
+                                                    value={machine}
+                                                    disabled={editableQaTests.some(
+                                                        (t, idx) => idx !== index && t.testName.toLowerCase() === machine.toLowerCase()
+                                                    )}
+                                                >
                                                     {machine}
                                                 </option>
                                             ))}
