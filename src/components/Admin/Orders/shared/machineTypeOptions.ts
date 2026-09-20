@@ -18,6 +18,11 @@ export const STANDARD_MACHINE_TYPES = [
     "Lead Apron/Thyroid Shield/Gonad Shield",
 ] as const;
 
+export type StandardMachineType = (typeof STANDARD_MACHINE_TYPES)[number];
+
+export const isStandardMachineType = (type: string): type is StandardMachineType =>
+    (STANDARD_MACHINE_TYPES as readonly string[]).includes(type);
+
 export const MACHINE_TYPES_WITH_OTHERS = [...STANDARD_MACHINE_TYPES, "Others"];
 
 type LeadOwnerEntity = {

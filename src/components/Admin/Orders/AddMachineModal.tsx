@@ -3,8 +3,8 @@ import { X, Loader2, Plus, Trash2 } from "lucide-react";
 import Swal from "sweetalert2";
 import { addMachineToOrder } from "../../../api";
 import {
-    STANDARD_MACHINE_TYPES,
     getVisibleMachineTypes,
+    isStandardMachineType,
 } from "./shared/machineTypeOptions";
 
 const showMessage = (msg = "", type: "success" | "error" | "warning" = "success") => {
@@ -108,11 +108,11 @@ export default function AddMachineModal({
     const isOthersFlow =
         formData.machineType === "Others" ||
         (!!formData.machineType &&
-            !STANDARD_MACHINE_TYPES.includes(formData.machineType) &&
+            !isStandardMachineType(formData.machineType) &&
             formData.machineType !== "");
 
     const selectMachineTypeValue =
-        formData.machineType && STANDARD_MACHINE_TYPES.includes(formData.machineType)
+        formData.machineType && isStandardMachineType(formData.machineType)
             ? formData.machineType
             : formData.machineType
               ? "Others"
