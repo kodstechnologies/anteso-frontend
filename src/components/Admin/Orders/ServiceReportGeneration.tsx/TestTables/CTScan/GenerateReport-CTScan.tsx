@@ -424,12 +424,12 @@ const CTScanReportContent: React.FC<CTScanReportProps> = ({ serviceId, qaTestDat
             },
             'Measurement of Operating Potential': {
                 'Set kV': 'Table2_SetKV',
-                'Time (ms)': 'Table1_Time', 'Slice Thickness (mm)': 'Table1_SliceThickness',
+                'Time (s)': 'Table1_Time', 'Time (ms)': 'Table1_Time', 'Slice Thickness (mm)': 'Table1_SliceThickness',
                 'Tol Value': 'Tolerance_Value', 'Tol Type': 'Tolerance_Type', 'Tol Sign': 'Tolerance_Sign',
                 'Tol kV': 'Tolerance_Value'
             },
             'Measurement of mA Linearity': {
-                'kVp': 'Table1_kvp', 'Slice Thickness (mm)': 'Table1_SliceThickness', 'Time (ms)': 'Table1_Time',
+                'kVp': 'Table1_kvp', 'Slice Thickness (mm)': 'Table1_SliceThickness', 'Time (s)': 'Table1_Time', 'Time (ms)': 'Table1_Time',
                 'mA Applied': 'Table2_mAsApplied', 'Meas 1': 'Table2_Result_0', 'Meas 2': 'Table2_Result_1', 'Meas 3': 'Table2_Result_2', 'Meas 4': 'Table2_Result_3', 'Meas 5': 'Table2_Result_4'
             },
             'Timer Accuracy': {
@@ -699,7 +699,7 @@ const CTScanReportContent: React.FC<CTScanReportProps> = ({ serviceId, qaTestDat
                                 pushField('MaColumnLabels', maLabels.join(','), 0, currentTestName);
                                 maLabels.forEach((label) => pushField('MaHeader', label, 0, currentTestName));
                             }
-                            const time = row[colIdx(headers, 'Time (ms)', 'Time')] ?? '';
+                            const time = row[colIdx(headers, 'Time (s)', 'Time (ms)', 'Time')] ?? '';
                             const slice = row[colIdx(headers, 'Slice Thickness (mm)', 'Slice Thickness')] ?? '';
                             if (time) pushField('Table1_Time', time, 0, currentTestName);
                             if (slice) pushField('Table1_SliceThickness', slice, 0, currentTestName);
@@ -728,7 +728,7 @@ const CTScanReportContent: React.FC<CTScanReportProps> = ({ serviceId, qaTestDat
                         if (rowIdx === 1) {
                             const kvp = row[colIdx(headers, 'kVp', 'kV')] ?? '';
                             const slice = row[colIdx(headers, 'Slice Thickness (mm)', 'Slice Thickness')] ?? '';
-                            const time = row[colIdx(headers, 'Time (ms)', 'Time')] ?? '';
+                            const time = row[colIdx(headers, 'Time (s)', 'Time (ms)', 'Time')] ?? '';
                             const tol = row[colIdx(headers, 'Tolerance', 'Tol Value')] ?? '';
                             const tolOperator = row[colIdx(headers, 'Tolerance Operator', 'Tol Operator', 'Tolerance Sign')] ?? '';
                             if (kvp) pushField('Table1_kvp', kvp, 0, currentTestName);
@@ -754,7 +754,7 @@ const CTScanReportContent: React.FC<CTScanReportProps> = ({ serviceId, qaTestDat
                         if (rowIdx === 1) {
                             const kvp = row[colIdx(headers, 'kVp', 'kV')] ?? '';
                             const slice = row[colIdx(headers, 'Slice Thickness (mm)', 'Slice Thickness')] ?? '';
-                            const time = row[colIdx(headers, 'Time (ms)', 'Time')] ?? '';
+                            const time = row[colIdx(headers, 'Time (s)', 'Time (ms)', 'Time')] ?? '';
                             const tol = row[colIdx(headers, 'Tolerance', 'Tol Value')] ?? '';
                             const tolOperator = row[colIdx(headers, 'Tolerance Operator', 'Tol Operator', 'Tolerance Sign')] ?? '';
                             if (kvp) pushField('Table1_kvp', kvp, 0, currentTestName);

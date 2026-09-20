@@ -383,7 +383,7 @@ const MeasurementOfMaLinearity: React.FC<Props> = ({ serviceId, testId: propTest
     // === Save / Update ===
     const handleSave = async () => {
         if (!isFormValid) {
-            toast.error(hasValidTime ? 'Please fill all required fields' : 'Time (ms) must be greater than 0');
+            toast.error(hasValidTime ? 'Please fill all required fields' : 'Time (s) must be greater than 0');
             return;
         }
         setIsSaving(true);
@@ -454,7 +454,7 @@ const MeasurementOfMaLinearity: React.FC<Props> = ({ serviceId, testId: propTest
             {!isViewMode && table1Row.time.trim() && !hasValidTime && (
                 <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
                     <p className="text-sm text-amber-700">
-                        Time (ms) must be greater than 0 for X = mGy/(mA × time) calculation.
+                        Time (s) must be greater than 0 for X = mGy/(mA × time) calculation.
                     </p>
                 </div>
             )}
@@ -466,7 +466,7 @@ const MeasurementOfMaLinearity: React.FC<Props> = ({ serviceId, testId: propTest
                         <tr>
                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 tracking-wider border-r">kVp</th>
                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 tracking-wider border-r">Slice Thickness (mm)</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 tracking-wider">Time (ms)</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 tracking-wider">Time (s)</th>
                         </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
@@ -501,7 +501,7 @@ const MeasurementOfMaLinearity: React.FC<Props> = ({ serviceId, testId: propTest
                                     disabled={isViewMode}
                                     className={`w-full px-2 py-1 border rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : !hasValidTime && table1Row.time.trim() ? 'border-red-500' : 'border-gray-300'
                                         }`}
-                                    placeholder="100"
+                                    placeholder="1"
                                 />
                             </td>
                         </tr>

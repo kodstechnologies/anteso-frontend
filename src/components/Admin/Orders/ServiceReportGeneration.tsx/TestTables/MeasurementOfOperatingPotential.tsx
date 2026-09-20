@@ -522,7 +522,7 @@ const MeasurementOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: p
                     <thead className="bg-gray-50">
                         <tr>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-700  tracking-wider border-r">
-                                Time (ms)
+                                Time (s)
                             </th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-700  tracking-wider">
                                 Slice Thickness (mm)
@@ -541,7 +541,7 @@ const MeasurementOfOperatingPotential: React.FC<Props> = ({ serviceId, testId: p
                                         ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300'
                                         : 'border-gray-300'
                                         }`}
-                                    placeholder="100"
+                                    placeholder="1"
                                 />
                             </td>
                             <td className="px-6 py-2">

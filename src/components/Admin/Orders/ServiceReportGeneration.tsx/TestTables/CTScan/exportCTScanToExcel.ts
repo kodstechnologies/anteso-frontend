@@ -118,7 +118,7 @@ export const createCTScanExcelWithTables = (data: CTScanExportData, hasTimer: bo
         if (data.measurementOfOperatingPotential.table1?.[0]) {
             const t1 = data.measurementOfOperatingPotential.table1[0];
             addTable(
-                ['Time (ms)', 'Slice Thickness (mm)'],
+                ['Time (s)', 'Slice Thickness (mm)'],
                 [[
                     t1.time || t1.kvp || '',
                     t1.sliceThickness || t1.ma || ''
@@ -157,7 +157,7 @@ export const createCTScanExcelWithTables = (data: CTScanExportData, hasTimer: bo
         if (data.measurementOfMaLinearity.table1?.[0]) {
             const t1 = data.measurementOfMaLinearity.table1[0];
             addTable(
-                ['kVp', 'Slice Thickness (mm)', 'Time (ms)'],
+                ['kVp', 'Slice Thickness (mm)', 'Time (s)'],
                 [[
                     t1.kvp || '',
                     t1.sliceThickness || '',
@@ -602,7 +602,7 @@ export const createCTScanUploadableExcel = (data: CTScanExportData, hasTimer: bo
             'Set kV',
             ...headerCols,
             ...measCols,
-            'Time (ms)',
+            'Time (s)',
             'Slice Thickness (mm)',
             'Tol Value',
             'Tol Type',
@@ -642,7 +642,7 @@ export const createCTScanUploadableExcel = (data: CTScanExportData, hasTimer: bo
         const sectionHeaders = [
             'kVp',
             'Slice Thickness (mm)',
-            'Time (ms)',
+            'Time (s)',
             'Tolerance Operator',
             'Tolerance',
             ...headerCols,

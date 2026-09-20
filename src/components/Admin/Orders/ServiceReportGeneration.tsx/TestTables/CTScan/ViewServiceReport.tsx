@@ -250,6 +250,9 @@ const ViewServiceReportCTScan: React.FC<ViewServiceReportCTScanProps> = ({
 
           setNotFound(false);
 
+          const resolvedHasTimer =
+            typeof data.hasTimer === "boolean" ? data.hasTimer : null;
+
           setReport({
             customerName: data.customerName || "N/A",
             address: data.address || "N/A",
@@ -307,9 +310,12 @@ const ViewServiceReportCTScan: React.FC<ViewServiceReportCTScanProps> = ({
             if (responseA?.exists && responseA?.data) {
               const dataA = responseA.data;
               setTestDataTubeA({
+                hasTimer:
+                  typeof dataA.hasTimer === "boolean" ? dataA.hasTimer : resolvedHasTimer,
                 radiationProfile: dataA.RadiationProfileWidthForCTScan || null,
                 operatingPotential: dataA.MeasurementOfOperatingPotential || null,
                 maLinearity: dataA.MeasurementOfMaLinearity || null,
+                masLinearity: dataA.LinearityOfMasLoadingCTScan || null,
                 timerAccuracy: dataA.TimerAccuracy || null,
                 ctdi: dataA.MeasurementOfCTDI || null,
                 totalFiltration: dataA.TotalFilterationForCTScan || null,
@@ -326,9 +332,12 @@ const ViewServiceReportCTScan: React.FC<ViewServiceReportCTScanProps> = ({
             if (responseB?.exists && responseB?.data) {
               const dataB = responseB.data;
               setTestDataTubeB({
+                hasTimer:
+                  typeof dataB.hasTimer === "boolean" ? dataB.hasTimer : resolvedHasTimer,
                 radiationProfile: dataB.RadiationProfileWidthForCTScan || null,
                 operatingPotential: dataB.MeasurementOfOperatingPotential || null,
                 maLinearity: dataB.MeasurementOfMaLinearity || null,
+                masLinearity: dataB.LinearityOfMasLoadingCTScan || null,
                 timerAccuracy: dataB.TimerAccuracy || null,
                 ctdi: dataB.MeasurementOfCTDI || null,
                 totalFiltration: dataB.TotalFilterationForCTScan || null,
@@ -352,9 +361,11 @@ const ViewServiceReportCTScan: React.FC<ViewServiceReportCTScanProps> = ({
           } else {
             // Single tube - use the response data
             setTestData({
+              hasTimer: resolvedHasTimer,
               radiationProfile: data.RadiationProfileWidthForCTScan || null,
               operatingPotential: data.MeasurementOfOperatingPotential || null,
               maLinearity: data.MeasurementOfMaLinearity || null,
+              masLinearity: data.LinearityOfMasLoadingCTScan || null,
               timerAccuracy: data.TimerAccuracy || null,
               ctdi: data.MeasurementOfCTDI || null,
               totalFiltration: data.TotalFilterationForCTScan || null,
@@ -470,6 +481,40 @@ const ViewServiceReportCTScan: React.FC<ViewServiceReportCTScanProps> = ({
     return Array.from({ length: count }, (_, i) => `Meas ${i + 1}`);
   };
 
+  const formatOutputConsistencyTolerance = (outputConsistency: any): string => {
+    const tolerance = outputConsistency?.tolerance;
+    if (tolerance == null || tolerance === "") return "";
+
+    const tolValue =
+      tolerance && typeof tolerance === "object" && tolerance.value != null && tolerance.value !== ""
+        ? parseFloat(String(tolerance.value))
+        : typeof tolerance === "string" || typeof tolerance === "number"
+          ? parseFloat(String(tolerance))
+          : NaN;
+
+    if (Number.isNaN(tolValue)) return "";
+
+    const tolOperator =
+      tolerance && typeof tolerance === "object" && tolerance.operator
+        ? tolerance.operator
+        : "<=";
+
+    return `${normalizeCsvComparisonOperator(tolOperator)} ${tolValue}`;
+  };
+
+  const renderOutputConsistencyToleranceNote = (outputConsistency: any) => {
+    const toleranceText = formatOutputConsistencyTolerance(outputConsistency);
+    if (!toleranceText) return null;
+
+    return (
+      <div className="mb-4 print:mb-2">
+        <p className="text-sm print:text-[9px]" style={{ fontSize: "11px" }}>
+          <strong>Tolerance (COV):</strong> {toleranceText}
+        </p>
+      </div>
+    );
+  };
+
   const getMaLinearityMeasHeaders = (maLinearity: any) => {
     const saved = maLinearity?.measurementHeaders;
     if (Array.isArray(saved) && saved.length > 0) return saved;
@@ -478,11 +523,40 @@ const ViewServiceReportCTScan: React.FC<ViewServiceReportCTScanProps> = ({
   };
 
   const renderMaLinearityTable = (maLinearity: any) => {
-    if (!maLinearity || !maLinearity.table2 || maLinearity.table2.length === 0) return null;
+    if (!maLinearity) return null;
+
+    const table1Row = maLinearity.table1?.[0] || null;
+    const hasTable2 = Array.isArray(maLinearity.table2) && maLinearity.table2.length > 0;
+    if (!table1Row && !hasTable2) return null;
+
     const measHeaders = getMaLinearityMeasHeaders(maLinearity);
     const measCount = measHeaders.length;
 
     return (
+      <>
+        {table1Row && (
+          <div className="mb-4 print:mb-2">
+            <div className="overflow-x-auto mb-4 print:mb-2">
+              <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0', maxWidth: '500px' }}>
+                <thead className="bg-gray-100">
+                  <tr>
+                    <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>kVp</th>
+                    <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Slice Thickness (mm)</th>
+                    <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Time (s)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="text-center" style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
+                    <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{table1Row.kvp || "-"}</td>
+                    <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{table1Row.sliceThickness || "-"}</td>
+                    <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{table1Row.time || "-"}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+        {hasTable2 && (
       <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
         <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table pdf-safe-header-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
           <thead className="bg-gray-100">
@@ -551,6 +625,15 @@ const ViewServiceReportCTScan: React.FC<ViewServiceReportCTScanProps> = ({
           </tbody>
         </table>
       </div>
+        )}
+        {maLinearity.tolerance && (
+          <div className="mb-4 print:mb-2">
+            <p className="text-sm print:text-[9px]" style={{ fontSize: '11px' }}>
+              <strong>Tolerance (CoL):</strong> {normalizeCsvComparisonOperator(maLinearity.toleranceOperator || '<')} {maLinearity.tolerance}
+            </p>
+          </div>
+        )}
+      </>
     );
   };
 
@@ -683,7 +766,7 @@ const ViewServiceReportCTScan: React.FC<ViewServiceReportCTScanProps> = ({
               <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0', maxWidth: '400px' }}>
                 <thead className="bg-gray-100">
                   <tr>
-                    <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Time (ms)</th>
+                    <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Time (s)</th>
                     <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Slice Thickness (mm)</th>
                   </tr>
                 </thead>
@@ -883,6 +966,7 @@ const ViewServiceReportCTScan: React.FC<ViewServiceReportCTScanProps> = ({
             </table>
           </div>
         )}
+        {renderOutputConsistencyToleranceNote(oc)}
       </>
     );
   };
@@ -2682,7 +2766,7 @@ const ViewServiceReportCTScan: React.FC<ViewServiceReportCTScanProps> = ({
                             <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0', maxWidth: '400px' }}>
                               <thead className="bg-gray-100">
                                 <tr>
-                                  <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Time (ms)</th>
+                                  <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Time (s)</th>
                                   <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Slice Thickness (mm)</th>
                                 </tr>
                               </thead>
@@ -2950,6 +3034,7 @@ const ViewServiceReportCTScan: React.FC<ViewServiceReportCTScanProps> = ({
                             </table>
                           </div>
                         )}
+                        {renderOutputConsistencyToleranceNote(testDataTubeA.outputConsistency)}
                       </div>
                     )}
                     {/* Tube B */}
@@ -3047,6 +3132,7 @@ const ViewServiceReportCTScan: React.FC<ViewServiceReportCTScanProps> = ({
                             </table>
                           </div>
                         )}
+                        {renderOutputConsistencyToleranceNote(testDataTubeB.outputConsistency)}
                       </div>
                     )}
                   </>
@@ -3193,6 +3279,7 @@ const ViewServiceReportCTScan: React.FC<ViewServiceReportCTScanProps> = ({
                           </table>
                         </div>
                       )}
+                      {renderOutputConsistencyToleranceNote(testData.outputConsistency)}
                     </>
                   )
                 )}

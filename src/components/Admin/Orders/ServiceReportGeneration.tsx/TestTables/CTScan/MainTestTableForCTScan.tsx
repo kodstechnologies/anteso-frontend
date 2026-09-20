@@ -352,26 +352,78 @@ const MainTestTableForCTScan: React.FC<MainTestTableProps> = ({ testData }) => {
     }
   }
 
-  // 3. mA/mAs Linearity - Separate rows for each value
-  if (testData.maLinearity?.table2 && Array.isArray(testData.maLinearity.table2)) {
-    const tol = testData.maLinearity.tolerance || "0.1";
-    const validRows = testData.maLinearity.table2.filter((row: any) => row.mAsApplied || row.col);
-    if (validRows.length > 0) {
-      const testRows = validRows.map((row: any, idx: number) => {
-        const col = row.col ? parseFloat(row.col).toFixed(3) : "-";
-        const isPass = row.col ? parseFloat(row.col) <= parseFloat(tol) : false;
-        return {
-          specified: row.mAsApplied || "-",
-          measured: col !== "-" ? `CoL = ${col}` : "-",
-          tolerance: `<= ${tol}`,
-          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
-          measuredRowSpan: idx === 0 ? validRows.length : 0,
-          toleranceRowSpan: idx === 0 ? validRows.length : 0,
-          remarksRowSpan: idx === 0 ? validRows.length : 0,
-        };
-      });
-      addRowsForTest("mA/mAs Linearity (Coefficient of Linearity)", testRows);
-    }
+  // 3. mA or mAs Linearity (Coefficient of Linearity) — based on timer / mA vs mAs selection
+  const useMaLinearity =
+    typeof testData.hasTimer === "boolean"
+      ? testData.hasTimer
+      : Array.isArray(testData.maLinearity?.table2) && testData.maLinearity.table2.length > 0;
+
+  const addLinearityRows = (
+    parameter: string,
+    linearityData: any,
+    getSpecified: (row: any) => string
+  ) => {
+    if (!linearityData?.table2 || !Array.isArray(linearityData.table2)) return;
+    const tol = linearityData.tolerance || "0.1";
+    const tolOperator = linearityData.toleranceOperator || "<=";
+    const validRows = linearityData.table2.filter(
+      (row: any) => getSpecified(row) !== "-" || row.col
+    );
+    if (validRows.length === 0) return;
+
+    const testRows = validRows.map((row: any, idx: number) => {
+      const col = row.col ? parseFloat(row.col).toFixed(3) : "-";
+      const colNum = row.col ? parseFloat(row.col) : NaN;
+      const tolNum = parseFloat(tol);
+      let isPass = false;
+      if (!Number.isNaN(colNum) && !Number.isNaN(tolNum)) {
+        switch (tolOperator) {
+          case "<":
+            isPass = colNum < tolNum;
+            break;
+          case "<=":
+            isPass = colNum <= tolNum;
+            break;
+          case ">":
+            isPass = colNum > tolNum;
+            break;
+          case ">=":
+            isPass = colNum >= tolNum;
+            break;
+          case "=":
+            isPass = colNum === tolNum;
+            break;
+          default:
+            isPass = colNum <= tolNum;
+        }
+      }
+      const operatorSymbol =
+        tolOperator === "<=" ? "<=" : tolOperator === "<" ? "<" : tolOperator === ">=" ? ">=" : tolOperator === ">" ? ">" : "=";
+      return {
+        specified: getSpecified(row),
+        measured: col !== "-" ? `CoL = ${col}` : "-",
+        tolerance: `${operatorSymbol} ${tol}`,
+        remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
+        measuredRowSpan: idx === 0 ? validRows.length : 0,
+        toleranceRowSpan: idx === 0 ? validRows.length : 0,
+        remarksRowSpan: idx === 0 ? validRows.length : 0,
+      };
+    });
+    addRowsForTest(parameter, testRows);
+  };
+
+  if (useMaLinearity) {
+    addLinearityRows(
+      "mA Linearity (Coefficient of Linearity)",
+      testData.maLinearity,
+      (row) => (row.mAsApplied != null && row.mAsApplied !== "" ? String(row.mAsApplied) : "-")
+    );
+  } else {
+    addLinearityRows(
+      "mAs Linearity (Coefficient of Linearity)",
+      testData.masLinearity,
+      (row) => (row.ma != null && row.ma !== "" ? String(row.ma) : "-")
+    );
   }
 
   // 8. OUTPUT CONSISTENCY - Separate rows for each value
@@ -400,7 +452,7 @@ const MainTestTableForCTScan: React.FC<MainTestTableProps> = ({ testData }) => {
           return NaN;
         };
 
-        const testRows = validRows.map((row: any) => {
+        const testRows = validRows.map((row: any, idx: number) => {
           // Calculate on-the-fly if cov is missing
           const outputs: number[] = (row.outputs ?? []).map(getVal).filter((n: number) => !isNaN(n) && n > 0);
           const avg = outputs.length > 0 ? outputs.reduce((a: number, b: number) => a + b, 0) / outputs.length : null;
@@ -427,12 +479,22 @@ const MainTestTableForCTScan: React.FC<MainTestTableProps> = ({ testData }) => {
               isPass = covNum >= tolValue;
             }
           }
-          const operatorSymbol = tolOperator === '<=' ? '<=' : tolOperator === '<' ? '<' : tolOperator === '>=' ? '>=' : '>';
+          const operatorSymbol =
+            tolOperator === "<="
+              ? "<="
+              : tolOperator === "<"
+                ? "<"
+                : tolOperator === ">="
+                  ? ">="
+                  : tolOperator === ">"
+                    ? ">"
+                    : "=";
           return {
             specified: row.kvp ? `${row.kvp} kVp` : "Varies with kVp",
             measured: formattedCov !== "-" ? "CoV = " + formattedCov : "-",
             tolerance: `${operatorSymbol} ${tolValue}`,
             remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
+            toleranceRowSpan: idx === 0 ? validRows.length : 0,
           };
         });
         addRowsForTest("Radiation Output Consistency (COV)", testRows);
