@@ -145,7 +145,7 @@ const CArmContent: React.FC<CArmProps> = ({ serviceId, csvFileUrl, csvFileUrls }
     pages: "",
     testDate: "",
     testDueDate: "",
-    location: "",
+    location: "At site",
     temperature: "",
     humidity: "",
     engineerNameRPId: "",
@@ -176,9 +176,9 @@ const CArmContent: React.FC<CArmProps> = ({ serviceId, csvFileUrl, csvFileUrls }
         setDetails(detRes.data);
         const data = detRes.data;
         const firstTest = data.qaTests?.[0];
-        const srfDateStr = data.completedAt ? new Date(data.completedAt).toISOString().split("T")[0] : "";
         const testDateSource = firstTest?.qatestSubmittedAt || firstTest?.createdAt;
         const testDateStr = testDateSource ? new Date(testDateSource).toISOString().split("T")[0] : "";
+        const srfDateStr = testDateStr;
         let testDueDateStr = "";
         if (testDateStr) {
           const d = new Date(testDateStr);
@@ -206,7 +206,7 @@ const CArmContent: React.FC<CArmProps> = ({ serviceId, csvFileUrl, csvFileUrls }
           pages: "",
           testDate: testDateStr,
           testDueDate: testDueDateStr,
-          location: detRes.data.hospitalAddress,
+          location: "At site",
           temperature: "",
           humidity: "",
           engineerNameRPId: detRes.data.engineerAssigned?.name || "",
@@ -274,7 +274,7 @@ const CArmContent: React.FC<CArmProps> = ({ serviceId, csvFileUrl, csvFileUrls }
             customerName: res.data.customerName || prev.customerName,
             address: res.data.address || prev.address,
             srfNumber: res.data.srfNumber || prev.srfNumber,
-            srfDate: res.data.srfDate || prev.srfDate,
+            srfDate: res.data.srfDate || res.data.testDate || prev.srfDate,
             reportULRNumber: res.data.reportULRNumber || prev.reportULRNumber,
             testReportNumber: res.data.testReportNumber || prev.testReportNumber,
             issueDate: res.data.issueDate || prev.issueDate,
@@ -287,7 +287,7 @@ const CArmContent: React.FC<CArmProps> = ({ serviceId, csvFileUrl, csvFileUrls }
             testingProcedureNumber: res.data.testingProcedureNumber || prev.testingProcedureNumber,
             testDate: res.data.testDate || prev.testDate,
             testDueDate: res.data.testDueDate || prev.testDueDate,
-            location: res.data.location || prev.location,
+            location: res.data.location || prev.location || "At site",
             temperature: res.data.temperature || prev.temperature,
             humidity: res.data.humidity || prev.humidity,
             engineerNameRPId: res.data.engineerNameRPId || prev.engineerNameRPId,
@@ -383,7 +383,9 @@ const CArmContent: React.FC<CArmProps> = ({ serviceId, csvFileUrl, csvFileUrls }
       { name: "Tube Housing Leakage", check: async () => { try { return isSaved(await getTubeHousingLeakageByServiceIdCArm(serviceId)); } catch { return false; } } },
     );
     if (hasTimer === true) {
-      checks.push({ name: "Linearity Of mA Loading", check: async () => { try { return isSaved(await getLinearityOfMaLoadingStationsByServiceIdForCArm(serviceId)); } catch { return false; } } });
+      checks.push(
+        { name: "Linearity Of mA Loading", check: async () => { try { return isSaved(await getLinearityOfMaLoadingStationsByServiceIdForCArm(serviceId)); } catch { return false; } } },
+      );
     } else if (hasTimer === false) {
       checks.push({ name: "Linearity Of mAs Loading", check: async () => { try { return isSaved(await getLinearityOfMasLoadingStationsByServiceIdForCArm(serviceId)); } catch { return false; } } });
     }
@@ -479,8 +481,14 @@ const CArmContent: React.FC<CArmProps> = ({ serviceId, csvFileUrl, csvFileUrls }
         highContrastResolution: registeredData.highContrastResolution ?? csvDataForComponents['High Contrast Resolution'],
         exposureRateAtTableTop: registeredData.exposureRateAtTableTop ?? csvDataForComponents['Exposure Rate At Table Top'],
         tubeHousingLeakage: registeredData.tubeHousingLeakage ?? csvDataForComponents['Tube Housing Leakage'],
-        linearityOfMaLoading: registeredData.linearityOfMaLoading ?? csvDataForComponents['Linearity of mA Loading'],
-        linearityOfMasLoading: registeredData.linearityOfMasLoading ?? csvDataForComponents['Linearity of mAs Loading'],
+        ...(hasTimer === true
+          ? { linearityOfMaLoading: registeredData.linearityOfMaLoading ?? csvDataForComponents['Linearity of mA Loading'] }
+          : hasTimer === false
+            ? { linearityOfMasLoading: registeredData.linearityOfMasLoading ?? csvDataForComponents['Linearity of mAs Loading'] }
+            : {
+              linearityOfMaLoading: registeredData.linearityOfMaLoading ?? csvDataForComponents['Linearity of mA Loading'],
+              linearityOfMasLoading: registeredData.linearityOfMasLoading ?? csvDataForComponents['Linearity of mAs Loading'],
+            }),
       };
       try {
         const headerRes = await getReportHeaderForCArm(serviceId);
@@ -1430,7 +1438,9 @@ const CArmContent: React.FC<CArmProps> = ({ serviceId, csvFileUrl, csvFileUrls }
             </label>
             <input
               type="date"
-              defaultValue={formatDate(details.qaTests[0]?.createdAt ?? "")}
+              name="srfDate"
+              value={formData.srfDate}
+              onChange={handleInputChange}
               className="border p-2 rounded-md w-full"
             />
           </div>
@@ -1575,7 +1585,7 @@ const CArmContent: React.FC<CArmProps> = ({ serviceId, csvFileUrl, csvFileUrls }
           {
             title: "Accuracy of Operating Potential",
             component: <TotalFilteration
-              key={`total-filtration-${refreshKey}`}
+              key={`accuracy-op-${refreshKey}`}
               serviceId={serviceId}
               refreshKey={refreshKey}
               csvDataVersion={csvDataVersion}
@@ -1629,17 +1639,19 @@ const CArmContent: React.FC<CArmProps> = ({ serviceId, csvFileUrl, csvFileUrls }
             />
           },
 
-          // Conditional Linearity Test
+          // Conditional Linearity Test — timer present: mA only; no timer: mAs only
           ...(hasTimer === true
-            ? [{
-              title: "Linearity of mA Loading",
-              component: <LinearityOfMaLoading
-                key={`linearity-ma-${refreshKey}`}
-                serviceId={serviceId}
-                refreshKey={refreshKey}
-                initialData={csvDataForComponents['Linearity of mA Loading']}
-              />
-            }]
+            ? [
+              {
+                title: "Linearity of mA Loading",
+                component: <LinearityOfMaLoading
+                  key={`linearity-ma-${refreshKey}`}
+                  serviceId={serviceId}
+                  refreshKey={refreshKey}
+                  initialData={csvDataForComponents['Linearity of mA Loading']}
+                />
+              },
+            ]
             : hasTimer === false
               ? [{
                 title: "Linearity of mAs Loading",

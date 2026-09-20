@@ -40,6 +40,7 @@ import {
 } from "../../../api"
 import { useNavigate } from "react-router-dom";
 import AddMachineModal from "./AddMachineModal";
+import { getLeadOwnerMachineTypeFilter } from "./shared/machineTypeOptions";
 import { isSpreadsheetFileUrl } from "../../../utils/spreadsheetFile";
 
 const showMessage = (msg = '', type = 'success') => {
@@ -357,6 +358,8 @@ interface MachineData {
 
 interface ServicesCardProps {
     orderId?: any
+    /** Fallback lead owner id from order basic details (manufacturer/dealer/employee). */
+    initialLeadOwnerId?: string | null
 }
 
 interface AdditionalServiceItem {
@@ -414,7 +417,7 @@ const formatDateOnly = (isoString?: string | null): string => {
         year: "numeric",
     });
 };
-export default function ServicesCard({ orderId }: ServicesCardProps) {
+export default function ServicesCard({ orderId, initialLeadOwnerId = null }: ServicesCardProps) {
     const STORAGE_KEYS = {
         assignments: `assignments_${orderId}`,
         selectedStatuses: `selectedStatuses_${orderId}`,
@@ -568,6 +571,12 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
         }
     }, []);
 
+    useEffect(() => {
+        if (initialLeadOwnerId) {
+            setLeadOwnerId(initialLeadOwnerId);
+        }
+    }, [initialLeadOwnerId]);
+
     const canAssignQARaw = (_workType: { assignedTechnicianId?: string }, _parentService: MachineData) => {
         return currentUserRole === "admin";
     };
@@ -648,10 +657,16 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
 
             // Access leadOwner and services from the new response structure
             const machinesArray = Array.isArray(response.services) ? response.services : [];
-            setLeadOwnerId(response.leadOwner || null);
+            const resolvedLeadOwnerId =
+                response.leadOwner ||
+                initialLeadOwnerId ||
+                null;
+            setLeadOwnerId(resolvedLeadOwnerId);
 
             if (!machinesArray || machinesArray.length === 0) {
-                throw new Error("No machine data found");
+                setMachineData([]);
+                setLoading(false);
+                return;
             }
 
             const allTransformedData: MachineData[] = [];
@@ -2619,6 +2634,11 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
     }
 
     const isPaymentComplete = orderPaymentType === "complete";
+    const { isRestricted: restrictMachineTypes, allowedMachineTypes } = getLeadOwnerMachineTypeFilter(
+        leadOwnerId,
+        dealers,
+        manufacturers
+    );
 
     return (
         <div className="space-y-6 p-6">
@@ -3870,6 +3890,8 @@ export default function ServicesCard({ orderId }: ServicesCardProps) {
                 onClose={() => setAddMachineModalOpen(false)}
                 orderId={orderId || ""}
                 onSuccess={fetchMachineData}
+                restrictMachineTypes={restrictMachineTypes}
+                allowedMachineTypes={allowedMachineTypes}
                 requireMachinePrice={(() => {
                     if (!leadOwnerId) return false
                     const id = String(leadOwnerId)

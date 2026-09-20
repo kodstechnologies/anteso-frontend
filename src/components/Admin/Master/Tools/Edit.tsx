@@ -53,6 +53,28 @@ const getApplicableMachines = (toolName: string) => {
     }
 };
 
+const getDisplayedMachineOptions = (toolName: string, customMachinesList: string[]): string[] => {
+    if (!toolName?.trim()) return [];
+
+    const applicable = getApplicableMachines(toolName);
+    const normalizedToolName = toolName.toLowerCase();
+    const isUniversal =
+        normalizedToolName.includes('multimeter') ||
+        normalizedToolName.includes('survey meter') ||
+        normalizedToolName.includes('surveymeter') ||
+        normalizedToolName.includes('hygrometer');
+
+    if (isUniversal) {
+        return Array.from(new Set([...machineOptions, ...customMachinesList]));
+    }
+
+    if (applicable.length > 0) {
+        return applicable;
+    }
+
+    return Array.from(new Set([...machineOptions, ...customMachinesList]));
+};
+
 const quickSelectOptions = [
     { id: 'multimeterGroup', label: 'Multimeter, Survey Meter, Hygrometer', machines: machineOptions },
     { id: 'ctPhantom', label: 'CT Imaging Phantom', machines: ["Computed Tomography"] },
@@ -191,6 +213,14 @@ const EditTool = () => {
                     setCustomMachines(names);
                 }
 
+                const customMachineNames = customRes?.data
+                    ? customRes.data.map((m: any) => m.name)
+                    : [];
+                const displayedMachines = getDisplayedMachineOptions(
+                    tool.nomenclature || '',
+                    customMachineNames
+                );
+
                 // ✅ Step 6: Set form initial values
                 setInitialValues({
                     nomenclature: tool.nomenclature || '',
@@ -204,7 +234,9 @@ const EditTool = () => {
                     engineerName: engineer?._id || '',
                     issueDate: toolIssueDate,
                     submitDate: tool.submitDate ? tool.submitDate.split('T')[0] : '',
-                    applicableMachines: tool.applicableMachines || [],
+                    applicableMachines: (tool.applicableMachines || []).filter((machine: string) =>
+                        displayedMachines.includes(machine)
+                    ),
                 });
             } catch (error) {
                 console.error("❌ Error fetching data:", error);
@@ -213,9 +245,6 @@ const EditTool = () => {
 
         fetchData();
     }, [id]);
-
-    const allMachineOptions = [...machineOptions, ...customMachines];
-
 
     if (!initialValues) {
         return <p>Loading tool details...</p>;
@@ -296,9 +325,19 @@ const EditTool = () => {
                                         onChange={(option) => {
                                             const toolName = option ? option.value : '';
                                             setFieldValue('nomenclature', toolName);
+                                            const displayedMachines = getDisplayedMachineOptions(toolName, customMachines);
                                             const defaultMachines = getApplicableMachines(toolName);
                                             if (defaultMachines.length > 0) {
-                                                setFieldValue('applicableMachines', defaultMachines);
+                                                setFieldValue(
+                                                    'applicableMachines',
+                                                    defaultMachines.filter((machine) => displayedMachines.includes(machine))
+                                                );
+                                            } else {
+                                                const currentMachines = values.applicableMachines || [];
+                                                setFieldValue(
+                                                    'applicableMachines',
+                                                    currentMachines.filter((machine: string) => displayedMachines.includes(machine))
+                                                );
                                             }
                                         }}
                                         onBlur={() => { }}
@@ -552,9 +591,13 @@ const EditTool = () => {
                                 </div>
                             </div> */}
 
-                            {/* Full Machine List */}
+                            {/* Machine list for selected tool type */}
                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-3">
-                                {allMachineOptions.map((machine) => (
+                                {!values.nomenclature?.trim() ? (
+                                    <p className="text-sm text-gray-500 italic col-span-full">
+                                        Select a tool nomenclature to view applicable machines.
+                                    </p>
+                                ) : getDisplayedMachineOptions(values.nomenclature, customMachines).map((machine) => (
                                     <label key={machine} className="flex items-center space-x-3 cursor-pointer p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors group">
                                         <input
                                             type="checkbox"

@@ -5,27 +5,9 @@ import { showMessage } from "../../../common/ShowMessage"
 import { useState } from "react"
 import FullScreenLoader from "../../../common/FullScreenLoader"
 import { addMachine } from "../../../../api"
+import { MACHINE_TYPES_WITH_OTHERS } from "../../Orders/shared/machineTypeOptions"
 
-const machineTypeOptions = [
-    "Radiography (Fixed)",
-    "Radiography (Mobile)",
-    "Radiography (Portable)",
-    "Radiography and Fluoroscopy",
-    "Interventional Radiology",
-    "C-Arm",
-    "O-Arm",
-    "Computed Tomography",
-    "Mammography",
-    "Dental Cone Beam CT",
-    "Ortho Pantomography (OPG)",
-    "Dental (Intra Oral)",
-    "Dental (Hand-held)",
-    "Bone Densitometer (BMD)",
-    "KV Imaging (OBI)",
-    "Radiography (Mobile) with HT",
-    "Lead Apron/Thyroid Shield/Gonad Shield",
-    "Others",
-]
+const machineTypeOptions = [...MACHINE_TYPES_WITH_OTHERS]
 
 const AddMachine = () => {
     const navigate = useNavigate()

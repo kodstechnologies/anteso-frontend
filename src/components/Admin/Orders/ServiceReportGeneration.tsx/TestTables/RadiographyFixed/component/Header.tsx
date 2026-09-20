@@ -27,11 +27,15 @@ export const ReportPdfPageHeader: React.FC<{
       style={{ marginTop: "-5mm", display: "block" }}
     />
     <div className="text-right self-start m-0 p-0">
-      <table style={{ fontSize: '9px', borderCollapse: 'collapse', borderSpacing: '0', tableLayout: 'fixed', width: '280px', maxWidth: '280px', border: '0.1px solid #666', marginTop: '0', marginBottom: '0' }}>
+      <table style={{ fontSize: '9px', borderCollapse: 'collapse', borderSpacing: '0', tableLayout: 'fixed', width: '300px', maxWidth: '300px', border: '0.1px solid #666', marginTop: '0', marginBottom: '0' }}>
         <tbody>
-          {[["SRF No.:", report.srfNumber], ["SRF Date:", formatDate(report.srfDate)], ["ULR No.:", report.reportULRNumber || "N/A"]].map(([label, val]) => (
+          {[
+            ["SRF No.:", report.srfNumber],
+            ["SRF Date:", formatDate(report.srfDate)],
+            ["ULR No.:", report.reportULRNumber || "N/A"],
+          ].map(([label, val]) => (
             <tr key={String(label)}>
-              <th scope="row" style={{ width: '72px', padding: '2px 6px', fontSize: '9px', lineHeight: '1.2', whiteSpace: 'nowrap', fontWeight: 700, textAlign: 'center', verticalAlign: 'middle', border: '0.1px solid #666', boxSizing: 'border-box' }}>{label}</th>
+              <th scope="row" style={{ width: '78px', padding: '2px 6px', fontSize: '9px', lineHeight: '1.2', whiteSpace: 'nowrap', fontWeight: 700, textAlign: 'center', verticalAlign: 'middle', border: '0.1px solid #666', boxSizing: 'border-box' }}>{label}</th>
               <td style={{ padding: '2px 6px', fontSize: '9px', lineHeight: '1.2', whiteSpace: 'nowrap', fontWeight: 400, textAlign: 'center', verticalAlign: 'middle', border: '0.1px solid #666', boxSizing: 'border-box' }}>{val}</td>
             </tr>
           ))}

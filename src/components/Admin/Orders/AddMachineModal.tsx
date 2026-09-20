@@ -1,7 +1,11 @@
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { X, Loader2, Plus, Trash2 } from "lucide-react";
 import Swal from "sweetalert2";
 import { addMachineToOrder } from "../../../api";
+import {
+    STANDARD_MACHINE_TYPES,
+    getVisibleMachineTypes,
+} from "./shared/machineTypeOptions";
 
 const showMessage = (msg = "", type: "success" | "error" | "warning" = "success") => {
     const toast: any = Swal.mixin({
@@ -18,29 +22,6 @@ const showMessage = (msg = "", type: "success" | "error" | "warning" = "success"
     });
 };
 
-/** All selectable types except "Others" — used to detect custom typed machine names */
-const STANDARD_MACHINE_TYPES = [
-    "Radiography (Fixed)",
-    "Radiography (Mobile)",
-    "Radiography (Portable)",
-    "Radiography and Fluoroscopy",
-    "Interventional Radiology",
-    "C-Arm",
-    "O-Arm",
-    "Computed Tomography",
-    "Mammography",
-    "Dental Cone Beam CT",
-    "Ortho Pantomography (OPG)",
-    "Dental (Intra Oral)",
-    "Dental (Hand-held)",
-    "Bone Densitometer (BMD)",
-    "KV Imaging (OBI)",
-    "Radiography (Mobile) with HT",
-    "Lead Apron/Thyroid Shield/Gonad Shield",
-];
-
-const MACHINE_TYPES = [...STANDARD_MACHINE_TYPES, "Others"];
-
 const WORK_TYPES = [
     { value: "Quality Assurance Test", label: "Quality Assurance Test" },
     { value: "License for Operation", label: "License for Operation" },
@@ -55,6 +36,9 @@ interface AddMachineModalProps {
     onSuccess: () => void;
     /** When true, show Price field and require a valid numeric price (employee / dealer / manufacturer orders). */
     requireMachinePrice?: boolean;
+    /** When lead owner is dealer/manufacturer, only these machine types are shown. */
+    restrictMachineTypes?: boolean;
+    allowedMachineTypes?: string[];
 }
 
 export default function AddMachineModal({
@@ -63,7 +47,14 @@ export default function AddMachineModal({
     orderId,
     onSuccess,
     requireMachinePrice = false,
+    restrictMachineTypes = false,
+    allowedMachineTypes = [],
 }: AddMachineModalProps) {
+    const visibleMachineTypes = useMemo(
+        () => getVisibleMachineTypes(restrictMachineTypes, allowedMachineTypes),
+        [restrictMachineTypes, allowedMachineTypes]
+    );
+
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
         machineType: "",
@@ -78,6 +69,27 @@ export default function AddMachineModal({
     });
     const [workTypeEntries, setWorkTypeEntries] = useState<string[]>(["Quality Assurance Test"]);
     const [workOrderCopy, setWorkOrderCopy] = useState<File | null>(null);
+
+    useEffect(() => {
+        if (!open) return;
+
+        setFormData((prev) => {
+            if (
+                !prev.machineType ||
+                prev.machineType === "Others" ||
+                prev.fromOthers ||
+                visibleMachineTypes.includes(prev.machineType)
+            ) {
+                return prev;
+            }
+
+            return {
+                ...prev,
+                machineType: "",
+                fromOthers: false,
+            };
+        });
+    }, [open, visibleMachineTypes]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
@@ -242,12 +254,17 @@ export default function AddMachineModal({
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         >
                             <option value="">Select Machine Type</option>
-                            {MACHINE_TYPES.map((type) => (
+                            {visibleMachineTypes.map((type) => (
                                 <option key={type} value={type}>
                                     {type}
                                 </option>
                             ))}
                         </select>
+                        {restrictMachineTypes && allowedMachineTypes.length === 0 && (
+                            <p className="mt-1 text-xs text-amber-700">
+                                No QA tests are configured for this lead owner. You can still add a custom machine using Others.
+                            </p>
+                        )}
                     </div>
 
                     {isOthersFlow && (

@@ -183,7 +183,7 @@ const GenerateReportForBMDContent: React.FC<BMDProps> = ({ serviceId, csvFileUrl
     pages: "",
     testDate: "",
     testDueDate: "",
-    location: "",
+    location: "At site",
     temperature: "",
     humidity: "",
     engineerNameRPId: "",
@@ -1451,7 +1451,7 @@ const GenerateReportForBMDContent: React.FC<BMDProps> = ({ serviceId, csvFileUrl
           pages: "",
           testDate: testDateStr,
           testDueDate: testDueDateStr,
-          location: data.hospitalAddress,
+          location: "At site",
           temperature: "",
           humidity: "",
           engineerNameRPId: data.engineerAssigned?.name || "",
@@ -1528,7 +1528,7 @@ const GenerateReportForBMDContent: React.FC<BMDProps> = ({ serviceId, csvFileUrl
             testingProcedureNumber: res.data.testingProcedureNumber || prev.testingProcedureNumber,
             testDate: res.data.testDate || prev.testDate,
             testDueDate: calculatedTestDueDate || prev.testDueDate,
-            location: res.data.location || prev.location,
+            location: res.data.location || prev.location || "At site",
             temperature: res.data.temperature || prev.temperature,
             humidity: res.data.humidity || prev.humidity,
             engineerNameRPId: res.data.engineerNameRPId || prev.engineerNameRPId,
@@ -1810,7 +1810,7 @@ const GenerateReportForBMDContent: React.FC<BMDProps> = ({ serviceId, csvFileUrl
         show: hasTimer !== false // Show if timer is true or not yet determined
       },
       {
-        title: "Accuracy Of Operating Potential & Total Filtration",
+        title: "Accuracy Of Operating Potential",
         component: <TotalFilteration key={`total-filtration-${csvDataVersion}`} serviceId={serviceId} initialData={csvDataForComponents.totalFiltration || csvDataForComponents.accuracyOfOperatingPotential} />
       },
       {

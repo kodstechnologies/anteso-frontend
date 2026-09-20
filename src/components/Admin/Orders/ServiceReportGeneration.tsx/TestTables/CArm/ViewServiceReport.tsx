@@ -4,6 +4,7 @@ import { useSearchParams } from "react-router-dom";
 import { getReportHeaderForCArm, getTubeHousingLeakageByServiceIdCArm, getHighContrastResolutionByServiceIdForCArm, getLowContrastResolutionByServiceIdForCArm, getDetails, getTools } from "../../../../../../api";
 import { generatePDF } from "../../../../../../utils/generatePDF";
 import { ReportPdfPageHeader } from "../RadiographyFixed/component/Header";
+import { computeExposureRateRowResult, normalizeExposureMode } from "./exposureRateUtils";
 import { ReportPdfPageFooter } from "../RadiographyFixed/component/Footer";
 import { ReportPdfPageFooterEnd } from "../RadiographyFixed/component/FooterEnd";
 import { ReportPdfPageNoteQR } from "../RadiographyFixed/component/NoteQR";
@@ -106,6 +107,19 @@ function pickOutputConsistencyScalar(...candidates: any[]): string {
 }
 
 /** API stores `measurementHeaders`; older UI used `headers`. Rows may use mA / remarks aliases. */
+function normalizeCArmOutputTolerance(raw: any): { operator: string; value: string } {
+  if (raw && typeof raw === "object" && ("operator" in raw || "value" in raw)) {
+    return {
+      operator: raw.operator || "<=",
+      value: String(raw.value ?? "0.02"),
+    };
+  }
+  if (typeof raw === "string" && raw.trim()) {
+    return { operator: "<=", value: raw.trim() };
+  }
+  return { operator: "<=", value: "0.02" };
+}
+
 function normalizeCArmOutputConsistency(raw: any): any | null {
   if (!raw || typeof raw !== "object") return null;
   const headerList =
@@ -126,6 +140,7 @@ function normalizeCArmOutputConsistency(raw: any): any | null {
     ...raw,
     headers: headerList ?? raw.headers,
     measurementHeaders: raw.measurementHeaders ?? headerList,
+    tolerance: normalizeCArmOutputTolerance(raw.tolerance),
     outputRows,
   };
 }
@@ -230,6 +245,15 @@ const ViewServiceReportCArm: React.FC = () => {
           const mergedTools = mergeTools(headerTools, assignedTools);
           const detailsData = detailsRes?.data?.data || detailsRes?.data || {};
           const detailsFirstQaTest = Array.isArray(detailsData?.qaTests) ? detailsData.qaTests[0] : null;
+          const qaTestDateStr = (() => {
+            const src = detailsFirstQaTest?.qatestSubmittedAt || detailsFirstQaTest?.createdAt;
+            if (!src) return "";
+            try {
+              return new Date(src).toISOString().split("T")[0];
+            } catch {
+              return "";
+            }
+          })();
           const srfKey = data?.srfNumber || detailsData?.srfNumber || "";
           const cachedOrderBySrfRaw = srfKey ? localStorage.getItem(`order-basic-by-srf-${srfKey}`) : null;
           const cachedOrderBySrf = cachedOrderBySrfRaw ? JSON.parse(cachedOrderBySrfRaw) : {};
@@ -270,7 +294,7 @@ const ViewServiceReportCArm: React.FC = () => {
             leadOwnerRole: data.leadOwnerRole || data.leadownerRole || detailsLeadOwnerRole || "",
             leadOwnerName: data.leadOwnerName || detailsLeadOwnerName || "",
             srfNumber: data.srfNumber || "N/A",
-            srfDate: data.srfDate || "",
+            srfDate: data.srfDate || data.testDate || qaTestDateStr,
             reportULRNumber: data.reportULRNumber || "N/A",
             testReportNumber: data.testReportNumber || "N/A",
             issueDate: data.issueDate || "",
@@ -285,7 +309,7 @@ const ViewServiceReportCArm: React.FC = () => {
             pages: data.pages || "",
             testDate: data.testDate || "",
             testDueDate: data.testDueDate || "",
-            location: data.location || "N/A",
+            location: data.location || "At site",
             temperature: data.temperature || "",
             humidity: data.humidity || "",
             toolsUsed: mergedTools,
@@ -556,16 +580,16 @@ const ViewServiceReportCArm: React.FC = () => {
   const hasMasLinearity = !!testData.linearityOfMasLoading;
   const showMaLinearity =
     timerChoice === true
-      ? (hasMaLinearity || !hasMasLinearity)
+      ? hasMaLinearity
       : timerChoice === false
-        ? (hasMaLinearity && !hasMasLinearity)
-        : hasMaLinearity;
+        ? false
+        : hasMaLinearity && !hasMasLinearity;
   const showMasLinearity =
     timerChoice === false
-      ? (hasMasLinearity || !hasMaLinearity)
+      ? hasMasLinearity
       : timerChoice === true
-        ? (hasMasLinearity && !hasMaLinearity)
-        : (hasMasLinearity && !hasMaLinearity);
+        ? false
+        : hasMasLinearity && !hasMaLinearity;
 
   // Split detailed results across A4 shells so PDF capture keeps header/footer per page
   const hasDetailedPart1 = !!(
@@ -1177,8 +1201,12 @@ const ViewServiceReportCArm: React.FC = () => {
                     </div>
                   );
                 })()}
-                {testData.outputConsistency.tolerance != null && testData.outputConsistency.tolerance !== '' && (
-                  <p className="text-sm mb-1" style={{ fontSize: '11px' }}><strong>Tolerance (COV):</strong> Less than or equal to {testData.outputConsistency.tolerance}</p>
+                {testData.outputConsistency.tolerance && (
+                  <p className="text-sm mb-1" style={{ fontSize: '11px' }}>
+                    <strong>Acceptance Criteria:</strong> CoV{" "}
+                    {testData.outputConsistency.tolerance.operator || "<="}{" "}
+                    {testData.outputConsistency.tolerance.value || "0.02"}
+                  </p>
                 )}
                 {testData.outputConsistency.finalRemark != null && testData.outputConsistency.finalRemark !== '' && (
                   <p className="text-sm" style={{ fontSize: '11px' }}><strong>Final Result:</strong> <span className={testData.outputConsistency.finalRemark === "Pass" ? "text-green-600 font-bold" : "text-red-600 font-bold"}>{testData.outputConsistency.finalRemark}</span></p>
@@ -1362,21 +1390,17 @@ const ViewServiceReportCArm: React.FC = () => {
                       </thead>
                       <tbody>
                         {testData.exposureRateTableTop.rows.map((row: any, i: number) => {
-                          const aecTol = parseFloat(testData.exposureRateTableTop.aecTolerance || "10") || 0;
-                          const nonAecTol = parseFloat(testData.exposureRateTableTop.nonAecTolerance || "5") || 0;
-                          const exposure = parseFloat(row.exposure);
-                          let result = row.result || "";
-                          if (result === "" && !isNaN(exposure) && row.remark) {
-                            const isPass = (row.remark === "AEC Mode" && exposure <= aecTol) || (row.remark === "Manual Mode" && exposure <= nonAecTol);
-                            result = isPass ? "PASS" : "FAIL";
-                          }
+                          const aecTol = testData.exposureRateTableTop.aecTolerance || "10";
+                          const nonAecTol = testData.exposureRateTableTop.nonAecTolerance || "5";
+                          const mode = normalizeExposureMode(row.remark ?? row.mode) || row.remark || "-";
+                          const result = computeExposureRateRowResult(row, aecTol, nonAecTol);
                           return (
                             <tr key={i} className="text-center" style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
                               <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.distance || "-"}</td>
                               <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.appliedKv || "-"}</td>
                               <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.appliedMa || "-"}</td>
                               <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.exposure || "-"}</td>
-                              <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.remark || "-"}</td>
+                              <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{mode}</td>
                               <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center', backgroundColor: 'rgba(220, 252, 231, 0.3)' }}>
                                 <span className={result === "PASS" ? "text-green-600 font-semibold" : result === "FAIL" ? "text-red-600 font-semibold" : ""}>
                                   {result || "-"}

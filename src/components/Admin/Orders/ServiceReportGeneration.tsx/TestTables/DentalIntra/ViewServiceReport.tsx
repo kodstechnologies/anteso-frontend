@@ -261,6 +261,15 @@ const ViewServiceReportDentalIntra: React.FC<ViewServiceReportDentalIntraProps> 
           const mergedTools = mergeTools(headerTools, assignedTools);
           const detailsData = detailsResponse?.data?.data || detailsResponse?.data || {};
           const detailsFirstQaTest = Array.isArray(detailsData?.qaTests) ? detailsData.qaTests[0] : null;
+          const qaTestDateStr = (() => {
+            const src = detailsFirstQaTest?.qatestSubmittedAt || detailsFirstQaTest?.createdAt;
+            if (!src) return "";
+            try {
+              return new Date(src).toISOString().split("T")[0];
+            } catch {
+              return "";
+            }
+          })();
           const srfKey = data?.srfNumber || detailsData?.srfNumber || "";
           const cachedOrderBySrfRaw = srfKey ? localStorage.getItem(`order-basic-by-srf-${srfKey}`) : null;
           const cachedOrderBySrf = cachedOrderBySrfRaw ? JSON.parse(cachedOrderBySrfRaw) : {};
@@ -305,7 +314,7 @@ const ViewServiceReportDentalIntra: React.FC<ViewServiceReportDentalIntraProps> 
             leadOwnerRole: data.leadOwnerRole || data.leadownerRole || detailsLeadOwnerRole || "",
             leadOwnerName: data.leadOwnerName || detailsLeadOwnerName || "",
             srfNumber: data.srfNumber || "N/A",
-            srfDate: data.srfDate || "",
+            srfDate: data.srfDate || data.testDate || qaTestDateStr,
             reportULRNumber: resolvedUlr || "N/A",
             testReportNumber: data.testReportNumber || "N/A",
             issueDate: data.issueDate || "",

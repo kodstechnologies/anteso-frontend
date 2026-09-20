@@ -1393,21 +1393,6 @@ const GenerateReportForDentalContent: React.FC<DentalProps> = ({ serviceId, qaTe
                 <h2 className="text-2xl font-bold text-gray-800 mb-6">QA Tests</h2>
 
                 {[
-                    // Linearity Of mAs Loading — Only if no timer (shown first per VIEW order)
-                    ...(hasTimer === false
-                        ? [
-                            {
-                                title: "Linearity Of mAs Loading",
-                                component: <LinearityOfMasLoading
-                                    serviceId={serviceId}
-                                    testId={savedTestIds.LinearityOfmAsLoadingDentalIntra || null}
-                                    onTestSaved={(id) => setSavedTestIds(prev => ({ ...prev, LinearityOfmAsLoadingDentalIntra: id }))}
-                                    csvData={csvDataForComponents['linearityOfMasLoading']}
-                                />,
-                            },
-                        ]
-                        : []),
-                    // Timer Test — Only if user said YES
                     ...(hasTimer === true
                         ? [
                             {
@@ -1430,9 +1415,28 @@ const GenerateReportForDentalContent: React.FC<DentalProps> = ({ serviceId, qaTe
                             csvData={csvDataForComponents['accuracyOfOperatingPotential']}
                         />
                     },
-                    // Linearity Of mA Loading — Only if timer present
-                    ...(hasTimer === true
+                    ...(hasTimer === false
                         ? [
+                            {
+                                title: "Linearity Of mAs Loading",
+                                component: <LinearityOfMasLoading
+                                    serviceId={serviceId}
+                                    testId={savedTestIds.LinearityOfmAsLoadingDentalIntra || null}
+                                    onTestSaved={(id) => setSavedTestIds(prev => ({ ...prev, LinearityOfmAsLoadingDentalIntra: id }))}
+                                    csvData={csvDataForComponents['linearityOfMasLoading']}
+                                />,
+                            },
+                        ]
+                        : [
+                            {
+                                title: "Linearity Of mAs Loading",
+                                component: <LinearityOfMasLoading
+                                    serviceId={serviceId}
+                                    testId={savedTestIds.LinearityOfmAsLoadingDentalIntra || null}
+                                    onTestSaved={(id) => setSavedTestIds(prev => ({ ...prev, LinearityOfmAsLoadingDentalIntra: id }))}
+                                    csvData={csvDataForComponents['linearityOfMasLoading']}
+                                />,
+                            },
                             {
                                 title: "Linearity Of mA Loading",
                                 component: <LinearityOfmALoading
@@ -1442,8 +1446,7 @@ const GenerateReportForDentalContent: React.FC<DentalProps> = ({ serviceId, qaTe
                                     csvData={csvDataForComponents['linearityOfMaLoading']}
                                 />,
                             },
-                        ]
-                        : []),
+                        ]),
                     {
                         title: "Consistency Of Radiation Output",
                         component: <ConsistencyOfRadiationOutput

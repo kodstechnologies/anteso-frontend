@@ -97,6 +97,28 @@ const getApplicableMachines = (toolName: string) => {
     }
 };
 
+const getDisplayedMachineOptions = (toolName: string, customMachinesList: string[]): string[] => {
+    if (!toolName?.trim()) return [];
+
+    const applicable = getApplicableMachines(toolName);
+    const normalizedToolName = toolName.toLowerCase();
+    const isUniversal =
+        normalizedToolName.includes('multimeter') ||
+        normalizedToolName.includes('survey meter') ||
+        normalizedToolName.includes('surveymeter') ||
+        normalizedToolName.includes('hygrometer');
+
+    if (isUniversal) {
+        return Array.from(new Set([...machineOptions, ...customMachinesList]));
+    }
+
+    if (applicable.length > 0) {
+        return applicable;
+    }
+
+    return Array.from(new Set([...machineOptions, ...customMachinesList]));
+};
+
 const quickSelectOptions = [
     { id: 'multimeterGroup', label: 'Multimeter, Survey Meter, Hygrometer', machines: machineOptions },
     { id: 'ctPhantom', label: 'CT Imaging Phantom', machines: ["Computed Tomography"] },
@@ -254,9 +276,15 @@ const AddTool = () => {
                                         onChange={(option) => {
                                             const toolName = option ? option.value : '';
                                             setFieldValue('nomenclature', toolName);
+                                            const displayedMachines = getDisplayedMachineOptions(toolName, customMachines);
                                             const defaultMachines = getApplicableMachines(toolName);
                                             if (defaultMachines.length > 0) {
-                                                setFieldValue('applicableMachines', defaultMachines);
+                                                setFieldValue(
+                                                    'applicableMachines',
+                                                    defaultMachines.filter((machine) => displayedMachines.includes(machine))
+                                                );
+                                            } else {
+                                                setFieldValue('applicableMachines', []);
                                             }
                                         }}
                                         onBlur={() => { }}
@@ -391,9 +419,13 @@ const AddTool = () => {
                                 </div>
                             </div> */}
 
-                            {/* Full Machine List */}
+                            {/* Machine list for selected tool type */}
                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-3">
-                                {uniqueMachineOptions.map((machine) => (
+                                {!values.nomenclature?.trim() ? (
+                                    <p className="text-sm text-gray-500 italic col-span-full">
+                                        Select a tool nomenclature to view applicable machines.
+                                    </p>
+                                ) : getDisplayedMachineOptions(values.nomenclature, customMachines).map((machine) => (
                                     <label key={machine} className="flex items-center space-x-3 cursor-pointer p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors group">
                                         <input
                                             type="checkbox"

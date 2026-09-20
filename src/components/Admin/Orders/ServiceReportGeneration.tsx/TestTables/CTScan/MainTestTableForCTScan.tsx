@@ -545,7 +545,7 @@ const MainTestTableForCTScan: React.FC<MainTestTableProps> = ({ testData }) => {
       const contrastDiff = hcr.result.contrastDifference ?? "-";
       testRows = [{
         specified: `Contrast Difference: ${contrastDiff}`,
-        measured: `Observed Size: ${observedSize} mm`,
+        measured: `Observed Size: ${observedSize} lp/mm`,
         criteria: "-",
         tolerance: highContrastTolerance,
         remarks: "Pass" as "Pass" | "Fail",

@@ -312,7 +312,7 @@ const HighContrastResolutionForCTScan: React.FC<Props> = ({
                       } focus:ring-4 focus:ring-indigo-300 ${isViewOnly ? 'cursor-not-allowed' : ''}`}
                     placeholder="1.0"
                   />
-                  <p className="text-sm text-gray-600 mt-2">mm</p>
+                  <p className="text-sm text-gray-600 mt-2">lp/mm</p>
                 </td>
                 <td className="py-6 px-4 text-center">
                   <div className="flex items-center justify-center gap-3">
@@ -408,9 +408,9 @@ const HighContrastResolutionForCTScan: React.FC<Props> = ({
         <h3 className="text-xl font-bold text-amber-900 mb-3">Remark</h3>
         <p className={`text-lg font-medium leading-relaxed ${status === 'pass' ? 'text-green-700' : 'text-red-700'}`}>
           {status === 'pass' &&
-            `The CT scanner can resolve high-contrast bar/hole patterns as small as ${observedSize} mm at ${contrastDifference}% contrast difference. This meets the acceptance criterion.`}
+            `The CT scanner can resolve high-contrast bar/hole patterns as small as ${observedSize} lp/mm at ${contrastDifference}% contrast difference. This meets the acceptance criterion.`}
           {status === 'fail' &&
-            `The CT scanner can only resolve down to ${observedSize} mm at ${contrastDifference}% contrast difference, which does NOT meet the requirement of ≤ ${toleranceSize} mm.`}
+            `The CT scanner can only resolve down to ${observedSize} lp/mm at ${contrastDifference}% contrast difference, which does NOT meet the requirement of ≤ ${toleranceSize} mm.`}
           {status === 'incomplete' &&
             'Please enter the smallest resolvable bar/hole pattern size to determine compliance.'}
         </p>

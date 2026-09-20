@@ -194,6 +194,15 @@ const ViewServiceReportRadiographyPortable: React.FC<ViewServiceReportRadiograph
         const cachedOrderBySrfRaw = srfKey ? localStorage.getItem(`order-basic-by-srf-${srfKey}`) : null;
         const cachedOrderBySrf = cachedOrderBySrfRaw ? JSON.parse(cachedOrderBySrfRaw) : {};
         const detailsFirstQaTest = Array.isArray(detailsData?.qaTests) ? detailsData.qaTests[0] : null;
+        const qaTestDateStr = (() => {
+          const src = detailsFirstQaTest?.qatestSubmittedAt || detailsFirstQaTest?.createdAt;
+          if (!src) return "";
+          try {
+            return new Date(src).toISOString().split("T")[0];
+          } catch {
+            return "";
+          }
+        })();
         const detailsLeadOwner =
           detailsData?.leadOwner ||
           detailsData?.leadowner ||
@@ -235,7 +244,7 @@ const ViewServiceReportRadiographyPortable: React.FC<ViewServiceReportRadiograph
             leadOwnerRole: data.leadOwnerRole || data.leadownerRole || detailsLeadOwnerRole || "",
             leadOwnerName: data.leadOwnerName || detailsLeadOwnerName || "",
             srfNumber: data.srfNumber || "N/A",
-            srfDate: data.srfDate || "",
+            srfDate: data.srfDate || data.testDate || qaTestDateStr,
             reportULRNumber:
               pickUlr(data) ||
               pickUlr(detailsFirstQaTest) ||

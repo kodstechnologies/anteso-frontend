@@ -143,7 +143,7 @@ const RadioFluroContent: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, c
         pages: "",
         testDate: "",
         testDueDate: "",
-        location: "",
+        location: "At site",
         temperature: "",
         humidity: "",
         engineerNameRPId: "",
@@ -228,7 +228,7 @@ const RadioFluroContent: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, c
                     pages: "",
                     testDate: testDateStr,
                     testDueDate: testDueDateStr,
-                    location: data.hospitalAddress,
+                    location: "At site",
                     temperature: "",
                     humidity: "",
                     engineerNameRPId: data.engineerAssigned?.name || "",
@@ -286,7 +286,7 @@ const RadioFluroContent: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, c
                             condition: reportData.condition || prev.condition,
                             testingProcedureNumber: reportData.testingProcedureNumber || prev.testingProcedureNumber,
                             pages: reportData.pages || prev.pages,
-                            location: reportData.location || prev.location,
+                            location: reportData.location || prev.location || "At site",
                             temperature: reportData.temperature || prev.temperature,
                             humidity: reportData.humidity || prev.humidity,
                             engineerNameRPId: reportData.engineerNameRPId || prev.engineerNameRPId,
@@ -2088,9 +2088,17 @@ const RadioFluroContent: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, c
                         ]
                         : []),
 
-                    // { title: "Accuracy Of Operating Potential", component: <AccuracyOfOperatingPotential serviceId={serviceId} /> },
                     { 
-                        title: "Total Filteration", 
+                        title: "Accuracy Of Operating Potential",
+                        component: (
+                            <AccuracyOfOperatingPotential 
+                                key={`accuracy-op-${refreshKey}`}
+                                serviceId={serviceId}
+                            />
+                        )
+                    },
+                    { 
+                        title: "Total Filtration", 
                         component: (
                             <TotalFilteration 
                                 key={`total-filtration-${refreshKey}`}

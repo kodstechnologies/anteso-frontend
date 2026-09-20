@@ -139,7 +139,7 @@ const OBIContent: React.FC<OBIProps> = ({ serviceId, csvFileUrl, csvFileUrls, qa
         pages: "",
         testDate: "",
         testDueDate: "",
-        location: "",
+        location: "At site",
         temperature: "",
         humidity: "",
                 engineerNameRPId: "",
@@ -271,7 +271,7 @@ const OBIContent: React.FC<OBIProps> = ({ serviceId, csvFileUrl, csvFileUrls, qa
                     pages: "",
                     testDate: testDate,
                     testDueDate: testDueDate,
-                    location: "", // Don't auto-fill location
+                    location: "At site",
                     temperature: "",
                     humidity: "",
                     engineerNameRPId: data.engineerAssigned?.name || "",
@@ -326,7 +326,7 @@ const OBIContent: React.FC<OBIProps> = ({ serviceId, csvFileUrl, csvFileUrls, qa
                             testingProcedureNumber: reportData.testingProcedureNumber || prev.testingProcedureNumber,
                             pages: reportData.pages || prev.pages,
                             // testDate and testDueDate are calculated from QA test date, keep calculated values
-                            location: reportData.location || prev.location, // Allow saved location to override
+                            location: reportData.location || prev.location || "At site",
                             temperature: reportData.temperature || prev.temperature,
                             humidity: reportData.humidity || prev.humidity,
                             engineerNameRPId: reportData.engineerNameRPId || prev.engineerNameRPId,
@@ -2541,7 +2541,7 @@ const OBIContent: React.FC<OBIProps> = ({ serviceId, csvFileUrl, csvFileUrls, qa
                     ...(hasTimer === true
                         ? [
                             {
-                                title: "Timer Test",
+                                title: "Accuracy Of Irradiation Time",
                                 component: <TimerTest
                                     key={`timer-${refreshKey}`}
                                     serviceId={serviceId}
@@ -2562,7 +2562,6 @@ const OBIContent: React.FC<OBIProps> = ({ serviceId, csvFileUrl, csvFileUrls, qa
                             initialData={csvDataForComponents.accuracyOfOperatingPotential}
                         />
                     },
-
                     {
                         title: "Output Consistency",
                         component: <OutputConsistency
@@ -2575,7 +2574,7 @@ const OBIContent: React.FC<OBIProps> = ({ serviceId, csvFileUrl, csvFileUrls, qa
                         />
                     },
                     {
-                        title: "Low Contrast Sensitivity",
+                        title: "Low Contrast Resolution",
                         component: <LowContrastSensitivity
                             key={`low-contrast-${refreshKey}`}
                             serviceId={serviceId}
@@ -2588,7 +2587,7 @@ const OBIContent: React.FC<OBIProps> = ({ serviceId, csvFileUrl, csvFileUrls, qa
                         />
                     },
                     {
-                        title: "High Contrast Sensitivity",
+                        title: "High Contrast Resolution",
                         component: <HighContrastSensitivity
                             key={`high-contrast-${refreshKey}`}
                             serviceId={serviceId}

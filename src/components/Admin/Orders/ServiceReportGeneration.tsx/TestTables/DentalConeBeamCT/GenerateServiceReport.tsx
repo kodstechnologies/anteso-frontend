@@ -1,5 +1,5 @@
 // GenerateReport-CTScan.tsx
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import AuthorizedSignatorySelect from "../../AuthorizedSignatorySelect";
@@ -8,7 +8,7 @@ import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import { saveReportHeaderForCBCT, getReportHeaderForCBCT, getAccuracyOfOperatingPotentialByServiceIdForCBCT, getAccuracyOfIrradiationTimeByServiceIdForCBCT, getLinearityOfMaLoadingByServiceIdForCBCT, getConsistencyOfRadiationOutputByServiceIdForCBCT, getRadiationLeakageLevelByServiceIdForCBCT, getRadiationProtectionSurveyByServiceIdForCBCT, proxyFile,
   saveTimerPreference,
     saveReportPdfForCBCT } from "../../../../../../api";
-import { getDetails, getAssignedToolsForEngineerByMachine } from "../../../../../../api";
+import { getDetails, getTools } from "../../../../../../api";
 import * as XLSX from 'xlsx';
 import { createCBCTUploadableExcel } from './exportCBCTToExcel';
 import { isExcelFileUrl, resolvePrefillSpreadsheetUrls } from '../../../../../../utils/spreadsheetFile';
@@ -24,7 +24,6 @@ import Notes from "../../Notes";
 // Test Components
 import AccuracyOfIrradiationTime from "./AccuracyOfIrradiationTime";
 import AccuracyOfOperatingPotential from "./AccuracyOfOperatingPotential";
-import TotalFilteration from "./TotalFilteration";
 import LinearityOfmALoading from "./LinearityOfmALoading";
 import ConsistencyOfRadiationOutput from "./ConsistencyOfRadiationOutput";
 import RadiationLeakageLevel from "./RadiationLeakageLevel";
@@ -63,6 +62,60 @@ const isToolUnexpired = (validTillRaw: string): boolean => {
     const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
     const validTillDate = new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
     return validTillDate >= todayStart;
+};
+
+const mapHeaderTools = (raw: any[]): Standard[] =>
+    (raw || []).map((tool: any, index: number) => ({
+        slNumber: String(tool?.slNumber || index + 1),
+        nomenclature: tool?.nomenclature || "",
+        make: tool?.make || tool?.manufacturer || "",
+        model: tool?.model || "",
+        SrNo: tool?.SrNo || tool?.srNo || "",
+        range: tool?.range || "",
+        certificate: tool?.certificate || tool?.tool || null,
+        calibrationCertificateNo: tool?.calibrationCertificateNo || "",
+        calibrationValidTill: (tool?.calibrationValidTill || "").split("T")[0],
+        uncertainity: tool?.uncertainity || "",
+    }));
+
+const mapAssignedTools = (assignedTools: any[]): Standard[] =>
+    (assignedTools || [])
+        .map((t: any) => ({
+            nomenclature: t.nomenclature,
+            make: t.manufacturer || t.make,
+            model: t.model,
+            SrNo: t.SrNo,
+            range: t.range,
+            certificate: t.certificate || null,
+            calibrationCertificateNo: t.calibrationCertificateNo,
+            calibrationValidTill: (t.calibrationValidTill || "").split("T")[0],
+            uncertainity: "",
+        }))
+        .filter((t) => isToolUnexpired(t.calibrationValidTill))
+        .map((t, i) => ({
+            ...t,
+            slNumber: String(i + 1),
+        }));
+
+const mergeToolStandards = (primary: Standard[], secondary: Standard[]): Standard[] => {
+    const seen = new Set<string>();
+    const merged: Standard[] = [];
+    const addUnique = (tool: Standard) => {
+        const key = [
+            String(tool.nomenclature || "").toLowerCase().trim(),
+            String(tool.make || "").toLowerCase().trim(),
+            String(tool.model || "").toLowerCase().trim(),
+            String(tool.SrNo || "").toLowerCase().trim(),
+            String(tool.calibrationCertificateNo || "").toLowerCase().trim(),
+        ].join("|");
+        if (!seen.has(key)) {
+            seen.add(key);
+            merged.push(tool);
+        }
+    };
+    primary.forEach(addUnique);
+    secondary.forEach(addUnique);
+    return merged.map((tool, idx) => ({ ...tool, slNumber: String(idx + 1) }));
 };
 
 const DentalConeBeamCTContent: React.FC<{ serviceId: string; qaTestDate?: string | null; csvFileUrl?: string | null; csvFileUrls?: string[] }> = ({ serviceId, qaTestDate, csvFileUrl, csvFileUrls }) => {
@@ -107,7 +160,7 @@ const DentalConeBeamCTContent: React.FC<{ serviceId: string; qaTestDate?: string
         pages: "",
         testDate: "",
         testDueDate: "",
-        location: "At Site",
+        location: "At site",
         temperature: "",
         humidity: "",
         engineerNameRPId: "",
@@ -616,6 +669,31 @@ const DentalConeBeamCTContent: React.FC<{ serviceId: string; qaTestDate?: string
         return d.toISOString().split("T")[0];
     };
 
+    const refreshAssignedTools = useCallback(async () => {
+        if (!serviceId) return;
+        try {
+            const toolsRes = await getTools(serviceId);
+            const mappedTools = mapAssignedTools(toolsRes?.data?.toolsAssigned || []);
+            setTools((prev) => mergeToolStandards(mappedTools, prev));
+        } catch (err) {
+            console.error("Failed to refresh assigned tools:", err);
+        }
+    }, [serviceId]);
+
+    useEffect(() => {
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === "visible") {
+                refreshAssignedTools();
+            }
+        };
+        window.addEventListener("focus", refreshAssignedTools);
+        document.addEventListener("visibilitychange", handleVisibilityChange);
+        return () => {
+            window.removeEventListener("focus", refreshAssignedTools);
+            document.removeEventListener("visibilitychange", handleVisibilityChange);
+        };
+    }, [refreshAssignedTools]);
+
     // Only fetch initial service details and tools — NOT saved report
     useEffect(() => {
         const fetchInitialData = async () => {
@@ -623,12 +701,10 @@ const DentalConeBeamCTContent: React.FC<{ serviceId: string; qaTestDate?: string
 
             try {
                 setLoading(true);
-                const detailsRes = await getDetails(serviceId);
-                const engineerId = detailsRes.data?.engineerAssigned?._id || detailsRes.data?.engineerAssigned;
-                const machineType = detailsRes.data?.machineType;
-                const toolsRes = engineerId && machineType
-                    ? await getAssignedToolsForEngineerByMachine(engineerId, machineType)
-                    : null;
+                const [detailsRes, toolsRes] = await Promise.all([
+                    getDetails(serviceId),
+                    getTools(serviceId).catch(() => null),
+                ]);
 
                 const data = detailsRes.data;
                 const firstTest = data.qaTests[0];
@@ -659,7 +735,7 @@ const DentalConeBeamCTContent: React.FC<{ serviceId: string; qaTestDate?: string
                     pages: "",
                     testDate: baseTestDate,
                     testDueDate: dueDate,
-                    location: "at Site",
+                    location: "At site",
                     temperature: "",
                     humidity: "",
                     engineerNameRPId: data.engineerAssigned?.name || "",
@@ -668,26 +744,8 @@ const DentalConeBeamCTContent: React.FC<{ serviceId: string; qaTestDate?: string
                     authorizedSignatory: "",
                 });
 
-                const assignedTools = toolsRes?.data?.toolsAssigned || toolsRes?.toolsAssigned || [];
-                const mappedTools: Standard[] = assignedTools
-                    .map((t: any) => ({
-                    nomenclature: t.nomenclature,
-                    make: t.manufacturer || t.make,
-                    model: t.model,
-                    SrNo: t.SrNo,
-                    range: t.range,
-                    certificate: t.certificate || null,
-                    calibrationCertificateNo: t.calibrationCertificateNo,
-                    calibrationValidTill: (t.calibrationValidTill || "").split("T")[0],
-                    uncertainity: "",
-                    }))
-                    .filter((t: any) => isToolUnexpired(t.calibrationValidTill))
-                    .map((t: any, i: number) => ({
-                        ...t,
-                        slNumber: String(i + 1),
-                    }));
-
-                setTools(mappedTools);
+                const mappedTools = mapAssignedTools(toolsRes?.data?.toolsAssigned || []);
+                setTools((prev) => mergeToolStandards(mappedTools, prev));
             } catch (err: any) {
                 console.error("Failed to load initial data:", err);
             } finally {
@@ -850,7 +908,7 @@ const DentalConeBeamCTContent: React.FC<{ serviceId: string; qaTestDate?: string
                         testingProcedureNumber: res.data.testingProcedureNumber || prev.testingProcedureNumber,
                         testDate: res.data.testDate || prev.testDate,
                         testDueDate: res.data.testDueDate || prev.testDueDate,
-                        location: "at Site",
+                        location: res.data.location || prev.location || "At site",
                         temperature: res.data.temperature || prev.temperature,
                         humidity: res.data.humidity || prev.humidity,
                         engineerNameRPId: res.data.engineerNameRPId || prev.engineerNameRPId,
@@ -865,6 +923,11 @@ const DentalConeBeamCTContent: React.FC<{ serviceId: string; qaTestDate?: string
                         setNotes(notesTexts);
                     } else {
                         setNotes(defaultNotes);
+                    }
+
+                    if (Array.isArray(res.data.toolsUsed) && res.data.toolsUsed.length > 0) {
+                        const headerTools = mapHeaderTools(res.data.toolsUsed);
+                        setTools((prev) => mergeToolStandards(headerTools, prev));
                     }
 
                     // Save test IDs
@@ -1339,8 +1402,6 @@ const DentalConeBeamCTContent: React.FC<{ serviceId: string; qaTestDate?: string
                             csvData={csvData?.accuracyOfOperatingPotential}
                         />
                     },
-                    // { title: "Total Filteration", component: <TotalFilteration /> },
-
                     // Linearity Test — Conditional
                     ...(hasTimer === true
                         ? [

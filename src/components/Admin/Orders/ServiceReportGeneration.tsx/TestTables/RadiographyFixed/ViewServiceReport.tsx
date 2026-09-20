@@ -211,6 +211,15 @@ const ViewServiceReportRadiographyFixed: React.FC<ViewServiceReportProps> = ({
           }
         }
         const detailsFirstQaTest = Array.isArray(detailsData?.qaTests) ? detailsData.qaTests[0] : null;
+        const qaTestDateStr = (() => {
+          const src = detailsFirstQaTest?.qatestSubmittedAt || detailsFirstQaTest?.createdAt;
+          if (!src) return "";
+          try {
+            return new Date(src).toISOString().split("T")[0];
+          } catch {
+            return "";
+          }
+        })();
         const detailsLeadOwner = detailsData?.leadOwner || detailsData?.leadowner || null;
         const detailsLeadOwnerRole = String(
           detailsData?.leadOwnerType ||
@@ -248,7 +257,7 @@ const ViewServiceReportRadiographyFixed: React.FC<ViewServiceReportProps> = ({
             leadOwnerRole: data.leadOwnerRole || data.leadownerRole || detailsLeadOwnerRole || "",
             leadOwnerName: data.leadOwnerName || detailsLeadOwnerName || "",
             srfNumber: data.srfNumber || "N/A",
-            srfDate: data.srfDate || "",
+            srfDate: data.srfDate || data.testDate || qaTestDateStr,
             reportULRNumber:
               data.reportULRNumber ||
               data.reportUlrNumber ||

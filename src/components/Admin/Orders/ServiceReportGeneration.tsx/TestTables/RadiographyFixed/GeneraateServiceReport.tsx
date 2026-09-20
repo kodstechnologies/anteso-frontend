@@ -46,7 +46,7 @@ import LinearityOfMaLoading from "./LinearityOfMaLoadingStations"
 import LinearityOfMasLoading from "./LinearityOfMasLoading";
 import ConsistencyOfRadiationOutput from "./ConsistencyOfRadiationOutput";
 import RadiationLeakageLevel from "./RadiationLeakageLevel";
-import RadiationProtectionSurvey from "./RadiationProtectionSurvey"
+import RadiationProtectionSurvey from "./RadiationProtectionSurvey";
 
 interface Standard {
   slNumber: string;
@@ -133,7 +133,7 @@ const RadiographyFixedContent: React.FC<RadiographyFixedProps> = ({ serviceId, q
     pages: "",
     testDate: "",
     testDueDate: "",
-    location: "At Site",
+    location: "At site",
     temperature: "",
     humidity: "",
     engineerNameRPId: "",
@@ -261,7 +261,7 @@ const RadiographyFixedContent: React.FC<RadiographyFixedProps> = ({ serviceId, q
           pages: "",
           testDate: testDate,
           testDueDate: testDueDate,
-          location: "At Site",
+          location: "At site",
           temperature: "",
           humidity: "",
           engineerNameRPId: data.engineerAssigned?.name || "",
@@ -348,7 +348,7 @@ const RadiographyFixedContent: React.FC<RadiographyFixedProps> = ({ serviceId, q
               testingProcedureNumber: reportData.testingProcedureNumber || prev.testingProcedureNumber,
               pages: reportData.pages || prev.pages,
               // testDate and testDueDate are calculated from QA test date, keep calculated values
-              location: reportData.location || prev.location,
+              location: reportData.location || prev.location || "At site",
               temperature: reportData.temperature || prev.temperature,
               humidity: reportData.humidity || prev.humidity,
               // Always prefer currently assigned engineer from getDetails (reassignment-safe)
@@ -2316,7 +2316,7 @@ const RadiographyFixedContent: React.FC<RadiographyFixedProps> = ({ serviceId, q
             : []),
 
           {
-            title: "Accuracy Of Operating Potential & Total Filtration",
+            title: "Accuracy Of Operating Potential",
             component: <TotalFilteration serviceId={serviceId} initialData={csvDataForComponents.totalFiltration} csvDataVersion={csvDataVersion} />,
           },
 

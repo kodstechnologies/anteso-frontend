@@ -25,6 +25,11 @@ interface OutputRow {
   remark?: 'Pass' | 'Fail' | '';
 }
 
+interface Tolerance {
+  operator: '<=' | '<' | '>=' | '>';
+  value: string;
+}
+
 interface Props {
   serviceId: string;
   testId?: string | null;
@@ -33,6 +38,28 @@ interface Props {
   csvDataVersion?: number;
   initialData?: any;
 }
+
+const normalizeToleranceState = (raw: any): Tolerance => {
+  if (raw && typeof raw === 'object' && ('operator' in raw || 'value' in raw)) {
+    return {
+      operator: (raw.operator ?? '<=') as Tolerance['operator'],
+      value: String(raw.value ?? '0.02'),
+    };
+  }
+  if (typeof raw === 'string' && raw.trim()) {
+    return { operator: '<=', value: raw.trim() };
+  }
+  return { operator: '<=', value: '0.02' };
+};
+
+const passesTolerance = (cov: number, tolerance: Tolerance): boolean => {
+  const tol = parseFloat(tolerance.value) || 0.02;
+  if (tolerance.operator === '<=') return cov <= tol;
+  if (tolerance.operator === '<') return cov < tol;
+  if (tolerance.operator === '>=') return cov >= tol;
+  if (tolerance.operator === '>') return cov > tol;
+  return cov <= tol;
+};
 
 const OutputConsistencyForCArm: React.FC<Props> = ({
   serviceId,
@@ -69,8 +96,7 @@ const OutputConsistencyForCArm: React.FC<Props> = ({
   ]);
 
   const [headers, setHeaders] = useState<string[]>(INITIAL_HEADERS);
-  const [tolerance, setTolerance] = useState<string>('0.02'); // Decimal: 2% = 0.02
-  const [toleranceOperator, setToleranceOperator] = useState<string>('<=');
+  const [tolerance, setTolerance] = useState<Tolerance>({ operator: '<', value: '0.05' });
 
   const applyImportedData = (data: any) => {
     if (!data) return;
@@ -91,7 +117,12 @@ const OutputConsistencyForCArm: React.FC<Props> = ({
       const p: Parameters = { id: '1', ffd: '100', time: '1.0' };
       const rows: OutputRow[] = [];
       let tol = '0.02';
-      let tolOp = '<=';
+      let tolOp: Tolerance['operator'] = '<=';
+      if (data.tolerance) {
+        const normalized = normalizeToleranceState(data.tolerance);
+        tol = normalized.value;
+        tolOp = normalized.operator;
+      }
       const h: string[] = [];
       let maxMeasCol = 0;
 
@@ -103,7 +134,7 @@ const OutputConsistencyForCArm: React.FC<Props> = ({
         if (field === 'Parameters_FFD') p.ffd = val;
         if (field === 'Parameters_Time') p.time = val;
         if (field === 'Output_Tolerance') tol = val;
-        if (field === 'Output_ToleranceOperator') tolOp = val;
+        if (field === 'Output_ToleranceOperator') tolOp = (val || '<=') as Tolerance['operator'];
         if (field?.startsWith('Header_')) {
           const idx = parseInt(field.replace('Header_', ''), 10) - 1;
           while (h.length <= idx) h.push('');
@@ -169,8 +200,7 @@ const OutputConsistencyForCArm: React.FC<Props> = ({
         );
       }
       setHeaders(finalHeaders);
-      setTolerance(tol);
-      setToleranceOperator(tolOp);
+      setTolerance({ operator: tolOp, value: tol });
       setIsSaved(false);
     } catch (err) {
       console.error('Error mapping CSV data for Output Consistency:', err);
@@ -185,8 +215,6 @@ const OutputConsistencyForCArm: React.FC<Props> = ({
 
   // Auto-calculate Mean, COV (decimal), and Remark per row
   const processedRows = useMemo(() => {
-    const tol = parseFloat(tolerance) || 0.02;
-
     return outputRows.map(row => {
       const nums = row.outputs
         .filter(v => v.trim() !== '')
@@ -204,7 +232,7 @@ const OutputConsistencyForCArm: React.FC<Props> = ({
         cov = Math.sqrt(variance) / mean;
       }
 
-      const remark = cov <= tol ? 'Pass' : 'Fail';
+      const remark = passesTolerance(cov, tolerance) ? 'Pass' : 'Fail';
 
       return {
         ...row,
@@ -274,7 +302,7 @@ const OutputConsistencyForCArm: React.FC<Props> = ({
               remark: '',
             }]
           );
-          setTolerance(data.tolerance || '0.02');
+          setTolerance(normalizeToleranceState(data.tolerance));
           setIsSaved(true);
         } else {
           // Reset to initial state with 5 columns
@@ -319,7 +347,7 @@ const OutputConsistencyForCArm: React.FC<Props> = ({
         remark: row.remark || "",
       })),
       measurementHeaders: headers,
-      tolerance: tolerance.trim(),
+      tolerance,
     };
 
     try {
@@ -573,24 +601,40 @@ const OutputConsistencyForCArm: React.FC<Props> = ({
         </div>
       </div>
 
-      {/* Tolerance & Final Result */}
-      <div className="bg-white shadow-md rounded-lg p-6 max-w-md">
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Tolerance (COV Less than or equal to)
-        </label>
-        <div className="flex items-center gap-3 mb-4">
-          <span className="text-sm text-gray-600">Less than or equal to</span>
+      {/* Acceptance Criteria */}
+      <div className="bg-white rounded-lg border p-6 max-w-md shadow-sm">
+        <h3 className="font-semibold text-gray-700 mb-4">Acceptance Criteria</h3>
+        <div className="flex items-center gap-4">
+          <span className="text-gray-700">Coefficient of Variation (CoV)</span>
+          <select
+            value={tolerance.operator}
+            onChange={(e) => {
+              setTolerance({ ...tolerance, operator: e.target.value as Tolerance['operator'] });
+              setIsSaved(false);
+            }}
+            disabled={isViewMode}
+            className={`px-4 py-2 border rounded font-medium ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+          >
+            <option value="<=">≤</option>
+            <option value="<">&lt;</option>
+            <option value=">=">≥</option>
+            <option value=">">&gt;</option>
+          </select>
           <input
             type="text"
-            value={tolerance}
-            onChange={(e) => setTolerance(e.target.value)}
+            value={tolerance.value}
+            onChange={(e) => {
+              setTolerance({
+                ...tolerance,
+                value: e.target.value.replace(/[^0-9.]/g, ''),
+              });
+              setIsSaved(false);
+            }}
             disabled={isViewMode}
-            className={`w-32 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+            className={`w-24 px-4 py-2 text-center border-2 border-blue-500 rounded font-bold text-lg focus:outline-none focus:ring-2 focus:ring-blue-200 ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
             placeholder="0.02"
           />
         </div>
-
-      
       </div>
 
       <div className="flex justify-end mt-6">

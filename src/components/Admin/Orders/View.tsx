@@ -517,7 +517,14 @@ const View = () => {
 
 
             {/* Service details */}
-            <ServiceDetails2 orderId={orderId} />
+            <ServiceDetails2
+                orderId={orderId}
+                initialLeadOwnerId={
+                    (details?.leadOwner as any)?._id ||
+                    (typeof details?.leadOwner === 'string' ? details.leadOwner : null) ||
+                    null
+                }
+            />
             {/* <ServicesCardDemo orderId={orderId} /> */}
             <div className="bg-white p-6 rounded-lg shadow-lg mt-5">
                 <div className="space-y-4">

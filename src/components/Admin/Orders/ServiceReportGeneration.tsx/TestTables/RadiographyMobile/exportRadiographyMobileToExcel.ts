@@ -170,13 +170,16 @@ export const createRadiographyMobileUploadableExcel = (
   };
 
   // 1. Accuracy of Operating Potential (same as RadiographyFixed)
-  const aop = unwrap(data.accuracyOfOperatingPotential);
-  if (aop?.table2 && Array.isArray(aop.table2) && aop.table2.length > 0) {
-    const rows = aop.table2.map((row: any) => [
-      row.setKV ?? "",
-      row.ma10 ?? row.ma1 ?? "",
-      row.ma100 ?? row.ma2 ?? "",
-      row.ma200 ?? row.ma3 ?? "",
+  const aop = unwrap(data.accuracyOfOperatingPotential) ?? unwrap(data.totalFiltration);
+  const aopRows = Array.isArray(aop?.measurements) && aop.measurements.length > 0
+    ? aop.measurements
+    : Array.isArray(aop?.table2) ? aop.table2 : [];
+  if (aopRows.length > 0) {
+    const rows = aopRows.map((row: any) => [
+      row.appliedKvp ?? row.setKV ?? "",
+      row.measuredValues?.[0] ?? row.ma10 ?? row.ma1 ?? "",
+      row.measuredValues?.[1] ?? row.ma100 ?? row.ma2 ?? "",
+      row.measuredValues?.[2] ?? row.ma200 ?? row.ma3 ?? "",
     ]);
     addSection(
       "ACCURACY OF OPERATING POTENTIAL",

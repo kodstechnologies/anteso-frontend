@@ -37,7 +37,7 @@ import CongruenceOfRadiation from "./CongruenceOfRadiation";
 import CentralBeamAlignment from "./CentralBeamAlignment";
 import EffectiveFocalSpot from "./EffectiveFocalSpot";
 import AccuracyOfIrradiationTime from "./AccuracyOfIrradiationTime";
-import AccuracyOfOperatingPotential from "./AccuracyOfOperatingPotential";
+import TotalFilteration from "./TotalFilteration";
 import LinearityOfMasLoadingStations from "./LinearityOfMasLoadingStations";
 import ConsistencyOfRadiationOutput from "./ConsisitencyOfRadiationOutput";
 import RadiationLeakageLevel from "./RadiationLeakageLevel";
@@ -97,6 +97,7 @@ const RadiographyMobileContent: React.FC<RadiographyMobileProps> = ({ serviceId,
 
   // CSV data state to pass to each test component (pre-fills form from Excel upload)
   const [csvDataForComponents, setCsvDataForComponents] = useState<{
+    totalFiltration?: any;
     accuracyOfOperatingPotential?: any;
     accuracyOfIrradiationTime?: any;
     outputConsistency?: any;
@@ -126,7 +127,7 @@ const RadiographyMobileContent: React.FC<RadiographyMobileProps> = ({ serviceId,
     pages: "",
     testDate: "",
     testDueDate: "",
-    location: "At Site",
+    location: "At site",
     temperature: "",
     humidity: "",
     engineerNameRPId: "",
@@ -256,8 +257,7 @@ const RadiographyMobileContent: React.FC<RadiographyMobileProps> = ({ serviceId,
         const firstTest = data.qaTests?.[0];
         setDetails(data);
 
-        const srfDateStr = data.completedAt ? new Date(data.completedAt).toISOString().split("T")[0] : "";
-        const testDateSource = firstTest?.qatestSubmittedAt || firstTest?.createdAt;
+        const testDateSource = firstTest?.qatestSubmittedAt || firstTest?.createdAt || qaTestDate;
         let testDate = "";
         let testDueDate = "";
         if (testDateSource) {
@@ -268,6 +268,7 @@ const RadiographyMobileContent: React.FC<RadiographyMobileProps> = ({ serviceId,
           due.setDate(due.getDate() - 1);
           testDueDate = due.toISOString().split("T")[0];
         }
+        const srfDateStr = testDate;
 
         setMinIssueDate(testDate || "");
         setFormData({
@@ -289,7 +290,7 @@ const RadiographyMobileContent: React.FC<RadiographyMobileProps> = ({ serviceId,
           pages: "",
           testDate,
           testDueDate,
-          location: "At Site",
+          location: "At site",
           temperature: "",
           humidity: "",
           engineerNameRPId: data.engineerAssigned?.name || "",
@@ -339,7 +340,7 @@ const RadiographyMobileContent: React.FC<RadiographyMobileProps> = ({ serviceId,
             manufacturerName: res.data.manufacturerName || prev.manufacturerName,
             srfNumber: res.data.srfNumber || prev.srfNumber,
             category: res.data.category || prev.category,
-            srfDate: res.data.srfDate || prev.srfDate,
+            srfDate: res.data.srfDate || res.data.testDate || prev.srfDate,
             reportULRNumber: res.data.reportULRNumber || prev.reportULRNumber,
             testReportNumber: res.data.testReportNumber || prev.testReportNumber,
             issueDate: res.data.issueDate || prev.issueDate,
@@ -351,7 +352,7 @@ const RadiographyMobileContent: React.FC<RadiographyMobileProps> = ({ serviceId,
             testingProcedureNumber: res.data.testingProcedureNumber || prev.testingProcedureNumber,
             testDate: res.data.testDate || prev.testDate,
             testDueDate: res.data.testDueDate || prev.testDueDate,
-            location: res.data.location || prev.location,
+            location: res.data.location || prev.location || "At site",
             temperature: res.data.temperature || prev.temperature,
             humidity: res.data.humidity || prev.humidity,
             engineerNameRPId: res.data.engineerNameRPId || prev.engineerNameRPId,
@@ -390,13 +391,23 @@ const RadiographyMobileContent: React.FC<RadiographyMobileProps> = ({ serviceId,
       if ((data as any).data && (data as any).data._id) return true;
       if (Array.isArray((data as any).table2) && (data as any).table2.length > 0) return true;
       if (Array.isArray((data as any).measurements) && (data as any).measurements.length > 0) return true;
+      if ((data as any).totalFiltration != null && typeof (data as any).totalFiltration === "object") return true;
       return false;
     };
     const checks: { name: string; check: () => Promise<boolean> }[] = [
       { name: "Congruence of Radiation & Optical Field", check: async () => { try { return isSaved(await getCongruenceByServiceIdForRadiographyMobile(serviceId)); } catch { return false; } } },
       { name: "Central Beam Alignment", check: async () => { try { return isSaved(await getCentralBeamAlignmentByServiceIdForRadiographyMobile(serviceId)); } catch { return false; } } },
       { name: "Effective Focal Spot Measurement", check: async () => { try { return isSaved(await getEffectiveFocalSpotByServiceIdForRadiographyMobile(serviceId)); } catch { return false; } } },
-      { name: "Accuracy Of Operating Potential", check: async () => { try { return isSaved(await getAccuracyOfOperatingPotentialByServiceIdForRadiographyMobile(serviceId)); } catch { return false; } } },
+      {
+        name: "Accuracy Of Operating Potential & Total Filtration",
+        check: async () => {
+          try {
+            return isSaved(await getAccuracyOfOperatingPotentialByServiceIdForRadiographyMobile(serviceId));
+          } catch {
+            return false;
+          }
+        },
+      },
       { name: "Linearity Of mAs Loading Stations", check: async () => { try { return isSaved(await getLinearityOfMasLoadingStationsByServiceIdForRadiographyMobile(serviceId)); } catch { return false; } } },
       { name: "Output Consistency", check: async () => { try { return isSaved(await getConsistencyOfRadiationOutputByServiceIdForRadiographyMobile(serviceId)); } catch { return false; } } },
       { name: "Tube Housing Leakage", check: async () => { try { return isSaved(await getRadiationLeakageLevelByServiceIdForRadiographyMobile(serviceId)); } catch { return false; } } },
@@ -1353,12 +1364,12 @@ const RadiographyMobileContent: React.FC<RadiographyMobileProps> = ({ serviceId,
 
       const nextState: Record<string, any> = {};
 
-      // --- Accuracy of Operating Potential (same format as Radiography Fixed) ---
+      // --- Accuracy of Operating Potential & Total Filtration (same format as Radiography Fixed) ---
       if (grouped["Accuracy of Operating Potential"]?.length) {
         try {
           const data = grouped["Accuracy of Operating Potential"];
           const measHeaders: string[] = [];
-          const kVpMeasurements: any[] = [];
+          const measurements: any[] = [];
           const tol: any = {};
           const total: any = {};
           let currentBlock: any = null;
@@ -1368,23 +1379,19 @@ const RadiographyMobileContent: React.FC<RadiographyMobileProps> = ({ serviceId,
             if (key === "MeasHeader") {
               if (!measHeaders.includes(val)) measHeaders.push(val);
             } else if (key === "Measurement_AppliedKvp") {
-              currentBlock = { setKV: val, measurements: [] };
-              kVpMeasurements.push(currentBlock);
+              currentBlock = { appliedKvp: val, measuredValues: [] };
+              measurements.push(currentBlock);
             } else if (key.startsWith("Measurement_Meas") && currentBlock) {
-              currentBlock.measurements.push(val);
+              currentBlock.measuredValues.push(val);
             } else if (key.startsWith("Tolerance_")) {
               tol[key.split("_")[1]] = val;
             } else if (key.startsWith("TotalFiltration_")) {
               total[key.split("_")[1]] = val;
             }
           });
-          const table2 = kVpMeasurements.map((block: any) => ({
-            setKV: block.setKV,
-            measuredValues: block.measurements || [],
-          }));
-          nextState.accuracyOfOperatingPotential = {
-            mAStations: measHeaders.length > 0 ? measHeaders : ["Meas 1", "Meas 2", "Meas 3"],
-            table2,
+          nextState.totalFiltration = {
+            mAStations: measHeaders.length > 0 ? measHeaders : ["50 mA", "100 mA"],
+            measurements: measurements.filter((m) => m.appliedKvp),
             tolerance: {
               sign: tol.Sign || tol.sign || "±",
               value: tol.Value || tol.value || "2.0",
@@ -1720,6 +1727,7 @@ const RadiographyMobileContent: React.FC<RadiographyMobileProps> = ({ serviceId,
       const exportData: Record<string, unknown> = {
         accuracyOfIrradiationTime: registeredData.accuracyOfIrradiationTime ?? csvDataForComponents.accuracyOfIrradiationTime,
         accuracyOfOperatingPotential: registeredData.accuracyOfOperatingPotential ?? csvDataForComponents.accuracyOfOperatingPotential,
+        totalFiltration: registeredData.totalFiltration ?? csvDataForComponents.totalFiltration,
         centralBeamAlignment: registeredData.centralBeamAlignment ?? csvDataForComponents.centralBeamAlignment,
         congruence: registeredData.congruence ?? csvDataForComponents.congruenceOfRadiation,
         effectiveFocalSpot: registeredData.effectiveFocalSpot ?? csvDataForComponents.effectiveFocalSpot,
@@ -1747,9 +1755,12 @@ const RadiographyMobileContent: React.FC<RadiographyMobileProps> = ({ serviceId,
 
       try {
         const res = await getAccuracyOfOperatingPotentialByServiceIdForRadiographyMobile(serviceId);
-        if (!exportData.accuracyOfOperatingPotential && res) exportData.accuracyOfOperatingPotential = res;
+        if (res) {
+          if (!exportData.accuracyOfOperatingPotential) exportData.accuracyOfOperatingPotential = res;
+          if (!exportData.totalFiltration) exportData.totalFiltration = res;
+        }
       } catch (err) {
-        console.log("Accuracy of Operating Potential not found or error:", err);
+        console.log("Accuracy of Operating Potential / Total Filtration not found or error:", err);
       }
 
       try {
@@ -2091,12 +2102,11 @@ const RadiographyMobileContent: React.FC<RadiographyMobileProps> = ({ serviceId,
           {
             title: "Accuracy Of Operating Potential",
             component: (
-              <AccuracyOfOperatingPotential
+              <TotalFilteration
                 key={`accuracy-${refreshKey}`}
                 serviceId={serviceId}
-                refreshKey={refreshKey}
                 csvDataVersion={refreshKey}
-                initialData={csvDataForComponents.accuracyOfOperatingPotential}
+                initialData={csvDataForComponents.totalFiltration}
               />
             ),
           },
@@ -2144,7 +2154,7 @@ const RadiographyMobileContent: React.FC<RadiographyMobileProps> = ({ serviceId,
             ),
           },
           {
-            title: "Radiation Leakage Level",
+            title: "Tube Housing Leakage",
             component: (
               <RadiationLeakageLevel
                 key={`leakage-${refreshKey}`}

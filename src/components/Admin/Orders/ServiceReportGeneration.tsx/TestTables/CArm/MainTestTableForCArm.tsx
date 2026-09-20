@@ -1,5 +1,6 @@
 // src/components/reports/TestTables/CArm/MainTestTableForCArm.tsx
 import React from "react";
+import { computeExposureRateRowResult } from "./exposureRateUtils";
 import { evaluateTotalFiltrationPassFail } from "../totalFiltrationPassFail";
 
 interface MainTestTableProps {
@@ -316,15 +317,13 @@ const MainTestTableForCArm: React.FC<MainTestTableProps> = ({ testData, hasTimer
     ]);
   }
 
-  // Linearity of mAs / mA Loading (Coefficient of Linearity) — RadiographyFixed
+  // Linearity of mAs Loading — only when timer is not present
   const masTable2 = testData.linearityOfMasLoading?.table2;
   const masValidRows =
     Array.isArray(masTable2) ? masTable2.filter((row: any) => row.mAsApplied) : [];
 
-  if (masValidRows.length > 0) {
-    const linearityLabel = hasTimer
-      ? "Linearity of mA Loading (Coefficient of Linearity)"
-      : "Linearity of mAs Loading (Coefficient of Linearity)";
+  if (!hasTimer && masValidRows.length > 0) {
+    const linearityLabel = "Linearity of mAs Loading (Coefficient of Linearity)";
 
     const validRows = masValidRows;
     const tolerance = testData.linearityOfMasLoading.tolerance || "0.1";
@@ -404,8 +403,8 @@ const MainTestTableForCArm: React.FC<MainTestTableProps> = ({ testData, hasTimer
     ]);
   }
 
-  // C-Arm: mA linearity only when no mAs-applied rows — single summary row like Fixed CoL summary
-  if (masValidRows.length === 0) {
+  // C-Arm: mA linearity when timer is present — single summary row like Fixed CoL summary
+  if (hasTimer) {
     const maLob = testData.linearityOfMaLoading;
     const maRows = maLob?.table2Rows || maLob?.table2;
     if (maLob && Array.isArray(maRows) && maRows.length > 0) {
@@ -467,13 +466,15 @@ const MainTestTableForCArm: React.FC<MainTestTableProps> = ({ testData, hasTimer
     if (validRows.length > 0) {
       const tolRaw = testData.outputConsistency.tolerance;
       const toleranceOperator =
-        typeof tolRaw === "object" && tolRaw !== null && tolRaw.operator != null ? tolRaw.operator : "<=";
+        typeof tolRaw === "object" && tolRaw !== null && tolRaw.operator != null
+          ? tolRaw.operator
+          : testData.outputConsistency.toleranceOperator || "<=";
       const toleranceValue =
         typeof tolRaw === "object" && tolRaw !== null && tolRaw.value != null
           ? String(tolRaw.value)
           : typeof tolRaw === "string" || typeof tolRaw === "number"
             ? String(tolRaw)
-            : "0.05";
+            : "0.02";
 
       const getVal = (o: any): number => {
         if (o == null) return NaN;
@@ -689,7 +690,10 @@ const MainTestTableForCArm: React.FC<MainTestTableProps> = ({ testData, hasTimer
       const nonAecTolerance = testData.exposureRateTableTop.nonAecTolerance || "5";
 
       const testRows = validRows.map((row: any) => {
-        const isPass = row.result === "PASS" || row.result === "Pass";
+        const computed = computeExposureRateRowResult(row, aecTolerance, nonAecTolerance);
+        const isPass =
+          computed === "PASS" ||
+          (computed === "" && (row.result === "PASS" || row.result === "Pass"));
         const mode = row.remark;
         let toleranceDisplay = "As per standard";
 

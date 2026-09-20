@@ -8,6 +8,7 @@ import {
   getExposureRateByServiceIdForCArm,
   updateExposureRateForCArm,
 } from "../../../../../../api";
+import { computeExposureRateRowResult, normalizeExposureMode } from "./exposureRateUtils";
 
 interface Row {
   id: string;
@@ -24,29 +25,6 @@ interface Props {
   onTestSaved?: (testId: string) => void;
   refreshKey?: number;
   initialData?: any[];
-}
-
-/** Map Excel/API mode values to the UI select options. */
-function normalizeExposureMode(raw: unknown): Row["remark"] {
-  const s = String(raw ?? "")
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, " ");
-  if (!s) return "";
-  if (
-    s === "manual mode" ||
-    s === "manual" ||
-    s.includes("manual") ||
-    s.includes("non-aec") ||
-    s.includes("non aec") ||
-    s.includes("nonaec")
-  ) {
-    return "Manual Mode";
-  }
-  if (s === "aec mode" || s === "aec" || s.includes("aec") || s.includes("automatic")) {
-    return "AEC Mode";
-  }
-  return "";
 }
 
 const ExposureRateTableTopForCArm: React.FC<Props> = ({
@@ -178,21 +156,11 @@ const ExposureRateTableTopForCArm: React.FC<Props> = ({
 
   // Compute PASS/FAIL for each row
   const rowsWithResult = useMemo(() => {
-    return rows.map(row => {
-      const exposure = parseFloat(row.exposure);
-      const aecLimit = parseFloat(aecTolerance) || 0;
-      const manualLimit = parseFloat(nonAecTolerance) || 0;
-
-      if (isNaN(exposure) || !row.remark) {
-        return { ...row, result: "" };
-      }
-
-      const isPass =
-        (row.remark === "AEC Mode" && exposure <= aecLimit) ||
-        (row.remark === "Manual Mode" && exposure <= manualLimit);
-
-      return { ...row, result: isPass ? "PASS" : "FAIL" };
-    });
+    return rows.map((row) => ({
+      ...row,
+      remark: normalizeExposureMode(row.remark) || row.remark,
+      result: computeExposureRateRowResult(row, aecTolerance, nonAecTolerance),
+    }));
   }, [rows, aecTolerance, nonAecTolerance]);
 
   // Load existing test
@@ -224,7 +192,7 @@ const ExposureRateTableTopForCArm: React.FC<Props> = ({
               appliedKv: r.appliedKv || "",
               appliedMa: r.appliedMa || "",
               exposure: r.exposure || "",
-              remark: r.remark || "",
+              remark: normalizeExposureMode(r.remark ?? r.mode) || r.remark || "",
             })) || []
           );
           setAecTolerance(data.aecTolerance || "10");
@@ -269,12 +237,13 @@ const ExposureRateTableTopForCArm: React.FC<Props> = ({
     }
 
     const payload = {
-      rows: rows.map(r => ({
+      rows: rowsWithResult.map((r) => ({
         distance: r.distance.trim(),
         appliedKv: r.appliedKv.trim(),
         appliedMa: r.appliedMa.trim(),
         exposure: r.exposure.trim(),
-        remark: r.remark,
+        remark: normalizeExposureMode(r.remark) || r.remark,
+        result: r.result,
       })),
       aecTolerance: aecTolerance.trim(),
       nonAecTolerance: nonAecTolerance.trim(),

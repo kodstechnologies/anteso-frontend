@@ -116,7 +116,7 @@ const RadiographyPortableContent: React.FC<RadiographyPortableProps> = ({ servic
     pages: "",
     testDate: "",
     testDueDate: "",
-    location: "At Site",
+    location: "At site",
     temperature: "",
     humidity: "",
     engineerNameRPId: "",
@@ -213,7 +213,7 @@ const RadiographyPortableContent: React.FC<RadiographyPortableProps> = ({ servic
           pages: "",
           testDate,
           testDueDate,
-          location: "At Site",
+          location: "At site",
           temperature: "",
           humidity: "",
           engineerNameRPId: data.engineerAssigned?.name || "",
@@ -277,7 +277,7 @@ const RadiographyPortableContent: React.FC<RadiographyPortableProps> = ({ servic
             testingProcedureNumber: res.data.testingProcedureNumber || prev.testingProcedureNumber,
             testDate: res.data.testDate || prev.testDate,
             testDueDate: res.data.testDueDate || prev.testDueDate,
-            location: res.data.location || prev.location,
+            location: res.data.location || prev.location || "At site",
             temperature: res.data.temperature || prev.temperature,
             humidity: res.data.humidity || prev.humidity,
             engineerNameRPId: res.data.engineerNameRPId || prev.engineerNameRPId,
@@ -1588,7 +1588,7 @@ const RadiographyPortableContent: React.FC<RadiographyPortableProps> = ({ servic
             ]
             : []),
 
-          { title: "Accuracy Of Operating Potential & Total Filtration", component: <TotalFilteration serviceId={serviceId} initialData={csvDataForComponents.totalFiltration} csvDataVersion={csvDataVersion} /> },
+          { title: "Accuracy Of Operating Potential", component: <TotalFilteration serviceId={serviceId} initialData={csvDataForComponents.totalFiltration} csvDataVersion={csvDataVersion} /> },
           // Linearity Test — Conditional (same titles / props pattern as Radiography Fixed)
           ...(hasTimer === true
             ? [

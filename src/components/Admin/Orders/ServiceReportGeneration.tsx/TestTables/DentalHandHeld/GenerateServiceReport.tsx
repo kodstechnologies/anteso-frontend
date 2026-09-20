@@ -133,7 +133,7 @@ const GenerateReportForDentalHandHeldContent: React.FC<DentalProps> = ({ service
         pages: "",
         testDate: "",
         testDueDate: "",
-        location: "",
+        location: "At site",
         temperature: "",
         humidity: "",
         engineerNameRPId: "",
@@ -193,7 +193,7 @@ const GenerateReportForDentalHandHeldContent: React.FC<DentalProps> = ({ service
                     pages: "",
                     testDate: baseTestDate,
                     testDueDate: dueDate,
-                    location: data.hospitalAddress,
+                    location: "At site",
                     temperature: "",
                     humidity: "",
                     engineerNameRPId: data.engineerAssigned?.name || "",
@@ -273,7 +273,7 @@ const GenerateReportForDentalHandHeldContent: React.FC<DentalProps> = ({ service
                         testingProcedureNumber: res.data.testingProcedureNumber || prev.testingProcedureNumber,
                         testDate: res.data.testDate || prev.testDate,
                         testDueDate: res.data.testDueDate || prev.testDueDate,
-                        location: res.data.location || prev.location,
+                        location: res.data.location || prev.location || "At site",
                         temperature: res.data.temperature || prev.temperature,
                         humidity: res.data.humidity || prev.humidity,
                         engineerNameRPId: res.data.engineerNameRPId || prev.engineerNameRPId,
@@ -1411,9 +1411,16 @@ const GenerateReportForDentalHandHeldContent: React.FC<DentalProps> = ({ service
                             csvData={csvDataForComponents['accuracyOfOperatingPotential']}
                         />
                     },
-                    // Linearity Test — Conditional
                     ...(hasTimer === true
                         ? [
+                            {
+                                title: "Linearity Of Time",
+                                component: <LinearityOfTime
+                                    serviceId={serviceId}
+                                    testId={savedTestIds.LinearityOfTimeDentalHandHeld || undefined}
+                                    csvData={csvDataForComponents['LinearityOfTime']}
+                                />,
+                            },
                             {
                                 title: "Linearity Of mA Loading",
                                 component: <LinearityOfmALoading
@@ -1421,6 +1428,15 @@ const GenerateReportForDentalHandHeldContent: React.FC<DentalProps> = ({ service
                                     testId={savedTestIds.LinearityOfMaLoadingDentalHandHeld || undefined}
                                     onTestSaved={(id: string) => setSavedTestIds(prev => ({ ...prev, LinearityOfMaLoadingDentalHandHeld: id }))}
                                     csvData={csvDataForComponents['linearityOfMaLoading']}
+                                />,
+                            },
+                            {
+                                title: "Linearity Of mAs Loading",
+                                component: <LinearityOfMasLoading
+                                    serviceId={serviceId}
+                                    testId={savedTestIds.LinearityOfmAsLoadingDentalHandHeld || null}
+                                    onTestSaved={(id: string) => setSavedTestIds(prev => ({ ...prev, LinearityOfmAsLoadingDentalHandHeld: id }))}
+                                    csvData={csvDataForComponents['linearityOfMasLoading']}
                                 />,
                             },
                         ]
@@ -1447,7 +1463,7 @@ const GenerateReportForDentalHandHeldContent: React.FC<DentalProps> = ({ service
                         />
                     },
                     {
-                        title: "Radiation Leakage Level",
+                        title: "Tube Housing Leakage Radiation Test",
                         component: <TubeHousingLeakage
                             serviceId={serviceId}
                             testId={savedTestIds.TubeHousingLeakageDentalHandHeld || null}

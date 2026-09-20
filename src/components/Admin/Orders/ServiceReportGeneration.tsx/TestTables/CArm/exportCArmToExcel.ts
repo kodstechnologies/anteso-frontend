@@ -161,8 +161,17 @@ export const createCArmUploadableExcel = (data: CArmExportData): XLSX.WorkBook =
       const outs = (r.outputs || []).map((o: any) => (typeof o === "object" ? o.value : o) ?? "");
       allData.push([r.kvp ?? r.kv ?? "", r.ma ?? r.mas ?? "", ...measHeaders.map((_: string, i: number) => outs[i] ?? "")]);
     });
-    allData.push(["Tolerance Operator", "<="]);
-    allData.push(["Tolerance Value (CoV)", oc.tolerance ?? oc.outputTolerance ?? "0.02"]);
+    const tolRaw = oc.tolerance ?? oc.outputTolerance;
+    const tolOp =
+      typeof tolRaw === "object" && tolRaw !== null
+        ? (tolRaw.operator ?? "<=")
+        : "<=";
+    const tolVal =
+      typeof tolRaw === "object" && tolRaw !== null
+        ? (tolRaw.value ?? "0.02")
+        : (tolRaw ?? "0.02");
+    allData.push(["Tolerance Operator", tolOp]);
+    allData.push(["Tolerance Value (CoV)", tolVal]);
     addBlank();
   }
 
@@ -270,7 +279,7 @@ export const createCArmUploadableExcel = (data: CArmExportData): XLSX.WorkBook =
   }
 
   const lmas = unwrap(data.linearityOfMasLoading);
-  if (lmas?.table2?.length) {
+  if (lmas?.table2?.length && !lma?.table2?.length) {
     const t1 = lmas.table1?.[0] || lmas.table1 || {};
     const t2 = Array.isArray(lmas.table2) ? lmas.table2 : [];
     const measHeaders = lmas.measHeaders || ["Meas 1", "Meas 2", "Meas 3"];

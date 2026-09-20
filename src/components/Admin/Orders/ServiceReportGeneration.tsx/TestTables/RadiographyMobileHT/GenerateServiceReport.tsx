@@ -137,7 +137,7 @@ const RadiographyMobileHTContent: React.FC<RadiographyMobileHTProps> = ({ servic
     pages: "",
     testDate: "",
     testDueDate: "",
-    location: "",
+    location: "At site",
     temperature: "",
     humidity: "",
     engineerNameRPId: "",
@@ -238,7 +238,7 @@ const RadiographyMobileHTContent: React.FC<RadiographyMobileHTProps> = ({ servic
           pages: "",
           testDate: testDateStr,
           testDueDate: testDueDateStr,
-          location: data.hospitalAddress,
+          location: "At site",
           temperature: "",
           humidity: "",
           engineerNameRPId: data.engineerAssigned?.name || "",
@@ -302,7 +302,7 @@ const RadiographyMobileHTContent: React.FC<RadiographyMobileHTProps> = ({ servic
             testingProcedureNumber: res.data.testingProcedureNumber || prev.testingProcedureNumber,
             testDate: res.data.testDate || prev.testDate,
             testDueDate: res.data.testDueDate || prev.testDueDate,
-            location: res.data.location || prev.location,
+            location: res.data.location || prev.location || "At site",
             temperature: res.data.temperature || prev.temperature,
             humidity: res.data.humidity || prev.humidity,
             engineerNameRPId: res.data.engineerNameRPId || prev.engineerNameRPId,
@@ -2398,7 +2398,7 @@ const RadiographyMobileHTContent: React.FC<RadiographyMobileHTProps> = ({ servic
             ]
             : []),
 
-          { title: "Accuracy Of Operating Potential & Total Filtration", component: <TotalFilteration serviceId={serviceId} initialData={csvDataForComponents.totalFiltration ?? csvDataForComponents.totalFilteration} csvDataVersion={csvDataVersion} /> },
+          { title: "Accuracy Of Operating Potential", component: <TotalFilteration serviceId={serviceId} initialData={csvDataForComponents.totalFiltration ?? csvDataForComponents.totalFilteration} csvDataVersion={csvDataVersion} /> },
 
           ...(hasTimer === true
             ? [
