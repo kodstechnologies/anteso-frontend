@@ -26,6 +26,24 @@ interface Props {
     csvData?: any[];
 }
 
+const hasNumericEntry = (value: string): boolean => {
+    const trimmed = value.trim();
+    return trimmed !== "" && Number.isFinite(parseFloat(trimmed));
+};
+
+const parseNumericEntry = (value: string): number => {
+    const n = parseFloat(value.trim());
+    return Number.isFinite(n) ? n : 0;
+};
+
+const resolveNominal = (nominal: unknown, width: unknown, height: unknown): string => {
+    if (nominal !== undefined && nominal !== null && nominal !== "") return String(nominal);
+    if (width != null && height != null) return String((Number(width) + Number(height)) / 2);
+    if (width != null) return String(width);
+    if (height != null) return String(height);
+    return "";
+};
+
 const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, tubeId, onTestSaved, csvData }) => {
     const [testId, setTestId] = useState<string | null>(propTestId || null);
     const [isSaved, setIsSaved] = useState(!!propTestId);
@@ -89,7 +107,7 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, tu
 
             return {
                 ...row,
-                remark: measured > 0 ? (isPass ? 'Pass' : 'Fail') : ''
+                remark: hasNumericEntry(row.measuredNominal) ? (isPass ? 'Pass' : 'Fail') : ''
             };
         });
     }, [rows, tolSmallMul, smallLimit, tolMediumMul, mediumLower, mediumUpper, tolLargeMul]);
@@ -123,18 +141,8 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, tu
                         setRows(data.focalSpots.map((spot: any) => ({
                             id: spot.focusType === 'Large Focus' ? 'large' : 'small',
                             focusType: spot.focusType || (spot.focusType === 'Large Focus' ? 'Large Focus' : 'Small Focus'),
-                            statedNominal: String(
-                                spot.statedNominal ??
-                                (spot.statedWidth != null && spot.statedHeight != null
-                                    ? (Number(spot.statedWidth) + Number(spot.statedHeight)) / 2
-                                    : spot.statedWidth ?? spot.statedHeight)
-                            ),
-                            measuredNominal: String(
-                                spot.measuredNominal ??
-                                (spot.measuredWidth != null && spot.measuredHeight != null
-                                    ? (Number(spot.measuredWidth) + Number(spot.measuredHeight)) / 2
-                                    : spot.measuredWidth ?? spot.measuredHeight)
-                            ),
+                            statedNominal: resolveNominal(spot.statedNominal, spot.statedWidth, spot.statedHeight),
+                            measuredNominal: resolveNominal(spot.measuredNominal, spot.measuredWidth, spot.measuredHeight),
                             remark: spot.remark || '',
                         })));
                     }
@@ -187,7 +195,12 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, tu
                     return {
                         id: /small/i.test(focusType) ? 'small' : 'large',
                         focusType: focusType as 'Large Focus' | 'Small Focus',
-                        statedNominal: statedNom || (focusType === 'Small Focus' ? '0.6' : '2'),
+                        statedNominal:
+                            statedNom !== '' && statedNom != null
+                                ? String(statedNom)
+                                : focusType === 'Small Focus'
+                                  ? '0.6'
+                                  : '2',
                         measuredNominal: measuredNominal,
                         remark: '' as 'Pass' | 'Fail' | '',
                     };
@@ -244,13 +257,13 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, tu
                 },
                 focalSpots: processedRows.map(row => ({
                     focusType: row.focusType,
-                    statedNominal: parseFloat(row.statedNominal) || 0,
-                    measuredNominal: parseFloat(row.measuredNominal) || 0,
+                    statedNominal: parseNumericEntry(row.statedNominal),
+                    measuredNominal: parseNumericEntry(row.measuredNominal),
                     // Legacy compatibility
-                    statedWidth: parseFloat(row.statedNominal) || 0,
-                    statedHeight: parseFloat(row.statedNominal) || 0,
-                    measuredWidth: parseFloat(row.measuredNominal) || 0,
-                    measuredHeight: parseFloat(row.measuredNominal) || 0,
+                    statedWidth: parseNumericEntry(row.statedNominal),
+                    statedHeight: parseNumericEntry(row.statedNominal),
+                    measuredWidth: parseNumericEntry(row.measuredNominal),
+                    measuredHeight: parseNumericEntry(row.measuredNominal),
                     remark: row.remark,
                 })),
                 finalResult: finalResult,

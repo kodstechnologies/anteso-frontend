@@ -2018,11 +2018,7 @@ const GenerateReportForBMDContent: React.FC<BMDProps> = ({ serviceId, csvFileUrl
               SRF Date
             </label>
             <input
-              type="date"
-              name="srfDate"
-              value={formData.srfDate}
-              onChange={handleInputChange}
-              className="border p-2 rounded-md w-full"
+              type="date" name="srfDate" value={formData.srfDate} readOnly className="border p-2 rounded-md w-full bg-gray-100"
             />
           </div>
         </div>
@@ -2072,7 +2068,7 @@ const GenerateReportForBMDContent: React.FC<BMDProps> = ({ serviceId, csvFileUrl
             { label: "Condition of Test Item", name: "condition" },
             { label: "Testing Procedure Number", name: "testingProcedureNumber" },
             { label: "No. of Pages", name: "pages" },
-            { label: "QA Test Date", name: "testDate", type: "date" },
+            { label: "QA Test Date", name: "testDate", type: "date", readOnly: true },
             { label: "QA Test Due Date", name: "testDueDate", type: "date", readOnly: true },
             { label: "Testing Done At Location", name: "location" },
             { label: "Temperature (°C)", name: "temperature", type: "number" },

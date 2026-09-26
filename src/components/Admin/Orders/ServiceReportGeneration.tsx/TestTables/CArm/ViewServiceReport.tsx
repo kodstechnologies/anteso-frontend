@@ -1056,7 +1056,7 @@ const ViewServiceReportCArm: React.FC = () => {
                           <tr>
                             <td className="border border-black font-medium" style={{ padding: "0px 4px", fontSize: "11px" }}>Required (Tolerance)</td>
                             <td className="border border-black text-center" style={{ padding: "0px 4px", fontSize: "11px" }}>
-                              {!isNaN(requiredTol) ? `= ${requiredTol} mm Al` : "-"}
+                              {!isNaN(requiredTol) ? `≥ ${requiredTol} mm Al` : "-"}
                             </td>
                           </tr>
                           <tr>
@@ -1495,7 +1495,7 @@ const ViewServiceReportCArm: React.FC = () => {
                   </div>
 
                   <p style={{ fontSize: "10px", marginBottom: "6px" }}>
-                    <strong>Workload:</strong> {rll.workload ?? "-"} {rll.workloadUnit ?? "mA·min/week"}
+                    <strong>Workload:</strong> {rll.workload ?? "-"} {rll.workloadUnit ?? "mA in one hour"}
                   </p>
 
                   {leakageMeasurements.length > 0 && (
@@ -1681,7 +1681,7 @@ const ViewServiceReportCArm: React.FC = () => {
                               <td style={cellStyle({ border: "0.1px solid #666", textAlign: "left", fontFamily: "monospace", fontSize: "9px" })}>
                                 Maximum Leakage (mR in 1 hr) = (Workload × Max Exposure) / (60 × mA)
                                 <br />
-                                Where: Workload = {workloadValue} mA·min/week | mA = {maValue} | 1 mGy = 114 mR
+                                Where: Workload = {workloadValue} mA in one hour | mA = {maValue} | 1 mGy = 114 mR
                               </td>
                             </tr>
                             {tubeSummary && (

@@ -1608,7 +1608,7 @@ const ViewServiceReportOBI: React.FC<ViewServiceReportOBIProps> = ({
                     </thead>
                     <tbody>
                       <tr style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
-                        <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{testData.centralBeamAlignment.observedTilt?.value ? `${testData.centralBeamAlignment.observedTilt.value}°` : "-"}</td>
+                        <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{testData.centralBeamAlignment.observedTilt?.value ? `°${testData.centralBeamAlignment.observedTilt.value}` : "-"}</td>
                         <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{normalizeComparisonOperator(testData.centralBeamAlignment.tolerance?.operator)} {testData.centralBeamAlignment.tolerance?.value ? `${testData.centralBeamAlignment.tolerance.value}°` : "-"}</td>
                         <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>
                           <span className={testData.centralBeamAlignment.finalResult === "Pass" || testData.centralBeamAlignment.observedTilt?.remark === "Pass" ? "text-green-600 font-semibold" : testData.centralBeamAlignment.finalResult === "Fail" || testData.centralBeamAlignment.observedTilt?.remark === "Fail" ? "text-red-600 font-semibold" : ""}>
@@ -1869,7 +1869,7 @@ const ViewServiceReportOBI: React.FC<ViewServiceReportOBIProps> = ({
                               <tr>
                                 <td className="border border-black font-medium" style={{ padding: '0px 4px', fontSize: '11px' }}>Required (Tolerance)</td>
                                 <td className="border border-black text-center" style={{ padding: '0px 4px', fontSize: '11px' }}>
-                                  {!isNaN(requiredTol) ? `= ${requiredTol} mm Al` : "-"}
+                                  {!isNaN(requiredTol) ? `≥ ${requiredTol} mm Al` : "-"}
                                 </td>
                               </tr>
                               <tr>
@@ -2681,7 +2681,7 @@ const ViewServiceReportOBI: React.FC<ViewServiceReportOBIProps> = ({
                   </div>
                   <p style={{ fontSize: "10px", marginBottom: "4px" }}>
                     <strong>Workload:</strong> {leakageData.workload || "-"}{" "}
-                    {leakageData.workloadUnit || "mA·min/week"}
+                    {leakageData.workloadUnit || "mA in one hour"}
                   </p>
                   {leakageData.leakageMeasurements?.length > 0 && (
                     <table style={{ ...tableStyle, fontSize: "10px" }}>
@@ -2825,7 +2825,7 @@ const ViewServiceReportOBI: React.FC<ViewServiceReportOBIProps> = ({
                             Maximum Leakage (mR in 1 hr) = (Workload × Max Exposure) / (60 × mA)
                           </p>
                           <p style={{ fontSize: "9px", marginTop: "2px", color: "#555", fontStyle: "italic" }}>
-                            Where: Workload = {workloadValue} mA·min/week | mA = {maValue} | 1 mGy = 114 mR
+                            Where: Workload = {workloadValue} mA in one hour | mA = {maValue} | 1 mGy = 114 mR
                           </p>
                         </div>
                         <div style={{ display: "flex", gap: "8px" }}>

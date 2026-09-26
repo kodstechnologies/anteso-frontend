@@ -206,7 +206,7 @@ export const createDentalIntraUploadableExcel = (data: DentalIntraExportData, ha
             row.unit || '',
             row.remark || '',
             data.radiationLeakageLevel.workload || '',
-            data.radiationLeakageLevel.workloadUnit || '',
+            data.radiationLeakageLevel.workloadUnit || 'mA in one hour',
             data.radiationLeakageLevel.toleranceValue || '',
             data.radiationLeakageLevel.toleranceOperator
               ? normalizeCsvComparisonOperator(data.radiationLeakageLevel.toleranceOperator)
@@ -218,7 +218,7 @@ export const createDentalIntraUploadableExcel = (data: DentalIntraExportData, ha
         if (rows.length === 0 && (t1.ffd || t1.kvp)) {
             rows.push([t1.ffd || '', t1.kvp || '', t1.ma || '', t1.time || '', '', '', '', '', '', '', '', '', '',
             data.radiationLeakageLevel.workload || '',
-            data.radiationLeakageLevel.workloadUnit || '',
+            data.radiationLeakageLevel.workloadUnit || 'mA in one hour',
             data.radiationLeakageLevel.toleranceValue || '',
             data.radiationLeakageLevel.toleranceOperator
               ? normalizeCsvComparisonOperator(data.radiationLeakageLevel.toleranceOperator)

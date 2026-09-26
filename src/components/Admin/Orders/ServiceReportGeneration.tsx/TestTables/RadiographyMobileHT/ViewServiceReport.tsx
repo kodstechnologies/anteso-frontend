@@ -682,8 +682,7 @@ const ViewServiceReportRadiographyMobileHT: React.FC<ViewServiceReportRadiograph
                         <tbody>
                           <tr className="text-center" style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
                             <td className="border border-black p-3 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>
-                              {testData.centralBeamAlignment.observedTilt.value || "-"}
-                              {testData.centralBeamAlignment.observedTilt.value && testData.centralBeamAlignment.observedTilt.value !== "-" ? "°" : ""}
+                              {testData.centralBeamAlignment.observedTilt.value && testData.centralBeamAlignment.observedTilt.value !== "-" ? `°${testData.centralBeamAlignment.observedTilt.value}` : "-"}
                             </td>
                             <td className="border border-black p-3 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>
                               {normalizeCsvComparisonOperator(testData.centralBeamAlignment.tolerance?.operator || "=")} {testData.centralBeamAlignment.tolerance?.value || "1.5"}°
@@ -998,7 +997,7 @@ const ViewServiceReportRadiographyMobileHT: React.FC<ViewServiceReportRadiograph
                           <tr>
                             <td className="border border-black font-medium" style={{ padding: '0px 4px', fontSize: '11px' }}>Required (Tolerance)</td>
                             <td className="border border-black text-center" style={{ padding: '0px 4px', fontSize: '11px' }}>
-                              {!isNaN(requiredTol) ? `= ${requiredTol} mm Al` : "-"}
+                              {!isNaN(requiredTol) ? `≥ ${requiredTol} mm Al` : "-"}
                             </td>
                           </tr>
                           <tr>
@@ -1345,7 +1344,7 @@ const ViewServiceReportRadiographyMobileHT: React.FC<ViewServiceReportRadiograph
                 <div className="grid grid-cols-2 gap-4 mb-4 print:mb-1">
                   <div>
                     <p className="text-xs print:text-[8px]" style={{ fontSize: '10px' }}>
-                      <strong>Workload:</strong> {testData.radiationLeakageLevel.workload || "-"} {testData.radiationLeakageLevel.workloadUnit || "mA·min/week"}
+                      <strong>Workload:</strong> {testData.radiationLeakageLevel.workload || "-"} {testData.radiationLeakageLevel.workloadUnit || "mA in one hour"}
                     </p>
                   </div>
                 </div>
@@ -1462,7 +1461,7 @@ const ViewServiceReportRadiographyMobileHT: React.FC<ViewServiceReportRadiograph
                           Maximum Leakage (mR in 1 hr) = (Workload × Max Exposure) / (60 × mA)
                         </div>
                         <p className="text-[10px] print:text-[8px] mt-2 text-gray-600 italic">
-                          Where: Workload = {workloadValue} mA·min/week | mA = {maValue} | 1 mGy = 114 mR
+                          Where: Workload = {workloadValue} mA in one hour | mA = {maValue} | 1 mGy = 114 mR
                         </p>
                       </div>
                       <div className="bg-white shadow-md rounded-lg p-4 print:p-1 border">
@@ -1471,7 +1470,7 @@ const ViewServiceReportRadiographyMobileHT: React.FC<ViewServiceReportRadiograph
                           {summaries.map((s, idx) => (
                             <div key={`${s.location}-${idx}`} className="text-[11px] print:text-[8px]">
                               <p className="font-semibold">Maximum Radiation Leakage from {s.location}:</p>
-                              <p>Formula: ({workloadValue} mAmin in 1 hr x {s.rowMax.toFixed(2)} max Exposure Level (mR/hr)) / (60 x {maValue} mA used for measurement)</p>
+                              <p>Formula: ({workloadValue} mA in one hour x {s.rowMax.toFixed(2)} max Exposure Level (mR/hr)) / (60 x {maValue} mA used for measurement)</p>
                               <p><strong>{s.resMGy.toFixed(4)} mGy</strong> in one hour</p>
                             </div>
                           ))}

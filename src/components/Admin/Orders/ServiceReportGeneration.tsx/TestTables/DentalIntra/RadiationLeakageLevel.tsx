@@ -78,7 +78,7 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
   ]);
 
   const [workload, setWorkload] = useState<string>('');
-  const [workloadUnit, setWorkloadUnit] = useState<string>('mA·min/week');
+  const [workloadUnit, setWorkloadUnit] = useState<string>('mA in one hour');
   const [toleranceValue, setToleranceValue] = useState<string>('1');
   const [toleranceOperator, setToleranceOperator] = useState<ToleranceOp>('<=');
   const [toleranceTime, setToleranceTime] = useState<string>('1');
@@ -224,7 +224,7 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
         }
 
         setWorkload(rec.workload || '');
-        setWorkloadUnit(rec.workloadUnit || '');
+        setWorkloadUnit(rec.workloadUnit || 'mA in one hour');
         setToleranceValue(rec.toleranceValue || '');
         setToleranceOperator(normalizeCsvComparisonOperator(rec.toleranceOperator || '<=') as ToleranceOp);
         setToleranceTime(rec.toleranceTime || '');
@@ -499,7 +499,7 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
 
       {/* ==================== Workload Input ==================== */}
       <div className="bg-white shadow-md rounded-lg p-6">
-        <label className="block text-sm font-medium text-gray-700 mb-2">Workload (mA·min/week)</label>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Workload (mA in one hour)</label>
         <div className="max-w-xs">
           <input
             type="text"
@@ -515,7 +515,7 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
       {/* ==================== Table 2: Leakage Results ==================== */}
       <div className="bg-white shadow-md rounded-lg overflow-hidden">
         <h3 className="px-6 py-3 text-lg font-semibold bg-gray-50 border-b">
-          Leakage Measurement Results
+          Exposure Level (mR/hr) at 1.0 m from the Focus
         </h3>
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-blue-50">

@@ -357,7 +357,7 @@ const ViewServiceReportOArm: React.FC<ViewServiceReportOArmProps> = ({
                 firstSettings?.Time ??
                 "",
               workload: tubeHousingData.workload ?? tubeHousingData.workloadValue ?? "",
-              workloadUnit: tubeHousingData.workloadUnit || "mA·min/week",
+              workloadUnit: tubeHousingData.workloadUnit || "mA in one hour",
               toleranceValue: String(tolRaw),
               toleranceOperator,
               toleranceTime: tubeHousingData.toleranceTime ?? "1",
@@ -876,7 +876,7 @@ const ViewServiceReportOArm: React.FC<ViewServiceReportOArmProps> = ({
                           <tr>
                             <td className="border border-black font-medium" style={{ padding: '0px 4px', fontSize: '11px' }}>Required (Tolerance)</td>
                             <td className="border border-black text-center" style={{ padding: '0px 4px', fontSize: '11px' }}>
-                              {!isNaN(requiredTol) ? `= ${requiredTol} mm Al` : "-"}
+                              {!isNaN(requiredTol) ? `≥ ${requiredTol} mm Al` : "-"}
                             </td>
                           </tr>
                           <tr>
@@ -1170,7 +1170,7 @@ const ViewServiceReportOArm: React.FC<ViewServiceReportOArmProps> = ({
                   <div className="grid grid-cols-2 gap-4 mb-4 print:mb-1">
                     <div>
                       <p className="text-xs print:text-[8px]" style={{ fontSize: '10px' }}>
-                        <strong>Workload:</strong> {data.workload || "-"} {data.workloadUnit || "mA·min/week"}
+                        <strong>Workload:</strong> {data.workload || "-"} {data.workloadUnit || "mA in one hour"}
                       </p>
                     </div>
                     <div>
@@ -1253,7 +1253,7 @@ const ViewServiceReportOArm: React.FC<ViewServiceReportOArmProps> = ({
                         Maximum Leakage (mR in 1 hr) = (Workload × Max Exposure) / (60 × mA)
                       </div>
                       <p className="text-[10px] print:text-[8px] mt-2 text-gray-600 italic">
-                        Where: Workload = {workloadValue} mA·min/week | mA = {maValue} | 1 mGy = 114 mR
+                        Where: Workload = {workloadValue} mA in one hour | mA = {maValue} | 1 mGy = 114 mR
                       </p>
                     </div>
 

@@ -85,7 +85,7 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
   ]);
 
   const [workload, setWorkload] = useState<string>('');
-  const [workloadUnit, setWorkloadUnit] = useState<string>('mA·min/week');
+  const [workloadUnit, setWorkloadUnit] = useState<string>('mA in one hour');
   const [toleranceValue, setToleranceValue] = useState<string>('1');
   const [toleranceOperator, setToleranceOperator] = useState<ToleranceOp>('<');
   const [toleranceTime, setToleranceTime] = useState<string>('1');
@@ -301,7 +301,7 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
           }
 
           setWorkload(rec.workload || '');
-          setWorkloadUnit(rec.workloadUnit || 'mA·min/week');
+          setWorkloadUnit(rec.workloadUnit || 'mA in one hour');
           setToleranceValue(rec.toleranceValue ?? rec.tolerance ?? '');
           setToleranceOperator(toAllowedToleranceOp(rec.toleranceOperator || '<'));
           setToleranceTime(rec.toleranceTime || '1');
@@ -451,7 +451,7 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
             disabled={isViewMode}
             className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'
               }`}
-            placeholder="mA·min/week"
+            placeholder="mA in one hour"
           />
         </div>
       </div>
@@ -539,7 +539,7 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
             onChange={(e) => setWorkloadUnit(e.target.value)}
             disabled={isViewMode}
             className={`w-40 px-3 py-2 border rounded-md text-sm ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
-            placeholder="mA·min/week"
+            placeholder="mA in one hour"
           />
         </div>
         <label className="block text-sm font-medium text-gray-700 mb-2">Tolerance</label>

@@ -1128,7 +1128,7 @@ const ViewServiceReportBMD: React.FC<ViewServiceReportBMDProps> = ({
                             <tr>
                               <td className="border border-black font-semibold bg-gray-50 text-left" style={{ padding: '0px 4px', fontSize: '11px' }}>Required (Tolerance)</td>
                               <td className="border border-black text-center" style={{ padding: '0px 4px', fontSize: '11px' }}>
-                                {!isNaN(requiredTol) ? `= ${requiredTol} mm Al` : "-"}
+                                {!isNaN(requiredTol) ? `≥ ${requiredTol} mm Al` : "-"}
                               </td>
                             </tr>
                             <tr>
@@ -1444,7 +1444,7 @@ const ViewServiceReportBMD: React.FC<ViewServiceReportBMDProps> = ({
                 <div className="grid grid-cols-2 gap-4 mb-4 print:mb-1">
                   <div>
                     <p className="text-xs print:text-[8px]" style={{ fontSize: '10px' }}>
-                      <strong>Workload:</strong> {testData.tubeHousingLeakage.workload || "-"} mAmin in one hr
+                      <strong>Workload:</strong> {testData.tubeHousingLeakage.workload || "-"} mA in one hour
                     </p>
                   </div>
                   <div>
@@ -1531,7 +1531,7 @@ const ViewServiceReportBMD: React.FC<ViewServiceReportBMDProps> = ({
                           Maximum Leakage (mR in 1 hr) = (Workload × Max Exposure) / (60 × mA)
                         </div>
                         <p className="text-[10px] print:text-[8px] mt-1 text-gray-600 italic">
-                          Where: Workload = {workloadValue} mAmin/hr | mA = {maValue} | 1 mGy = 114 mR
+                          Where: Workload = {workloadValue} mA in one hour | mA = {maValue} | 1 mGy = 114 mR
                         </p>
                       </div>
                       {!isNaN(maxMGy) && (

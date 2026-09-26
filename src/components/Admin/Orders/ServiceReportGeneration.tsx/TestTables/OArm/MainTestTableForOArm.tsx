@@ -1,6 +1,7 @@
 // src/components/reports/TestTables/OArm/MainTestTableForOArm.tsx
 import React from "react";
 import { evaluateTotalFiltrationPassFail } from "../totalFiltrationPassFail";
+import { formatCentralBeamObservedTilt } from "../centralBeamTiltDisplay";
 
 interface MainTestTableProps {
   testData: any;
@@ -106,7 +107,7 @@ const MainTestTableForOArm: React.FC<MainTestTableProps> = ({ testData, hasTimer
     addRowsForTest("Central Beam Alignment", [
       {
         specified: specifiedValue,
-        measured: tiltValue !== "-" ? `${tiltValue}°` : "-",
+        measured: formatCentralBeamObservedTilt(tiltValue),
         tolerance: toleranceDisplay,
         remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
       },
@@ -296,7 +297,7 @@ const MainTestTableForOArm: React.FC<MainTestTableProps> = ({ testData, hasTimer
       {
         specified: atKvpStr !== "" ? `${atKvpStr} kVp` : "-",
         measured: measuredStr !== "-" && measuredStr !== "" ? `${measuredStr} mm Al` : "-",
-        tolerance: !isNaN(requiredMmAl) ? `= ${requiredMmAl} mm Al` : "-",
+        tolerance: !isNaN(requiredMmAl) ? `≥ ${requiredMmAl} mm Al` : "-",
         remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
       },
     ]);

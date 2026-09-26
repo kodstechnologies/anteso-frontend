@@ -1,4 +1,4 @@
-/** Shared Total Filtration PASS/FAIL (exact mm Al match per kV band). */
+/** Shared Total Filtration PASS/FAIL (measured mm Al must meet or exceed required value per kV band). */
 
 export type FiltrationToleranceBands = {
   forKvGreaterThan70?: string | number;
@@ -17,6 +17,9 @@ export type FiltrationToleranceBands = {
 
 export type FiltrationPassFail = "PASS" | "FAIL" | "-";
 
+/** `exact` — measured must equal required; `minimum` — measured must be ≥ required */
+export type TotalFiltrationCompareMode = "exact" | "minimum";
+
 const sameMmAl = (a: number, b: number): boolean =>
   Math.abs(a - b) < 1e-6 || a.toFixed(2) === b.toFixed(2);
 
@@ -24,17 +27,14 @@ const num = (v: unknown, fallback: string): number =>
   parseFloat(String(v ?? fallback));
 
 /**
- * Rules (defaults) — measured mm Al must equal the stated value for that kV band:
- * - kV ≤ 70:        PASS only if measured === 1.5 mm Al, else FAIL
- * - 70 < kV ≤ 100:  PASS only if measured === 2.0 mm Al, else FAIL
- * - kV > 100:       PASS only if measured === 2.5 mm Al, else FAIL
- *
- * Values above or below the mentioned mm Al do not pass.
+ * Rules (defaults) — compareMode `exact`: measured mm Al must equal the stated value for that kV band.
+ * compareMode `minimum`: PASS when measured mm Al is greater than or equal to the stated value.
  */
 export function evaluateTotalFiltrationPassFail(
   atKvp: string | number | null | undefined,
   measuredMmAl: string | number | null | undefined,
-  filtrationTolerance?: FiltrationToleranceBands | null
+  filtrationTolerance?: FiltrationToleranceBands | null,
+  compareMode: TotalFiltrationCompareMode = "minimum"
 ): { remark: FiltrationPassFail; requiredMmAl: number } {
   const ft = filtrationTolerance || {};
   const kvp = parseFloat(String(atKvp ?? ""));
@@ -62,8 +62,13 @@ export function evaluateTotalFiltrationPassFail(
     return { remark: "-", requiredMmAl: NaN };
   }
 
+  const passes =
+    compareMode === "minimum"
+      ? measured >= requiredMmAl
+      : sameMmAl(measured, requiredMmAl);
+
   return {
-    remark: sameMmAl(measured, requiredMmAl) ? "PASS" : "FAIL",
+    remark: passes ? "PASS" : "FAIL",
     requiredMmAl,
   };
 }

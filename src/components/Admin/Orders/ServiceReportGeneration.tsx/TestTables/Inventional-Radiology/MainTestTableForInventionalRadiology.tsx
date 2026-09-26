@@ -1,5 +1,6 @@
 // src/components/reports/TestTables/InventionalRadiology/MainTestTableForInventionalRadiology.tsx
 import React from "react";
+import { formatCentralBeamObservedTilt } from "../centralBeamTiltDisplay";
 import { evaluateTotalFiltrationPassFail } from "../totalFiltrationPassFail";
 
 interface MainTestTableProps {
@@ -150,7 +151,7 @@ const MainTestTableForInventionalRadiology: React.FC<MainTestTableProps> = ({ te
     addRowsForTest("Central Beam Alignment", [
       {
         specified: specifiedValue,
-        measured: tiltValue !== "-" ? `${tiltValue}°` : "-",
+        measured: formatCentralBeamObservedTilt(tiltValue),
         tolerance: toleranceDisplay,
         remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
       },
@@ -159,12 +160,23 @@ const MainTestTableForInventionalRadiology: React.FC<MainTestTableProps> = ({ te
 
   // Effective Focal Spot Size — RadiographyFixed
   if (testData.effectiveFocalSpot?.focalSpots && Array.isArray(testData.effectiveFocalSpot.focalSpots)) {
+    const hasFocalSpotValue = (value: unknown) =>
+      value !== undefined && value !== null && value !== "" && Number.isFinite(Number(value));
+
     const validRows = testData.effectiveFocalSpot.focalSpots.filter(
-      (spot: any) => spot.focusType || spot.measuredWidth || spot.measuredNominal
+      (spot: any) =>
+        spot.focusType ||
+        hasFocalSpotValue(spot.measuredNominal) ||
+        hasFocalSpotValue(spot.measuredWidth) ||
+        hasFocalSpotValue(spot.measuredHeight) ||
+        hasFocalSpotValue(spot.statedNominal) ||
+        hasFocalSpotValue(spot.statedWidth) ||
+        hasFocalSpotValue(spot.statedHeight)
     );
     if (validRows.length > 0) {
       const formatValue = (val: any) => {
         if (val === undefined || val === null || val === "") return null;
+        if (val === 0 || val === "0" || val === "0.0") return "0.0";
         // Keep exact entered/stored value (same as generate page) — do not round
         if (typeof val === "string") {
           const trimmed = val.trim();
@@ -357,7 +369,7 @@ const MainTestTableForInventionalRadiology: React.FC<MainTestTableProps> = ({ te
       {
         specified: atKvpStr !== "" ? `${atKvpStr} kVp` : "-",
         measured: measuredStr !== "-" && measuredStr !== "" ? `${measuredStr} mm Al` : "-",
-        tolerance: !isNaN(requiredMmAl) ? `= ${requiredMmAl} mm Al` : "-",
+        tolerance: !isNaN(requiredMmAl) ? `≥ ${requiredMmAl} mm Al` : "-",
         remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
       },
     ]);

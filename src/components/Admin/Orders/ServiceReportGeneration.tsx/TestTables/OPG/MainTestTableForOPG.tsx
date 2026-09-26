@@ -161,7 +161,7 @@ const MainTestTableForOPG: React.FC<MainTestTableProps> = ({ testData }) => {
     addRowsForTest("Total Filtration", [{
       specified: atKvp !== "-" ? `${atKvp} kVp` : "-",
       measured: measuredStr !== "-" ? `${measuredStr} mm Al` : "-",
-      tolerance: !isNaN(requiredMmAl) ? `= ${requiredMmAl} mm Al` : "-",
+      tolerance: !isNaN(requiredMmAl) ? `≥ ${requiredMmAl} mm Al` : "-",
       remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
     }]);
   }

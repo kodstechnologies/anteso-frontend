@@ -2108,7 +2108,7 @@ const GenerateReportMammographyContent: React.FC<{ serviceId: string; csvFileUrl
                     </div>
                     <div>
                         <label className="block font-medium mb-1">SRF Date</label>
-                        <input type="date" name="srfDate" value={formData.srfDate} onChange={handleInputChange} className="w-full border rounded-md px-3 py-2" />
+                        <input type="date" name="srfDate" value={formData.srfDate} readOnly className="w-full border rounded-md px-3 py-2 bg-gray-100" />
                     </div>
                     <div className="md:col-span-2">
                         <label className="block font-medium mb-1">2.2 Test Report Number</label>
@@ -2141,7 +2141,7 @@ const GenerateReportMammographyContent: React.FC<{ serviceId: string; csvFileUrl
                         { label: "Condition", name: "condition" },
                         { label: "Testing Procedure No.", name: "testingProcedureNumber" },
                         { label: "No. of Pages", name: "pages" },
-                        { label: "Test Date", name: "testDate", type: "date" },
+                        { label: "Test Date", name: "testDate", type: "date", readOnly: true },
                         { label: "Due Date", name: "testDueDate", type: "date", readOnly: true },
                         { label: "Location", name: "location" },
                         { label: "Temperature (°C)", name: "temperature", type: "number" },

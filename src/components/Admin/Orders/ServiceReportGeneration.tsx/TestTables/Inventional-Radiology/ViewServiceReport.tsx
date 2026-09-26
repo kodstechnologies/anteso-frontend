@@ -85,6 +85,26 @@ interface ReportData {
   RadiationProtectionSurveyInventionalRadiology?: any;
 }
 
+const pickUlr = (src: any): string => {
+  if (!src || typeof src !== "object") return "";
+  const candidates = [
+    src.reportULRNumber,
+    src.reportUlrNumber,
+    src.reportULRNo,
+    src.reportUlrNo,
+    src.ulrNumber,
+    src.ULRNumber,
+    src.ulrNo,
+    src.ULRNo,
+    (src as any).report_ulr_number,
+  ];
+  for (const c of candidates) {
+    const s = c != null ? String(c).trim() : "";
+    if (s && s.toLowerCase() !== "n/a") return s;
+  }
+  return "";
+};
+
 const defaultNotes: Note[] = [
   { slNo: "5.1", text: "The Test Report relates only to the above item only." },
   { slNo: "5.2", text: "Publication or reproduction of this Certificate in any form other than by complete set of the whole report & in the language written, is not permitted without the written consent of ABPL." },
@@ -259,7 +279,12 @@ const ViewServiceReport: React.FC<ViewServiceReportProps> = ({
             leadOwnerName: data.leadOwnerName || detailsLeadOwnerName || "",
             srfNumber: data.srfNumber || "N/A",
             srfDate: data.srfDate || data.testDate || qaTestDateStr,
-            reportULRNumber: data.reportULRNumber || "N/A",
+            reportULRNumber:
+              pickUlr(data) ||
+              pickUlr(detailsFirstQaTest) ||
+              pickUlr(detailsData) ||
+              pickUlr((detailsData as any)?.qatest) ||
+              "N/A",
             testReportNumber: data.testReportNumber || "N/A",
             issueDate: data.issueDate || "",
             nomenclature: data.nomenclature || "Interventional Radiology",
@@ -511,7 +536,7 @@ const ViewServiceReport: React.FC<ViewServiceReportProps> = ({
                     Observed tilt
                   </th>
                   <td style={cellStyle({ border: "0.1px solid #666" })}>
-                    {c.observedTilt.value || "-"}&deg;
+                    {c.observedTilt.value ? `°${c.observedTilt.value}` : "-"}
                     {c.observedTilt.remark && <span style={{ marginLeft: "8px" }}>{c.observedTilt.remark}</span>}
                   </td>
                 </tr>
@@ -645,7 +670,7 @@ const ViewServiceReport: React.FC<ViewServiceReportProps> = ({
       <div className="grid grid-cols-2 gap-4 mb-4 print:mb-1">
         <div>
           <p className="text-xs print:text-[8px]" style={{ fontSize: '10px' }}>
-            <strong>Workload:</strong> {tubeHousingLeakage.workload || "-"} mA·min/week
+            <strong>Workload:</strong> {tubeHousingLeakage.workload || "-"} mA in one hour
           </p>
         </div>
         <div>
@@ -769,7 +794,7 @@ const ViewServiceReport: React.FC<ViewServiceReportProps> = ({
                 Maximum Leakage (mR in 1 hr) = (Workload × Max Exposure) / (60 × mA)
               </div>
               <p className="text-[10px] print:text-[8px] mt-2 text-gray-600 italic">
-                Where: Workload = {workloadValue} mA·min/week | mA = {maValue} | 1 mGy = 114 mR
+                Where: Workload = {workloadValue} mA in one hour | mA = {maValue} | 1 mGy = 114 mR
               </p>
             </div>
 
@@ -984,7 +1009,7 @@ const ViewServiceReport: React.FC<ViewServiceReportProps> = ({
             <tr>
               <td className="border border-black font-medium" style={{ padding: '0px 4px', fontSize: '11px' }}>Required (Tolerance)</td>
               <td className="border border-black text-center" style={{ padding: '0px 4px', fontSize: '11px' }}>
-                {!isNaN(requiredTol) ? `= ${requiredTol} mm Al` : "-"}
+                {!isNaN(requiredTol) ? `≥ ${requiredTol} mm Al` : "-"}
               </td>
             </tr>
             <tr>
@@ -1241,16 +1266,16 @@ const ViewServiceReport: React.FC<ViewServiceReportProps> = ({
             <table className="border border-black text-sm print:text-[9px] compact-table" style={{ fontSize: "11px", borderCollapse: "collapse", borderSpacing: "0" }}>
               <thead className="bg-gray-100">
                 <tr>
-                  <th className="border border-black px-4 py-1 text-center" style={{ padding: "0px 8px", fontSize: "11px" }}>kVp</th>
-                  <th className="border border-black px-4 py-1 text-center" style={{ padding: "0px 8px", fontSize: "11px" }}>Slice Thickness (mm)</th>
+                  <th className="border border-black px-4 py-1 text-center" style={{ padding: "0px 8px", fontSize: "11px" }}>kV</th>
+                  <th className="border border-black px-4 py-1 text-center" style={{ padding: "0px 8px", fontSize: "11px" }}>FDD (cm)</th>
                   <th className="border border-black px-4 py-1 text-center" style={{ padding: "0px 8px", fontSize: "11px" }}>Time (sec)</th>
                 </tr>
               </thead>
 
               <tbody>
                 <tr>
-                  <td className="border border-black px-4 py-1 text-center font-medium" style={{ padding: "0px 8px", fontSize: "11px" }}>{table1[0]?.kvp ?? table1[0]?.kVp ?? "-"}</td>
-                  <td className="border border-black px-4 py-1 text-center font-medium" style={{ padding: "0px 8px", fontSize: "11px" }}>{table1[0]?.sliceThickness ?? "-"}</td>
+                  <td className="border border-black px-4 py-1 text-center font-medium" style={{ padding: "0px 8px", fontSize: "11px" }}>{table1[0]?.kvp ?? table1[0]?.kVp ?? table1[0]?.kv ?? table1[0]?.kV ?? "-"}</td>
+                  <td className="border border-black px-4 py-1 text-center font-medium" style={{ padding: "0px 8px", fontSize: "11px" }}>{table1[0]?.sliceThickness ?? table1[0]?.ffd ?? table1[0]?.fcd ?? "-"}</td>
                   <td className="border border-black px-4 py-1 text-center font-medium" style={{ padding: "0px 8px", fontSize: "11px" }}>{table1[0]?.time ?? "-"}</td>
                 </tr>
               </tbody>
@@ -1505,6 +1530,7 @@ const ViewServiceReport: React.FC<ViewServiceReportProps> = ({
                     {data.effectiveFocalSpot.focalSpots.slice(0, 2).map((spot: any, i: number) => {
                       const formatValue = (val: any) => {
                         if (val === undefined || val === null || val === "") return "-";
+                        if (val === 0 || val === "0" || val === "0.0") return "0.0";
                         // Keep exact entered/stored value (same as generate page) — do not round
                         if (typeof val === "string") {
                           const trimmed = val.trim();
@@ -2014,18 +2040,10 @@ const ViewServiceReport: React.FC<ViewServiceReportProps> = ({
                     {renderCentralBeamAlignmentDetail(testData.centralBeamAlignment)}
                   </div>
                 )}
-                {testData.effectiveFocalSpot && (
-                  <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
-                    <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>2. Effective Focal Spot Size</h3>
-                    {renderDetailedTestSectionsForData({ effectiveFocalSpot: testData.effectiveFocalSpot })}
-                  </div>
-                )}
-                {testData.accuracyOfIrradiationTime && (
-                  <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
-                    <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>3. Accuracy of Irradiation Time</h3>
-                    {renderDetailedTestSectionsForData({ accuracyOfIrradiationTime: testData.accuracyOfIrradiationTime })}
-                  </div>
-                )}
+                {renderDetailedTestSectionsForData({
+                  effectiveFocalSpot: testData.effectiveFocalSpot,
+                  accuracyOfIrradiationTime: testData.accuracyOfIrradiationTime,
+                })}
               </div>
             </ReportPage>
 
@@ -2038,12 +2056,9 @@ const ViewServiceReport: React.FC<ViewServiceReportProps> = ({
                     {renderFullTotalFiltrationSection(testData.totalFilteration)}
                   </div>
                 )}
-                {testData.accuracyOfOperatingPotential && (
-                  <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
-                    <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>4. Accuracy of Operating Potential</h3>
-                    {renderDetailedTestSectionsForData({ accuracyOfOperatingPotential: testData.accuracyOfOperatingPotential })}
-                  </div>
-                )}
+                {renderDetailedTestSectionsForData({
+                  accuracyOfOperatingPotential: testData.accuracyOfOperatingPotential,
+                })}
                 {hasMaLinearityRows(testData.measurementOfMaLinearity) && (
                   <div className="mb-16 print:mb-12 test-section" style={{ marginBottom: "8px" }}>
                     <h3 className="text-lg font-bold mb-4 print:mb-1 print:text-sm" style={{ fontSize: "14px", marginBottom: "4px" }}>
@@ -2082,12 +2097,9 @@ const ViewServiceReport: React.FC<ViewServiceReportProps> = ({
             {/* Page 3d: sections 10–11 */}
             <ReportPage>
               <div className="max-w-5xl mx-auto print:max-w-none" style={{ width: '100%', maxWidth: 'none' }}>
-                {testData.exposureRateTableTop && (
-                  <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
-                    <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>10. Exposure Rate at Table Top</h3>
-                    {renderDetailedTestSectionsForData({ exposureRateTableTop: testData.exposureRateTableTop })}
-                  </div>
-                )}
+                {renderDetailedTestSectionsForData({
+                  exposureRateTableTop: testData.exposureRateTableTop,
+                })}
                 {hasTubeHousingLeakageData(testData.tubeHousingLeakage) && (
                   <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
                     <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>11. Tube Housing Leakage</h3>

@@ -251,7 +251,7 @@ const MainTestTableForBMD: React.FC<MainTestTableProps> = ({ testData, hasTimer 
           {
             specified: atKvp !== "-" ? `${atKvp} kVp` : "-",
             measured: measuredDisplay !== "-" ? `${measuredDisplay} mm Al` : "-",
-            tolerance: !isNaN(requiredMmAl) ? `= ${requiredMmAl} mm Al` : "-",
+            tolerance: !isNaN(requiredMmAl) ? `≥ ${requiredMmAl} mm Al` : "-",
             remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
           },
         ]);

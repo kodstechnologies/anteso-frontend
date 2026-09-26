@@ -177,8 +177,8 @@ export const createInventionalRadiologySavedExcel = (
     const headerCols = hdrs.map((_: string, i: number) => `Header ${i + 1}`);
     allData.push([`TEST: MEASUREMENT OF MA LINEARITY${titleSuffix}`]);
     allData.push([
-      "kVp",
-      "Slice Thickness (mm)",
+      "kV",
+      "FDD (cm)",
       "Time (ms)",
       "Tolerance Operator",
       "Tolerance",

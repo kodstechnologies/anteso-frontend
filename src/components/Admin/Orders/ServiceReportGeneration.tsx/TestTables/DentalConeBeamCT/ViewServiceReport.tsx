@@ -1026,7 +1026,7 @@ const ViewServiceReportCBCT: React.FC<ViewServiceReportCBCTProps> = ({
                         <tr>
                           <td className="border border-black font-semibold bg-gray-50 p-2 text-left" style={{ padding: '4px 8px' }}>Required (Tolerance)</td>
                           <td className="border border-black text-center p-2" style={{ padding: '4px 8px' }}>
-                            {!isNaN(requiredTol) ? `= ${requiredTol} mm Al` : "-"}
+                            {!isNaN(requiredTol) ? `≥ ${requiredTol} mm Al` : "-"}
                           </td>
                         </tr>
                         <tr>
@@ -1609,7 +1609,7 @@ const ViewServiceReportCBCT: React.FC<ViewServiceReportCBCTProps> = ({
                           Maximum Leakage (mR in one hour) = (Workload × Max Exposure mR/hr) / (60 × mA)
                         </div>
                         <p className="text-[10px] print:text-[8px] mt-2 text-gray-600 italic">
-                          Where: Workload = {Number.isFinite(workloadValue) ? workloadValue : "-"} mA·min/week | mA = {Number.isFinite(maValue) && maValue > 0 ? maValue : "-"} | 1 mGy = 114 mR
+                          Where: Workload = {Number.isFinite(workloadValue) ? workloadValue : "-"} mA in one hour | mA = {Number.isFinite(maValue) && maValue > 0 ? maValue : "-"} | 1 mGy = 114 mR
                         </p>
                       </div>
 

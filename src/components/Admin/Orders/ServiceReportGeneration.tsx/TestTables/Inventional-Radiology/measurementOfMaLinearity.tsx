@@ -427,8 +427,8 @@ const MeasurementOfMaLinearity: React.FC<Props> = ({ serviceId, tubeId, testId: 
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 tracking-wider border-r">kVp</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 tracking-wider border-r">Slice Thickness (mm)</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 tracking-wider border-r">kV</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 tracking-wider border-r">FDD (cm)</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 tracking-wider">Time</th>
               </tr>
             </thead>

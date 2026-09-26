@@ -395,7 +395,7 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
         })),
         workload: {
           value: workload,
-          unit: 'mA·min/week',
+          unit: 'mA in one hour',
         },
         tolerance: {
           value: toleranceValue,
@@ -614,13 +614,13 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
               className={`w-48 px-4 py-2 border rounded-md text-sm ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
               placeholder="180"
             />
-            <span className="text-sm text-gray-600">mAmin in one hr</span>
+            <span className="text-sm text-gray-600">mA in one hour</span>
           </div>
           <div className="flex items-start gap-3">
             <label className="text-sm font-medium text-gray-700 w-48">Max Leakage =</label>
             <div className="flex-1">
               <div className="text-sm text-gray-700 mb-2">
-                ({workload || '—'} mAmin in 1 hr × {maxExposureLevel || '—'} max Exposure Level (mR/hr)) / (60 × {maValue || '—'} mA used for measurement)
+                ({workload || '—'} mA in one hour × {maxExposureLevel || '—'} max Exposure Level (mR/hr)) / (60 × {maValue || '—'} mA used for measurement)
               </div>
               <div className="mt-2">
                 <span className="text-sm font-medium text-gray-700">Calculated Max Leakage:</span>
@@ -649,7 +649,7 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
                 </span>
                 <div className="flex-1">
                   <div className="text-sm text-gray-600 mb-2">
-                    Formula: ({workload || '—'} mAmin in 1 hr × {maxValue} max Exposure Level (mR/hr)) / (60 × {maValue || '—'} mA used for measurement)
+                    Formula: ({workload || '—'} mA in one hour × {maxValue} max Exposure Level (mR/hr)) / (60 × {maValue || '—'} mA used for measurement)
                   </div>
                   <span className={`px-4 py-2 border-2 rounded-md font-semibold ${result.calculatedMGy !== '—' ? 'border-green-500 bg-green-50 text-green-700' : 'border-gray-300 bg-gray-50'
                     }`}>

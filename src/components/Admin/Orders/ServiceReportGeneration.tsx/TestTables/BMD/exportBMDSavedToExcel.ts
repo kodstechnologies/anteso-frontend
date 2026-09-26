@@ -330,7 +330,7 @@ export const createBMDSavedExcel = (data: BMDSavedExportData): XLSX.WorkBook => 
       "kV",
       "mA",
       "Time (sec)",
-      "Workload (mA·min/week)",
+      "Workload (mA in one hour)",
       "",
       "Tol Value",
       "Tol Operator",

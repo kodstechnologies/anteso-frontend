@@ -1,5 +1,6 @@
 // src/components/reports/TestTables/RadiographyPortable/MainTestTableForRadiographyPortable.tsx
 import React from "react";
+import { formatCentralBeamObservedTilt } from "../centralBeamTiltDisplay";
 import { evaluateTotalFiltrationPassFail } from "../totalFiltrationPassFail";
 
 interface MainTestTableProps {
@@ -99,7 +100,7 @@ const MainTestTableForRadiographyPortable: React.FC<MainTestTableProps> = ({ tes
     const toleranceDisplay = `${toleranceOperator} ${toleranceValue}°`;
     addRowsForTest("Central Beam Alignment", [{
       specified: specifiedValue,
-      measured: tiltValue !== "-" ? `${tiltValue}°` : "-",
+      measured: formatCentralBeamObservedTilt(tiltValue),
       tolerance: toleranceDisplay,
       remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
     }]);
@@ -260,7 +261,7 @@ const MainTestTableForRadiographyPortable: React.FC<MainTestTableProps> = ({ tes
     addRowsForTest("Total Filtration", [{
       specified: atKvp ? `${atKvp} kVp` : '-',
       measured: measuredStr ? `${measuredStr} mm Al` : '-',
-      tolerance: !isNaN(requiredMmAl) ? `= ${requiredMmAl} mm Al` : "-",
+      tolerance: !isNaN(requiredMmAl) ? `≥ ${requiredMmAl} mm Al` : "-",
       remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
     }]);
   }

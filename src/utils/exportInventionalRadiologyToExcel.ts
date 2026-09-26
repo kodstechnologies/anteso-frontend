@@ -91,7 +91,7 @@ export const handleExportToExcel = (details: any, tools: any[]) => {
     ["ConsistencyOfRadiationOutput", "ToleranceOperator", "0", "<=", "Tolerance Operator / Sign"],
     ["ConsistencyOfRadiationOutput", "Tolerance", "0", "0.05", "Tolerance Value (CoV)"],
 
-    ["LinearityOfmAsLoading", "Table1_fcd", "0", "", "FCD (cm)"],
+    ["LinearityOfmAsLoading", "Table1_fcd", "0", "", "FDD (cm)"],
     ["LinearityOfmAsLoading", "Table1_kv", "0", "", "kV"],
     ["LinearityOfmAsLoading", "Table1_time", "0", "", "Time (ms)"],
     ["LinearityOfmAsLoading", "Table2_mAsApplied", "0", "", "mAs Applied"],
@@ -101,8 +101,8 @@ export const handleExportToExcel = (details: any, tools: any[]) => {
     ["LinearityOfmAsLoading", "Table2_MeasuredOutput4", "0", "", "Measured Output 4 (mGy)"],
     ["LinearityOfmAsLoading", "Tolerance", "0", "0.1", "Tolerance (CoL)"],
 
-    ["MeasurementOfMaLinearity", "Table1_kvp", "0", "", "kVp"],
-    ["MeasurementOfMaLinearity", "Table1_SliceThickness", "0", "", "Slice Thickness (mm)"],
+    ["MeasurementOfMaLinearity", "Table1_kvp", "0", "", "kV"],
+    ["MeasurementOfMaLinearity", "Table1_SliceThickness", "0", "", "FDD (cm)"],
     ["MeasurementOfMaLinearity", "Table1_Time", "0", "", "Time (ms)"],
     ["MeasurementOfMaLinearity", "ToleranceOperator", "0", "<=", "Tolerance Operator"],
     ["MeasurementOfMaLinearity", "Tolerance", "0", "0.1", "Tolerance (CoL)"],
@@ -124,7 +124,7 @@ export const handleExportToExcel = (details: any, tools: any[]) => {
     ["TubeHousingLeakage", "Table1_kv", "0", "", "kV"],
     ["TubeHousingLeakage", "Table1_ma", "0", "", "mA"],
     ["TubeHousingLeakage", "Table1_time", "0", "", "Exposure Time (s)"],
-    ["TubeHousingLeakage", "Table1_workload", "0", "", "Workload (mA-min/hr)"],
+    ["TubeHousingLeakage", "Table1_workload", "0", "", "Workload (mA in one hour)"],
     ["TubeHousingLeakage", "Table2_Location", "0", "", "Location"],
     ["TubeHousingLeakage", "Table2_Left", "0", "", "Left (mGy/h)"],
     ["TubeHousingLeakage", "Table2_Right", "0", "", "Right (mGy/h)"],

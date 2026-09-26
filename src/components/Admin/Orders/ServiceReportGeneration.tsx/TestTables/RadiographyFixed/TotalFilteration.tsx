@@ -408,7 +408,7 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
         }));
     };
 
-    // PASS only if measured mm Al equals the band value (1.5 / 2.0 / 2.5); greater or less → FAIL
+    // PASS when measured mm Al is greater than or equal to the band value (1.5 / 2.0 / 2.5)
     const getFiltrationRemark = (): "PASS" | "FAIL" | "-" => {
         const measuredMmAl = totalFiltration.required || totalFiltration.measured;
         return evaluateTotalFiltrationPassFail(

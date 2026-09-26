@@ -1,6 +1,7 @@
 // src/components/reports/TestTables/OBI/MainTestTableForOBI.tsx
 import React from "react";
 import { evaluateTotalFiltrationPassFail } from "../totalFiltrationPassFail";
+import { formatCentralBeamObservedTilt } from "../centralBeamTiltDisplay";
 import { normalizeComparisonOperator, normalizePlusMinusSign } from "./normalizeOBISigns";
 
 interface MainTestTableProps {
@@ -119,7 +120,7 @@ export const generateOBISummaryRows = (testData: any, hasTimer: boolean = false)
     addRowsForTest("Central Beam Alignment", [
       {
         specified: specifiedValue,
-        measured: tiltValue !== "-" ? `${tiltValue}°` : "-",
+        measured: formatCentralBeamObservedTilt(tiltValue),
         tolerance: toleranceDisplay,
         remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
       },
@@ -263,7 +264,7 @@ export const generateOBISummaryRows = (testData: any, hasTimer: boolean = false)
       {
         specified: atKvp !== "-" ? `${atKvp} kVp` : "-",
         measured: measuredStr !== "-" && measuredStr !== "" ? `${measuredStr} mm Al` : "-",
-        tolerance: !isNaN(requiredMmAl) ? `= ${requiredMmAl} mm Al` : "-",
+        tolerance: !isNaN(requiredMmAl) ? `≥ ${requiredMmAl} mm Al` : "-",
         remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
       },
     ]);

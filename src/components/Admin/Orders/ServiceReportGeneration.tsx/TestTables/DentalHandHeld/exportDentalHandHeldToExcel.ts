@@ -206,7 +206,7 @@ export const createDentalHandHeldUploadableExcel = (data: DentalHandHeldExportDa
             row.unit || '',
             row.remark || '',
             data.radiationLeakageLevel.workload || '',
-            data.radiationLeakageLevel.workloadUnit || '',
+            data.radiationLeakageLevel.workloadUnit || 'mA in one hour',
             data.radiationLeakageLevel.toleranceValue || '',
             data.radiationLeakageLevel.toleranceOperator || '',
             data.radiationLeakageLevel.toleranceTime || ''
@@ -216,7 +216,7 @@ export const createDentalHandHeldUploadableExcel = (data: DentalHandHeldExportDa
         if (rows.length === 0 && (t1.ffd || t1.kvp)) {
             rows.push([t1.ffd || '', t1.kvp || '', t1.ma || '', t1.time || '', '', '', '', '', '', '', '', '', '',
             data.radiationLeakageLevel.workload || '',
-            data.radiationLeakageLevel.workloadUnit || '',
+            data.radiationLeakageLevel.workloadUnit || 'mA in one hour',
             data.radiationLeakageLevel.toleranceValue || '',
             data.radiationLeakageLevel.toleranceOperator || '',
             data.radiationLeakageLevel.toleranceTime || ''

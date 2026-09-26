@@ -757,6 +757,7 @@ const CArmContent: React.FC<CArmProps> = ({ serviceId, csvFileUrl, csvFileUrls }
           'mA': 'Leakage_mA',
           'Time (sec)': 'Leakage_Time',
           'Time': 'Leakage_Time',
+          'Workload (mA in one hour)': 'Leakage_Workload',
           'Workload (mA·min/week)': 'Leakage_Workload',
           'Workload': 'Leakage_Workload',
           'Tol Value': 'Leakage_ToleranceValue',
@@ -1437,11 +1438,7 @@ const CArmContent: React.FC<CArmProps> = ({ serviceId, csvFileUrl, csvFileUrls }
               SRF Date
             </label>
             <input
-              type="date"
-              name="srfDate"
-              value={formData.srfDate}
-              onChange={handleInputChange}
-              className="border p-2 rounded-md w-full"
+              type="date" name="srfDate" value={formData.srfDate} readOnly className="border p-2 rounded-md w-full bg-gray-100"
             />
           </div>
         </div>
@@ -1481,7 +1478,7 @@ const CArmContent: React.FC<CArmProps> = ({ serviceId, csvFileUrl, csvFileUrls }
             { label: "Condition of Test Item", name: "condition", value: formData.condition, readOnly: false },
             { label: "Testing Procedure Number", name: "testingProcedureNumber", value: formData.testingProcedureNumber, readOnly: false },
             { label: "No. of Pages", name: "pages", value: formData.pages, readOnly: false },
-            { label: "QA Test Date", name: "testDate", value: formData.testDate, type: "date", readOnly: false },
+            { label: "QA Test Date", name: "testDate", value: formData.testDate, type: "date", readOnly: true },
             { label: "QA Test Due Date", name: "testDueDate", value: formData.testDueDate, type: "date", readOnly: true },
             { label: "Testing Done At Location", name: "location", value: formData.location, readOnly: false },
             { label: "Temperature (°C)", name: "temperature", value: formData.temperature, type: "number", readOnly: false },
@@ -1496,7 +1493,7 @@ const CArmContent: React.FC<CArmProps> = ({ serviceId, csvFileUrl, csvFileUrls }
                 name={field.name}
                 value={field.value}
                 onChange={handleInputChange}
-                className="border p-2 rounded-md w-full"
+                className={`border p-2 rounded-md w-full ${field.readOnly ? "bg-gray-100" : ""}`}
                 readOnly={field.readOnly}
               />
             </div>

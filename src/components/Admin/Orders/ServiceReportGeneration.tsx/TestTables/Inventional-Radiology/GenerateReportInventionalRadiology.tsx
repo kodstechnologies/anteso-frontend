@@ -256,7 +256,10 @@ const InventionalRadiologyContent: React.FC<InventionalRadiologyProps> = ({ serv
       },
       // Match CTScan Measurement of mA Linearity component field names
       'Measurement of mA Linearity': {
+        'kV': 'Table1_kvp',
         'kVp': 'Table1_kvp',
+        'FDD (cm)': 'Table1_SliceThickness',
+        'FFD (cm)': 'Table1_SliceThickness',
         'Slice Thickness (mm)': 'Table1_SliceThickness',
         'Time (ms)': 'Table1_Time',
         'mA Applied': 'Table2_mAsApplied',
@@ -628,8 +631,8 @@ const InventionalRadiologyContent: React.FC<InventionalRadiologyProps> = ({ serv
           }
         } else if (currentTestNameBase === 'Measurement of mA Linearity') {
           if (rowIdx === 1) {
-            pushField('Table1_kvp', row[colIdx(headers, 'kVp', 'kV')] ?? '', 0, currentTestName);
-            pushField('Table1_SliceThickness', row[colIdx(headers, 'Slice Thickness')] ?? '', 0, currentTestName);
+            pushField('Table1_kvp', row[colIdx(headers, 'kV', 'kVp')] ?? '', 0, currentTestName);
+            pushField('Table1_SliceThickness', row[colIdx(headers, 'FDD (cm)', 'FFD (cm)', 'Slice Thickness (mm)', 'Slice Thickness')] ?? '', 0, currentTestName);
             pushField('Table1_Time', row[colIdx(headers, 'Time', 'Time (ms)')] ?? '', 0, currentTestName);
             // Exact Tolerance Operator / Sign — avoid matching other columns
             const tolOpExact = headers.findIndex((h) =>
@@ -1660,11 +1663,7 @@ const InventionalRadiologyContent: React.FC<InventionalRadiologyProps> = ({ serv
               SRF Date
             </label>
             <input
-              type="date"
-              name="srfDate"
-              value={formData.srfDate}
-              onChange={handleInputChange}
-              className="border p-2 rounded-md w-full"
+              type="date" name="srfDate" value={formData.srfDate} readOnly className="border p-2 rounded-md w-full bg-gray-100"
             />
           </div>
         </div>
@@ -1714,7 +1713,7 @@ const InventionalRadiologyContent: React.FC<InventionalRadiologyProps> = ({ serv
             { label: "Condition of Test Item", name: "condition" },
             { label: "Testing Procedure Number", name: "testingProcedureNumber" },
             { label: "No. of Pages", name: "pages" },
-            { label: "QA Test Date", name: "testDate", type: "date" },
+            { label: "QA Test Date", name: "testDate", type: "date", readOnly: true },
             { label: "QA Test Due Date", name: "testDueDate", type: "date", readOnly: true },
             { label: "Testing Done At Location", name: "location" },
             { label: "Temperature (°C)", name: "temperature", type: "number" },

@@ -1443,11 +1443,7 @@ const RadiographyPortableContent: React.FC<RadiographyPortableProps> = ({ servic
           <div>
             <label className="block font-medium mb-1">SRF Date</label>
             <input
-              type="date"
-              name="srfDate"
-              value={formData.srfDate}
-              onChange={handleInputChange}
-              className="w-full border rounded-md px-3 py-2"
+              type="date" name="srfDate" value={formData.srfDate} readOnly className="w-full border rounded-md px-3 py-2 bg-gray-100"
             />
           </div>
           <div>
@@ -1486,7 +1482,7 @@ const RadiographyPortableContent: React.FC<RadiographyPortableProps> = ({ servic
             { label: "Condition of Test Item", name: "condition" },
             { label: "Testing Procedure Number", name: "testingProcedureNumber" },
             { label: "No. of Pages", name: "pages" },
-            { label: "Test Date", name: "testDate", type: "date" },
+            { label: "Test Date", name: "testDate", type: "date", readOnly: true },
             { label: "Test Due Date", name: "testDueDate", type: "date", readOnly: true },
             { label: "Location", name: "location" },
             { label: "Temperature (°C)", name: "temperature", type: "number" },

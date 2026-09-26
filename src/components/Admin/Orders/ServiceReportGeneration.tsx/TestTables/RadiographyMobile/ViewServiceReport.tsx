@@ -853,7 +853,7 @@ const ViewServiceReportRadiographyMobile: React.FC<ViewServiceReportRadiographyM
                           <tr>
                             <td className="border border-black p-3 font-medium w-1/2">Observed tilt</td>
                             <td className="border border-black p-3 text-center">
-                              {testData.centralBeamAlignment.observedTilt.value || "-"}&deg;
+                              {testData.centralBeamAlignment.observedTilt.value ? `°${testData.centralBeamAlignment.observedTilt.value}` : "-"}
                               {testData.centralBeamAlignment.observedTilt.remark && (
                                 <span className={`ml-2 ${testData.centralBeamAlignment.observedTilt.remark === "Pass" ? "text-green-600 font-semibold" : "text-red-600 font-semibold"}`}>
                                   {testData.centralBeamAlignment.observedTilt.remark}
@@ -1209,7 +1209,7 @@ const ViewServiceReportRadiographyMobile: React.FC<ViewServiceReportRadiographyM
                           {[
                             ["At kVp", `${tf.atKvp || "-"} kVp`],
                             ["Measured Total Filtration", `${tf.required || "-"} mm Al`],
-                            ["Required (Tolerance)", !isNaN(reqTol) ? `= ${reqTol} mm Al` : "-"],
+                            ["Required (Tolerance)", !isNaN(reqTol) ? `≥ ${reqTol} mm Al` : "-"],
                             ["Result", filtRemark],
                           ].map(([label, val]) => (
                             <tr key={label}>
@@ -1523,7 +1523,7 @@ const ViewServiceReportRadiographyMobile: React.FC<ViewServiceReportRadiographyM
                   </div>
                 </div>
                 <p style={{ fontSize: '10px', marginBottom: '4px' }}>
-                  <strong>Workload:</strong> {testData.radiationLeakageLevel.workload || "-"} {testData.radiationLeakageLevel.workloadUnit || "mA·min/week"}
+                  <strong>Workload:</strong> {testData.radiationLeakageLevel.workload || "-"} {testData.radiationLeakageLevel.workloadUnit || "mA in one hour"}
                 </p>
                 {testData.radiationLeakageLevel.leakageMeasurements?.length > 0 && (
                   <div className="overflow-x-auto mb-2 print:mb-1" style={{ marginBottom: '4px' }}>
@@ -1619,7 +1619,7 @@ const ViewServiceReportRadiographyMobile: React.FC<ViewServiceReportRadiographyM
                           Maximum Leakage (mR in 1 hr) = (Workload × Max Exposure) / (60 × mA)
                         </p>
                         <p style={{ fontSize: '9px', marginTop: '2px', color: '#555', fontStyle: 'italic' }}>
-                          Where: Workload = {workloadValue} mA·min/week | mA = {maValue} | 1 mGy = 114 mR
+                          Where: Workload = {workloadValue} mA in one hour | mA = {maValue} | 1 mGy = 114 mR
                         </p>
                       </div>
                       <div className="flex flex-wrap gap-2" style={{ display: 'flex', gap: '8px' }}>

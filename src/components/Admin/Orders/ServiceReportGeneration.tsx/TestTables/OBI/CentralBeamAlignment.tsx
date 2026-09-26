@@ -296,6 +296,7 @@ const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, 
 
                         <div className="flex items-center gap-10">
                             <span className="text-2xl font-bold text-purple-800">Observed Tilt:</span>
+                            <span className="text-6xl font-extrabold text-purple-700">°</span>
                             <input
                                 type="number"
                                 step="0.1"
@@ -305,7 +306,6 @@ const CentralBeamAlignment: React.FC<Props> = ({ serviceId, testId: propTestId, 
                                 className="w-48 px-8 py-6 text-center text-4xl font-extrabold text-purple-900 border-4 border-purple-500 rounded-2xl focus:ring-8 focus:ring-purple-300 transition-all"
                                 placeholder="1.5"
                             />
-                            <span className="text-6xl font-extrabold text-purple-700">°</span>
                         </div>
 
                         <div className="mt-8">

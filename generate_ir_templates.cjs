@@ -137,8 +137,8 @@ function buildTubeBlock(rows, suffix, includeMaLinearity) {
             rows,
             `MEASUREMENT OF MA LINEARITY${suffix}`,
             [
-                'kVp',
-                'Slice Thickness (mm)',
+                'kV',
+                'FDD (cm)',
                 'Time (ms)',
                 'Tolerance Operator',
                 'Tolerance',

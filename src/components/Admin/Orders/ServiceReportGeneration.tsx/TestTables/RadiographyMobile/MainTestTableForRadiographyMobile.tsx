@@ -1,6 +1,7 @@
-﻿// src/components/reports/TestTables/RadiographyMobile/MainTestTableForRadiographyMobile.tsx
+// src/components/reports/TestTables/RadiographyMobile/MainTestTableForRadiographyMobile.tsx
 import React from "react";
 import { evaluateTotalFiltrationPassFail } from "../totalFiltrationPassFail";
+import { formatCentralBeamObservedTilt } from "../centralBeamTiltDisplay";
 
 interface MainTestTableProps {
   testData: any;
@@ -94,13 +95,12 @@ const MainTestTableForRadiographyMobile: React.FC<MainTestTableProps> = ({ testD
       }
     }
 
-    // Format specified value and display with degree symbol (Â°)
     const specifiedValue = `${toleranceOperator} ${toleranceValue}°`;
     const toleranceDisplay = `${toleranceOperator} ${toleranceValue}°`;
 
     addRowsForTest("Central Beam Alignment", [{
       specified: specifiedValue,
-      measured: tiltValue !== "-" ? `${tiltValue}°` : "-",
+      measured: formatCentralBeamObservedTilt(tiltValue),
       tolerance: toleranceDisplay,
       remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
     }]);
@@ -119,7 +119,7 @@ const MainTestTableForRadiographyMobile: React.FC<MainTestTableProps> = ({ testD
 
       const toleranceCriteria = testData.effectiveFocalSpot.toleranceCriteria || {};
 
-      // Format tolerance criteria as: +0.5 F FOR F < 0.8 MM, +0.4 F FOR 0.8 ≤ F ≤ 1.5 MM, +0.3 F FOR F > 1.5 MM
+      // Format tolerance criteria as: +0.5 F FOR F < 0.8 MM, +0.4 F FOR 0.8 = F = 1.5 MM, +0.3 F FOR F > 1.5 MM
       const smallMultiplier = parseFloat(toleranceCriteria.small?.multiplier || "0.5");
       const smallLimit = parseFloat(toleranceCriteria.small?.upperLimit || "0.8");
       const mediumMultiplier = parseFloat(toleranceCriteria.medium?.multiplier || "0.4");
@@ -127,7 +127,7 @@ const MainTestTableForRadiographyMobile: React.FC<MainTestTableProps> = ({ testD
       const mediumUpper = parseFloat(toleranceCriteria.medium?.upperLimit || "1.5");
       const largeMultiplier = parseFloat(toleranceCriteria.large?.multiplier || "0.3");
 
-      const toleranceStr = `+${smallMultiplier} F FOR F < ${smallLimit} mm; +${mediumMultiplier} F FOR ${mediumLower} ≤ F ≤ ${mediumUpper} mm; +${largeMultiplier} F FOR F > ${mediumUpper} mm`;
+      const toleranceStr = `+${smallMultiplier} F FOR F < ${smallLimit} mm; +${mediumMultiplier} F FOR ${mediumLower} = F = ${mediumUpper} mm; +${largeMultiplier} F FOR F > ${mediumUpper} mm`;
 
       const testRows = validRows.map((spot: any) => {
         const isPass = spot.remark === "Pass" || spot.remark === "PASS";
@@ -192,7 +192,7 @@ const MainTestTableForRadiographyMobile: React.FC<MainTestTableProps> = ({ testD
       const toleranceSign =
         testData.accuracyOfOperatingPotential.tolerance?.sign ||
         testData.accuracyOfOperatingPotential.toleranceSign ||
-        "±";
+        "�";
       const toleranceValue =
         testData.accuracyOfOperatingPotential.tolerance?.value ||
         testData.accuracyOfOperatingPotential.toleranceValue ||
@@ -234,7 +234,7 @@ const MainTestTableForRadiographyMobile: React.FC<MainTestTableProps> = ({ testD
     addRowsForTest("Total Filtration", [{
       specified: atKvp !== "-" ? `${atKvp} kVp` : "-",
       measured: measuredStr !== "-" ? `${measuredStr} mm Al` : "-",
-      tolerance: !isNaN(requiredMmAl) ? `= ${requiredMmAl} mm Al` : "-",
+      tolerance: !isNaN(requiredMmAl) ? `≥ ${requiredMmAl} mm Al` : "-",
       remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
     }]);
   } else if (testData.accuracyOfOperatingPotential?.totalFiltration && (testData.accuracyOfOperatingPotential.totalFiltration.atKvp || testData.accuracyOfOperatingPotential.totalFiltration.required)) {
@@ -247,7 +247,7 @@ const MainTestTableForRadiographyMobile: React.FC<MainTestTableProps> = ({ testD
     addRowsForTest("Total Filtration", [{
       specified: atKvp !== "-" ? `${atKvp} kVp` : "-",
       measured: measuredStr !== "-" ? `${measuredStr} mm Al` : "-",
-      tolerance: !isNaN(requiredMmAl) ? `= ${requiredMmAl} mm Al` : "-",
+      tolerance: !isNaN(requiredMmAl) ? `≥ ${requiredMmAl} mm Al` : "-",
       remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
     }]);
   }

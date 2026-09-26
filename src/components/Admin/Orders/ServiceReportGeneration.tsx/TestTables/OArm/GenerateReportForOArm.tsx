@@ -629,6 +629,7 @@ const OArmContent: React.FC<OArmProps> = ({ serviceId, csvFileUrl, csvFileUrls }
         'kV': 'Settings_KV', 'mA': 'Settings_MA',
         'Time': 'Settings_Time', 'Time (sec)': 'Settings_Time',
         'Workload': 'Workload',
+        'Workload (mA in one hour)': 'Workload',
         'Workload (mA·min/week)': 'Workload',
         'Tol Value': 'Leakage_ToleranceValue',
         'Tol Operator': 'Leakage_ToleranceOperator',
@@ -1215,11 +1216,7 @@ const OArmContent: React.FC<OArmProps> = ({ serviceId, csvFileUrl, csvFileUrls }
             <label className="block text-sm font-medium text-gray-700 mb-1">
               SRF Date
             </label>
-            <input
-              type="date"
-              defaultValue={formatDate(details.qaTests[0]?.createdAt ?? "")}
-              className="border p-2 rounded-md w-full"
-            />
+            <input type="date" name="srfDate" value={formData.srfDate} readOnly className="border p-2 rounded-md w-full bg-gray-100" />
           </div>
         </div>
 
@@ -1258,7 +1255,7 @@ const OArmContent: React.FC<OArmProps> = ({ serviceId, csvFileUrl, csvFileUrls }
             { label: "Condition of Test Item", name: "condition", value: formData.condition, readOnly: false },
             { label: "Testing Procedure Number", name: "testingProcedureNumber", value: formData.testingProcedureNumber, readOnly: false },
             { label: "No. of Pages", name: "pages", value: formData.pages, readOnly: false },
-            { label: "QA Test Date", name: "testDate", value: formData.testDate, type: "date", readOnly: false },
+            { label: "QA Test Date", name: "testDate", value: formData.testDate, type: "date", readOnly: true },
             { label: "QA Test Due Date", name: "testDueDate", value: formData.testDueDate, type: "date", readOnly: true },
             { label: "Testing Done At Location", name: "location", value: formData.location, readOnly: false },
             { label: "Temperature (°C)", name: "temperature", value: formData.temperature, type: "number", readOnly: false },
@@ -1273,7 +1270,7 @@ const OArmContent: React.FC<OArmProps> = ({ serviceId, csvFileUrl, csvFileUrls }
                 name={field.name}
                 value={field.value}
                 onChange={handleInputChange}
-                className="border p-2 rounded-md w-full"
+                className={`border p-2 rounded-md w-full ${field.readOnly ? "bg-gray-100" : ""}`}
                 readOnly={field.readOnly}
               />
             </div>

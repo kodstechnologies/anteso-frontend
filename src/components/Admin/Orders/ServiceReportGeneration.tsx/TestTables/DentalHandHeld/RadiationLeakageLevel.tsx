@@ -63,7 +63,7 @@ export default function RadiationLeakageLevelFromXRay({
   ]);
 
   const [workload, setWorkload] = useState<string>('');
-  const [workloadUnit, setWorkloadUnit] = useState<string>('mA·min/week');
+  const [workloadUnit, setWorkloadUnit] = useState<string>('mA in one hour');
   const [toleranceValue, setToleranceValue] = useState<string>('1');
   const [toleranceOperator, setToleranceOperator] = useState<'less than or equal to' | 'greater than or equal to' | '='>('less than or equal to');
   const [toleranceTime, setToleranceTime] = useState<string>('1');
@@ -184,7 +184,7 @@ export default function RadiationLeakageLevelFromXRay({
         }
 
         setWorkload(rec.workload || '');
-        setWorkloadUnit(rec.workloadUnit || '');
+        setWorkloadUnit(rec.workloadUnit || 'mA in one hour');
         setToleranceValue(rec.toleranceValue || '');
         setToleranceOperator(rec.toleranceOperator || 'less than or equal to');
         setToleranceTime(rec.toleranceTime || '');
@@ -415,7 +415,7 @@ export default function RadiationLeakageLevelFromXRay({
             disabled={isViewMode}
             className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'
               }`}
-            placeholder="mA·min/week"
+            placeholder="mA in one hour"
           />
         </div>
       </div>

@@ -997,7 +997,7 @@ const ViewServiceReportDentalIntra: React.FC<ViewServiceReportDentalIntraProps> 
                               <tr>
                                 <td className="border border-black font-medium" style={{ padding: '0px 4px', fontSize: '11px' }}>Required (Tolerance)</td>
                                 <td className="border border-black text-center" style={{ padding: '0px 4px', fontSize: '11px' }}>
-                                  {!isNaN(requiredTol) ? `= ${requiredTol} mm Al` : "-"}
+                                  {!isNaN(requiredTol) ? `≥ ${requiredTol} mm Al` : "-"}
                                 </td>
                               </tr>
                               <tr>
@@ -1510,7 +1510,7 @@ const ViewServiceReportDentalIntra: React.FC<ViewServiceReportDentalIntraProps> 
                     <div className="mb-6 print:mb-1 bg-gray-50 p-4 print:p-1 rounded border" style={{ marginBottom: '4px', padding: '2px 4px' }}>
                       <p className="font-semibold mb-2 print:mb-0.5 print:text-xs" style={{ marginBottom: '2px', fontSize: '8px' }}>Work Load:</p>
                       <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
-                        {leakageData.workload.value || "-"} {leakageData.workload.unit || "mA·min/week"}
+                        {leakageData.workload.value || "-"} {leakageData.workload.unit || "mA in one hour"}
                       </p>
                     </div>
                   )}
@@ -1520,7 +1520,7 @@ const ViewServiceReportDentalIntra: React.FC<ViewServiceReportDentalIntraProps> 
                     <div className="mb-6 print:mb-1 bg-gray-50 p-4 print:p-1 rounded border" style={{ marginBottom: '4px', padding: '2px 4px' }}>
                       <p className="font-semibold mb-2 print:mb-0.5 print:text-xs" style={{ marginBottom: '2px', fontSize: '8px' }}>Max Leakage Calculation:</p>
                       <div className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
-                        ({workloadInput} mAmin in 1 hr × {maxValue.toFixed(1)}) ÷ (60 × {settings?.ma}) = {maxLeakageResultMR} mR in one hour
+                        ({workloadInput} mA in one hour × {maxValue.toFixed(1)}) ÷ (60 × {settings?.ma}) = {maxLeakageResultMR} mR in one hour
                       </div>
                       <div className="text-xs print:text-[7px] text-gray-600 mt-2 print:mt-0.5" style={{ fontSize: '9px', marginTop: '4px' }}>
                         <p>max Exposure Level (mR/hr): {maxValue.toFixed(1)}</p>
@@ -1600,7 +1600,7 @@ const ViewServiceReportDentalIntra: React.FC<ViewServiceReportDentalIntraProps> 
                     </tr></tbody>
                   </table>
                 </div>
-                <p style={{ fontSize: '10px', marginBottom: '4px' }}><strong>Workload:</strong> {rll.workload || "-"} {rll.workloadUnit || "mA·min/week"}</p>
+                <p style={{ fontSize: '10px', marginBottom: '4px' }}><strong>Workload:</strong> {rll.workload || "-"} {rll.workloadUnit || "mA in one hour"}</p>
                 {rll.leakageMeasurements?.length > 0 && (
                   <table className="leakage-measurements-table" style={{ ...tableStyle, fontSize: '10px', tableLayout: 'fixed', width: '100%' }}>
                     <colgroup>
@@ -1716,7 +1716,7 @@ const ViewServiceReportDentalIntra: React.FC<ViewServiceReportDentalIntraProps> 
                           Maximum Leakage (mR in one hour) = (Workload × Max Exposure mR/hr) / (60 × mA)
                         </p>
                         <p style={{ fontSize: '9px', marginTop: '2px', color: '#555', fontStyle: 'italic' }}>
-                          Where: Workload = {workloadValue} mA·min/week | mA = {maValue} | 1 mGy = 114 mR
+                          Where: Workload = {workloadValue} mA in one hour | mA = {maValue} | 1 mGy = 114 mR
                         </p>
                       </div>
                       <div style={{ display: 'flex', gap: '8px' }}>

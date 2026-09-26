@@ -555,7 +555,7 @@ const ViewServiceReportOPG: React.FC<ViewServiceReportOPGProps> = ({
               kv: s0.kvp || s0.kv || rlData.kv || rlData.kvp || "",
               ma: s0.ma || rlData.ma || "",
               time: s0.time != null ? String(s0.time) : rlData.time != null ? String(rlData.time) : "",
-              workloadUnit: rlData.workloadUnit || "mA·min/week",
+              workloadUnit: rlData.workloadUnit || "mA in one hour",
               toleranceValue: rlData.toleranceValue != null && rlData.toleranceValue !== "" ? String(rlData.toleranceValue) : "1",
               maxLeakageResult: hasResult(maxLeakageResult) ? String(maxLeakageResult) : "-",
               maxRadiationLeakage: hasResult(maxRadiationLeakage) ? String(maxRadiationLeakage) : "-",
@@ -1080,7 +1080,7 @@ const ViewServiceReportOPG: React.FC<ViewServiceReportOPGProps> = ({
                           <tr>
                             <td className="border border-black font-medium" style={{ padding: '0px 4px', fontSize: '11px' }}>Required (Tolerance)</td>
                             <td className="border border-black text-center" style={{ padding: '0px 4px', fontSize: '11px' }}>
-                              {!isNaN(requiredTol) ? `= ${requiredTol} mm Al` : "-"}
+                              {!isNaN(requiredTol) ? `≥ ${requiredTol} mm Al` : "-"}
                             </td>
                           </tr>
                           <tr>
@@ -1441,7 +1441,7 @@ const ViewServiceReportOPG: React.FC<ViewServiceReportOPGProps> = ({
                   </table>
                 </div>
                 <p style={{ fontSize: "10px", marginBottom: "4px" }}>
-                  <strong>Workload:</strong> {testData.radiationLeakage.workload || "-"} {testData.radiationLeakage.workloadUnit || "mA·min/week"}
+                  <strong>Workload:</strong> {testData.radiationLeakage.workload || "-"} {testData.radiationLeakage.workloadUnit || "mA in one hour"}
                 </p>
                 {testData.radiationLeakage.leakageMeasurements?.length > 0 && (
                   <table style={{ ...tableStyle, fontSize: "10px" }} className="compact-table">
@@ -1567,7 +1567,7 @@ const ViewServiceReportOPG: React.FC<ViewServiceReportOPGProps> = ({
                           Maximum Leakage (mR in one hour) = (Workload × Max Exposure mR/hr) / (60 × mA)
                         </p>
                         <p style={{ fontSize: "9px", marginTop: "2px", color: "#555", fontStyle: "italic" }}>
-                          Where: Workload = {workloadValue} mA·min/week | mA = {maValue} | 1 mGy = 114 mR
+                          Where: Workload = {workloadValue} mA in one hour | mA = {maValue} | 1 mGy = 114 mR
                         </p>
                       </div>
                       <div style={{ display: "flex", gap: "8px" }}>

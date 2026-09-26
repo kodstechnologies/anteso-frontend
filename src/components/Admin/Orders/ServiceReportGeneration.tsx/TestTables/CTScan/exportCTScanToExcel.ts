@@ -769,7 +769,7 @@ export const createCTScanUploadableExcel = (data: CTScanExportData, hasTimer: bo
             settings.ma || '',
             settings.time || '',
             data.radiationLeakage.workload || '',
-            data.radiationLeakage.workloadUnit || '',
+            data.radiationLeakage.workloadUnit || 'mA in one hour',
             data.radiationLeakage.tolerance || '',
             normalizeCsvComparisonOperator(data.radiationLeakage.toleranceOperator || '<='),
             data.radiationLeakage.toleranceTime || ''

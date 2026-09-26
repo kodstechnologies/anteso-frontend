@@ -374,7 +374,7 @@ const ViewServiceReportDentalHandHeld: React.FC<ViewServiceReportDentalHandHeldP
               ma: normalizedSettings.ma,
               time: normalizedSettings.time,
               workload: d.workload?.value || d.workload || "",
-              workloadUnit: d.workload?.unit || d.workloadUnit || "mA·min/week",
+              workloadUnit: d.workload?.unit || d.workloadUnit || "mA in one hour",
               toleranceValue: d.tolerance?.value || d.toleranceValue || "1",
               toleranceOperator: d.tolerance?.operator || d.toleranceOperator || "less than or equal to",
               toleranceTime: d.tolerance?.time || d.toleranceTime || "1",
@@ -1077,7 +1077,7 @@ const ViewServiceReportDentalHandHeld: React.FC<ViewServiceReportDentalHandHeldP
                           <tr>
                             <td className="border border-black font-medium" style={{ padding: '0px 4px', fontSize: '11px' }}>Required (Tolerance)</td>
                             <td className="border border-black text-center" style={{ padding: '0px 4px', fontSize: '11px' }}>
-                              {!isNaN(reqNum) ? `= ${reqNum} mm Al` : "-"}
+                              {!isNaN(reqNum) ? `≥ ${reqNum} mm Al` : "-"}
                             </td>
                           </tr>
                           <tr>
@@ -1549,7 +1549,7 @@ const ViewServiceReportDentalHandHeld: React.FC<ViewServiceReportDentalHandHeldP
                 {};
               const measurements = leakageData.leakageMeasurements || [];
               const workload = leakageData.workload?.value || leakageData.workload || "0";
-              const workloadUnit = leakageData.workload?.unit || "mA·min/week";
+              const workloadUnit = leakageData.workload?.unit || "mA in one hour";
               const maUsed = parseFloat(leakageData.ma || settings.ma || "0") || 1;
               const workloadVal = parseFloat(String(workload)) || 0;
               const tolVal = parseFloat(leakageData.tolerance?.value || leakageData.toleranceValue || "1.0") || 1.0;
@@ -1725,7 +1725,7 @@ const ViewServiceReportDentalHandHeld: React.FC<ViewServiceReportDentalHandHeldP
                             Maximum Leakage (mR in one hour) = (Workload × Max Exposure mR/hr) / (60 × mA used for measurement)
                           </div>
                           <p className="text-[10px] print:text-[8px] mt-2 text-gray-600 italic">
-                            Where: Workload = {workload} | mA = {maUsed} | 1 mGy = 114 mR
+                            Where: Workload = {workload} mA in one hour | mA = {maUsed} | 1 mGy = 114 mR
                           </p>
                         </div>
 

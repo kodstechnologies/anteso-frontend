@@ -991,7 +991,7 @@ const ViewServiceReportFixedRadioFluro: React.FC<ViewServiceReportFixedRadioFlur
                           <tr style={{ height: 'auto', minHeight: '0', lineHeight: '1.0' }}>
                             <td className="border border-black p-2 print:p-1 font-semibold w-1/2" style={{ padding: '2px 4px' }}>Observed tilt</td>
                             <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '2px 4px' }}>
-                              {testData.centralBeamAlignment.observedTilt.value != null ? `${safeVal(testData.centralBeamAlignment.observedTilt.value)}°` : "-"}
+                              {testData.centralBeamAlignment.observedTilt.value != null ? `°${safeVal(testData.centralBeamAlignment.observedTilt.value)}` : "-"}
                               {testData.centralBeamAlignment.observedTilt.remark && (
                                 <span className={`ml-2 font-bold ${safeVal(testData.centralBeamAlignment.observedTilt.remark) === "Pass" ? "text-green-600" : "text-red-600"}`}>
                                   {safeVal(testData.centralBeamAlignment.observedTilt.remark)}
@@ -1313,7 +1313,7 @@ const ViewServiceReportFixedRadioFluro: React.FC<ViewServiceReportFixedRadioFlur
                           <tr>
                             <td className="border border-black font-medium" style={{ padding: '0px 4px', fontSize: '11px' }}>Required (Tolerance)</td>
                             <td className="border border-black text-center" style={{ padding: '0px 4px', fontSize: '11px' }}>
-                              {!isNaN(requiredTol) ? `= ${requiredTol} mm Al` : "-"}
+                              {!isNaN(requiredTol) ? `≥ ${requiredTol} mm Al` : "-"}
                             </td>
                           </tr>
                           <tr>
@@ -1791,7 +1791,7 @@ const ViewServiceReportFixedRadioFluro: React.FC<ViewServiceReportFixedRadioFlur
                         <th className="border border-black p-1 text-center font-bold">Applied kV</th>
                         <th className="border border-black p-1 text-center font-bold">Applied mA</th>
                         <th className="border border-black p-1 text-center font-bold">Time (sec)</th>
-                        <th className="border border-black p-1 text-center font-bold">Workload</th>
+                        <th className="border border-black p-1 text-center font-bold">Workload (mA in one hour)</th>
                       </tr>
                     </thead>
                     <tbody>

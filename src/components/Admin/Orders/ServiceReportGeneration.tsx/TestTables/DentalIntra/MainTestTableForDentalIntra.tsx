@@ -181,7 +181,7 @@ const MainTestTableForDentalIntra: React.FC<MainTestTableProps> = ({ testData })
         specified: atKvp !== "-" ? `${atKvp} kVp` : "-",
         measured:
           measuredStr !== "-" && !Number.isNaN(parseFloat(measuredStr)) ? `${measuredStr} mm Al` : "-",
-        tolerance: !isNaN(requiredMmAl) ? `= ${requiredMmAl} mm Al` : "-",
+        tolerance: !isNaN(requiredMmAl) ? `≥ ${requiredMmAl} mm Al` : "-",
         remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
       },
     ]);

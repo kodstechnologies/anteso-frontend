@@ -862,7 +862,7 @@ const ViewServiceReport: React.FC = () => {
                     </div>
 
                     <div className="mb-4">
-                      <strong>Work Load:</strong> {testData.leakage.workload || "500"} mAmin in one hr
+                      <strong>Work Load:</strong> {testData.leakage.workload || "500"} mA in one hour
                     </div>
 
                     <div className="overflow-x-auto print:overflow-visible">
@@ -871,7 +871,7 @@ const ViewServiceReport: React.FC = () => {
                           <tr>
                             <td className="border border-black p-3 font-bold">Max Leakage =</td>
                             <td className="border border-black p-3 text-center">
-                              {testData.leakage.workload || "500"} mAmin in 1 hr X {testData.leakage.leakageMeasurements?.[0]?.front || "12.30"}<br />
+                              {testData.leakage.workload || "500"} mA in one hour X {testData.leakage.leakageMeasurements?.[0]?.front || "12.30"}<br />
                               <span className="text-xs">60 X 100</span>
                             </td>
                             <td className="border border-black p-3 text-center font-bold">

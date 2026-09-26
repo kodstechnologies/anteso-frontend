@@ -237,7 +237,7 @@ const LinearityOfmAsLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
                     {table1.map((row, i) => (
                         <div key={i} className="flex gap-4 items-end">
                             <div className="flex-1">
-                                <label className="text-xs text-gray-500">FCD (cm)</label>
+                                <label className="text-xs text-gray-500">FDD (cm)</label>
                                 <input type="text" value={row.fcd} onChange={e => handleTable1Change(i, 'fcd', e.target.value)} disabled={isViewMode} className="w-full p-2 border rounded" />
                             </div>
                             <div className="flex-1">

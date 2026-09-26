@@ -117,7 +117,7 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
   ]);
 
   const [workload, setWorkload] = useState<string>('');
-  const [workloadUnit, setWorkloadUnit] = useState<string>('mA·min/week');
+  const [workloadUnit, setWorkloadUnit] = useState<string>('mA in one hour');
   const [toleranceValue, setToleranceValue] = useState<string>('1');
   const [toleranceOperator, setToleranceOperator] = useState<LeakageToleranceOperator>('less than');
   const [toleranceTime, setToleranceTime] = useState<string>('1');
@@ -264,7 +264,7 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
             }
 
             setWorkload(rec.workload || '');
-            setWorkloadUnit(rec.workloadUnit || 'mA·min/week');
+            setWorkloadUnit(rec.workloadUnit || 'mA in one hour');
             setToleranceValue(rec.toleranceValue || rec.tolerance || '');
             setToleranceOperator(normalizeLeakageToleranceOperator(rec.toleranceOperator || 'less than'));
             setToleranceTime(rec.toleranceTime || '1');
@@ -700,7 +700,7 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
             disabled={isViewMode}
             className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'
               }`}
-            placeholder="mA·min/week"
+            placeholder="mA in one hour"
           />
         </div>
       </div>
@@ -708,7 +708,7 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
       {/* ==================== Table 2: Leakage Results (Fixed 1 row) ==================== */}
       <div className="bg-white shadow-md rounded-lg overflow-hidden">
         <h3 className="px-6 py-3 text-lg font-semibold bg-gray-50 border-b">
-          Leakage Measurement Results
+          Exposure Level (mR/hr) at 1.0 m from the Focus
         </h3>
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-blue-50">
@@ -824,7 +824,7 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
               onChange={(e) => setWorkloadUnit(e.target.value)}
               disabled={isViewMode}
               className={`w-48 px-4 py-2 border rounded-md text-sm ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
-              placeholder="mA·min/week"
+              placeholder="mA in one hour"
             />
           </div>
           {processedLeakage.map((row, idx) => {
@@ -840,7 +840,7 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
                 <label className="text-sm font-medium text-gray-700 w-48">Max Leakage =</label>
                 <div className="flex-1">
                   <div className="text-sm text-gray-700 mb-2">
-                    ({workload || '—'} {workloadUnit || 'mA·min/week'} × {maxExposureLevel} max Exposure Level) / (60 × {maVal || '—'} mA used for measurement)
+                    ({workload || '—'} {workloadUnit || 'mA in one hour'} × {maxExposureLevel} max Exposure Level) / (60 × {maVal || '—'} mA used for measurement)
                   </div>
                   <div className="mt-2">
                     <span className="text-sm font-medium text-gray-700">Calculated Max Leakage:</span>
@@ -872,7 +872,7 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
                 </span>
                 <div className="flex-1">
                   <div className="text-sm text-gray-600 mb-2">
-                    Formula: ({workload || '—'} {workloadUnit || 'mA·min/week'} × {maxValue} max Exposure Level ({row.unit === 'mGy/h' ? `${maxValue} mGy/h (= ${(parseFloat(maxValue || '0') * 114).toFixed(2)} mR/hr)` : `${maxValue} mR/hr`})) / (60 × {maVal || '—'} mA used for measurement) ÷ 114
+                    Formula: ({workload || '—'} {workloadUnit || 'mA in one hour'} × {maxValue} max Exposure Level ({row.unit === 'mGy/h' ? `${maxValue} mGy/h (= ${(parseFloat(maxValue || '0') * 114).toFixed(2)} mR/hr)` : `${maxValue} mR/hr`})) / (60 × {maVal || '—'} mA used for measurement) ÷ 114
                   </div>
                   <span className={`px-4 py-2 border-2 rounded-md font-semibold ${result.calculatedMGy !== '—' ? 'border-green-500 bg-green-50 text-green-700' : 'border-gray-300 bg-gray-50'
                     }`}>

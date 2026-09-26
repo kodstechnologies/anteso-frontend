@@ -870,7 +870,7 @@ const ViewServiceReportRadiographyFixed: React.FC<ViewServiceReportProps> = ({
                             Observed tilt
                           </th>
                           <td style={cellStyle({ border: "0.1px solid #666" })}>
-                            {testData.centralBeamAlignment.observedTilt.value || "-"}&deg;
+                            {testData.centralBeamAlignment.observedTilt.value ? `°${testData.centralBeamAlignment.observedTilt.value}` : "-"}
                             {testData.centralBeamAlignment.observedTilt.remark && (
                               <span style={{ marginLeft: "8px" }}>{testData.centralBeamAlignment.observedTilt.remark}</span>
                             )}
@@ -1201,7 +1201,7 @@ const ViewServiceReportRadiographyFixed: React.FC<ViewServiceReportProps> = ({
                             {[
                               ["At kVp", `${tf.atKvp || "-"} kVp`],
                               ["Measured Total Filtration", `${measuredStr || "-"} mm Al`],
-                              ["Required (Tolerance)", !isNaN(reqTol) ? `= ${reqTol} mm Al` : "-"],
+                              ["Required (Tolerance)", !isNaN(reqTol) ? `≥ ${reqTol} mm Al` : "-"],
                               ["Result", filtRemark],
                             ].map(([label, val]) => (
                               <tr key={label}>
@@ -1674,7 +1674,7 @@ const ViewServiceReportRadiographyFixed: React.FC<ViewServiceReportProps> = ({
                   </div>
 
                   <p style={{ fontSize: "10px", marginBottom: "4px" }}>
-                    <strong>Workload:</strong> {testData.radiationLeakageLevel.workload || "-"} {testData.radiationLeakageLevel.workloadUnit || "mA·min/week"}
+                    <strong>Workload:</strong> {testData.radiationLeakageLevel.workload || "-"} {testData.radiationLeakageLevel.workloadUnit || "mA in one hour"}
                   </p>
 
                   {testData.radiationLeakageLevel.leakageMeasurements?.length > 0 && (

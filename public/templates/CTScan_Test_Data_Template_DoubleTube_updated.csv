@@ -6,7 +6,7 @@ Applied,Measured,kVp,mA,,,,,,,,,,
 ,,,,,,,,,,,,,
 TEST: MEASUREMENT OF OPERATING POTENTIAL - TUBE A,,,,,,,,,,,,,
 Set kV,Header 1,Header 2,Header 3,Meas 1,Meas 2,Meas 3,Time (ms),Slice Thickness (mm),Tol Value,Tol Type,Tol Sign,,
-80,10,100,200,80.1,80.2,80.3,100,5,5,%,±,,
+80,10,100,200,80.1,80.2,80.3,100,5,5,%,ï¿½,,
 100,,,,100.2,100.1,100.3,,,,,,,
 120,,,,120.5,120.4,120.6,,,,,,,
 ,,,,,,,,,,,,,
@@ -24,7 +24,7 @@ kVp,Slice Thickness (mm),mA,Set Time (ms),Observed Time (ms),Tolerance (%),Toler
 ,,,,,,,,,,,,,
 TEST: MEASUREMENT OF CTDI - TUBE A,,,,,,,,,,,,,
 kVp,mAs,Slice Thickness (mm),CTDIw (Rated) Head,CTDIw (Rated) Body,Tol Value,Tol Sign,Type,Label,Head,Body,,,
-120,100,5,15.5,12.2,5,±,Axial Dose CTDIc,,16,13,,,
+120,100,5,15.5,12.2,5,ï¿½,Axial Dose CTDIc,,16,13,,,
 ,,,,,,,Peripheral Dose,A,15.5,12.5,,,
 ,,,,,,,Peripheral Dose,B,15.7,12.7,,,
 ,,,,,,,Peripheral Dose,C,15.6,12.6,,,
@@ -42,7 +42,7 @@ mAs,Slice Thickness (mm),Time (s),Header 1,Header 2,Header 3,Header 4,Header 5,k
 ,,,,,,,,,,,,,
 TEST: RADIATION LEAKAGE LEVEL - TUBE A,,,,,,,,,,,,,
 kV,mA,Time (sec),Workload,Workload Unit,Tol Value,Tol Operator,Tol Time,Location,Front,Back,Left,Right,Top
-120,100,1,500,mAÂ·min/week,1,<=,1,Tube,0.05,0.03,0.06,0.04,0.05
+120,100,1,500,mA in one hour,1,<=,1,Tube,0.05,0.03,0.06,0.04,0.05
 ,,,,,,,,Collimator,0.02,0.02,0.03,0.01,0.02
 ,,,,,,,,,,,,,
 TEST: LOW CONTRAST RESOLUTION - TUBE A,,,,,,,,,,,,,
@@ -61,7 +61,7 @@ Applied,Measured,kVp,mA,,,,,,,,,,
 ,,,,,,,,,,,,,
 TEST: MEASUREMENT OF OPERATING POTENTIAL - TUBE B,,,,,,,,,,,,,
 Set kV,Header 1,Header 2,Header 3,Meas 1,Meas 2,Meas 3,Time (ms),Slice Thickness (mm),Tol Value,Tol Type,Tol Sign,,
-80,10,100,200,80,80.1,80.2,100,5,5,%,±,,
+80,10,100,200,80,80.1,80.2,100,5,5,%,ï¿½,,
 100,,,,100.1,100,100.2,,,,,,,
 120,,,,120.3,120.2,120.4,,,,,,,
 ,,,,,,,,,,,,,
@@ -79,7 +79,7 @@ kVp,Slice Thickness (mm),mA,Set Time (ms),Observed Time (ms),Tolerance (%),Toler
 ,,,,,,,,,,,,,
 TEST: MEASUREMENT OF CTDI - TUBE B,,,,,,,,,,,,,
 kVp,mAs,Slice Thickness (mm),CTDIw (Rated) Head,CTDIw (Rated) Body,Tol Value,Tol Sign,Type,Label,Head,Body,,,
-120,100,5,15.3,12,5,±,Axial Dose CTDIc,,15.8,12.9,,,
+120,100,5,15.3,12,5,ï¿½,Axial Dose CTDIc,,15.8,12.9,,,
 ,,,,,,,Peripheral Dose,A,15.3,12.3,,,
 ,,,,,,,Peripheral Dose,B,15.5,12.5,,,
 ,,,,,,,Peripheral Dose,C,15.4,12.4,,,
@@ -97,7 +97,7 @@ mAs,Slice Thickness (mm),Time (s),Header 1,Header 2,Header 3,Header 4,Header 5,k
 ,,,,,,,,,,,,,
 TEST: RADIATION LEAKAGE LEVEL - TUBE B,,,,,,,,,,,,,
 kV,mA,Time (sec),Workload,Workload Unit,Tol Value,Tol Operator,Tol Time,Location,Front,Back,Left,Right,Top
-120,100,1,500,mAÂ·min/week,1,<=,1,Tube,0.04,0.03,0.05,0.04,0.05
+120,100,1,500,mA in one hour,1,<=,1,Tube,0.04,0.03,0.05,0.04,0.05
 ,,,,,,,,Collimator,0.02,0.02,0.03,0.01,0.02
 ,,,,,,,,,,,,,
 TEST: LOW CONTRAST RESOLUTION - TUBE B,,,,,,,,,,,,,

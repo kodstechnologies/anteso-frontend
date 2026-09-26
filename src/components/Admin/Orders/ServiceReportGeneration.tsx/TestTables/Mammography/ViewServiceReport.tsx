@@ -2335,7 +2335,7 @@ const ViewServiceReportMammography: React.FC<ViewServiceReportMammographyProps> 
                 <div className="grid grid-cols-2 gap-4 mb-4 print:mb-1">
                   <div>
                     <p className="text-xs print:text-[8px]" style={{ fontSize: '10px' }}>
-                      <strong>Workload:</strong> {testData.radiationLeakageLevel.workload || "-"} mA·min/week
+                      <strong>Workload:</strong> {testData.radiationLeakageLevel.workload || "-"} mA in one hour
                     </p>
                   </div>
                   <div className="flex flex-col gap-1">
