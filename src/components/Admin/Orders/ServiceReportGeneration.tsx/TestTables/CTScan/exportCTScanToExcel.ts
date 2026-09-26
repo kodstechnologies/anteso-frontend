@@ -399,17 +399,24 @@ export const createCTScanExcelWithTables = (data: CTScanExportData, hasTimer: bo
             allData.push([]);
         }
 
-        if (data.radiationLeakage.leakageRows && data.radiationLeakage.leakageRows.length > 0) {
-            const leakageRows = data.radiationLeakage.leakageRows.map((row: any) => [
+        const leakageSource =
+            (Array.isArray(data.radiationLeakage.leakageRows) && data.radiationLeakage.leakageRows.length > 0
+                ? data.radiationLeakage.leakageRows
+                : null) ||
+            (Array.isArray(data.radiationLeakage.leakageMeasurements) && data.radiationLeakage.leakageMeasurements.length > 0
+                ? data.radiationLeakage.leakageMeasurements
+                : null);
+
+        if (leakageSource) {
+            const leakageRows = leakageSource.map((row: any) => [
                 row.location || '',
                 row.front || '',
                 row.back || '',
                 row.left || '',
                 row.right || '',
-                row.top || '',
                 row.unit || ''
             ]);
-            addTable(['Location', 'Front', 'Back', 'Left', 'Right', 'Top', 'Unit'], leakageRows);
+            addTable(['Location', 'Front', 'Back', 'Left', 'Right', 'Unit'], leakageRows);
         }
     }
 
@@ -781,12 +788,11 @@ export const createCTScanUploadableExcel = (data: CTScanExportData, hasTimer: bo
             r.front || '',
             r.back || '',
             r.left || '',
-            r.right || '',
-            r.top || ''
+            r.right || ''
         ]);
 
-        const rows = [[...paramRow, '', '', '', '', '', ''], ...dataRows];
-        addSection('Radiation Leakage Level from X-Ray Tube House', ['kV', 'mA', 'Time (sec)', 'Workload', 'Workload Unit', 'Tol Value', 'Tol Operator', 'Tol Time', 'Location', 'Front', 'Back', 'Left', 'Right', 'Top'], rows);
+        const rows = [[...paramRow, '', '', '', '', ''], ...dataRows];
+        addSection('Radiation Leakage Level from X-Ray Tube House', ['kV', 'mA', 'Time (sec)', 'Workload', 'Workload Unit', 'Tol Value', 'Tol Operator', 'Tol Time', 'Location', 'Front', 'Back', 'Left', 'Right'], rows);
     }
 
     // 9. Reproducibility of Radiation Output (Consistency Test)

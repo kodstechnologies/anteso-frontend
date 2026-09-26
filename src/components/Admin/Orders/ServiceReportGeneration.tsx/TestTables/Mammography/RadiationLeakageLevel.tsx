@@ -77,8 +77,8 @@ export default function RadiationLeakageLevel({ serviceId, testId: propTestId, o
 
   const locationOptions = ['Tube', 'Collimator'];
 
-  const [workload, setWorkload] = useState<string>('');
-  const [toleranceValue, setToleranceValue] = useState<string>('1');
+  const [workload, setWorkload] = useState<string>('40');
+  const [toleranceValue, setToleranceValue] = useState<string>('0.02');
   const [toleranceOperator, setToleranceOperator] = useState<RadiationLeakageToleranceOperator>('less than or equal to');
   const [toleranceTime, setToleranceTime] = useState<string>('1');
 
@@ -302,8 +302,8 @@ export default function RadiationLeakageLevel({ serviceId, testId: propTestId, o
       setIsLoading(true);
       setSettings({ fcd: '100', kv: '120', ma: '21', time: '2.0' });
       setLeakageRows([{ location: 'Tube', left: '', right: '', front: '', back: '', top: '', max: '', result: '', unit: 'mR/h', mgy: '', remark: '' }]);
-      setWorkload('');
-      setToleranceValue('1');
+      setWorkload('40');
+      setToleranceValue('0.02');
       setToleranceOperator('less than or equal to');
       setToleranceTime('1');
       setHasSaved(false);
@@ -664,7 +664,7 @@ export default function RadiationLeakageLevel({ serviceId, testId: propTestId, o
               onChange={(e) => setWorkload(e.target.value)}
               disabled={isViewMode}
               className={`w-48 px-4 py-2 border rounded-md text-sm ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
-              placeholder="180"
+              placeholder="40"
             />
             <span className="text-sm text-gray-600">mA in one hour</span>
           </div>
@@ -737,7 +737,7 @@ export default function RadiationLeakageLevel({ serviceId, testId: propTestId, o
               onChange={(e) => setToleranceValue(e.target.value)}
               disabled={isViewMode}
               className={`w-24 px-2 py-1 border rounded text-sm text-center font-medium ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
-              placeholder="1"
+              placeholder="0.02"
             />
             {' '}
             (

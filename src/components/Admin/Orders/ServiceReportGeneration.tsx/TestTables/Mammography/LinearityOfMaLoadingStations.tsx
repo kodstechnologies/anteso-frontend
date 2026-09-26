@@ -59,7 +59,7 @@ const LinearityOfMaLoadingStations: React.FC<Props> = ({ serviceId, testId: prop
   ]);
 
   const [tolerance, setTolerance] = useState<string>('0.1');
-  const [toleranceOperator, setToleranceOperator] = useState<string>('<=');
+  const [toleranceOperator, setToleranceOperator] = useState<string>('<');
 
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -299,7 +299,7 @@ const LinearityOfMaLoadingStations: React.FC<Props> = ({ serviceId, testId: prop
             );
           }
           setTolerance(data.tolerance || '0.1');
-          setToleranceOperator(data.toleranceOperator || '<=');
+          setToleranceOperator(data.toleranceOperator || '<');
           setHasSaved(true);
           setIsEditing(false);
         } else {

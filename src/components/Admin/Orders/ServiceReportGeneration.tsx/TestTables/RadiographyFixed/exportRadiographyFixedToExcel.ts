@@ -125,7 +125,7 @@ export const buildFixedTemplateRows = (hasTimer: boolean): any[][] => {
     ["FDD (cm)", "100"],
     ["kVp", "mAs", "Output 1", "Output 2"],
     ["80", "10", "0.5", "0.51"],
-    ["Tolerance Operator", "<="],
+    ["Tolerance Operator", "<"],
     ["Tolerance Value (CoV)", "0.05"],
   ]);
 
@@ -361,7 +361,7 @@ export const createRadiographyFixedUploadableExcel = (
         r.remark ?? r.remarks ?? "",
       ]);
     });
-    const tolOp = oc.tolerance?.operator ?? oc.toleranceOperator ?? "<=";
+    const tolOp = oc.tolerance?.operator ?? oc.toleranceOperator ?? "<";
     const tolVal = oc.tolerance?.value ?? oc.toleranceValue ?? oc.tolerance ?? "";
     allData.push(["Tolerance Operator", tolOp]);
     allData.push(["Tolerance Value (CoV)", typeof tolVal === "object" ? "" : tolVal]);

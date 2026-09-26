@@ -1607,24 +1607,37 @@ export default function ServicesCard({ orderId, initialLeadOwnerId = null }: Ser
                 assignRes?.data?.updatedService?.workTypeDetails?.find((w: any) => w?.workType === "Quality Assurance Test")?.QAtest?.assignedAt ||
                 new Date().toISOString();
 
+            const staffName =
+                officeStaff.find((s) => s._id === staffId)?.name ||
+                assignments[workTypeId]?.staffName ||
+                "";
+
             // Keep UI in sync immediately after assign; prevents "Staff assigned at" from staying blank.
             setMachineData((prev: any[]) =>
                 prev.map((service: any) => ({
                     ...service,
                     workTypes: (service.workTypes || []).map((wt: any) =>
-                        wt.id === workTypeId ? { ...wt, assignedAtStaff } : wt
+                        wt.id === workTypeId
+                            ? { ...wt, assignedAtStaff, assignedStaffId: staffId, assignedStaffName: staffName }
+                            : wt
                     ),
                 }))
             );
+
+            const assignmentUpdate = {
+                staffId,
+                staffName,
+                status,
+                isAssigned: true,
+                isReassigned: false,
+                assignedAtStaff,
+            };
 
             setAssignments((prev) => ({
                 ...prev,
                 [workTypeId]: {
                     ...prev[workTypeId],
-                    staffId,
-                    status,
-                    isAssigned: true,
-                    isReassigned: false,
+                    ...assignmentUpdate,
                 },
             }))
 
@@ -1635,7 +1648,7 @@ export default function ServicesCard({ orderId, initialLeadOwnerId = null }: Ser
 
             const newAssignments = {
                 ...assignments,
-                [workTypeId]: { staffId, status, isAssigned: true, isReassigned: false, assignedAtStaff },
+                [workTypeId]: { ...assignments[workTypeId], ...assignmentUpdate },
             }
             saveToLocalStorage(STORAGE_KEYS.assignments, newAssignments)
 

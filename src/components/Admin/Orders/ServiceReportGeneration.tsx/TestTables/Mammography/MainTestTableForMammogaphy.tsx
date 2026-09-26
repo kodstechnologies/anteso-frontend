@@ -89,9 +89,18 @@ export const generateMammographySummaryRows = (testData: any, hasTimer = false) 
   if (testData.accuracyOfOperatingPotential?.measurements && Array.isArray(testData.accuracyOfOperatingPotential.measurements)) {
     const validRows = testData.accuracyOfOperatingPotential.measurements.filter((row: any) => row.appliedKvp || row.averageKvp);
     if (validRows.length > 0) {
-      const toleranceSignRaw = testData.accuracyOfOperatingPotential.tolerance?.sign || "+/-";
-      const toleranceSign = toleranceSignRaw === "both" ? "+/-" : toleranceSignRaw === "plus" ? "+" : toleranceSignRaw === "minus" ? "-" : toleranceSignRaw;
+      const toleranceSignRaw = testData.accuracyOfOperatingPotential.tolerance?.sign || "both";
+      const toleranceSign =
+        toleranceSignRaw === "both" || toleranceSignRaw === "+/-" || toleranceSignRaw === "±"
+          ? "±"
+          : toleranceSignRaw === "plus" || toleranceSignRaw === "+"
+            ? "+"
+            : toleranceSignRaw === "minus" || toleranceSignRaw === "-"
+              ? "-"
+              : String(toleranceSignRaw);
       const toleranceValue = testData.accuracyOfOperatingPotential.tolerance?.value || "5";
+      const toleranceType = testData.accuracyOfOperatingPotential.tolerance?.type || "absolute";
+      const toleranceUnit = toleranceType === "percent" ? "%" : "kVp";
       const testRows = validRows.map((row: any) => {
         let isPass = false;
         if (row.remarks === "PASS" || row.remarks === "Pass") {
@@ -101,16 +110,23 @@ export const generateMammographySummaryRows = (testData: any, hasTimer = false) 
         } else {
           const appliedKvp = parseFloat(row.appliedKvp);
           const avgKvp = parseFloat(row.averageKvp);
-          if (!isNaN(appliedKvp) && !isNaN(avgKvp) && appliedKvp > 0) {
-            const deviation = Math.abs(((avgKvp - appliedKvp) / appliedKvp) * 100);
-            const tol = parseFloat(toleranceValue);
-            isPass = deviation <= tol;
+          if (!isNaN(appliedKvp) && !isNaN(avgKvp)) {
+            const tol = parseFloat(toleranceValue) || 0;
+            const allowedDiff =
+              toleranceType === "percent" ? (appliedKvp * tol) / 100 : tol;
+            if (toleranceSign === "+") {
+              isPass = avgKvp <= appliedKvp + allowedDiff;
+            } else if (toleranceSign === "-") {
+              isPass = avgKvp >= appliedKvp - allowedDiff;
+            } else {
+              isPass = Math.abs(avgKvp - appliedKvp) <= allowedDiff;
+            }
           }
         }
         return {
           specified: row.appliedKvp || "-",
           measured: row.averageKvp || "-",
-          tolerance: `${toleranceSign}${toleranceValue}%`,
+          tolerance: `${toleranceSign} ${toleranceValue} ${toleranceUnit}`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });

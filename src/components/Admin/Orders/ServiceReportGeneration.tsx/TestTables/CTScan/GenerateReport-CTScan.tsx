@@ -75,7 +75,11 @@ interface DetailsResponse {
     machineModel: string;
     serialNumber: string;
     engineerAssigned: { name: string; _id?: string };
-    qaTests: Array<{ createdAt: string; qaTestReportNumber: string }>;
+    qaTests: Array<{ createdAt: string; qaTestReportNumber: string; qatestSubmittedAt?: string; reportULRNumber?: string }>;
+    orderCreatedAt?: string;
+    completedAt?: string;
+    rpId?: string;
+    category?: string;
 }
 
 type CTScanReportProps = { serviceId: string; qaTestDate?: string | null; createdAt?: string | null; csvFileUrl?: string | null; csvFileUrls?: string[] };
@@ -168,7 +172,7 @@ const CTScanReportContent: React.FC<CTScanReportProps> = ({ serviceId, qaTestDat
     const [notes, setNotes] = useState<{ slNo: string; text: string }[]>(defaultNotesList);
 
     const [minIssueDate, setMinIssueDate] = useState(""); // QA test submitted date; issue date must be >= this
-    // Only fetch initial service details and tools — NOT saved report
+    // Fetch service details, tools, then merge any saved report header (same order as Radiography Fixed)
     useEffect(() => {
         const fetchInitialData = async () => {
             if (!serviceId) return;
@@ -176,38 +180,52 @@ const CTScanReportContent: React.FC<CTScanReportProps> = ({ serviceId, qaTestDat
             try {
                 setLoading(true);
                 const detailsRes = await getDetails(serviceId);
+                const data = detailsRes?.data?.data || detailsRes?.data || detailsRes;
+                if (!data || typeof data !== "object") {
+                    throw new Error("Invalid getDetails response");
+                }
 
-                const data = detailsRes.data;
-                const engineerId = data.engineerAssigned?._id || data.engineerAssigned;
-                const machineType = data.machineType;
-                const toolsRes = engineerId && machineType
-                    ? await getAssignedToolsForEngineerByMachine(engineerId, machineType)
-                    : null;
-                const firstTest = data.qaTests[0];
-
+                const firstTest = Array.isArray(data.qaTests) ? data.qaTests[0] : undefined;
                 setDetails(data);
 
-                // SRF date = order created at; Test date = QA test submitted at (or createdAt)
-                const srfDateValue = data.completedAt ? new Date(data.completedAt).toISOString().split("T")[0] : "";
+                const toDate = (v: any): string => {
+                    if (!v) return "";
+                    if (typeof v === "string") return v.split("T")[0];
+                    try {
+                        const d = new Date(v);
+                        if (Number.isNaN(d.getTime())) return "";
+                        return d.toISOString().split("T")[0];
+                    } catch {
+                        return "";
+                    }
+                };
+
+                // SRF date = completedAt → orderCreatedAt → nav createdAt → QA createdAt (match Radiography Fixed)
+                const srfDateValue =
+                    toDate(data.completedAt) ||
+                    toDate(data.orderCreatedAt) ||
+                    toDate(createdAt) ||
+                    toDate(firstTest?.createdAt) ||
+                    "";
                 const rawTestDate = firstTest?.qatestSubmittedAt || firstTest?.createdAt || qaTestDate || "";
-                const testDateValue = rawTestDate ? (typeof rawTestDate === "string" ? rawTestDate.split("T")[0] : "") : "";
+                const testDateValue = toDate(rawTestDate);
                 const testDueDateValue = testDateValue ? addYearsToDate(testDateValue, 2) : "";
 
                 setMinIssueDate(testDateValue || "");
-                // Pre-fill form from service details
+                // Pre-fill form from service details BEFORE tools fetch so tools failure cannot block SRF autofill
                 setFormData({
-                    customerName: data.hospitalName,
-                    address: data.hospitalAddress,
-                    srfNumber: data.srfNumber,
+                    customerName: data.hospitalName || "",
+                    address: data.hospitalAddress || "",
+                    srfNumber: data.srfNumber || "",
                     srfDate: srfDateValue,
                     reportULRNumber: firstTest?.reportULRNumber || "",
                     testReportNumber: firstTest?.qaTestReportNumber || "",
                     issueDate: new Date().toISOString().split("T")[0],
-                    nomenclature: data.machineType,
+                    nomenclature: data.machineType || "",
                     make: "",
-                    model: data.machineModel,
-                    slNumber: data.serialNumber,
-                    category: "",
+                    model: data.machineModel || "",
+                    slNumber: data.serialNumber || "",
+                    category: data.category || "",
                     condition: "OK",
                     testingProcedureNumber: "",
                     pages: "",
@@ -221,26 +239,75 @@ const CTScanReportContent: React.FC<CTScanReportProps> = ({ serviceId, qaTestDat
                     authorizedSignatory: "",
                 });
 
-                const assignedTools = toolsRes?.data?.toolsAssigned || toolsRes?.toolsAssigned || [];
-                const mappedTools: Standard[] = assignedTools
-                    .map((t: any) => ({
-                        nomenclature: t.nomenclature,
-                        make: t.manufacturer || t.make,
-                        model: t.model,
-                        SrNo: t.SrNo,
-                        range: t.range,
-                        certificate: t.certificate || null,
-                        calibrationCertificateNo: t.calibrationCertificateNo,
-                        calibrationValidTill: (t.calibrationValidTill || "").split("T")[0],
-                        uncertainity: "",
-                    }))
-                    .filter((t: any) => isToolUnexpired(t.calibrationValidTill))
-                    .map((t: any, i: number) => ({
-                        ...t,
-                        slNumber: String(i + 1),
-                    }));
+                const engineerId = data.engineerAssigned?._id || data.engineerAssigned;
+                const machineType = data.machineType;
+                try {
+                    const toolsRes =
+                        engineerId && machineType
+                            ? await getAssignedToolsForEngineerByMachine(engineerId, machineType)
+                            : null;
+                    const assignedTools = toolsRes?.data?.toolsAssigned || toolsRes?.toolsAssigned || [];
+                    const mappedTools: Standard[] = assignedTools
+                        .map((t: any) => ({
+                            nomenclature: t.nomenclature,
+                            make: t.manufacturer || t.make,
+                            model: t.model,
+                            SrNo: t.SrNo,
+                            range: t.range,
+                            certificate: t.certificate || null,
+                            calibrationCertificateNo: t.calibrationCertificateNo,
+                            calibrationValidTill: (t.calibrationValidTill || "").split("T")[0],
+                            uncertainity: "",
+                        }))
+                        .filter((t: any) => isToolUnexpired(t.calibrationValidTill))
+                        .map((t: any, i: number) => ({
+                            ...t,
+                            slNumber: String(i + 1),
+                        }));
+                    setTools(mappedTools);
+                } catch (toolsErr) {
+                    console.error("Failed to load assigned tools:", toolsErr);
+                }
 
-                setTools(mappedTools);
+                // Merge saved report header after details fill (do not wipe SRF with empties)
+                try {
+                    const res = await getReportHeaderForCTScan(serviceId);
+                    if (res?.exists && res?.data) {
+                        setFormData((prev) => ({
+                            ...prev,
+                            customerName: res.data.customerName || prev.customerName,
+                            address: res.data.address || prev.address,
+                            srfNumber: res.data.srfNumber || prev.srfNumber,
+                            srfDate: res.data.srfDate || prev.srfDate,
+                            reportULRNumber: res.data.reportULRNumber || prev.reportULRNumber,
+                            testReportNumber: res.data.testReportNumber || prev.testReportNumber,
+                            issueDate: res.data.issueDate || prev.issueDate,
+                            nomenclature: res.data.nomenclature || prev.nomenclature,
+                            make: res.data.make || prev.make,
+                            model: res.data.model || prev.model,
+                            slNumber: res.data.slNumber || prev.slNumber,
+                            category: res.data.category || prev.category,
+                            condition: res.data.condition || prev.condition,
+                            testingProcedureNumber: res.data.testingProcedureNumber || prev.testingProcedureNumber,
+                            testDate: res.data.testDate || prev.testDate,
+                            testDueDate: res.data.testDueDate || prev.testDueDate,
+                            location: res.data.location || prev.location || "At site",
+                            temperature: res.data.temperature || prev.temperature,
+                            humidity: res.data.humidity || prev.humidity,
+                            engineerNameRPId: res.data.engineerNameRPId || prev.engineerNameRPId,
+                            rpId: res.data.rpId || prev.rpId,
+                            authorizedSignatory:
+                                (typeof res.data.authorizedSignatory === "object"
+                                    ? res.data.authorizedSignatory?._id
+                                    : res.data.authorizedSignatory) ||
+                                prev.authorizedSignatory ||
+                                "",
+                        }));
+                        if (res.data.testDate) setMinIssueDate(res.data.testDate);
+                    }
+                } catch (err) {
+                    console.log("No report header found or failed to load:", err);
+                }
             } catch (err: any) {
                 console.error("Failed to load initial data:", err);
             } finally {
@@ -249,7 +316,7 @@ const CTScanReportContent: React.FC<CTScanReportProps> = ({ serviceId, qaTestDat
         };
 
         fetchInitialData();
-    }, [serviceId]);
+    }, [serviceId, qaTestDate, createdAt]);
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
@@ -450,7 +517,9 @@ const CTScanReportContent: React.FC<CTScanReportProps> = ({ serviceId, qaTestDat
                 'kV': 'Table1_kvp', 'mA': 'Table1_ma', 'Time (sec)': 'Table1_Time',
                 'Workload': 'Workload', 'Workload Unit': 'WorkloadUnit', 'Tol Value': 'Tolerance',
                 'Tol Operator': 'ToleranceOperator', 'Tol Time': 'ToleranceTime',
-                'Location': 'Table2_Area', 'Front': 'Table2_Front', 'Back': 'Table2_Back', 'Left': 'Table2_Left', 'Right': 'Table2_Right', 'Top': 'Table2_Top'
+                'Location': 'Table2_Area', 'Max': 'Table2_Max', 'Max Exposure': 'Table2_Max', 'Exposure': 'Table2_Max',
+                // Legacy directional columns still mapped if present in old spreadsheets
+                'Front': 'Table2_Front', 'Back': 'Table2_Back', 'Left': 'Table2_Left', 'Right': 'Table2_Right', 'Top': 'Table2_Top'
             },
             'Output Consistency': {
                 'mAs': 'TestConditions_mAs', 'Slice Thickness (mm)': 'TestConditions_SliceThickness', 'Time (s)': 'TestConditions_Time',
@@ -1173,46 +1242,6 @@ const CTScanReportContent: React.FC<CTScanReportProps> = ({ serviceId, qaTestDat
             setIsExporting(false);
         }
     };
-
-    useEffect(() => {
-        const loadReportHeader = async () => {
-            if (!serviceId) return;
-            try {
-                const res = await getReportHeaderForCTScan(serviceId);
-                if (res?.exists && res?.data) {
-                    setFormData(prev => ({
-                        ...prev,
-                        customerName: res.data.customerName || prev.customerName,
-                        address: res.data.address || prev.address,
-                        srfNumber: res.data.srfNumber || prev.srfNumber,
-                        srfDate: res.data.srfDate || prev.srfDate,
-                        reportULRNumber: res.data.reportULRNumber || prev.reportULRNumber,
-                        testReportNumber: res.data.testReportNumber || prev.testReportNumber,
-                        issueDate: res.data.issueDate || prev.issueDate,
-                        nomenclature: res.data.nomenclature || prev.nomenclature,
-                        make: res.data.make || prev.make,
-                        model: res.data.model || prev.model,
-                        slNumber: res.data.slNumber || prev.slNumber,
-                        category: res.data.category || prev.category,
-                        condition: res.data.condition || prev.condition,
-                        testingProcedureNumber: res.data.testingProcedureNumber || prev.testingProcedureNumber,
-                        testDate: res.data.testDate || prev.testDate,
-                        testDueDate: res.data.testDueDate || prev.testDueDate,
-                        location: res.data.location || prev.location || "At site",
-                        temperature: res.data.temperature || prev.temperature,
-                        humidity: res.data.humidity || prev.humidity,
-                        engineerNameRPId: res.data.engineerNameRPId || prev.engineerNameRPId,
-                        rpId: res.data.rpId || prev.rpId,
-                        authorizedSignatory: (typeof res.data.authorizedSignatory === "object" ? res.data.authorizedSignatory?._id : res.data.authorizedSignatory) || prev.authorizedSignatory || "",
-                    }));
-                    if (res.data.testDate) setMinIssueDate(res.data.testDate);
-                }
-            } catch (err) {
-                console.log("No report header found or failed to load:", err);
-            }
-        };
-        loadReportHeader();
-    }, [serviceId]);
 
     // Handle tube type selection - show gantry tilt modal after selection
     const handleTubeTypeSelection = async (type: 'single' | 'double') => {

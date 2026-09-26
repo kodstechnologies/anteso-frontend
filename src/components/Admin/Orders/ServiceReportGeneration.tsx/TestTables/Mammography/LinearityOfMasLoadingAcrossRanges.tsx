@@ -76,7 +76,7 @@ const LinearityOfMasLoadingAcrossRanges: React.FC<Props> = ({
   ]);
 
   const [tolerance, setTolerance] = useState<string>('0.1');
-  const [toleranceOperator, setToleranceOperator] = useState<string>('<=');
+  const [toleranceOperator, setToleranceOperator] = useState<string>('<');
 
   const addMeasColumn = () => {
     setMeasHeaders(p => [...p, `Meas ${p.length + 1}`]);
@@ -176,7 +176,7 @@ const LinearityOfMasLoadingAcrossRanges: React.FC<Props> = ({
             );
           }
           setTolerance(String(data.tolerance ?? '0.1'));
-          setToleranceOperator(data.toleranceOperator || '<=');
+          setToleranceOperator(data.toleranceOperator || '<');
           setHasSaved(true);
           setIsEditing(false);
         } else {

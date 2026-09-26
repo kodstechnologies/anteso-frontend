@@ -323,7 +323,7 @@ export const generateRadiographySummaryRows = (testData: any, hasTimer: boolean 
       row.kv || row.cv || (row.outputs && row.outputs.length > 0) || row.remark
     );
     if (validRows.length > 0) {
-      const toleranceOperator = testData.outputConsistency.tolerance?.operator || "<=";
+      const toleranceOperator = testData.outputConsistency.tolerance?.operator || "<";
       const toleranceValue = testData.outputConsistency.tolerance?.value || "0.05";
       const testRows = validRows.map((row: any) => {
         const outputs: number[] = (row.outputs ?? []).map(getNumeric).filter((n: number) => !isNaN(n) && n > 0);
@@ -347,9 +347,10 @@ export const generateRadiographySummaryRows = (testData: any, hasTimer: boolean 
           else if (toleranceOperator === ">=") isPass = cv >= tol;
           else if (toleranceOperator === ">") isPass = cv > tol;
         }
+        const masValue = row.mas || row.mAs || row.ma;
         return {
-          specified: (row.kv || row.kvp) && (row.ma || row.mas || row.mAs)
-            ? `at ${row.kv || row.kvp} kV ${row.ma || row.mas || row.mAs} mA`
+          specified: (row.kv || row.kvp) && masValue
+            ? `at ${row.kv || row.kvp} kV ${masValue} mAs`
             : ((row.kv || row.kvp) ? `${row.kv || row.kvp} kV` : "Varies"),
           measured: isNaN(parseFloat(formattedCv)) ? "-" : "CoV = " + formattedCv,
           tolerance: `${toleranceOperator} ${toleranceValue}`,

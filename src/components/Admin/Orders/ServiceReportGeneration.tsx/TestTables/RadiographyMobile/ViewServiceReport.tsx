@@ -554,7 +554,18 @@ const ViewServiceReportRadiographyMobile: React.FC<ViewServiceReportRadiographyM
   }
 
   const toolsArray = report.toolsUsed || [];
-  const notesArray = report.notes && report.notes.length > 0 ? report.notes : defaultNotes;
+  const toolsCellStyle = (extra?: React.CSSProperties): React.CSSProperties =>
+    cellStyle({
+      border: "0.1px solid #666",
+      fontSize: "9px",
+      lineHeight: "1.2",
+      whiteSpace: "normal",
+      wordBreak: "break-word",
+      overflowWrap: "anywhere",
+      overflow: "hidden",
+      padding: "3px 4px",
+      ...extra,
+    });
 
   return (
     <>
@@ -661,25 +672,21 @@ const ViewServiceReportRadiographyMobile: React.FC<ViewServiceReportRadiographyM
             <h2 className="font-bold mb-4" style={{ fontSize: "12px" }}>
               4. Standards / Tools Used
             </h2>
-            <table style={{ ...tableStyle, tableLayout: "fixed" }} className="compact-table">
+            <table style={{ ...tableStyle, tableLayout: "fixed", width: "100%" }} className="compact-table">
+              <colgroup>
+                <col style={{ width: "5%" }} />
+                <col style={{ width: "22%" }} />
+                <col style={{ width: "12%" }} />
+                <col style={{ width: "12%" }} />
+                <col style={{ width: "14%" }} />
+                <col style={{ width: "20%" }} />
+                <col style={{ width: "15%" }} />
+              </colgroup>
               <thead>
                 <tr>
                   {["Sl No.", "Nomenclature", "Make", "Model", "Sr. No.", "Certificate No.", "Valid Till"].map(
-                    (h, i) => (
-                      <th
-                        key={h}
-                        style={cellStyle({
-                          fontWeight: 700,
-                          border: "0.1px solid #666",
-                          fontSize: "9px",
-                          lineHeight: "1.2",
-                          whiteSpace: "normal",
-                          wordBreak: "break-word",
-                          overflowWrap: "anywhere",
-                          padding: "3px 4px",
-                          width: ["6%", "18%", "12%", "12%", "10%", "10%", "16%", "16%"][i],
-                        })}
-                      >
+                    (h) => (
+                      <th key={h} style={toolsCellStyle({ fontWeight: 700 })}>
                         {h}
                       </th>
                     )
@@ -690,19 +697,18 @@ const ViewServiceReportRadiographyMobile: React.FC<ViewServiceReportRadiographyM
                 {toolsArray.length > 0 ? (
                   toolsArray.map((tool, i) => (
                     <tr key={i}>
-                      <td style={cellStyle({ border: "0.1px solid #666" })}>{i + 1}</td>
-                      <td style={cellStyle({ border: "0.1px solid #666" })}>{tool.nomenclature}</td>
-                      <td style={cellStyle({ border: "0.1px solid #666" })}>{tool.make || "-"}</td>
-                      <td style={cellStyle({ border: "0.1px solid #666" })}>{tool.model || "-"}</td>
-                      <td style={cellStyle({ border: "0.1px solid #666" })}>{tool.SrNo}</td>
-                    
-                      <td style={cellStyle({ border: "0.1px solid #666" })}>{tool.calibrationCertificateNo}</td>
-                      <td style={cellStyle({ border: "0.1px solid #666" })}>{formatDate(tool.calibrationValidTill)}</td>
+                      <td style={toolsCellStyle()}>{i + 1}</td>
+                      <td style={toolsCellStyle()}>{tool.nomenclature}</td>
+                      <td style={toolsCellStyle()}>{tool.make || "-"}</td>
+                      <td style={toolsCellStyle()}>{tool.model || "-"}</td>
+                      <td style={toolsCellStyle()}>{tool.SrNo}</td>
+                      <td style={toolsCellStyle()}>{tool.calibrationCertificateNo}</td>
+                      <td style={toolsCellStyle()}>{formatDate(tool.calibrationValidTill)}</td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={8} style={cellStyle({ border: "0.1px solid #666" })}>
+                    <td colSpan={7} style={toolsCellStyle()}>
                       No tools recorded
                     </td>
                   </tr>
@@ -711,20 +717,9 @@ const ViewServiceReportRadiographyMobile: React.FC<ViewServiceReportRadiographyM
             </table>
           </section>
 
-          {/* Notes */}
-          <section className="mb-3 text-[10px]">
-            <SectionTitle title="5. Notes" />
-            <div className="space-y-[2px]">
-              {notesArray.map((n) => (
-                <div key={n.slNo} className="flex">
-                  <div className="w-10 text-right pr-1">{n.slNo}</div>
-                  <div className="w-2">:</div>
-                  <div className="flex-1 break-words">{n.text}</div>
-                </div>
-              ))}
-            </div>
-          </section>
-          <ReportPdfPageNoteQR report={report!} />
+          <div style={{ marginTop: "auto" }}>
+            <ReportPdfPageNoteQR report={report!} />
+          </div>
           </div>
         </ReportPage>
 

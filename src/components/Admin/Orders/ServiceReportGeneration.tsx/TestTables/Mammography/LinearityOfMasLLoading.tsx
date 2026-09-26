@@ -52,7 +52,7 @@ const LinearityOfMasLLoading: React.FC<{
   ]);
 
   const [tolerance, setTolerance] = useState<string>('0.1');
-  const [toleranceOperator, setToleranceOperator] = useState<string>('<=');
+  const [toleranceOperator, setToleranceOperator] = useState<string>('<');
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -146,7 +146,7 @@ const LinearityOfMasLLoading: React.FC<{
             }))
           );
           setTolerance(data.tolerance || '0.1');
-          setToleranceOperator(data.toleranceOperator || '<=');
+          setToleranceOperator(data.toleranceOperator || '<');
           setHasSaved(true);
           setIsEditing(false); // View mode after loading saved data
         } else {

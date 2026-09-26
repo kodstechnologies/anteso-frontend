@@ -1502,7 +1502,7 @@ const ViewServiceReportRadiographyFixed: React.FC<ViewServiceReportProps> = ({
                 <TestSectionTitle num={detailedSeq(8)} title="Consistency of Radiation Output" />
                 {testData.outputConsistency.ffd?.value && (
                   <div style={{ marginBottom: "20px" }}>
-                    <p style={{ fontSize: "10px", fontWeight: "bold", marginBottom: "10px" }}>1. Operating Parameters</p>
+                    <p style={{ fontSize: "10px", fontWeight: "bold", marginBottom: "10px" }}>Operating Parameters</p>
                     <table style={{ ...tableStyle, width: "100%" }}>
                       <thead>
                         <tr>
@@ -1530,7 +1530,7 @@ const ViewServiceReportRadiographyFixed: React.FC<ViewServiceReportProps> = ({
                       ? testData.outputConsistency.measurementHeaders
                       : Array.from({ length: measCount }, (_, i) => `Meas ${i + 1}`);
                     const tolVal = parseFloat(testData.outputConsistency.tolerance?.value ?? "0.05") || 0.05;
-                    const tolOp = testData.outputConsistency.tolerance?.operator ?? "<=";
+                    const tolOp = testData.outputConsistency.tolerance?.operator ?? "<";
                     const getVal = (o: any): number => {
                       if (o == null) return NaN;
                       if (typeof o === "number") return o;
@@ -1540,7 +1540,7 @@ const ViewServiceReportRadiographyFixed: React.FC<ViewServiceReportProps> = ({
                     };
                     return (
                       <div style={{ marginBottom: "4px" }}>
-                        <p style={{ fontSize: "10px", fontWeight: "bold", marginBottom: "10px" }}>2. Output Measurement</p>
+                        <p style={{ fontSize: "10px", fontWeight: "bold", marginBottom: "10px" }}>Output Measurement</p>
                         <table style={{ ...tableStyle, fontSize: "10px", tableLayout: "auto" }}>
                           <thead>
                             <tr>
@@ -1585,14 +1585,11 @@ const ViewServiceReportRadiographyFixed: React.FC<ViewServiceReportProps> = ({
                                 const cov = Math.sqrt(variance) / avg;
                                 if (isFinite(cov)) {
                                   covDisplay = cov.toFixed(3);
-                                  remark =
-                                    tolOp === "<=" || tolOp === "<"
-                                      ? cov <= tolVal
-                                        ? "Pass"
-                                        : "Fail"
-                                      : cov >= tolVal
-                                        ? "Pass"
-                                        : "Fail";
+                                  if (tolOp === "<") remark = cov < tolVal ? "Pass" : "Fail";
+                                  else if (tolOp === "<=") remark = cov <= tolVal ? "Pass" : "Fail";
+                                  else if (tolOp === ">") remark = cov > tolVal ? "Pass" : "Fail";
+                                  else if (tolOp === ">=") remark = cov >= tolVal ? "Pass" : "Fail";
+                                  else remark = cov < tolVal ? "Pass" : "Fail";
                                 }
                               } else if (row.cv) {
                                 covDisplay = row.cv;
@@ -1624,7 +1621,7 @@ const ViewServiceReportRadiographyFixed: React.FC<ViewServiceReportProps> = ({
                         {testData.outputConsistency.tolerance && (
                           <p style={{ fontSize: "11px", marginTop: "2px" }}>
                             <strong>Acceptance Criteria:</strong> CoV{" "}
-                            {testData.outputConsistency.tolerance.operator || "<="}{" "}
+                            {testData.outputConsistency.tolerance.operator || "<"}{" "}
                             {testData.outputConsistency.tolerance.value || "0.05"}
                           </p>
                         )}
@@ -1640,7 +1637,7 @@ const ViewServiceReportRadiographyFixed: React.FC<ViewServiceReportProps> = ({
                 <div className="mb-4 test-section">
                   <TestSectionTitle num={detailedSeq(9)} title="Tube Housing Leakage" />
                   <div style={{ marginBottom: "20px" }}>
-                    <p style={{ fontSize: "10px", fontWeight: "bold", marginBottom: "10px" }}>1. Operating Parameters</p>
+                    <p style={{ fontSize: "10px", fontWeight: "bold", marginBottom: "10px" }}>Operating Parameters</p>
                     <table style={{ ...tableStyle, width: "100%" }}>
                       <thead>
                         <tr>
@@ -1679,7 +1676,7 @@ const ViewServiceReportRadiographyFixed: React.FC<ViewServiceReportProps> = ({
 
                   {testData.radiationLeakageLevel.leakageMeasurements?.length > 0 && (
                     <div style={{ marginTop: "15px" }}>
-                      <p style={{ fontSize: "10px", fontWeight: "bold", marginBottom: "10px" }}>2. Radiation Leakage Measurements</p>
+                      <p style={{ fontSize: "10px", fontWeight: "bold", marginBottom: "10px" }}>Radiation Leakage Measurements</p>
                       <table style={{ ...tableStyle, tableLayout: "fixed", width: "100%", fontSize: "9px", borderCollapse: "collapse" }}>
                         <colgroup>
                           <col style={{ width: "15%" }} />
@@ -1849,6 +1846,144 @@ const ViewServiceReportRadiographyFixed: React.FC<ViewServiceReportProps> = ({
                           })}
                         </tbody>
                       </table>
+
+                      {(() => {
+                        const leak = testData.radiationLeakageLevel;
+                        const maValue = parseFloat(leak.ma || leak.settings?.ma || "0");
+                        const workloadValue = parseFloat(leak.workload || "0");
+                        const tolVal = parseFloat(leak.toleranceValue || "1") || 1;
+                        const tolOpRaw = String(leak.toleranceOperator || "less than").trim().toLowerCase();
+                        const tolSymbol =
+                          tolOpRaw === ">" || tolOpRaw === "greater than" || tolOpRaw === "gt"
+                            ? ">"
+                            : tolOpRaw === "=" || tolOpRaw === "==" || tolOpRaw === "equals" || tolOpRaw === "equal to"
+                              ? "="
+                              : "<";
+                        const getSummary = (locName: string) => {
+                          let row: any;
+                          if (locName === "Tube Housing") {
+                            row = leak.leakageMeasurements?.find((m: any) => {
+                              const loc = String(m.location || "").trim().toLowerCase();
+                              return (
+                                loc === "tube housing" ||
+                                loc === "tube" ||
+                                (loc.includes("tube") && !loc.includes("collimator"))
+                              );
+                            });
+                          } else if (locName === "Collimator") {
+                            row = leak.leakageMeasurements?.find((m: any) => {
+                              const loc = String(m.location || "").trim().toLowerCase();
+                              return loc === "collimator" || loc.includes("collimator");
+                            });
+                          } else {
+                            row = leak.leakageMeasurements?.find((m: any) => m.location === locName);
+                          }
+                          if (!row) return null;
+                          const vals = [row.left, row.right, row.front, row.back, row.top]
+                            .map((v: any) => parseFloat(v) || 0)
+                            .filter((v: number) => v > 0);
+                          const rowMax = vals.length > 0 ? Math.max(...vals) : 0;
+                          if (rowMax <= 0 || maValue <= 0 || workloadValue <= 0) return null;
+                          const resMR = (workloadValue * rowMax) / (60 * maValue);
+                          return { rowMax, resMR, resMGy: resMR / 114 };
+                        };
+                        const tubeSummary = getSummary("Tube Housing");
+                        const collimatorSummary = getSummary("Collimator");
+                        return (
+                          <div style={{ marginTop: "10px" }}>
+                            <div
+                              style={{
+                                border: "1px solid #888",
+                                padding: "4px 8px",
+                                marginBottom: "6px",
+                                background: "#fafafa",
+                              }}
+                            >
+                              <p style={{ fontSize: "10px", fontWeight: "bold", marginBottom: "2px" }}>
+                                Calculation Formula:
+                              </p>
+                              <p
+                                style={{
+                                  fontSize: "10px",
+                                  textAlign: "center",
+                                  fontFamily: "monospace",
+                                  border: "1px dashed #999",
+                                  padding: "2px",
+                                }}
+                              >
+                                Maximum Leakage (mR in 1 hr) = (Workload × Max Exposure) / (60 × mA)
+                              </p>
+                              <p style={{ fontSize: "9px", marginTop: "2px", color: "#555", fontStyle: "italic" }}>
+                                Where: Workload = {workloadValue} mA in one hour | mA = {maValue} | 1 mGy = 114 mR
+                              </p>
+                            </div>
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                              {tubeSummary && (
+                                <div
+                                  style={{
+                                    flex: 1,
+                                    border: "0.1px solid #666",
+                                    padding: "4px",
+                                    fontSize: "10px",
+                                    minWidth: "140px",
+                                  }}
+                                >
+                                  <p style={{ fontWeight: "bold", marginBottom: "2px" }}>Tube Housing Summary:</p>
+                                  <p>
+                                    Max Measured: <strong>{tubeSummary.rowMax} mR/hr</strong>
+                                  </p>
+                                  <p>
+                                    Result: ({workloadValue} × {tubeSummary.rowMax}) / (60 × {maValue}) ={" "}
+                                    <strong>{tubeSummary.resMR.toFixed(3)} mR</strong>
+                                  </p>
+                                  <p>
+                                    In mGy: {tubeSummary.resMR.toFixed(3)} / 114 ={" "}
+                                    <strong>{tubeSummary.resMGy.toFixed(4)} mGy</strong>
+                                  </p>
+                                </div>
+                              )}
+                              {collimatorSummary && (
+                                <div
+                                  style={{
+                                    flex: 1,
+                                    border: "0.1px solid #666",
+                                    padding: "4px",
+                                    fontSize: "10px",
+                                    minWidth: "140px",
+                                  }}
+                                >
+                                  <p style={{ fontWeight: "bold", marginBottom: "2px" }}>Collimator Summary:</p>
+                                  <p>
+                                    Max Measured: <strong>{collimatorSummary.rowMax} mR/hr</strong>
+                                  </p>
+                                  <p>
+                                    Result: ({workloadValue} × {collimatorSummary.rowMax}) / (60 × {maValue}) ={" "}
+                                    <strong>{collimatorSummary.resMR.toFixed(3)} mR</strong>
+                                  </p>
+                                  <p>
+                                    In mGy: {collimatorSummary.resMR.toFixed(3)} / 114 ={" "}
+                                    <strong>{collimatorSummary.resMGy.toFixed(4)} mGy</strong>
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                            <p
+                              style={{
+                                fontSize: "10px",
+                                marginTop: "6px",
+                                border: "0.1px solid #666",
+                                padding: "2px 6px",
+                              }}
+                            >
+                              <strong>Tolerance:</strong> Maximum Leakage Radiation Level at 1 meter from the Focus
+                              should be {tolSymbol}{" "}
+                              <strong>
+                                {tolVal} mGy ({(tolVal * 114).toFixed(0)} mR) in one hour.
+                              </strong>
+                            </p>
+                          </div>
+                        );
+                      })()}
                     </div>
                   )}
                 </div>

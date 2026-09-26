@@ -103,7 +103,7 @@ const ReproducibilityOfOutput: React.FC<{
 
   // ---- Tolerance ------------------------------------------------------
   const [tolerance, setTolerance] = useState<string>('0.05');
-  const [toleranceOperator, setToleranceOperator] = useState<string>('<=');
+  const [toleranceOperator, setToleranceOperator] = useState<string>('<');
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -238,7 +238,7 @@ const ReproducibilityOfOutput: React.FC<{
       }]);
       setOutputHeaders(['Meas 1', 'Meas 2', 'Meas 3', 'Meas 4', 'Meas 5']);
       setTolerance('0.05');
-      setToleranceOperator('<=');
+      setToleranceOperator('<');
       setHasSaved(false);
       setIsEditing(true);
     }
@@ -287,7 +287,7 @@ const ReproducibilityOfOutput: React.FC<{
           }
 
           if (data.tolerance) setTolerance(String(data.tolerance));
-          setToleranceOperator(data.toleranceOperator || '<=');
+          setToleranceOperator(data.toleranceOperator || '<');
 
           setHasSaved(true);
           setIsEditing(false);

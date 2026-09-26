@@ -1547,7 +1547,7 @@ const RadiographyFixedContent: React.FC<RadiographyFixedProps> = ({ serviceId, q
           outputRows: rows.filter(Boolean),
           tolerance: {
             value: tol || '0.05',
-            operator: (normalizeCsvComparisonOperator(tolOp) || tolOp || '<=') as any,
+            operator: (normalizeCsvComparisonOperator(tolOp) || tolOp || '<') as any,
           },
           ...(measHeaders.length > 0 ? { measurementHeaders: measHeaders } : {}),
         };

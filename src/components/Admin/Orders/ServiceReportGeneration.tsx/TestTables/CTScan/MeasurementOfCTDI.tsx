@@ -72,7 +72,7 @@ const MeasurementOfCTDI: React.FC<Props> = ({ serviceId, testId: propTestId, tub
 
     const [tolerance, setTolerance] = useState<Tolerance>({
         sign: 'both',
-        value: '',
+        value: '20',
     });
 
     const [isSaving, setIsSaving] = useState(false);
@@ -366,7 +366,7 @@ const MeasurementOfCTDI: React.FC<Props> = ({ serviceId, testId: propTestId, tub
                     if (rec.tolerance) {
                         setTolerance({
                             sign: rec.tolerance.sign || 'both',
-                            value: rec.tolerance.value || '',
+                            value: rec.tolerance.value || '20',
                         });
                     }
 
@@ -681,19 +681,22 @@ const MeasurementOfCTDI: React.FC<Props> = ({ serviceId, testId: propTestId, tub
                                 disabled={isViewMode}
                                 className={`flex-1 px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'
                                     }`}
-                                placeholder="e.g. 5.0"
+                                placeholder="20"
                             />
-                            <span className="self-center text-sm text-gray-600">mGy/100mAs</span>
+                            <span className="self-center text-sm text-gray-600">%</span>
                         </div>
                     </div>
                 </div>
 
-                <div className="mt-4">
-                    <p className="text-sm text-gray-600">
-                        Current: <strong>
+                <div className="mt-4 space-y-1">
+                    <p className="text-sm text-gray-700">
+                        <strong>
                             {tolerance.sign === 'both' ? '±' : tolerance.sign === 'plus' ? '+' : '-'}
-                            {tolerance.value || '0'}
-                        </strong> mGy/100mAs
+                            {tolerance.value || '20'}% of the quoted value (Expected)
+                        </strong>
+                    </p>
+                    <p className="text-sm text-gray-700">
+                        ±40% of the quoted value (Maximum)
                     </p>
                 </div>
             </div>

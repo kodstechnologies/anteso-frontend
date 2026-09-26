@@ -58,7 +58,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
   ]);
 
   const [tolerance, setTolerance] = useState<Tolerance>({
-    operator: '<=',
+    operator: '<',
     value: '0.05',
   });
 
@@ -79,7 +79,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
     if (!initialData) return;
     if (initialData.ffd != null) setFFD({ value: String(initialData.ffd?.value ?? initialData.ffd) });
     const tol = initialData.tolerance;
-    if (tol) setTolerance({ operator: (tol.operator ?? '<=') as any, value: String(tol.value ?? '0.05') });
+    if (tol) setTolerance({ operator: (tol.operator ?? '<') as any, value: String(tol.value ?? '0.05') });
     if (initialData.outputRows?.length > 0) {
       // Find max outputs count and update measurementCount
       const maxOutputs = Math.max(...initialData.outputRows.map((r: any) => (r.outputs ?? []).length));
@@ -135,10 +135,23 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
       const covDecimal = avg > 0 ? (stdDev / avg) : 0; // CoV as decimal
 
       // Compare CoV (decimal) with tolerance (decimal, e.g. 0.05)
-      const passes =
-        tolerance.operator === '<=' || tolerance.operator === '<'
-          ? covDecimal <= tolValueDecimal
-          : covDecimal >= tolValueDecimal;
+      let passes = false;
+      switch (tolerance.operator) {
+        case '<':
+          passes = covDecimal < tolValueDecimal;
+          break;
+        case '<=':
+          passes = covDecimal <= tolValueDecimal;
+          break;
+        case '>':
+          passes = covDecimal > tolValueDecimal;
+          break;
+        case '>=':
+          passes = covDecimal >= tolValueDecimal;
+          break;
+        default:
+          passes = covDecimal < tolValueDecimal;
+      }
 
       const remark: 'Pass' | 'Fail' = passes ? 'Pass' : 'Fail';
 
@@ -330,7 +343,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
           }
           if (testData.tolerance) {
             setTolerance({
-              operator: testData.tolerance.operator || '<=',
+              operator: testData.tolerance.operator || '<',
               value: testData.tolerance.value || '0.05',
             });
           }

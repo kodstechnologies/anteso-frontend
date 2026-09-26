@@ -66,7 +66,7 @@ const OutputConsistency: React.FC<Props> = ({ serviceId, testId: propTestId, tub
     operator: '<=' | '<' | '>=' | '>';
     value: string;
   }>({
-    operator: '<=',
+    operator: '<',
     value: '0.05',
   });
 

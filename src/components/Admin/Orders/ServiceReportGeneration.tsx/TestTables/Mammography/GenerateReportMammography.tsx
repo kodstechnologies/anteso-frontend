@@ -161,7 +161,7 @@ const isToolUnexpired = (validTillRaw: string): boolean => {
     return validTillDate >= todayStart;
 };
 
-const GenerateReportMammographyContent: React.FC<{ serviceId: string; csvFileUrl?: string | null; csvFileUrls?: string[]; qaTestDate?: string | null }> = ({ serviceId, csvFileUrl, csvFileUrls, qaTestDate }) => {
+const GenerateReportMammographyContent: React.FC<{ serviceId: string; csvFileUrl?: string | null; csvFileUrls?: string[]; qaTestDate?: string | null; ulrNumber?: string | null }> = ({ serviceId, csvFileUrl, csvFileUrls, qaTestDate, ulrNumber }) => {
     const exportRegistry = useTestExportRegistry();
     const firstNonEmptyString = (...values: any[]): string => {
         for (const value of values) {
@@ -1656,6 +1656,7 @@ const GenerateReportMammographyContent: React.FC<{ serviceId: string; csvFileUrl
                 const data = detailsRes.data;
                 const firstTest = Array.isArray(data.qaTests) && data.qaTests.length > 0 ? data.qaTests[0] : null;
                 let cachedReportNumber = "";
+                let cachedUlrNumber = "";
                 try {
                     const cached = localStorage.getItem(`reportNumbers_${serviceId}`);
                     if (cached) {
@@ -1666,9 +1667,15 @@ const GenerateReportMammographyContent: React.FC<{ serviceId: string; csvFileUrl
                             parsed?.reportNumber,
                             parsed?.testReportNo
                         );
+                        cachedUlrNumber = firstNonEmptyString(
+                            parsed?.reportULRNumber,
+                            parsed?.reportURLNumber,
+                            parsed?.ulrNumber
+                        );
                     }
                 } catch {
                     cachedReportNumber = "";
+                    cachedUlrNumber = "";
                 }
 
                 const resolvedTestReportNumber = firstNonEmptyString(
@@ -1677,6 +1684,14 @@ const GenerateReportMammographyContent: React.FC<{ serviceId: string; csvFileUrl
                     (firstTest as any)?.reportNumber,
                     (firstTest as any)?.testReportNo,
                     cachedReportNumber
+                );
+
+                const resolvedUlrNumber = firstNonEmptyString(
+                    (firstTest as any)?.reportULRNumber,
+                    (firstTest as any)?.reportURLNumber,
+                    (firstTest as any)?.ulrNumber,
+                    ulrNumber,
+                    cachedUlrNumber
                 );
 
                 setDetails(data);
@@ -1698,7 +1713,7 @@ const GenerateReportMammographyContent: React.FC<{ serviceId: string; csvFileUrl
                     address: data.hospitalAddress,
                     srfNumber: data.srfNumber,
                     srfDate: srfDateStr || testDateStr || "",
-                    reportULRNumber: firstTest?.reportULRNumber || "",
+                    reportULRNumber: resolvedUlrNumber,
                     testReportNumber: resolvedTestReportNumber,
                     issueDate: new Date().toISOString().split("T")[0],
                     nomenclature: "Mammography",
@@ -1753,7 +1768,12 @@ const GenerateReportMammographyContent: React.FC<{ serviceId: string; csvFileUrl
                             address: reportData.address || prev.address,
                             srfNumber: reportData.srfNumber || prev.srfNumber,
                             srfDate: reportData.srfDate || prev.srfDate,
-                            reportULRNumber: reportData.reportULRNumber || prev.reportULRNumber,
+                            reportULRNumber: firstNonEmptyString(
+                                reportData.reportULRNumber,
+                                (reportData as any).reportURLNumber,
+                                (reportData as any).ulrNumber,
+                                prev.reportULRNumber
+                            ),
                             testReportNumber: firstNonEmptyString(
                                 reportData.testReportNumber,
                                 (reportData as any).testReportNo,
@@ -1805,7 +1825,7 @@ const GenerateReportMammographyContent: React.FC<{ serviceId: string; csvFileUrl
         };
 
         fetchInitialData();
-    }, [serviceId]);
+    }, [serviceId, ulrNumber]);
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
@@ -2110,6 +2130,17 @@ const GenerateReportMammographyContent: React.FC<{ serviceId: string; csvFileUrl
                         <label className="block font-medium mb-1">SRF Date</label>
                         <input type="date" name="srfDate" value={formData.srfDate} readOnly className="w-full border rounded-md px-3 py-2 bg-gray-100" />
                     </div>
+                    <div>
+                        <label className="block font-medium mb-1">ULR Number</label>
+                        <input
+                            type="text"
+                            name="reportULRNumber"
+                            value={formData.reportULRNumber}
+                            onChange={handleInputChange}
+                            className="w-full border rounded-md px-3 py-2 bg-white"
+                            placeholder="Enter ULR number"
+                        />
+                    </div>
                     <div className="md:col-span-2">
                         <label className="block font-medium mb-1">2.2 Test Report Number</label>
                         <input
@@ -2302,7 +2333,7 @@ const GenerateReportMammographyContent: React.FC<{ serviceId: string; csvFileUrl
     );
 };
 
-const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: string | null; csvFileUrls?: string[]; qaTestDate?: string | null }> = (props) => (
+const GenerateReportMammography: React.FC<{ serviceId: string; csvFileUrl?: string | null; csvFileUrls?: string[]; qaTestDate?: string | null; ulrNumber?: string | null }> = (props) => (
     <TestExportRegistryProvider>
         <GenerateReportMammographyContent {...props} />
     </TestExportRegistryProvider>

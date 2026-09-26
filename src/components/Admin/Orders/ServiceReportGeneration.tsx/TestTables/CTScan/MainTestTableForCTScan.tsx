@@ -511,7 +511,7 @@ const MainTestTableForCTScan: React.FC<MainTestTableProps> = ({ testData }) => {
     const kvp = testData.ctdi.table1?.[0]?.kvp || "-";
     const tolValue = tolerance?.value ? parseFloat(tolerance.value) : 20;
     const tolSign = tolerance?.sign === 'plus' ? '+' : tolerance?.sign === 'minus' ? '-' : '+/-';
-    const tolStr = `${tolSign}${tolValue} % of Stated value`;
+    const tolStr = `${tolSign}${tolValue}% of the quoted value (Expected) || ±40% of the quoted value (Maximum)`;
 
     const calculateCtdiPass = (measured: any, specified: any) => {
       const m = parseFloat(measured);
@@ -640,25 +640,38 @@ const MainTestTableForCTScan: React.FC<MainTestTableProps> = ({ testData }) => {
 
   // 7. Radiation Leakage - Separate rows for each value
   if (testData.leakage?.leakageMeasurements && Array.isArray(testData.leakage.leakageMeasurements)) {
-    const validRows = testData.leakage.leakageMeasurements.filter((item: any) => item.location || item.front || item.back || item.left || item.right || item.top);
+    const validRows = testData.leakage.leakageMeasurements.filter(
+      (item: any) => item.location || item.max || item.front || item.back || item.left || item.right || item.top
+    );
     if (validRows.length > 0) {
       const testRows = validRows.map((item: any) => {
-        // Use saved result and remark if they exist (best accuracy)
-        if (item.result && item.remark) {
+        // Prefer saved mGy result + remark
+        if (item.mgy && item.remark) {
           return {
             specified: item.location || "Tube",
-            measured: `${item.result} mGy in one hour`,
+            measured: `${item.mgy} mGy in one hour`,
+            tolerance: `< ${testData.leakage.toleranceValue || "1"} mGy in one hour`,
+            remarks: item.remark as "Pass" | "Fail",
+          };
+        }
+        if (item.result && item.remark && String(item.result).includes("mGy")) {
+          return {
+            specified: item.location || "Tube",
+            measured: `${item.result}`,
             tolerance: `< ${testData.leakage.toleranceValue || "1"} mGy in one hour`,
             remarks: item.remark as "Pass" | "Fail",
           };
         }
 
-        // Fallback calculation matching the generator logic
-        const values = [item.front, item.back, item.left, item.right, item.top]
-          .map(v => parseFloat(v))
-          .filter(v => !isNaN(v));
-        const maxMR = values.length > 0 ? Math.max(...values) : 0;
-        
+        // Fallback calculation: max of Front/Back/Left/Right
+        const values = [item.front, item.back, item.left, item.right]
+          .map((v) => parseFloat(v))
+          .filter((v) => !isNaN(v) && v > 0);
+        const maxMR =
+          values.length > 0
+            ? Math.max(...values)
+            : parseFloat(String(item.max ?? "")) || 0;
+
         const ma = parseFloat(testData.leakage.ma || testData.leakage.measurementSettings?.[0]?.ma) || 0;
         const workload = parseFloat(testData.leakage.workload) || 0;
         let result = "-";

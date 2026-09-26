@@ -178,6 +178,18 @@ const firstNonEmptyString = (...values: any[]): string => {
   return "";
 };
 
+const pickRpId = (obj: any): string =>
+  firstNonEmptyString(
+    obj?.rpId,
+    obj?.rpid,
+    obj?.rpID,
+    obj?.RPId,
+    obj?.RPID,
+    obj?.engineerAssigned?.rpId,
+    obj?.engineerAssigned?.RPId,
+    obj?.engineerAssigned?.rpid
+  ) || "N/A";
+
 function pickUlrFromObject(obj: any): string {
   if (!obj || typeof obj !== "object") return "";
   const candidates = [
@@ -454,8 +466,18 @@ const ViewServiceReportMammography: React.FC<ViewServiceReportMammographyProps> 
             slNumber: data.slNumber || "N/A",
             condition: data.condition || "OK",
             testingProcedureNumber: data.testingProcedureNumber || "N/A",
-            engineerNameRPId: data.engineerNameRPId || "N/A",
-            rpId: firstNonEmptyString(data.rpId, (data as any).rpid, (data as any).rpID) || "N/A",
+            engineerNameRPId:
+              firstNonEmptyString(
+                data.engineerNameRPId,
+                data.engineerName,
+                detailsData?.engineerAssigned?.name,
+                detailsData?.engineerNameRPId
+              ) || "N/A",
+            rpId: (() => {
+              const fromHeader = pickRpId(data);
+              if (fromHeader !== "N/A") return fromHeader;
+              return pickRpId(detailsData);
+            })(),
             testDate: data.testDate || "",
             testDueDate: data.testDueDate || "",
             location: data.location || "N/A",
@@ -1407,7 +1429,7 @@ const ViewServiceReportMammography: React.FC<ViewServiceReportMammographyProps> 
                 ["Condition of Test Item", report.condition],
                 ["Testing Procedure No.", report.testingProcedureNumber || "-"],
                 ["Engineer’s Name", report.engineerNameRPId || "-"],
-                ...(report.rpId && report.rpId !== "N/A" && String(report.rpId).trim() !== "" ? [["RP ID", report.rpId]] : []),
+                ["RP ID", report.rpId || "-"],
                 ["No. of pages", calculatedPages || (report as any).pages || "-"],
                 ["QA Test Date", formatDate(report.testDate)],
                 ["QA Test Due Date", formatDate(report.testDueDate)],
@@ -1433,7 +1455,7 @@ const ViewServiceReportMammography: React.FC<ViewServiceReportMammographyProps> 
                   {["Sl No.", "Nomenclature", "Make", "Model", "Sr. No.", "Certificate No.", "Valid Till"].map((h, i) => (
                     <th
                       key={h}
-                      style={{ fontWeight: 700, border: "0.1px solid #666", fontSize: "9px", lineHeight: "1.2", whiteSpace: "normal", wordBreak: "break-word", overflowWrap: "anywhere", padding: "3px 4px", width: ["6%", "18%", "12%", "12%", "10%", "10%", "16%", "16%"][i] }}
+                      style={{ fontWeight: 700, border: "0.1px solid #666", fontSize: "9px", lineHeight: "1.2", whiteSpace: "normal", wordBreak: "break-word", overflowWrap: "anywhere", padding: "3px 4px", width: ["5%", "18%", "12%", "12%", "10%", "28%", "15%"][i] }}
                     >
                       {h}
                     </th>
@@ -1444,19 +1466,18 @@ const ViewServiceReportMammography: React.FC<ViewServiceReportMammographyProps> 
                 {toolsArray.length > 0 ? (
                   toolsArray.map((t, i) => (
                     <tr key={i}>
-                      <td style={{ border: "0.1px solid #666", fontSize: "11px", lineHeight: "1.3", padding: "4px 6px 4px 6px" }}>{i + 1}</td>
-                      <td style={{ border: "0.1px solid #666", fontSize: "11px", lineHeight: "1.3", padding: "4px 6px 4px 6px" }}>{t.nomenclature}</td>
-                      <td style={{ border: "0.1px solid #666", fontSize: "11px", lineHeight: "1.3", padding: "4px 6px 4px 6px" }}>{t.make || "-"}</td>
-                      <td style={{ border: "0.1px solid #666", fontSize: "11px", lineHeight: "1.3", padding: "4px 6px 4px 6px" }}>{t.model || "-"}</td>
-                      <td style={{ border: "0.1px solid #666", fontSize: "11px", lineHeight: "1.3", padding: "4px 6px 4px 6px" }}>{t.SrNo}</td>
-                 
-                      <td style={{ border: "0.1px solid #666", fontSize: "11px", lineHeight: "1.3", padding: "4px 6px 4px 6px" }}>{t.calibrationCertificateNo}</td>
-                      <td style={{ border: "0.1px solid #666", fontSize: "11px", lineHeight: "1.3", padding: "4px 6px 4px 6px" }}>{formatDate(t.calibrationValidTill)}</td>
+                      <td style={{ border: "0.1px solid #666", fontSize: "11px", lineHeight: "1.3", padding: "4px 6px", wordBreak: "break-word", overflowWrap: "anywhere" }}>{i + 1}</td>
+                      <td style={{ border: "0.1px solid #666", fontSize: "11px", lineHeight: "1.3", padding: "4px 6px", wordBreak: "break-word", overflowWrap: "anywhere" }}>{t.nomenclature}</td>
+                      <td style={{ border: "0.1px solid #666", fontSize: "11px", lineHeight: "1.3", padding: "4px 6px", wordBreak: "break-word", overflowWrap: "anywhere" }}>{t.make || "-"}</td>
+                      <td style={{ border: "0.1px solid #666", fontSize: "11px", lineHeight: "1.3", padding: "4px 6px", wordBreak: "break-word", overflowWrap: "anywhere" }}>{t.model || "-"}</td>
+                      <td style={{ border: "0.1px solid #666", fontSize: "11px", lineHeight: "1.3", padding: "4px 6px", wordBreak: "break-word", overflowWrap: "anywhere" }}>{t.SrNo}</td>
+                      <td style={{ border: "0.1px solid #666", fontSize: "11px", lineHeight: "1.3", padding: "4px 6px", wordBreak: "break-word", overflowWrap: "anywhere", whiteSpace: "normal" }}>{t.calibrationCertificateNo}</td>
+                      <td style={{ border: "0.1px solid #666", fontSize: "11px", lineHeight: "1.3", padding: "4px 6px", wordBreak: "break-word", overflowWrap: "anywhere" }}>{formatDate(t.calibrationValidTill)}</td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={8} style={{ border: "0.1px solid #666", fontSize: "11px", lineHeight: "1.3", padding: "4px 6px 4px 6px" }}>
+                    <td colSpan={7} style={{ border: "0.1px solid #666", fontSize: "11px", lineHeight: "1.3", padding: "4px 6px" }}>
                       No tools recorded
                     </td>
                   </tr>
