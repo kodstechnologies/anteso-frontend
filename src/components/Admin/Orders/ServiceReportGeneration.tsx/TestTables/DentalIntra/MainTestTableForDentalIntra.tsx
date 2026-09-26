@@ -136,17 +136,23 @@ const MainTestTableForDentalIntra: React.FC<MainTestTableProps> = ({ testData })
       const kvpRows = validRows.map((row: any) => {
         const appliedKvp = parseFloat(row.appliedKvp);
         const avgKvp = parseFloat(row.avgKvp);
+        const tolKvp = parseFloat(kvpToleranceValue) || 0;
         let isPass = false;
         if (row.remark === "PASS" || row.remark === "Pass") isPass = true;
         else if (row.remark === "FAIL" || row.remark === "Fail") isPass = false;
         else if (!isNaN(appliedKvp) && !isNaN(avgKvp) && appliedKvp > 0) {
-          const deviation = Math.abs(((avgKvp - appliedKvp) / appliedKvp) * 100);
-          isPass = deviation <= parseFloat(kvpToleranceValue);
+          // Absolute kV tolerance (same as generate page), not %
+          isPass =
+            kvpToleranceSign === "±"
+              ? Math.abs(avgKvp - appliedKvp) <= tolKvp
+              : kvpToleranceSign === "+"
+                ? avgKvp <= appliedKvp + tolKvp
+                : avgKvp >= appliedKvp - tolKvp;
         }
         return {
           specified: row.appliedKvp || "-",
           measured: row.avgKvp || "-",
-          tolerance: `${kvpToleranceSign}${kvpToleranceValue}%`,
+          tolerance: `${kvpToleranceSign}${kvpToleranceValue} kVp`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });

@@ -8,33 +8,23 @@ const appendSection = (rows: any[][], title: string, lines: any[][]) => {
   rows.push([]);
 };
 
-const accuracyOfOperatingPotentialSection = (): any[][] => [
-  ["Tolerance Sign", "±"],
-  ["Tolerance Value (kVp)", "5"],
-  ["Applied kVp", "mA 1", "mA 2"],
-  ["60", "60.1", "60.2"],
-  ["80", "80.1", "80.2"],
-  ["100", "100.1", "100.2"],
-  ["120", "120.1", "120.2"],
+/** Combined Accuracy of Operating Potential & Time — matches generate UI. */
+const accuracyOfOperatingPotentialAndTimeSection = (): any[][] => [
+  ["kVp Tolerance Sign", "±"],
+  ["kVp Tolerance Value", "5"],
+  ["Time Tolerance Sign", "±"],
+  ["Time Tolerance Value (%)", "10"],
+  ["Applied kVp", "Set Time", "Meas 1 kVp", "Meas 1 Time", "Meas 2 kVp", "Meas 2 Time"],
+  ["60", "0.100", "60.1", "0.101", "60.2", "0.099"],
+  ["80", "0.100", "80.1", "0.101", "80.2", "0.099"],
+  ["100", "0.100", "100.1", "0.101", "100.2", "0.099"],
+  ["120", "0.100", "120.1", "0.101", "120.2", "0.099"],
 ];
 
-// Radiography Fixed style: vertical key-value rows
 const totalFiltrationSection = (): any[][] => [
   ["Total Filtration Measured (mm Al)", "2.1"],
   ["Total Filtration Required (mm Al)", "2.0"],
   ["Total Filtration At kVp", "80"],
-];
-
-const accuracyOfIrradiationTimeSection = (): any[][] => [
-  ["FDD (cm)", "kV", "mA", "Set Time (mSec)", "mA Station 1 Time", "mA Station 2 Time"],
-  ["100", "80", "100", "100", "101", "99"],
-  ["100", "80", "100", "200", "201", "199"],
-];
-
-const linearityOfTimeSection = (): any[][] => [
-  ["FDD (cm)", "kV", "mA", "Time Station (sec)", "Measured mR 1", "Measured mR 2", "Measured mR 3"],
-  ["100", "80", "100", "0.1", "10.1", "10.2", "10.1"],
-  ["100", "80", "100", "0.2", "20.1", "20.2", "20.1"],
 ];
 
 const linearityMaLoadingSection = (): any[][] => [
@@ -148,21 +138,14 @@ const aoaToTextSafeSheet = (rows: any[][]) => {
   return ws;
 };
 
-/** Build Dental Intra TEST: table rows for With Timer or No Timer. */
-export const buildDentalIntraTemplateRows = (hasTimer: boolean): any[][] => {
+/** Single Dental Intra template matching current generate UI (no timer/no-timer split). */
+export const buildDentalIntraTemplateRows = (_hasTimer?: boolean): any[][] => {
   const rows: any[][] = [];
 
-  appendSection(rows, "ACCURACY OF OPERATING POTENTIAL", accuracyOfOperatingPotentialSection());
+  appendSection(rows, "ACCURACY OF OPERATING POTENTIAL & TIME", accuracyOfOperatingPotentialAndTimeSection());
   appendSection(rows, "TOTAL FILTRATION", totalFiltrationSection());
-
-  if (hasTimer) {
-    appendSection(rows, "ACCURACY OF IRRADIATION TIME", accuracyOfIrradiationTimeSection());
-    appendSection(rows, "LINEARITY OF TIME", linearityOfTimeSection());
-    appendSection(rows, "LINEARITY OF mA LOADING", linearityMaLoadingSection());
-  } else {
-    appendSection(rows, "LINEARITY OF mAs LOADING", linearityMasLoadingSection());
-  }
-
+  appendSection(rows, "LINEARITY OF mAs LOADING", linearityMasLoadingSection());
+  appendSection(rows, "LINEARITY OF mA LOADING", linearityMaLoadingSection());
   appendSection(rows, "CONSISTENCY OF RADIATION OUTPUT", consistencySection());
   appendSection(rows, "RADIATION LEAKAGE LEVEL", radiationLeakageSection());
   appendSection(rows, "RADIATION PROTECTION SURVEY REPORT", radiationProtectionSurveySection());
@@ -173,51 +156,44 @@ export const buildDentalIntraTemplateRows = (hasTimer: boolean): any[][] => {
 export const rowsToCsv = (rows: any[][]): string =>
   rows.map((row) => row.map((c) => String(c ?? "")).join(",")).join("\n");
 
-/** Write With Timer / No Timer CSV + Excel templates under public/templates. */
+/** Write one Dental Intra CSV + Excel template under public/templates. */
 export const writeDentalIntraTemplateFiles = (outputDir: string) => {
-  const withTimer = buildDentalIntraTemplateRows(true);
-  const noTimer = buildDentalIntraTemplateRows(false);
+  const templateRows = buildDentalIntraTemplateRows();
 
+  const csvPath = path.join(outputDir, "DentalIntra_Test_Data_Template.csv");
+  const xlsxPath = path.join(outputDir, "DentalIntra_Test_Data_Template.xlsx");
+  const aliasXlsxPath = path.join(outputDir, "DentalIntra_Template.xlsx");
+  // Legacy filenames — same single template so old links stay valid
   const withTimerCsvPath = path.join(outputDir, "DentalIntra_Test_Data_Template_WithTimer.csv");
   const noTimerCsvPath = path.join(outputDir, "DentalIntra_Test_Data_Template_NoTimer.csv");
   const withTimerXlsxPath = path.join(outputDir, "DentalIntra_Test_Data_Template_WithTimer.xlsx");
   const noTimerXlsxPath = path.join(outputDir, "DentalIntra_Test_Data_Template_NoTimer.xlsx");
-  const combinedXlsxPath = path.join(outputDir, "DentalIntra_Template.xlsx");
-  const legacyCsvPath = path.join(outputDir, "DentalIntra_Test_Data_Template.csv");
 
-  const wsWithTimer = aoaToTextSafeSheet(withTimer);
-  const wsNoTimer = aoaToTextSafeSheet(noTimer);
-  wsWithTimer["!cols"] = Array.from({ length: 14 }, () => ({ wch: 18 }));
-  wsNoTimer["!cols"] = Array.from({ length: 14 }, () => ({ wch: 18 }));
+  const ws = aoaToTextSafeSheet(templateRows);
+  ws["!cols"] = Array.from({ length: 14 }, () => ({ wch: 18 }));
 
-  const wbCombined = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wbCombined, wsWithTimer, "With Timer");
-  XLSX.utils.book_append_sheet(wbCombined, wsNoTimer, "Without Timer");
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Dental Intra");
 
-  const wbWithTimer = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wbWithTimer, aoaToTextSafeSheet(withTimer), "With Timer");
-
-  const wbNoTimer = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wbNoTimer, aoaToTextSafeSheet(noTimer), "Without Timer");
+  const csv = rowsToCsv(templateRows);
 
   const writeAll = () => {
-    fs.writeFileSync(withTimerCsvPath, rowsToCsv(withTimer), "utf8");
-    fs.writeFileSync(noTimerCsvPath, rowsToCsv(noTimer), "utf8");
-    fs.writeFileSync(legacyCsvPath, rowsToCsv(withTimer), "utf8");
-    XLSX.writeFile(wbWithTimer, withTimerXlsxPath);
-    XLSX.writeFile(wbNoTimer, noTimerXlsxPath);
-    XLSX.writeFile(wbCombined, combinedXlsxPath);
+    fs.writeFileSync(csvPath, csv, "utf8");
+    fs.writeFileSync(withTimerCsvPath, csv, "utf8");
+    fs.writeFileSync(noTimerCsvPath, csv, "utf8");
+    XLSX.writeFile(wb, xlsxPath);
+    XLSX.writeFile(wb, aliasXlsxPath);
+    XLSX.writeFile(wb, withTimerXlsxPath);
+    XLSX.writeFile(wb, noTimerXlsxPath);
   };
 
   try {
     writeAll();
   } catch (e: any) {
     if (e?.code === "EBUSY") {
-      fs.writeFileSync(withTimerCsvPath.replace(/\.csv$/i, ".csv.new"), rowsToCsv(withTimer), "utf8");
-      fs.writeFileSync(noTimerCsvPath.replace(/\.csv$/i, ".csv.new"), rowsToCsv(noTimer), "utf8");
-      XLSX.writeFile(wbWithTimer, withTimerXlsxPath.replace(/\.xlsx$/i, ".tmp.xlsx"));
-      XLSX.writeFile(wbNoTimer, noTimerXlsxPath.replace(/\.xlsx$/i, ".tmp.xlsx"));
-      XLSX.writeFile(wbCombined, path.join(outputDir, "DentalIntra_Template.tmp.xlsx"));
+      fs.writeFileSync(csvPath.replace(/\.csv$/i, ".csv.new"), csv, "utf8");
+      XLSX.writeFile(wb, xlsxPath.replace(/\.xlsx$/i, ".tmp.xlsx"));
+      XLSX.writeFile(wb, path.join(outputDir, "DentalIntra_Template.tmp.xlsx"));
       console.warn("Dental Intra templates locked; wrote .new / .tmp variants");
       return;
     }

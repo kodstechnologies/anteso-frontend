@@ -1,11 +1,13 @@
-TEST: ACCURACY OF OPERATING POTENTIAL
-Tolerance Sign,±
-Tolerance Value (kVp),5
-Applied kVp,mA 1,mA 2
-60,60.1,60.2
-80,80.1,80.2
-100,100.1,100.2
-120,120.1,120.2
+TEST: ACCURACY OF OPERATING POTENTIAL & TIME
+kVp Tolerance Sign,±
+kVp Tolerance Value,5
+Time Tolerance Sign,±
+Time Tolerance Value (%),10
+Applied kVp,Set Time,Meas 1 kVp,Meas 1 Time,Meas 2 kVp,Meas 2 Time
+60,0.100,60.1,0.101,60.2,0.099
+80,0.100,80.1,0.101,80.2,0.099
+100,0.100,100.1,0.101,100.2,0.099
+120,0.100,120.1,0.101,120.2,0.099
 
 TEST: TOTAL FILTRATION
 Total Filtration Measured (mm Al),2.1
@@ -18,6 +20,15 @@ FDD (cm),kV,mAs Range,Measured mR 1,Measured mR 2,Measured mR 3
 100,80,10,8.1,8.2,8.1
 100,80,20,16.1,16.2,16.1
 100,80,50,40.1,40.2,40.1
+Tolerance Operator,<=
+Tolerance Value (CoL),0.1
+
+TEST: LINEARITY OF mA LOADING
+FDD (cm),kV,Time,mA Station,Measured mR 1,Measured mR 2,Measured mR 3
+100,80,0.5,50,5.1,5.2,5.1
+100,80,0.5,100,10.1,10.2,10.1
+100,80,0.5,200,20.1,20.2,20.1
+100,80,0.5,300,30.1,30.2,30.1
 Tolerance Operator,<=
 Tolerance Value (CoL),0.1
 

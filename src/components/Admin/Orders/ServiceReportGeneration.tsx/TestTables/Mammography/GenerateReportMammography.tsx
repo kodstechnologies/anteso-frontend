@@ -1697,7 +1697,7 @@ const GenerateReportMammographyContent: React.FC<{ serviceId: string; csvFileUrl
                     customerName: data.hospitalName,
                     address: data.hospitalAddress,
                     srfNumber: data.srfNumber,
-                    srfDate: srfDateStr,
+                    srfDate: srfDateStr || testDateStr || "",
                     reportULRNumber: firstTest?.reportULRNumber || "",
                     testReportNumber: resolvedTestReportNumber,
                     issueDate: new Date().toISOString().split("T")[0],

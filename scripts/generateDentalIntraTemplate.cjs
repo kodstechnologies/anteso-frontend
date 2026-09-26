@@ -1,5 +1,5 @@
 /**
- * Generate Dental Intra With Timer / No Timer Excel templates.
+ * Generate Dental Intra single Excel/CSV template (matches generate UI).
  * Run: node scripts/generateDentalIntraTemplate.cjs
  */
 const { execSync } = require("child_process");
