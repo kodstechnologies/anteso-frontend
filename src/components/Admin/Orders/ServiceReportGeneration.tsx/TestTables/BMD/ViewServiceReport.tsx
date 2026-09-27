@@ -1754,7 +1754,7 @@ const ViewServiceReportBMD: React.FC<ViewServiceReportBMDProps> = ({
         )}
         <ReportPage isLast>
           <ReportPdfPageDeclaration
-              todayDate={todayDate}
+              qaTestDate={formatDate(report.testDate || "")}
               customerCity={placeValue}
               engineerId={report.engineerId}
               engineerName={report.engineerNameRPId}

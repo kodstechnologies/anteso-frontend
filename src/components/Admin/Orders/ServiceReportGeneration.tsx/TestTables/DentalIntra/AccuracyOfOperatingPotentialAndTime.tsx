@@ -7,6 +7,7 @@ import {
   updateAccuracyOfOperatingPotentialAndTimeForDentalIntra,
 } from "../../../../../../api";
 import { evaluateTotalFiltrationPassFail } from "../totalFiltrationPassFail";
+import { validateTotalFiltrationSave } from "../shared/validateTotalFiltrationSave";
 
 interface MAStationData {
   kvp: string;
@@ -467,6 +468,12 @@ const AccuracyOfOperatingPotentialAndTime: React.FC<Props> = ({
   const saveTest = async () => {
     if (!serviceId) {
       toast.error("Service ID is missing");
+      return;
+    }
+
+    const tfValidation = validateTotalFiltrationSave(totalFiltration);
+    if (!tfValidation.ok) {
+      toast.error(tfValidation.message);
       return;
     }
 

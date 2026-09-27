@@ -573,7 +573,7 @@ const ViewServiceReportLeadApron: React.FC = () => {
         )}
         <ReportPage isLast>
           <ReportPdfPageDeclaration
-              todayDate={todayDate}
+              qaTestDate={formatDate(report.testDate || "")}
               customerCity={placeValue}
               engineerId={report.engineerId}
               engineerName={report.engineerNameRPId}

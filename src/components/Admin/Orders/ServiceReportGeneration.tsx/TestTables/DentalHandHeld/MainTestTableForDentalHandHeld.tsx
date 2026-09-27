@@ -1,3 +1,8 @@
+import {
+  formatCoefficientOfLinearityMeasured,
+  formatConsistencyOutputSpecified,
+  getRadiationLeakageLevelParameterTitle,
+} from "../shared/mainTestTableDisplay";
 // src/components/reports/TestTables/DentalHandHeld/MainTestTableForDentalHandHeld.tsx
 import React from "react";
 import { evaluateTotalFiltrationPassFail } from "../totalFiltrationPassFail";
@@ -344,7 +349,7 @@ const MainTestTableForDentalHandHeld: React.FC<MainTestTableProps> = ({ testData
     addRowsForTest(label, [
       {
         specified: kvValue ? `at ${kvValue} kV` : "-",
-        measured: col !== "-" ? `CoL = ${col}` : "-",
+        measured: formatCoefficientOfLinearityMeasured(col),
         tolerance: `${toleranceOperator} ${tolerance}`,
         remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
       },
@@ -456,7 +461,7 @@ const MainTestTableForDentalHandHeld: React.FC<MainTestTableProps> = ({ testData
       const testRows = [
         {
           specified: kvValue ? `at ${kvValue} kV` : "-",
-          measured: col !== "-" ? `CoL = ${col}` : "-",
+          measured: formatCoefficientOfLinearityMeasured(col),
           tolerance: `${toleranceOperator} ${tolerance}`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         },
@@ -537,7 +542,7 @@ const MainTestTableForDentalHandHeld: React.FC<MainTestTableProps> = ({ testData
         );
         const specifiedDisplay =
           kvValue && maValue
-            ? `at ${kvValue} kV ${maValue} mA`
+            ? formatConsistencyOutputSpecified(kvValue, maValue)
             : kvValue
               ? `at ${kvValue} kV`
               : "Varies";
@@ -646,7 +651,7 @@ const MainTestTableForDentalHandHeld: React.FC<MainTestTableProps> = ({ testData
             remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
           };
         });
-        addRowsForTest("Tube Housing Leakage", testRows);
+        addRowsForTest(getRadiationLeakageLevelParameterTitle(validRows), testRows);
       }
     }
   }

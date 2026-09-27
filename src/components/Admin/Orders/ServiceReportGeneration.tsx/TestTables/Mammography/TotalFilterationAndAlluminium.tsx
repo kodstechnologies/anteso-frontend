@@ -3,6 +3,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRegisterTestExport } from '../shared/TestExportRegistry';
 import { Plus, Trash2, Loader2, Edit3, Save, ChevronDown } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { validateMammographyTotalFiltrationSave } from '../shared/validateTotalFiltrationSave';
 import {
   addTotalFilterationForMammography,
   getTotalFilterationByServiceIdForMammography,
@@ -277,6 +278,12 @@ const TotalFiltrationAndAluminium: React.FC<{
         recommendedValuesValidation.firstError ||
           "Fix Recommended Value fields: use valid numbers with min ≤ max."
       );
+      return;
+    }
+
+    const measurementValidation = validateMammographyTotalFiltrationSave(rows, resultHVT);
+    if (!measurementValidation.ok) {
+      toast.error(measurementValidation.message);
       return;
     }
 

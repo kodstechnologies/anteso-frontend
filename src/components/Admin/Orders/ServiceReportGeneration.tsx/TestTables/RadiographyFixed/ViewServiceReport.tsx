@@ -14,6 +14,7 @@ import {
   saveGeneratedReportPdfToDb,
   useEmbeddedReportPdfAutoSave,
 } from "../shared/embeddedViewReportPdf";
+import { formatCentralBeamObservedTilt } from "../centralBeamTiltDisplay";
 import MainTestTableForRadiographyFixed, { generateRadiographySummaryRows } from "./MainTestTableForRadiographyFixed";
 import { ReportPdfPageHeader } from "./component/Header";
 import { ReportPdfPageFooter } from "./component/Footer";
@@ -870,7 +871,7 @@ const ViewServiceReportRadiographyFixed: React.FC<ViewServiceReportProps> = ({
                             Observed tilt
                           </th>
                           <td style={cellStyle({ border: "0.1px solid #666" })}>
-                            {testData.centralBeamAlignment.observedTilt.value ? `°${testData.centralBeamAlignment.observedTilt.value}` : "-"}
+                            {formatCentralBeamObservedTilt(testData.centralBeamAlignment.observedTilt.value)}
                             {testData.centralBeamAlignment.observedTilt.remark && (
                               <span style={{ marginLeft: "8px" }}>{testData.centralBeamAlignment.observedTilt.remark}</span>
                             )}
@@ -1368,7 +1369,10 @@ const ViewServiceReportRadiographyFixed: React.FC<ViewServiceReportProps> = ({
                           <table style={{ ...tableStyle, fontSize: "10px" }}>
                             <thead>
                               <tr>
-                                <th style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px" })}>
+                                <th
+                                  rowSpan={2}
+                                  style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px", verticalAlign: "middle" })}
+                                >
                                   {stationColumnLabel}
                                 </th>
                                 <th
@@ -1377,27 +1381,44 @@ const ViewServiceReportRadiographyFixed: React.FC<ViewServiceReportProps> = ({
                                 >
                                   Output (mGy)
                                 </th>
-                                <th style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px" })}>
+                                <th
+                                  rowSpan={2}
+                                  style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px", verticalAlign: "middle" })}
+                                >
                                   Avg Output
                                 </th>
-                                <th style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px" })}>
+                                <th
+                                  rowSpan={2}
+                                  style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px", verticalAlign: "middle" })}
+                                >
                                   {xUnitLabel}
                                 </th>
-                                <th style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px" })}>
+                                <th
+                                  rowSpan={2}
+                                  style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px", verticalAlign: "middle" })}
+                                >
                                   X MAX
                                 </th>
-                                <th style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px" })}>
+                                <th
+                                  rowSpan={2}
+                                  style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px", verticalAlign: "middle" })}
+                                >
                                   X MIN
                                 </th>
-                                <th style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px" })}>
+                                <th
+                                  rowSpan={2}
+                                  style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px", verticalAlign: "middle" })}
+                                >
                                   CoL
                                 </th>
-                                <th style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px" })}>
+                                <th
+                                  rowSpan={2}
+                                  style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px", verticalAlign: "middle" })}
+                                >
                                   Remarks
                                 </th>
                               </tr>
                               <tr>
-                                <th style={cellStyle({ border: "0.1px solid #666", fontSize: "10px" })}></th>
                                 {measHeaders.map((h: string, idx: number) => (
                                   <th
                                     key={idx}
@@ -1406,12 +1427,6 @@ const ViewServiceReportRadiographyFixed: React.FC<ViewServiceReportProps> = ({
                                     {h || `Meas ${idx + 1}`}
                                   </th>
                                 ))}
-                                <th style={cellStyle({ border: "0.1px solid #666", fontSize: "10px" })}></th>
-                                <th style={cellStyle({ border: "0.1px solid #666", fontSize: "10px" })}></th>
-                                <th style={cellStyle({ border: "0.1px solid #666", fontSize: "10px" })}></th>
-                                <th style={cellStyle({ border: "0.1px solid #666", fontSize: "10px" })}></th>
-                                <th style={cellStyle({ border: "0.1px solid #666", fontSize: "10px" })}></th>
-                                <th style={cellStyle({ border: "0.1px solid #666", fontSize: "10px" })}></th>
                               </tr>
                             </thead>
                             <tbody>
@@ -1692,13 +1707,14 @@ const ViewServiceReportRadiographyFixed: React.FC<ViewServiceReportProps> = ({
                         <thead>
                           <tr style={{ height: "20px" }}>
                             <th
+                              rowSpan={2}
                               style={cellStyle({
                                 border: "0.1px solid #666",
-                                borderBottom: "none",
                                 fontWeight: 700,
                                 backgroundColor: "#f9f9f9",
                                 color: "#000",
                                 padding: "0",
+                                verticalAlign: "middle",
                               })}
                             >
                               <div className="header-cell-simulated" style={{ fontWeight: 700 }}>Location</div>
@@ -1716,51 +1732,46 @@ const ViewServiceReportRadiographyFixed: React.FC<ViewServiceReportProps> = ({
                               <div style={{ padding: "4px 2px", fontWeight: 700 }}>Exposure Level (mR/hr)</div>
                             </th>
                             <th
+                              rowSpan={2}
                               style={cellStyle({
                                 border: "0.1px solid #666",
-                                borderBottom: "none",
                                 fontWeight: 700,
                                 backgroundColor: "#f9f9f9",
                                 color: "#000",
                                 padding: "0",
+                                verticalAlign: "middle",
                               })}
                             >
                               <div className="header-cell-simulated" style={{ fontWeight: 700 }}>Result (mR in 1 hr)</div>
                             </th>
                             <th
+                              rowSpan={2}
                               style={cellStyle({
                                 border: "0.1px solid #666",
-                                borderBottom: "none",
                                 fontWeight: 700,
                                 backgroundColor: "#f9f9f9",
                                 color: "#000",
                                 padding: "0",
+                                verticalAlign: "middle",
                               })}
                             >
                               <div className="header-cell-simulated" style={{ fontWeight: 700 }}>Result (mGy in 1 hr)</div>
                             </th>
                             <th
+                              rowSpan={2}
                               style={cellStyle({
                                 border: "0.1px solid #666",
-                                borderBottom: "none",
                                 fontWeight: 700,
                                 backgroundColor: "#f9f9f9",
                                 color: "#000",
                                 padding: "0",
+                                verticalAlign: "middle",
                               })}
                             >
                               <div className="header-cell-simulated" style={{ fontWeight: 700 }}>Remarks</div>
                             </th>
                           </tr>
                           <tr style={{ height: "20px" }}>
-                            <th
-                              style={cellStyle({
-                                border: "0.1px solid #666",
-                                borderTop: "none",
-                                backgroundColor: "#f9f9f9",
-                                padding: "0",
-                              })}
-                            ></th>
                             {["Left", "Right", "Front", "Back", "Top"].map((h) => (
                               <th
                                 key={h}
@@ -1775,30 +1786,6 @@ const ViewServiceReportRadiographyFixed: React.FC<ViewServiceReportProps> = ({
                                 <div style={{ padding: "4px 2px" }}>{h}</div>
                               </th>
                             ))}
-                            <th
-                              style={cellStyle({
-                                border: "0.1px solid #666",
-                                borderTop: "none",
-                                backgroundColor: "#f9f9f9",
-                                padding: "0",
-                              })}
-                            ></th>
-                            <th
-                              style={cellStyle({
-                                border: "0.1px solid #666",
-                                borderTop: "none",
-                                backgroundColor: "#f9f9f9",
-                                padding: "0",
-                              })}
-                            ></th>
-                            <th
-                              style={cellStyle({
-                                border: "0.1px solid #666",
-                                borderTop: "none",
-                                backgroundColor: "#f9f9f9",
-                                padding: "0",
-                              })}
-                            ></th>
                           </tr>
                         </thead>
                         <tbody>
@@ -2265,7 +2252,7 @@ const ViewServiceReportRadiographyFixed: React.FC<ViewServiceReportProps> = ({
         <ReportPage isLast>
           <div className="report-pdf-last-main" style={{ width: "100%", flex: 1, display: "flex", flexDirection: "column" }}>
             <ReportPdfPageDeclaration
-              todayDate={todayDate}
+              qaTestDate={formatDate(report.testDate || "")}
               customerCity={placeValue}
               qrCode={report.qrCode}
               engineerId={report.engineerId}

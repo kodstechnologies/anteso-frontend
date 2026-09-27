@@ -1,3 +1,9 @@
+import {
+  formatCoefficientOfLinearityMeasured,
+  formatConsistencyOutputSpecified,
+  formatEffectiveFocalSpotToleranceStr,
+  getRadiationLeakageLevelParameterTitle,
+} from "../shared/mainTestTableDisplay";
 // src/components/reports/TestTables/RadiographyMobile/MainTestTableForRadiographyMobile.tsx
 import React from "react";
 import { evaluateTotalFiltrationPassFail } from "../totalFiltrationPassFail";
@@ -127,7 +133,7 @@ const MainTestTableForRadiographyMobile: React.FC<MainTestTableProps> = ({ testD
       const mediumUpper = parseFloat(toleranceCriteria.medium?.upperLimit || "1.5");
       const largeMultiplier = parseFloat(toleranceCriteria.large?.multiplier || "0.3");
 
-      const toleranceStr = `+${smallMultiplier} F FOR F < ${smallLimit} mm; +${mediumMultiplier} F FOR ${mediumLower} = F = ${mediumUpper} mm; +${largeMultiplier} F FOR F > ${mediumUpper} mm`;
+      const toleranceStr = formatEffectiveFocalSpotToleranceStr(smallMultiplier, smallLimit, mediumMultiplier, mediumLower, mediumUpper, largeMultiplier);
 
       const testRows = validRows.map((spot: any) => {
         const isPass = spot.remark === "Pass" || spot.remark === "PASS";
@@ -319,7 +325,7 @@ const MainTestTableForRadiographyMobile: React.FC<MainTestTableProps> = ({ testD
           : "Linearity of mAs Loading Stations (Coefficient of Linearity)",
         [{
           specified: linearityKv ? `at ${linearityKv} kV` : "-",
-          measured: col !== "-" ? `CoL = ${col}` : "-",
+          measured: formatCoefficientOfLinearityMeasured(col),
           tolerance: `${toleranceOperator} ${tolerance}`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         }]
@@ -375,7 +381,7 @@ const MainTestTableForRadiographyMobile: React.FC<MainTestTableProps> = ({ testD
 
         return {
           specified: (row.kv || row.kvp) && (row.ma || row.mas || row.mAs)
-            ? `at ${row.kv || row.kvp} kV ${row.ma || row.mas || row.mAs} mA`
+            ? formatConsistencyOutputSpecified(row.kv || row.kvp, row.ma || row.mas || row.mAs)
             : ((row.kv || row.kvp) ? `${row.kv || row.kvp} kV` : "Varies"),
           measured: formattedCv !== "-" ? "CoV = " + formattedCv : "-",
           tolerance: `${toleranceOperator} ${toleranceValue}`,
@@ -430,7 +436,7 @@ const MainTestTableForRadiographyMobile: React.FC<MainTestTableProps> = ({ testD
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });
-      addRowsForTest("Radiation leakage level at 1m from tube housing", testRows);
+      addRowsForTest(getRadiationLeakageLevelParameterTitle(validRows), testRows);
     }
   }
 

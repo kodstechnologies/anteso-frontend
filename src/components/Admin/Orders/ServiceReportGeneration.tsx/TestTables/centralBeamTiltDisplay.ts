@@ -1,7 +1,6 @@
-/** Format central beam observed tilt for display (degree symbol before value). */
+import { formatDegreeAfterValue } from "./shared/mainTestTableDisplay";
+
+/** Format central beam observed tilt for display (degree symbol after value). */
 export function formatCentralBeamObservedTilt(value: unknown): string {
-  if (value === undefined || value === null || value === "") return "-";
-  const s = String(value).trim();
-  if (!s || s === "-") return "-";
-  return `°${s}`;
+  return formatDegreeAfterValue(value);
 }

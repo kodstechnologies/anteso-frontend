@@ -1175,7 +1175,7 @@ const ViewServiceReportCBCT: React.FC<ViewServiceReportCBCTProps> = ({
                     <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table pdf-safe-header-table" style={{ fontSize: '11px', borderCollapse: 'collapse', borderSpacing: '0' }}>
                       <thead className="bg-gray-100">
                         <tr style={{ height: '20px' }}>
-                          <th className="border border-black text-center align-middle" style={{ borderBottom: 'none', padding: '0', fontSize: '11px', borderColor: '#000000', backgroundColor: '#f3f4f6' }}>
+                          <th rowSpan={2} className="border border-black text-center align-middle" style={{ padding: '0', fontSize: '11px', borderColor: '#000000', backgroundColor: '#f3f4f6', verticalAlign: 'middle' }}>
                             <div className="header-cell-simulated" style={{ fontWeight: 700, padding: '4px 2px' }}>
                               {isMasLinearity ? "mAs Range" : "mA Applied"}
                             </div>
@@ -1183,30 +1183,25 @@ const ViewServiceReportCBCT: React.FC<ViewServiceReportCBCTProps> = ({
                           <th colSpan={Math.max(measCount, 1)} className="border border-black text-center" style={{ padding: '0', fontSize: '11px', borderColor: '#000000', backgroundColor: '#f3f4f6' }}>
                             <div style={{ padding: '4px 2px', fontWeight: 700 }}>Output (mGy)</div>
                           </th>
-                          <th className="border border-black text-center align-middle" style={{ borderBottom: 'none', padding: '0', fontSize: '11px', borderColor: '#000000', backgroundColor: '#f3f4f6' }}>
+                          <th rowSpan={2} className="border border-black text-center align-middle" style={{ padding: '0', fontSize: '11px', borderColor: '#000000', backgroundColor: '#f3f4f6', verticalAlign: 'middle' }}>
                             <div className="header-cell-simulated" style={{ fontWeight: 700, padding: '4px 2px' }}>Avg. Output (mGy)</div>
                           </th>
-                          <th className="border border-black text-center font-bold bg-blue-50 align-middle" style={{ borderBottom: 'none', padding: '0', fontSize: '11px', borderColor: '#000000' }}>
+                          <th rowSpan={2} className="border border-black text-center font-bold bg-blue-50 align-middle" style={{ padding: '0', fontSize: '11px', borderColor: '#000000', verticalAlign: 'middle' }}>
                             <div className="header-cell-simulated" style={{ fontWeight: 700, padding: '4px 2px' }}>X ({xUnitLabel})</div>
                           </th>
-                          <th className="border border-black text-center font-bold bg-yellow-50 align-middle" style={{ borderBottom: 'none', padding: '0', fontSize: '11px', borderColor: '#000000' }}>
+                          <th rowSpan={2} className="border border-black text-center font-bold bg-yellow-50 align-middle" style={{ padding: '0', fontSize: '11px', borderColor: '#000000', verticalAlign: 'middle' }}>
                             <div className="header-cell-simulated" style={{ fontWeight: 700, padding: '4px 2px' }}>CoL</div>
                           </th>
-                          <th className="border border-black text-center font-bold bg-green-50 align-middle" style={{ borderBottom: 'none', padding: '0', fontSize: '11px', borderColor: '#000000' }}>
+                          <th rowSpan={2} className="border border-black text-center font-bold bg-green-50 align-middle" style={{ padding: '0', fontSize: '11px', borderColor: '#000000', verticalAlign: 'middle' }}>
                             <div className="header-cell-simulated" style={{ fontWeight: 700, padding: '4px 2px' }}>Remarks</div>
                           </th>
                         </tr>
                         <tr style={{ height: '20px' }}>
-                          <th className="border border-black" style={{ borderTop: 'none', padding: '0', backgroundColor: '#f3f4f6', borderColor: '#000000' }}></th>
                           {measHeaders.map((h: string, idx: number) => (
                             <th key={idx} className="border border-black text-center" style={{ padding: '0', fontSize: '11px', borderColor: '#000000', backgroundColor: '#f3f4f6' }}>
                               <div style={{ padding: '4px 2px', fontWeight: 700 }}>{h || `Meas ${idx + 1}`}</div>
                             </th>
                           ))}
-                          <th className="border border-black" style={{ borderTop: 'none', padding: '0', backgroundColor: '#f3f4f6', borderColor: '#000000' }}></th>
-                          <th className="border border-black bg-blue-50" style={{ borderTop: 'none', padding: '0', borderColor: '#000000' }}></th>
-                          <th className="border border-black bg-yellow-50" style={{ borderTop: 'none', padding: '0', borderColor: '#000000' }}></th>
-                          <th className="border border-black bg-green-50" style={{ borderTop: 'none', padding: '0', borderColor: '#000000' }}></th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1429,36 +1424,31 @@ const ViewServiceReportCBCT: React.FC<ViewServiceReportCBCTProps> = ({
                     </colgroup>
                     <thead>
                       <tr style={{ height: '20px' }}>
-                        <th className="border border-black text-center font-bold" style={{ borderBottom: 'none', backgroundColor: '#f9f9f9', color: '#000', padding: '0', fontSize: '10px' }}>
+                        <th rowSpan={2} className="border border-black text-center font-bold" style={{ backgroundColor: '#f9f9f9', color: '#000', padding: '0', fontSize: '10px', verticalAlign: 'middle' }}>
                           <div className="header-cell-simulated" style={{ fontWeight: 700 }}>Location</div>
                         </th>
                         <th colSpan={5} className="border border-black text-center font-bold" style={{ backgroundColor: '#f9f9f9', color: '#000', padding: '0', fontSize: '10px' }}>
                           <div style={{ padding: '4px 2px', fontWeight: 700 }}>Exposure Level (mGy)</div>
                         </th>
-                        <th className="border border-black text-center font-bold" style={{ borderBottom: 'none', backgroundColor: '#f9f9f9', color: '#000', padding: '0', fontSize: '10px' }}>
+                        <th rowSpan={2} className="border border-black text-center font-bold" style={{ backgroundColor: '#f9f9f9', color: '#000', padding: '0', fontSize: '10px', verticalAlign: 'middle' }}>
                           <div className="header-cell-simulated" style={{ fontWeight: 700 }}>Max</div>
                         </th>
-                        <th className="border border-black text-center font-bold" style={{ borderBottom: 'none', backgroundColor: '#f9f9f9', color: '#000', padding: '0', fontSize: '10px' }}>
+                        <th rowSpan={2} className="border border-black text-center font-bold" style={{ backgroundColor: '#f9f9f9', color: '#000', padding: '0', fontSize: '10px', verticalAlign: 'middle' }}>
                           <div className="header-cell-simulated" style={{ fontWeight: 700 }}>Result (mR in one hour)</div>
                         </th>
-                        <th className="border border-black text-center font-bold" style={{ borderBottom: 'none', backgroundColor: '#f9f9f9', color: '#000', padding: '0', fontSize: '10px' }}>
+                        <th rowSpan={2} className="border border-black text-center font-bold" style={{ backgroundColor: '#f9f9f9', color: '#000', padding: '0', fontSize: '10px', verticalAlign: 'middle' }}>
                           <div className="header-cell-simulated" style={{ fontWeight: 700 }}>Result (mGy in one hour)</div>
                         </th>
-                        <th className="border border-black text-center font-bold" style={{ borderBottom: 'none', backgroundColor: '#f9f9f9', color: '#000', padding: '0', fontSize: '10px' }}>
+                        <th rowSpan={2} className="border border-black text-center font-bold" style={{ backgroundColor: '#f9f9f9', color: '#000', padding: '0', fontSize: '10px', verticalAlign: 'middle' }}>
                           <div className="header-cell-simulated" style={{ fontWeight: 700 }}>Remarks</div>
                         </th>
                       </tr>
                       <tr style={{ height: '20px' }}>
-                        <th className="border border-black" style={{ borderTop: 'none', backgroundColor: '#f9f9f9', padding: '0' }}></th>
                         {['Left', 'Right', 'Top', 'Up', 'Down'].map((h) => (
                           <th key={h} className="border border-black text-center font-bold" style={{ backgroundColor: '#f9f9f9', color: '#000', padding: '0', fontSize: '10px' }}>
                             <div style={{ padding: '4px 2px' }}>{h}</div>
                           </th>
                         ))}
-                        <th className="border border-black" style={{ borderTop: 'none', backgroundColor: '#f9f9f9', padding: '0' }}></th>
-                        <th className="border border-black" style={{ borderTop: 'none', backgroundColor: '#f9f9f9', padding: '0' }}></th>
-                        <th className="border border-black" style={{ borderTop: 'none', backgroundColor: '#f9f9f9', padding: '0' }}></th>
-                        <th className="border border-black" style={{ borderTop: 'none', backgroundColor: '#f9f9f9', padding: '0' }}></th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1872,7 +1862,7 @@ const ViewServiceReportCBCT: React.FC<ViewServiceReportCBCTProps> = ({
         <ReportPage isLast>
           <div style={{ width: "100%", flex: 1 }}>
             <ReportPdfPageDeclaration
-              todayDate={todayDate}
+              qaTestDate={formatDate(report.testDate || "")}
               customerCity={placeValue}
               engineerId={report.engineerId}
               engineerName={report.engineerNameRPId}

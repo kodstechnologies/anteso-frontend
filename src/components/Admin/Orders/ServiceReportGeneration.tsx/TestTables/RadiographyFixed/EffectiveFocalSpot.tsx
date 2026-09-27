@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Edit3, Save, Loader2 } from 'lucide-react';
+import { Edit3, Save, Loader2, Plus, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
   addEffectiveFocalSpotForRadiographyFixed,
@@ -26,15 +26,30 @@ interface Props {
   csvDataVersion?: number;
 }
 
-const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, onTestSaved, initialData, csvDataVersion }) => {
-  const ensureTwoRows = (inputRows: FocalSpotRow[]): FocalSpotRow[] => {
-    const defaults: FocalSpotRow[] = [
-      { id: 'large', focusType: 'Large Focus', statedNominal: '2', measuredNominal: '', remark: '' },
-      { id: 'small', focusType: 'Small Focus', statedNominal: '0.6', measuredNominal: '', remark: '' },
-    ];
-    const merged = [0, 1].map((idx) => ({ ...defaults[idx], ...(inputRows[idx] || {}) }));
-    return merged;
+const DEFAULT_ROWS: FocalSpotRow[] = [
+  { id: 'large', focusType: 'Large Focus', statedNominal: '2', measuredNominal: '', remark: '' },
+  { id: 'small', focusType: 'Small Focus', statedNominal: '0.6', measuredNominal: '', remark: '' },
+];
+
+const mapSpotToRow = (spot: any, idx: number): FocalSpotRow => {
+  const statedFromLegacy =
+    spot.statedWidth != null && spot.statedHeight != null
+      ? (Number(spot.statedWidth) + Number(spot.statedHeight)) / 2
+      : spot.statedWidth ?? spot.statedHeight;
+  const measuredFromLegacy =
+    spot.measuredWidth != null && spot.measuredHeight != null
+      ? (Number(spot.measuredWidth) + Number(spot.measuredHeight)) / 2
+      : spot.measuredWidth ?? spot.measuredHeight;
+  return {
+    id: spot._id || spot.id || `row-${idx}`,
+    focusType: String(spot.focusType ?? (idx === 0 ? 'Large Focus' : 'Small Focus')),
+    statedNominal: String(spot.statedNominal ?? statedFromLegacy ?? ''),
+    measuredNominal: String(spot.measuredNominal ?? measuredFromLegacy ?? ''),
+    remark: (spot.remark as 'Pass' | 'Fail' | '') || '',
   };
+};
+
+const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, onTestSaved, initialData, csvDataVersion }) => {
   const [testId, setTestId] = useState<string | null>(propTestId || null);
   const [isSaved, setIsSaved] = useState(!!propTestId);
   const [isEditing, setIsEditing] = useState(false);
@@ -52,23 +67,7 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, on
 
   const [tolLargeMul, setTolLargeMul] = useState<string>('0.3');
 
-  // CORRECT: mutable state
-  const [rows, setRows] = useState<FocalSpotRow[]>([
-    {
-      id: 'large',
-      focusType: 'Large Focus',
-      statedNominal: '2',
-      measuredNominal: '',
-      remark: '',
-    },
-    {
-      id: 'small',
-      focusType: 'Small Focus',
-      statedNominal: '0.6',
-      measuredNominal: '',
-      remark: '',
-    },
-  ]);
+  const [rows, setRows] = useState<FocalSpotRow[]>(DEFAULT_ROWS);
 
   // Apply CSV/Excel initial data
   useEffect(() => {
@@ -84,25 +83,7 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, on
       if (tol.tolLargeMul) setTolLargeMul(String(tol.tolLargeMul));
     }
     if (initialData.focalSpots?.length > 0) {
-      setRows(
-        ensureTwoRows(initialData.focalSpots.slice(0, 2).map((s: any, i: number) => {
-          const statedFromLegacy =
-            s.statedWidth != null && s.statedHeight != null
-              ? (Number(s.statedWidth) + Number(s.statedHeight)) / 2
-              : s.statedWidth ?? s.statedHeight;
-          const measuredFromLegacy =
-            s.measuredWidth != null && s.measuredHeight != null
-              ? (Number(s.measuredWidth) + Number(s.measuredHeight)) / 2
-              : s.measuredWidth ?? s.measuredHeight;
-          return {
-            id: i === 0 ? 'large' : 'small',
-            focusType: String(s.focusType ?? (i === 0 ? 'Large Focus' : 'Small Focus')),
-            statedNominal: String(s.statedNominal ?? statedFromLegacy ?? ''),
-            measuredNominal: String(s.measuredNominal ?? measuredFromLegacy ?? ''),
-            remark: '' as const,
-          };
-        }))
-      );
+      setRows(initialData.focalSpots.map(mapSpotToRow));
     }
   }, [csvDataVersion]);
 
@@ -111,6 +92,26 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, on
     setRows(prev => prev.map(row =>
       row.id === id ? { ...row, [field]: value } : row
     ));
+    setIsSaved(false);
+  };
+
+  const addRow = () => {
+    setRows(prev => [
+      ...prev,
+      {
+        id: `row-${Date.now()}`,
+        focusType: 'Large Focus',
+        statedNominal: '',
+        measuredNominal: '',
+        remark: '',
+      },
+    ]);
+    setIsSaved(false);
+  };
+
+  const removeRow = (id: string) => {
+    setRows(prev => prev.filter(row => row.id !== id));
+    setIsSaved(false);
   };
 
   // Auto-calculate Pass/Fail
@@ -171,25 +172,7 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, on
             setTolLargeMul(String(data.toleranceCriteria.large?.multiplier || '0.3'));
           }
           if (data.focalSpots && data.focalSpots.length > 0) {
-            setRows(
-              ensureTwoRows(data.focalSpots.slice(0, 2).map((spot: any, idx: number) => {
-                const statedFromLegacy =
-                  spot.statedWidth != null && spot.statedHeight != null
-                    ? (Number(spot.statedWidth) + Number(spot.statedHeight)) / 2
-                    : spot.statedWidth ?? spot.statedHeight;
-                const measuredFromLegacy =
-                  spot.measuredWidth != null && spot.measuredHeight != null
-                    ? (Number(spot.measuredWidth) + Number(spot.measuredHeight)) / 2
-                    : spot.measuredWidth ?? spot.measuredHeight;
-                return {
-                  id: spot._id || (idx === 0 ? 'large' : 'small'),
-                  focusType: spot.focusType || (idx === 0 ? 'Large Focus' : 'Small Focus'),
-                  statedNominal: String(spot.statedNominal ?? statedFromLegacy ?? ''),
-                  measuredNominal: String(spot.measuredNominal ?? measuredFromLegacy ?? ''),
-                  remark: spot.remark || '',
-                };
-              }))
-            );
+            setRows(data.focalSpots.map(mapSpotToRow));
           }
           setIsSaved(true);
           setIsEditing(false);
@@ -205,6 +188,10 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, on
 
   const handleSave = async () => {
     if (!serviceId) return toast.error("Service ID missing");
+    if (rows.length === 0) {
+      toast.error("At least one focal spot row is required to save");
+      return;
+    }
     setIsSaving(true);
     try {
       const payload = {
@@ -262,6 +249,7 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, on
   const startEditing = () => setIsEditing(true);
   const isViewOnly = isSaved && !isEditing;
   const ButtonIcon = !isSaved || isEditing ? Save : Edit3;
+  const canSave = rows.length > 0;
 
   return (
     <div className="p-6 max-w-full mx-auto space-y-10">
@@ -336,9 +324,17 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, on
                     </div>
                   </div>
                 </th>
+                {!isViewOnly && <th className="w-12 px-2 py-4" />}
               </tr>
             </thead>
             <tbody>
+              {processedRows.length === 0 && (
+                <tr>
+                  <td colSpan={isViewOnly ? 4 : 5} className="px-6 py-8 text-center text-sm text-gray-500">
+                    No focal spot rows. Add at least one row before saving.
+                  </td>
+                </tr>
+              )}
               {processedRows.map((row) => (
                 <tr key={row.id} className="hover:bg-gray-50 border-t">
                   <td className="px-6 py-4 font-bold text-gray-800">
@@ -387,11 +383,35 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, on
                       {row.remark || '—'}
                     </span>
                   </td>
+                  {!isViewOnly && (
+                    <td className="px-2 py-4 text-center">
+                      <button
+                        type="button"
+                        onClick={() => removeRow(row.id)}
+                        className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
+                        title="Remove row"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+        {!isViewOnly && (
+          <div className="px-6 py-4 bg-gray-50 border-t">
+            <button
+              type="button"
+              onClick={addRow}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
+            >
+              <Plus className="w-4 h-4" />
+              Add Row
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Final Result */}
@@ -410,8 +430,8 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, on
       <div className="flex justify-end mt-6">
         <button
           onClick={isViewOnly ? startEditing : handleSave}
-          disabled={isSaving}
-          className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium text-white transition-all shadow-md ${isSaving ? "bg-gray-400 cursor-not-allowed" : isViewOnly ? "bg-orange-600 hover:bg-orange-700" : "bg-teal-600 hover:bg-teal-700"
+          disabled={isSaving || (!isViewOnly && !canSave)}
+          className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium text-white transition-all shadow-md ${isSaving || (!isViewOnly && !canSave) ? "bg-gray-400 cursor-not-allowed" : isViewOnly ? "bg-orange-600 hover:bg-orange-700" : "bg-teal-600 hover:bg-teal-700"
             }`}
         >
           {isSaving ? (

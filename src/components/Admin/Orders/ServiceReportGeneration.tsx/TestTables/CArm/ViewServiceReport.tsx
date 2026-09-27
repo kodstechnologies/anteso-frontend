@@ -1516,12 +1516,13 @@ const ViewServiceReportCArm: React.FC = () => {
                         <thead>
                           <tr style={{ height: "20px" }}>
                             <th
+                              rowSpan={2}
                               style={cellStyle({
                                 border: "0.1px solid #666",
-                                borderBottom: "none",
                                 fontWeight: 700,
                                 backgroundColor: "#fff",
                                 padding: "0",
+                                verticalAlign: "middle",
                               })}
                             >
                               <div className="header-cell-simulated" style={{ fontWeight: 700 }}>Location</div>
@@ -1538,48 +1539,43 @@ const ViewServiceReportCArm: React.FC = () => {
                               <div style={{ padding: "4px 2px", fontWeight: 700 }}>Exposure Level (mR/hr)</div>
                             </th>
                             <th
+                              rowSpan={2}
                               style={cellStyle({
                                 border: "0.1px solid #666",
-                                borderBottom: "none",
                                 fontWeight: 700,
                                 backgroundColor: "#fff",
                                 padding: "0",
+                                verticalAlign: "middle",
                               })}
                             >
                               <div className="header-cell-simulated" style={{ fontWeight: 700 }}>Result (mR in 1 hr)</div>
                             </th>
                             <th
+                              rowSpan={2}
                               style={cellStyle({
                                 border: "0.1px solid #666",
-                                borderBottom: "none",
                                 fontWeight: 700,
                                 backgroundColor: "#fff",
                                 padding: "0",
+                                verticalAlign: "middle",
                               })}
                             >
                               <div className="header-cell-simulated" style={{ fontWeight: 700 }}>Result (mGy in 1 hr)</div>
                             </th>
                             <th
+                              rowSpan={2}
                               style={cellStyle({
                                 border: "0.1px solid #666",
-                                borderBottom: "none",
                                 fontWeight: 700,
                                 backgroundColor: "#fff",
                                 padding: "0",
+                                verticalAlign: "middle",
                               })}
                             >
                               <div className="header-cell-simulated" style={{ fontWeight: 700 }}>Remarks</div>
                             </th>
                           </tr>
                           <tr style={{ height: "20px" }}>
-                            <th
-                              style={cellStyle({
-                                border: "0.1px solid #666",
-                                borderTop: "none",
-                                backgroundColor: "#fff",
-                                padding: "0",
-                              })}
-                            />
                             {["Left", "Right", "Front", "Back", "Top"].map((h) => (
                               <th
                                 key={h}
@@ -1593,9 +1589,6 @@ const ViewServiceReportCArm: React.FC = () => {
                                 <div style={{ padding: "4px 2px" }}>{h}</div>
                               </th>
                             ))}
-                            <th style={cellStyle({ border: "0.1px solid #666", borderTop: "none", backgroundColor: "#fff", padding: "0" })} />
-                            <th style={cellStyle({ border: "0.1px solid #666", borderTop: "none", backgroundColor: "#fff", padding: "0" })} />
-                            <th style={cellStyle({ border: "0.1px solid #666", borderTop: "none", backgroundColor: "#fff", padding: "0" })} />
                           </tr>
                         </thead>
                         <tbody>
@@ -1844,7 +1837,10 @@ const ViewServiceReportCArm: React.FC = () => {
                         <table style={{ ...tableStyle, fontSize: "10px" }}>
                           <thead>
                             <tr>
-                              <th style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px" })}>
+                              <th
+                                rowSpan={2}
+                                style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px", verticalAlign: "middle" })}
+                              >
                                 mAs Range
                               </th>
                               <th
@@ -1853,27 +1849,44 @@ const ViewServiceReportCArm: React.FC = () => {
                               >
                                 Output (mGy)
                               </th>
-                              <th style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px" })}>
+                              <th
+                                rowSpan={2}
+                                style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px", verticalAlign: "middle" })}
+                              >
                                 Avg Output
                               </th>
-                              <th style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px" })}>
+                              <th
+                                rowSpan={2}
+                                style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px", verticalAlign: "middle" })}
+                              >
                                 X (mGy/mAs)
                               </th>
-                              <th style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px" })}>
+                              <th
+                                rowSpan={2}
+                                style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px", verticalAlign: "middle" })}
+                              >
                                 X MAX
                               </th>
-                              <th style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px" })}>
+                              <th
+                                rowSpan={2}
+                                style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px", verticalAlign: "middle" })}
+                              >
                                 X MIN
                               </th>
-                              <th style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px" })}>
+                              <th
+                                rowSpan={2}
+                                style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px", verticalAlign: "middle" })}
+                              >
                                 CoL
                               </th>
-                              <th style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px" })}>
+                              <th
+                                rowSpan={2}
+                                style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px", verticalAlign: "middle" })}
+                              >
                                 Remarks
                               </th>
                             </tr>
                             <tr>
-                              <th style={cellStyle({ border: "0.1px solid #666", fontSize: "10px" })}></th>
                               {measHeaders.map((h: string, idx: number) => (
                                 <th
                                   key={idx}
@@ -1882,12 +1895,6 @@ const ViewServiceReportCArm: React.FC = () => {
                                   {h || `Meas ${idx + 1}`}
                                 </th>
                               ))}
-                              <th style={cellStyle({ border: "0.1px solid #666", fontSize: "10px" })}></th>
-                              <th style={cellStyle({ border: "0.1px solid #666", fontSize: "10px" })}></th>
-                              <th style={cellStyle({ border: "0.1px solid #666", fontSize: "10px" })}></th>
-                              <th style={cellStyle({ border: "0.1px solid #666", fontSize: "10px" })}></th>
-                              <th style={cellStyle({ border: "0.1px solid #666", fontSize: "10px" })}></th>
-                              <th style={cellStyle({ border: "0.1px solid #666", fontSize: "10px" })}></th>
                             </tr>
                           </thead>
                           <tbody>
@@ -2131,7 +2138,10 @@ const ViewServiceReportCArm: React.FC = () => {
                         <table style={{ ...tableStyle, fontSize: "10px" }}>
                           <thead>
                             <tr>
-                              <th style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px" })}>
+                              <th
+                                rowSpan={2}
+                                style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px", verticalAlign: "middle" })}
+                              >
                                 mA Applied
                               </th>
                               <th
@@ -2140,27 +2150,44 @@ const ViewServiceReportCArm: React.FC = () => {
                               >
                                 Output (mGy)
                               </th>
-                              <th style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px" })}>
+                              <th
+                                rowSpan={2}
+                                style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px", verticalAlign: "middle" })}
+                              >
                                 Avg Output
                               </th>
-                              <th style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px" })}>
+                              <th
+                                rowSpan={2}
+                                style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px", verticalAlign: "middle" })}
+                              >
                                 X (mGy/mA)
                               </th>
-                              <th style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px" })}>
+                              <th
+                                rowSpan={2}
+                                style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px", verticalAlign: "middle" })}
+                              >
                                 X MAX
                               </th>
-                              <th style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px" })}>
+                              <th
+                                rowSpan={2}
+                                style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px", verticalAlign: "middle" })}
+                              >
                                 X MIN
                               </th>
-                              <th style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px" })}>
+                              <th
+                                rowSpan={2}
+                                style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px", verticalAlign: "middle" })}
+                              >
                                 CoL
                               </th>
-                              <th style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px" })}>
+                              <th
+                                rowSpan={2}
+                                style={cellStyle({ fontWeight: 700, border: "0.1px solid #666", fontSize: "10px", verticalAlign: "middle" })}
+                              >
                                 Remarks
                               </th>
                             </tr>
                             <tr>
-                              <th style={cellStyle({ border: "0.1px solid #666", fontSize: "10px" })}></th>
                               {measHeaders.map((h: string, idx: number) => (
                                 <th
                                   key={idx}
@@ -2169,12 +2196,6 @@ const ViewServiceReportCArm: React.FC = () => {
                                   {h || `Meas ${idx + 1}`}
                                 </th>
                               ))}
-                              <th style={cellStyle({ border: "0.1px solid #666", fontSize: "10px" })}></th>
-                              <th style={cellStyle({ border: "0.1px solid #666", fontSize: "10px" })}></th>
-                              <th style={cellStyle({ border: "0.1px solid #666", fontSize: "10px" })}></th>
-                              <th style={cellStyle({ border: "0.1px solid #666", fontSize: "10px" })}></th>
-                              <th style={cellStyle({ border: "0.1px solid #666", fontSize: "10px" })}></th>
-                              <th style={cellStyle({ border: "0.1px solid #666", fontSize: "10px" })}></th>
                             </tr>
                           </thead>
                           <tbody>
@@ -2258,7 +2279,7 @@ const ViewServiceReportCArm: React.FC = () => {
         <ReportPage isLast>
           <div className="report-pdf-last-main" style={{ width: "100%", flex: 1, display: "flex", flexDirection: "column" }}>
             <ReportPdfPageDeclaration
-              todayDate={todayDate}
+              qaTestDate={formatDate(report.testDate || "")}
               customerCity={placeValue}
               engineerId={report.engineerId}
               engineerName={report.engineerNameRPId}

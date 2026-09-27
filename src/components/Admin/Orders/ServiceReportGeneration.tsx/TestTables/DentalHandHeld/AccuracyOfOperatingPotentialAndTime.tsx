@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { Plus, Trash2, Save, Loader2, Edit3 } from "lucide-react";
 import toast from "react-hot-toast";
+import { validateTotalFiltrationSave } from "../shared/validateTotalFiltrationSave";
 import {
   addAccuracyOfOperatingPotentialAndTimeForDentalHandHeld,
   getAccuracyOfOperatingPotentialAndTimeByServiceIdForDentalHandHeld,
@@ -272,6 +273,12 @@ const AccuracyOfOperatingPotentialAndTime: React.FC<Props> = ({
   const saveTest = async () => {
     if (!serviceId) {
       toast.error("Service ID is missing");
+      return;
+    }
+
+    const tfValidation = validateTotalFiltrationSave(totalFiltration);
+    if (!tfValidation.ok) {
+      toast.error(tfValidation.message);
       return;
     }
 

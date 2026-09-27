@@ -1,4 +1,10 @@
 import React from "react";
+import {
+  formatCoefficientOfLinearityMeasured,
+  formatConsistencyOutputSpecified,
+  formatEffectiveFocalSpotToleranceStr,
+  getRadiationLeakageLevelParameterTitle,
+} from "../shared/mainTestTableDisplay";
 import { evaluateTotalFiltrationPassFail } from "../totalFiltrationPassFail";
 import { formatCentralBeamObservedTilt } from "../centralBeamTiltDisplay";
 
@@ -139,7 +145,7 @@ export const generateFixedRadioFluroSummaryRows = (testData: any, hasTimer: bool
       const mediumUpper = parseFloat(toleranceCriteria.medium?.upperLimit || "1.5");
       const largeMultiplier = parseFloat(toleranceCriteria.large?.multiplier || "0.3");
 
-      const toleranceStr = `+${smallMultiplier} F FOR F < ${smallLimit} mm; +${mediumMultiplier} F FOR ${mediumLower} ≤ F ≤ ${mediumUpper} mm; +${largeMultiplier} F FOR F > ${mediumUpper} mm`;
+      const toleranceStr = formatEffectiveFocalSpotToleranceStr(smallMultiplier, smallLimit, mediumMultiplier, mediumLower, mediumUpper, largeMultiplier);
 
       const testRows = validRows.map((spot: any) => {
         const isPass = spot.remark === "Pass" || spot.remark === "PASS";
@@ -375,7 +381,7 @@ export const generateFixedRadioFluroSummaryRows = (testData: any, hasTimer: bool
       const kvValue = asDisplayNumber(firstRow.kv ?? firstRow.kV ?? firstRow.setKV ?? firstRow.setKv ?? tableLevelKv);
       const testRows = [{
         specified: kvValue ? `at ${kvValue} kV` : "-",
-        measured: col !== "-" ? `CoL = ${col}` : "-",
+        measured: formatCoefficientOfLinearityMeasured(col),
         tolerance: `${toleranceOperator} ${tolerance}`,
         remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
       }];
@@ -450,7 +456,7 @@ export const generateFixedRadioFluroSummaryRows = (testData: any, hasTimer: bool
           tableLevelMa
         );
         const specifiedDisplay = kvValue && maValue
-          ? `at ${kvValue} kV ${maValue} mA`
+          ? formatConsistencyOutputSpecified(kvValue, maValue)
           : kvValue
             ? `at ${kvValue} kV`
             : "Varies";
@@ -576,7 +582,7 @@ export const generateFixedRadioFluroSummaryRows = (testData: any, hasTimer: bool
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });
-      addRowsForTest("Radiation leakage level at 1m from tube housing", testRows);
+      addRowsForTest(getRadiationLeakageLevelParameterTitle(validRows), testRows);
     }
   }
 

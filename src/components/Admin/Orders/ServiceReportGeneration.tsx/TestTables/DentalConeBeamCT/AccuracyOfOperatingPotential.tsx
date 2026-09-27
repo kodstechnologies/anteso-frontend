@@ -10,6 +10,7 @@ import {
 } from "../../../../../../api";
 import { useRegisterTestExport } from "../shared/TestExportRegistry";
 import { evaluateTotalFiltrationPassFail } from "../totalFiltrationPassFail";
+import { validateTotalFiltrationSave } from "../shared/validateTotalFiltrationSave";
 interface RowData {
     id: string;
     appliedKvp: string;
@@ -242,6 +243,12 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
     const saveTest = async () => {
         if (!serviceId) {
             toast.error("Service ID is missing");
+            return;
+        }
+
+        const tfValidation = validateTotalFiltrationSave(totalFiltration);
+        if (!tfValidation.ok) {
+            toast.error(tfValidation.message);
             return;
         }
 

@@ -1,3 +1,8 @@
+import {
+  formatCoefficientOfLinearityMeasured,
+  formatConsistencyOutputSpecified,
+  getRadiationLeakageLevelParameterTitle,
+} from "../shared/mainTestTableDisplay";
 // src/components/reports/TestTables/DentalIntra/MainTestTableForDentalIntra.tsx
 import React from "react";
 import { evaluateTotalFiltrationPassFail } from "../totalFiltrationPassFail";
@@ -213,7 +218,7 @@ const MainTestTableForDentalIntra: React.FC<MainTestTableProps> = ({ testData })
       const testRows = [
         {
           specified: specifiedTimes || "-",
-          measured: col !== "-" ? `CoL = ${col}` : "-",
+          measured: formatCoefficientOfLinearityMeasured(col),
           tolerance: `${toleranceOperator} ${tolerance}`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         },
@@ -302,7 +307,7 @@ const MainTestTableForDentalIntra: React.FC<MainTestTableProps> = ({ testData })
       const testRows = [
         {
           specified: kvValue ? `at ${kvValue} kV` : "-",
-          measured: col !== "-" ? `CoL = ${col}` : "-",
+          measured: formatCoefficientOfLinearityMeasured(col),
           tolerance: `${toleranceOperator} ${tolerance}`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         },
@@ -383,8 +388,7 @@ const MainTestTableForDentalIntra: React.FC<MainTestTableProps> = ({ testData })
             row.setMa ??
             tableLevelMa
         );
-        const specifiedDisplay =
-          kvValue && maValue ? `at ${kvValue} kV ${maValue} mA` : kvValue ? `at ${kvValue} kV` : "Varies";
+        const specifiedDisplay = formatConsistencyOutputSpecified(kvValue, maValue);
 
         return {
           specified: specifiedDisplay,
@@ -476,7 +480,7 @@ const MainTestTableForDentalIntra: React.FC<MainTestTableProps> = ({ testData })
             remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
           };
         });
-        addRowsForTest("Tube Housing Leakage", testRows);
+        addRowsForTest(getRadiationLeakageLevelParameterTitle(validRows), testRows);
       }
     }
   }

@@ -442,12 +442,9 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
   const buttonText = isViewMode ? 'Edit' : testId ? 'Update' : 'Save';
   const ButtonIcon = isViewMode ? Edit3 : Save;
   const isTimerSelected = String(table1Row.time || '').trim() !== '';
-  const tableTitle = isTimerSelected
-    ? 'Linearity of mAs Loading'
-    : 'Linearity of mA Loading Stations';
-  const sectionTitle = isTimerSelected
-    ? 'Linearity of mAs Loading and Accuracy of Irradiation Time'
-    : 'Linearity of mA Loading Stations';
+  // This component is always mA loading (mAs loading uses LinearityOfMasLoading.tsx).
+  const tableTitle = 'Linearity of mA Loading';
+  const sectionTitle = 'Linearity of mA Loading Stations';
   const xUnitLabel = isTimerSelected ? 'mGy/(mA*s)' : 'mGy/mA';
 
   if (isLoading) {

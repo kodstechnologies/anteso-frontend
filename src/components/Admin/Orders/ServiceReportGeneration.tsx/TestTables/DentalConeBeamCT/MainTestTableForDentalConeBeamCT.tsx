@@ -1,3 +1,8 @@
+import {
+  formatCoefficientOfLinearityMeasured,
+  formatConsistencyOutputSpecified,
+  getRadiationLeakageLevelParameterTitle,
+} from "../shared/mainTestTableDisplay";
 // src/components/reports/TestTables/DentalConeBeamCT/MainTestTableForDentalConeBeamCT.tsx
 import React from "react";
 import { evaluateTotalFiltrationPassFail } from "../totalFiltrationPassFail";
@@ -230,7 +235,7 @@ const MainTestTableForDentalConeBeamCT: React.FC<MainTestTableProps> = ({ testDa
       const kvValue = asDisplayNumber(firstRow.kv ?? firstRow.kV ?? firstRow.setKV ?? firstRow.setKv ?? tableLevelKv);
       const testRows = [{
         specified: kvValue ? `at ${kvValue} kV` : "-",
-        measured: col !== "-" ? `CoL = ${col}` : "-",
+        measured: formatCoefficientOfLinearityMeasured(col),
         tolerance: `${toleranceOperator} ${tolerance}`,
         remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
       }];
@@ -301,7 +306,7 @@ const MainTestTableForDentalConeBeamCT: React.FC<MainTestTableProps> = ({ testDa
           tableLevelMa
         );
         const specifiedDisplay = kvValue && maValue
-          ? `at ${kvValue} kV ${maValue} mA`
+          ? formatConsistencyOutputSpecified(kvValue, maValue)
           : kvValue
             ? `at ${kvValue} kV`
             : "Varies";
@@ -397,7 +402,7 @@ const MainTestTableForDentalConeBeamCT: React.FC<MainTestTableProps> = ({ testDa
             remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
           };
         });
-        addRowsForTest("Tube Housing Leakage", testRows);
+        addRowsForTest(getRadiationLeakageLevelParameterTitle(validRows), testRows);
       }
     }
   }

@@ -2017,7 +2017,7 @@ const ViewServiceReportDentalHandHeld: React.FC<ViewServiceReportDentalHandHeldP
         <ReportPage isLast>
           <div style={{ width: "100%", flex: 1 }}>
             <ReportPdfPageDeclaration
-              todayDate={todayDate}
+              qaTestDate={formatDate(report.testDate || "")}
               customerCity={placeValue}
               engineerId={report.engineerId}
               engineerName={report.engineerNameRPId}

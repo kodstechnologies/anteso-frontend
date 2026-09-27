@@ -1,4 +1,4 @@
-﻿// src/components/reports/TestTables/Mammography/MainTestTableForMammography.tsx
+// src/components/reports/TestTables/Mammography/MainTestTableForMammography.tsx
 import React from "react";
 
 interface MainTestTableProps {
@@ -100,7 +100,7 @@ export const generateMammographySummaryRows = (testData: any, hasTimer = false) 
               : String(toleranceSignRaw);
       const toleranceValue = testData.accuracyOfOperatingPotential.tolerance?.value || "5";
       const toleranceType = testData.accuracyOfOperatingPotential.tolerance?.type || "absolute";
-      const toleranceUnit = toleranceType === "percent" ? "%" : "kVp";
+      const toleranceUnit = "kVp";
       const testRows = validRows.map((row: any) => {
         let isPass = false;
         if (row.remarks === "PASS" || row.remarks === "Pass") {

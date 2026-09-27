@@ -1,7 +1,13 @@
 // src/components/reports/TestTables/RadiographyFixed/MainTestTableForRadiographyFixed.tsx
 import React from "react";
-import { evaluateTotalFiltrationPassFail } from "./totalFiltrationPassFail";
 import { formatCentralBeamObservedTilt } from "../centralBeamTiltDisplay";
+import {
+  formatCoefficientOfLinearityMeasured,
+  formatConsistencyOutputSpecified,
+  formatEffectiveFocalSpotToleranceStr,
+  getRadiationLeakageLevelParameterTitle,
+} from "../shared/mainTestTableDisplay";
+import { evaluateTotalFiltrationPassFail } from "./totalFiltrationPassFail";
 
 interface MainTestTableProps {
   testData: any;
@@ -128,7 +134,7 @@ export const generateRadiographySummaryRows = (testData: any, hasTimer: boolean 
       const mediumLower = parseFloat(toleranceCriteria.medium?.lowerLimit || "0.8");
       const mediumUpper = parseFloat(toleranceCriteria.medium?.upperLimit || "1.5");
       const largeMultiplier = parseFloat(toleranceCriteria.large?.multiplier || "0.3");
-      const toleranceStr = `+${smallMultiplier} F FOR F < ${smallLimit} mm; +${mediumMultiplier} F FOR ${mediumLower} ≤ F ≤ ${mediumUpper} mm; +${largeMultiplier} F FOR F > ${mediumUpper} mm`;
+      const toleranceStr = formatEffectiveFocalSpotToleranceStr(smallMultiplier, smallLimit, mediumMultiplier, mediumLower, mediumUpper, largeMultiplier);
       const testRows = validRows.map((spot: any) => {
         const isPass = spot.remark === "Pass" || spot.remark === "PASS";
         const statedWidth = formatValue(spot.statedWidth);
@@ -304,7 +310,7 @@ export const generateRadiographySummaryRows = (testData: any, hasTimer: boolean 
       }
       const testRows = [{
         specified: linearityKv ? `at ${linearityKv} kV` : "-",
-        measured: isNaN(parseFloat(col)) ? "-" : `CoL = ${col}`,
+        measured: formatCoefficientOfLinearityMeasured(col),
         tolerance: `${toleranceOperator} ${tolerance}`,
         remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
       }];
@@ -350,7 +356,7 @@ export const generateRadiographySummaryRows = (testData: any, hasTimer: boolean 
         const masValue = row.mas || row.mAs || row.ma;
         return {
           specified: (row.kv || row.kvp) && masValue
-            ? `at ${row.kv || row.kvp} kV ${masValue} mAs`
+            ? formatConsistencyOutputSpecified(row.kv || row.kvp, masValue)
             : ((row.kv || row.kvp) ? `${row.kv || row.kvp} kV` : "Varies"),
           measured: isNaN(parseFloat(formattedCv)) ? "-" : "CoV = " + formattedCv,
           tolerance: `${toleranceOperator} ${toleranceValue}`,
@@ -405,7 +411,7 @@ export const generateRadiographySummaryRows = (testData: any, hasTimer: boolean 
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });
-      addRowsForTest("Tube Housing Leakage", testRows);
+      addRowsForTest(getRadiationLeakageLevelParameterTitle(validRows), testRows);
     }
   }
 

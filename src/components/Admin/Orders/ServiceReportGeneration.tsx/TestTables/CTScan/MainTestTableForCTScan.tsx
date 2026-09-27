@@ -1,3 +1,4 @@
+﻿import { formatCoefficientOfLinearityMeasured } from "../shared/mainTestTableDisplay";
 ﻿// // src/components/reports/TestTables/CTScan/MainTestTableForCTScan.tsx
 // import React from "react";
 
@@ -207,7 +208,7 @@ const MainTestTableForCTScan: React.FC<MainTestTableProps> = ({ testData }) => {
     const sign = tolerance.sign || 'both';
 
     const signSymbol = sign === 'both' ? "+/-" : sign === 'plus' ? '+' : '-';
-    const unit = type === 'percent' ? '%' : ' kVp';
+    const unit = ' kVp';
     return `${signSymbol}${value}${unit}`;
   };
 
@@ -401,7 +402,7 @@ const MainTestTableForCTScan: React.FC<MainTestTableProps> = ({ testData }) => {
         tolOperator === "<=" ? "<=" : tolOperator === "<" ? "<" : tolOperator === ">=" ? ">=" : tolOperator === ">" ? ">" : "=";
       return {
         specified: getSpecified(row),
-        measured: col !== "-" ? `CoL = ${col}` : "-",
+        measured: formatCoefficientOfLinearityMeasured(col),
         tolerance: `${operatorSymbol} ${tol}`,
         remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         measuredRowSpan: idx === 0 ? validRows.length : 0,

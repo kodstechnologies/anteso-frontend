@@ -1,3 +1,8 @@
+import {
+  formatCoefficientOfLinearityMeasured,
+  formatConsistencyOutputSpecified,
+  getRadiationLeakageLevelParameterTitle,
+} from "../shared/mainTestTableDisplay";
 // src/components/reports/TestTables/BMD/MainTestTableForBMD.tsx
 import React from "react";
 import { evaluateTotalFiltrationPassFail } from "../totalFiltrationPassFail";
@@ -352,7 +357,7 @@ const MainTestTableForBMD: React.FC<MainTestTableProps> = ({ testData, hasTimer 
       addRowsForTest(linearityLabel, [
         {
           specified: kvValue ? `at ${kvValue} kV` : "-",
-          measured: col !== "-" ? `CoL = ${col}` : "-",
+          measured: formatCoefficientOfLinearityMeasured(col),
           tolerance: `${toleranceOperator} ${tolerance}`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         },
@@ -436,7 +441,7 @@ const MainTestTableForBMD: React.FC<MainTestTableProps> = ({ testData, hasTimer 
       addRowsForTest("Linearity of mAs Loading (Coefficient of Linearity)", [
         {
           specified: kvValue ? `at ${kvValue} kV` : "-",
-          measured: col !== "-" ? `CoL = ${col}` : "-",
+          measured: formatCoefficientOfLinearityMeasured(col),
           tolerance: `${toleranceOperator} ${tolerance}`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         },
@@ -515,7 +520,7 @@ const MainTestTableForBMD: React.FC<MainTestTableProps> = ({ testData, hasTimer 
         );
         const specifiedDisplay =
           kvValue && maValue
-            ? `at ${kvValue} kV ${maValue} mA`
+            ? formatConsistencyOutputSpecified(kvValue, maValue)
             : kvValue
               ? `at ${kvValue} kV`
               : "Varies";
@@ -545,7 +550,7 @@ const MainTestTableForBMD: React.FC<MainTestTableProps> = ({ testData, hasTimer 
     const kv = outBlock.kv || "-";
     const ma = outBlock.ma || outBlock.mas || "-";
     const specified =
-      kv !== "-" && ma !== "-" ? `at ${kv} kV ${ma} mA` : kv !== "-" ? `at ${kv} kV` : "Varies";
+      formatConsistencyOutputSpecified(kv !== "-" ? kv : null, ma !== "-" ? ma : null);
     addRowsForTest("Consistency of Radiation Output (CoV)", [
       {
         specified,
@@ -645,7 +650,7 @@ const MainTestTableForBMD: React.FC<MainTestTableProps> = ({ testData, hasTimer 
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });
-      addRowsForTest("Radiation leakage level at 1m from tube housing", testRows);
+      addRowsForTest(getRadiationLeakageLevelParameterTitle(validRows), testRows);
     }
   }
 

@@ -1,3 +1,8 @@
+import {
+  formatCoefficientOfLinearityMeasured,
+  formatConsistencyOutputSpecified,
+  getRadiationLeakageLevelParameterTitle,
+} from "../shared/mainTestTableDisplay";
 // src/components/reports/TestTables/OPG/MainTestTableForOPG.tsx
 import React from "react";
 import { evaluateTotalFiltrationPassFail } from "../totalFiltrationPassFail";
@@ -242,7 +247,7 @@ const MainTestTableForOPG: React.FC<MainTestTableProps> = ({ testData }) => {
       const kvValue = asDisplayNumber(firstRow.kv ?? firstRow.kV ?? firstRow.setKV ?? firstRow.setKv ?? tableLevelKv);
       const testRows = [{
         specified: kvValue ? `at ${kvValue} kV` : "-",
-        measured: col !== "-" ? `CoL = ${col}` : "-",
+        measured: formatCoefficientOfLinearityMeasured(col),
         tolerance: `${toleranceOperator} ${tolerance}`,
         remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
       }];
@@ -314,7 +319,7 @@ const MainTestTableForOPG: React.FC<MainTestTableProps> = ({ testData }) => {
           tableLevelMa
         );
         const specifiedDisplay = kvValue && maValue
-          ? `at ${kvValue} kV ${maValue} mA`
+          ? formatConsistencyOutputSpecified(kvValue, maValue)
           : kvValue
             ? `at ${kvValue} kV`
             : "Varies";
@@ -407,7 +412,7 @@ const MainTestTableForOPG: React.FC<MainTestTableProps> = ({ testData }) => {
             remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
           };
         });
-        addRowsForTest("Tube Housing Leakage", testRows);
+        addRowsForTest(getRadiationLeakageLevelParameterTitle(validRows), testRows);
       }
     }
   }

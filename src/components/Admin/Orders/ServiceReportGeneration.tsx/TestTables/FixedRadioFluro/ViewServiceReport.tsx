@@ -20,6 +20,7 @@ import {
   getAccuracyOfOperatingPotentialByServiceIdForFixedRadioFluro,
   getTools,
  saveReportPdfForFixedRadioFluro } from "../../../../../../api";
+import { formatCentralBeamObservedTilt } from "../centralBeamTiltDisplay";
 import MainTestTableForFixedRadioFluro, { generateFixedRadioFluroSummaryRows } from "./MainTestTableForFixedRadioFluro";
 import { generatePDF } from "../../../../../../utils/generatePDF";
 import {
@@ -991,7 +992,7 @@ const ViewServiceReportFixedRadioFluro: React.FC<ViewServiceReportFixedRadioFlur
                           <tr style={{ height: 'auto', minHeight: '0', lineHeight: '1.0' }}>
                             <td className="border border-black p-2 print:p-1 font-semibold w-1/2" style={{ padding: '2px 4px' }}>Observed tilt</td>
                             <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '2px 4px' }}>
-                              {testData.centralBeamAlignment.observedTilt.value != null ? `°${safeVal(testData.centralBeamAlignment.observedTilt.value)}` : "-"}
+                              {formatCentralBeamObservedTilt(testData.centralBeamAlignment.observedTilt.value)}
                               {testData.centralBeamAlignment.observedTilt.remark && (
                                 <span className={`ml-2 font-bold ${safeVal(testData.centralBeamAlignment.observedTilt.remark) === "Pass" ? "text-green-600" : "text-red-600"}`}>
                                   {safeVal(testData.centralBeamAlignment.observedTilt.remark)}
@@ -1469,32 +1470,25 @@ const ViewServiceReportFixedRadioFluro: React.FC<ViewServiceReportFixedRadioFlur
                       <table className="w-full border-2 border-black compact-table force-small-text" style={{ fontSize: '10px', tableLayout: 'fixed', width: '100%' }}>
                         <thead className="bg-gray-100">
                           <tr>
-                            <th className="border border-black border-b-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px' }}>mA</th>
+                            <th rowSpan={2} className="border border-black p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px', verticalAlign: 'middle' }}>{hasValidTimer ? "mA" : "mAs Range"}</th>
                             <th colSpan={measHeaders.length} className="border border-black p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px' }}>
                               Output (mGy)
                             </th>
-                            <th className="border border-black border-b-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px' }}>Avg Output</th>
-                            <th className="border border-black border-b-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px' }}>
+                            <th rowSpan={2} className="border border-black p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px', verticalAlign: 'middle' }}>Avg Output</th>
+                            <th rowSpan={2} className="border border-black p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px', verticalAlign: 'middle' }}>
                               X ({hasValidTimer ? "mGy/(mA*s)" : "mGy/mA"})
                             </th>
-                            <th className="border border-black border-b-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px' }}>X MAX</th>
-                            <th className="border border-black border-b-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px' }}>X MIN</th>
-                            <th className="border border-black border-b-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px' }}>CoL</th>
-                            <th className="border border-black border-b-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px' }}>Remarks</th>
+                            <th rowSpan={2} className="border border-black p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px', verticalAlign: 'middle' }}>X MAX</th>
+                            <th rowSpan={2} className="border border-black p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px', verticalAlign: 'middle' }}>X MIN</th>
+                            <th rowSpan={2} className="border border-black p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px', verticalAlign: 'middle' }}>CoL</th>
+                            <th rowSpan={2} className="border border-black p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px', verticalAlign: 'middle' }}>Remarks</th>
                           </tr>
                           <tr>
-                            <th className="border border-black border-t-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px' }}></th>
                             {measHeaders.map((header: string, idx: number) => (
                               <th key={idx} className="border border-black p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px' }}>
                                 {header || `Meas ${idx + 1}`}
                               </th>
                             ))}
-                            <th className="border border-black border-t-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px' }}></th>
-                            <th className="border border-black border-t-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px' }}></th>
-                            <th className="border border-black border-t-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px' }}></th>
-                            <th className="border border-black border-t-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px' }}></th>
-                            <th className="border border-black border-t-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px' }}></th>
-                            <th className="border border-black border-t-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px' }}></th>
                           </tr>
                         </thead>
                         <tbody>
@@ -1810,53 +1804,16 @@ const ViewServiceReportFixedRadioFluro: React.FC<ViewServiceReportFixedRadioFlur
                   <table className="w-full border-2 border-black text-sm print:text-[8px] compact-table" style={{ fontSize: '10px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
                     <thead className="bg-gray-100">
                       <tr className="bg-blue-50">
-                        {/* Avoid rowSpan — html2canvas leaves a white patch over rowspan header cells in PDF */}
-                        <th
-                          className="border border-black p-0 text-center font-bold bg-gray-50"
-                          style={{ borderBottom: "none", padding: 0, backgroundColor: "#f9f9f9" }}
-                        >
-                          <div className="header-cell-simulated" style={{ fontWeight: 700, fontSize: "10px" }}>Location</div>
-                        </th>
-                        <th
-                          colSpan={5}
-                          className="border border-black p-0 text-center font-bold bg-gray-50"
-                          style={{ padding: 0, backgroundColor: "#f9f9f9" }}
-                        >
-                          <div style={{ padding: "4px 2px", fontWeight: 700, fontSize: "10px" }}>Exposure Level (mR/hr)</div>
-                        </th>
-                        <th
-                          className="border border-black p-0 text-center font-bold bg-gray-50"
-                          style={{ borderBottom: "none", padding: 0, backgroundColor: "#f9f9f9" }}
-                        >
-                          <div className="header-cell-simulated" style={{ fontWeight: 700, fontSize: "10px" }}>Result (mR in 1 hr)</div>
-                        </th>
-                        <th
-                          className="border border-black p-0 text-center font-bold bg-gray-50"
-                          style={{ borderBottom: "none", padding: 0, backgroundColor: "#f9f9f9" }}
-                        >
-                          <div className="header-cell-simulated" style={{ fontWeight: 700, fontSize: "10px" }}>Result (mGy in 1 hr)</div>
-                        </th>
-                        <th
-                          className="border border-black p-0 text-center font-bold bg-gray-50"
-                          style={{ borderBottom: "none", padding: 0, backgroundColor: "#f9f9f9" }}
-                        >
-                          <div className="header-cell-simulated" style={{ fontWeight: 700, fontSize: "10px" }}>Remarks</div>
-                        </th>
+                        <th rowSpan={2} className="border border-black p-1 text-center font-bold bg-gray-50" style={{ width: '15%', padding: '0px 2px', fontSize: '10px', verticalAlign: 'middle', backgroundColor: '#f9f9f9' }}>Location</th>
+                        <th colSpan={5} className="border border-black p-1 text-center font-bold bg-gray-50" style={{ padding: '0px 2px', fontSize: '10px', backgroundColor: '#f9f9f9' }}>Exposure Level (mR/hr)</th>
+                        <th rowSpan={2} className="border border-black p-1 text-center font-bold bg-gray-50" style={{ padding: '0px 2px', fontSize: '10px', verticalAlign: 'middle', backgroundColor: '#f9f9f9' }}>Result (mR in 1 hr)</th>
+                        <th rowSpan={2} className="border border-black p-1 text-center font-bold bg-gray-50" style={{ padding: '0px 2px', fontSize: '10px', verticalAlign: 'middle', backgroundColor: '#f9f9f9' }}>Result (mGy in 1 hr)</th>
+                        <th rowSpan={2} className="border border-black p-1 text-center font-bold bg-gray-50" style={{ padding: '0px 2px', fontSize: '10px', verticalAlign: 'middle', backgroundColor: '#f9f9f9' }}>Remarks</th>
                       </tr>
-                      <tr style={{ height: "20px" }}>
-                        <th className="border border-black p-0 bg-gray-50 header-spacer-cell" style={{ borderTop: "none", padding: 0, backgroundColor: "#f9f9f9" }} />
+                      <tr className="bg-gray-50">
                         {["Left", "Right", "Front", "Back", "Top"].map((dir) => (
-                          <th
-                            key={dir}
-                            className="border border-black p-0 text-center font-bold bg-gray-50"
-                            style={{ padding: 0, backgroundColor: "#f9f9f9", fontSize: "10px" }}
-                          >
-                            <div style={{ padding: "4px 2px" }}>{dir}</div>
-                          </th>
+                          <th key={dir} className="border border-black p-1 text-center font-bold bg-gray-50" style={{ padding: '0px 2px', fontSize: '10px', backgroundColor: '#f9f9f9' }}>{dir}</th>
                         ))}
-                        <th className="border border-black p-0 bg-gray-50 header-spacer-cell" style={{ borderTop: "none", padding: 0, backgroundColor: "#f9f9f9" }} />
-                        <th className="border border-black p-0 bg-gray-50 header-spacer-cell" style={{ borderTop: "none", padding: 0, backgroundColor: "#f9f9f9" }} />
-                        <th className="border border-black p-0 bg-gray-50 header-spacer-cell" style={{ borderTop: "none", padding: 0, backgroundColor: "#f9f9f9" }} />
                       </tr>
                     </thead>
                     <tbody>
@@ -2109,7 +2066,7 @@ const ViewServiceReportFixedRadioFluro: React.FC<ViewServiceReportFixedRadioFlur
         <ReportPage isLast>
           <div className="report-pdf-last-main" style={{ width: "100%", flex: 1, display: "flex", flexDirection: "column" }}>
             <ReportPdfPageDeclaration
-              todayDate={todayDate}
+              qaTestDate={formatDate(safeVal(report.testDate))}
               customerCity={placeValue}
               engineerId={report.engineerId}
               engineerName={report.engineerNameRPId}

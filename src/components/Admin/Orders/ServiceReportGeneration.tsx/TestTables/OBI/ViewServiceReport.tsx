@@ -9,6 +9,7 @@ import {
   saveGeneratedReportPdfToDb,
   useEmbeddedReportPdfAutoSave,
 } from "../shared/embeddedViewReportPdf";
+import { formatCentralBeamObservedTilt } from "../centralBeamTiltDisplay";
 import MainTestTableForOBI, { generateOBISummaryRows } from "./MainTestTableForOBI";
 import { ReportPdfPageHeader, type ReportPdfPageHeaderData } from "../RadiographyFixed/component/Header";
 import { ReportPdfPageFooter } from "../RadiographyFixed/component/Footer";
@@ -1608,7 +1609,7 @@ const ViewServiceReportOBI: React.FC<ViewServiceReportOBIProps> = ({
                     </thead>
                     <tbody>
                       <tr style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
-                        <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{testData.centralBeamAlignment.observedTilt?.value ? `°${testData.centralBeamAlignment.observedTilt.value}` : "-"}</td>
+                        <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{formatCentralBeamObservedTilt(testData.centralBeamAlignment.observedTilt?.value)}</td>
                         <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{normalizeComparisonOperator(testData.centralBeamAlignment.tolerance?.operator)} {testData.centralBeamAlignment.tolerance?.value ? `${testData.centralBeamAlignment.tolerance.value}°` : "-"}</td>
                         <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>
                           <span className={testData.centralBeamAlignment.finalResult === "Pass" || testData.centralBeamAlignment.observedTilt?.remark === "Pass" ? "text-green-600 font-semibold" : testData.centralBeamAlignment.finalResult === "Fail" || testData.centralBeamAlignment.observedTilt?.remark === "Fail" ? "text-red-600 font-semibold" : ""}>
@@ -2181,8 +2182,9 @@ const ViewServiceReportOBI: React.FC<ViewServiceReportOBIProps> = ({
                         <thead className="bg-gray-100">
                           <tr>
                             <th
-                              className="border border-black border-b-0 p-1.5 print:p-[3px] text-center"
-                              style={{ fontSize: "10px", padding: "5px", borderColor: "#000000", textAlign: "center" }}
+                              rowSpan={2}
+                              className="border border-black p-1.5 print:p-[3px] text-center"
+                              style={{ fontSize: "10px", padding: "5px", borderColor: "#000000", textAlign: "center", verticalAlign: "middle" }}
                             >
                               mA Applied
                             </th>
@@ -2194,47 +2196,49 @@ const ViewServiceReportOBI: React.FC<ViewServiceReportOBIProps> = ({
                               Radiation Output (mGy)
                             </th>
                             <th
-                              className="border border-black border-b-0 p-1.5 print:p-[3px] text-center"
-                              style={{ fontSize: "10px", padding: "5px", borderColor: "#000000", textAlign: "center" }}
+                              rowSpan={2}
+                              className="border border-black p-1.5 print:p-[3px] text-center"
+                              style={{ fontSize: "10px", padding: "5px", borderColor: "#000000", textAlign: "center", verticalAlign: "middle" }}
                             >
                               Avg Output
                             </th>
                             <th
-                              className="border border-black border-b-0 p-1.5 print:p-[3px] text-center"
-                              style={{ fontSize: "10px", padding: "5px", borderColor: "#000000", textAlign: "center" }}
+                              rowSpan={2}
+                              className="border border-black p-1.5 print:p-[3px] text-center"
+                              style={{ fontSize: "10px", padding: "5px", borderColor: "#000000", textAlign: "center", verticalAlign: "middle" }}
                             >
                               mGy / mAs (X)
                             </th>
                             <th
-                              className="border border-black border-b-0 p-1.5 print:p-[3px] text-center"
-                              style={{ fontSize: "10px", padding: "5px", borderColor: "#000000", textAlign: "center" }}
+                              rowSpan={2}
+                              className="border border-black p-1.5 print:p-[3px] text-center"
+                              style={{ fontSize: "10px", padding: "5px", borderColor: "#000000", textAlign: "center", verticalAlign: "middle" }}
                             >
                               X MAX
                             </th>
                             <th
-                              className="border border-black border-b-0 p-1.5 print:p-[3px] text-center"
-                              style={{ fontSize: "10px", padding: "5px", borderColor: "#000000", textAlign: "center" }}
+                              rowSpan={2}
+                              className="border border-black p-1.5 print:p-[3px] text-center"
+                              style={{ fontSize: "10px", padding: "5px", borderColor: "#000000", textAlign: "center", verticalAlign: "middle" }}
                             >
                               X MIN
                             </th>
                             <th
-                              className="border border-black border-b-0 p-1.5 print:p-[3px] text-center"
-                              style={{ fontSize: "10px", padding: "5px", borderColor: "#000000", textAlign: "center" }}
+                              rowSpan={2}
+                              className="border border-black p-1.5 print:p-[3px] text-center"
+                              style={{ fontSize: "10px", padding: "5px", borderColor: "#000000", textAlign: "center", verticalAlign: "middle" }}
                             >
                               CoL
                             </th>
                             <th
-                              className="border border-black border-b-0 p-1.5 print:p-[3px] text-center"
-                              style={{ fontSize: "10px", padding: "5px", borderColor: "#000000", textAlign: "center" }}
+                              rowSpan={2}
+                              className="border border-black p-1.5 print:p-[3px] text-center"
+                              style={{ fontSize: "10px", padding: "5px", borderColor: "#000000", textAlign: "center", verticalAlign: "middle" }}
                             >
                               Remarks
                             </th>
                           </tr>
                           <tr>
-                            <th
-                              className="border border-black border-t-0 p-1.5 print:p-[3px] text-center"
-                              style={{ fontSize: "10px", padding: "5px", borderColor: "#000000", textAlign: "center" }}
-                            />
                             {hdrs.map((header: string, idx: number) => (
                               <th
                                 key={idx}
@@ -2244,30 +2248,6 @@ const ViewServiceReportOBI: React.FC<ViewServiceReportOBIProps> = ({
                                 {header || `Meas ${idx + 1}`}
                               </th>
                             ))}
-                            <th
-                              className="border border-black border-t-0 p-1.5 print:p-[3px] text-center"
-                              style={{ fontSize: "10px", padding: "5px", borderColor: "#000000", textAlign: "center" }}
-                            />
-                            <th
-                              className="border border-black border-t-0 p-1.5 print:p-[3px] text-center"
-                              style={{ fontSize: "10px", padding: "5px", borderColor: "#000000", textAlign: "center" }}
-                            />
-                            <th
-                              className="border border-black border-t-0 p-1.5 print:p-[3px] text-center"
-                              style={{ fontSize: "10px", padding: "5px", borderColor: "#000000", textAlign: "center" }}
-                            />
-                            <th
-                              className="border border-black border-t-0 p-1.5 print:p-[3px] text-center"
-                              style={{ fontSize: "10px", padding: "5px", borderColor: "#000000", textAlign: "center" }}
-                            />
-                            <th
-                              className="border border-black border-t-0 p-1.5 print:p-[3px] text-center"
-                              style={{ fontSize: "10px", padding: "5px", borderColor: "#000000", textAlign: "center" }}
-                            />
-                            <th
-                              className="border border-black border-t-0 p-1.5 print:p-[3px] text-center"
-                              style={{ fontSize: "10px", padding: "5px", borderColor: "#000000", textAlign: "center" }}
-                            />
                           </tr>
                         </thead>
                         <tbody>
@@ -2576,30 +2556,23 @@ const ViewServiceReportOBI: React.FC<ViewServiceReportOBIProps> = ({
                     <table className="w-full border-2 border-black compact-table force-small-text" style={{ fontSize: '10px', tableLayout: 'fixed', width: '100%', borderCollapse: 'collapse', borderSpacing: '0' }}>
                       <thead className="bg-gray-100">
                         <tr>
-                          <th className="border border-black border-b-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px', borderColor: '#000000', textAlign: 'center' }}>mAs Applied</th>
+                          <th rowSpan={2} className="border border-black p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px', borderColor: '#000000', textAlign: 'center', verticalAlign: 'middle' }}>mAs Applied</th>
                           <th colSpan={testData.linearityOfMasLoading.measHeaders?.length || testData.linearityOfMasLoading.table2[0]?.measuredOutputs?.length || 0} className="border border-black p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px', borderColor: '#000000', textAlign: 'center' }}>
                             Output (mGy)
                           </th>
-                          <th className="border border-black border-b-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px', borderColor: '#000000', textAlign: 'center' }}>Avg Output</th>
-                          <th className="border border-black border-b-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px', borderColor: '#000000', textAlign: 'center' }}>X (mGy/mAs)</th>
-                          <th className="border border-black border-b-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px', borderColor: '#000000', textAlign: 'center' }}>X MAX</th>
-                          <th className="border border-black border-b-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px', borderColor: '#000000', textAlign: 'center' }}>X MIN</th>
-                          <th className="border border-black border-b-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px', borderColor: '#000000', textAlign: 'center' }}>CoL</th>
-                          <th className="border border-black border-b-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px', borderColor: '#000000', textAlign: 'center' }}>Remarks</th>
+                          <th rowSpan={2} className="border border-black p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px', borderColor: '#000000', textAlign: 'center', verticalAlign: 'middle' }}>Avg Output</th>
+                          <th rowSpan={2} className="border border-black p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px', borderColor: '#000000', textAlign: 'center', verticalAlign: 'middle' }}>X (mGy/mAs)</th>
+                          <th rowSpan={2} className="border border-black p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px', borderColor: '#000000', textAlign: 'center', verticalAlign: 'middle' }}>X MAX</th>
+                          <th rowSpan={2} className="border border-black p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px', borderColor: '#000000', textAlign: 'center', verticalAlign: 'middle' }}>X MIN</th>
+                          <th rowSpan={2} className="border border-black p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px', borderColor: '#000000', textAlign: 'center', verticalAlign: 'middle' }}>CoL</th>
+                          <th rowSpan={2} className="border border-black p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px', borderColor: '#000000', textAlign: 'center', verticalAlign: 'middle' }}>Remarks</th>
                         </tr>
                         <tr>
-                          <th className="border border-black border-t-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px', borderColor: '#000000', textAlign: 'center' }}></th>
                           {(testData.linearityOfMasLoading.measHeaders || Array.from({ length: testData.linearityOfMasLoading.table2[0]?.measuredOutputs?.length || 3 }, (_, i) => `Meas ${i + 1}`)).map((h: string, idx: number) => (
                             <th key={idx} className="border border-black p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px', borderColor: '#000000', textAlign: 'center' }}>
                               {h || `Meas ${idx + 1}`}
                             </th>
                           ))}
-                          <th className="border border-black border-t-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px', borderColor: '#000000', textAlign: 'center' }}></th>
-                          <th className="border border-black border-t-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px', borderColor: '#000000', textAlign: 'center' }}></th>
-                          <th className="border border-black border-t-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px', borderColor: '#000000', textAlign: 'center' }}></th>
-                          <th className="border border-black border-t-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px', borderColor: '#000000', textAlign: 'center' }}></th>
-                          <th className="border border-black border-t-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px', borderColor: '#000000', textAlign: 'center' }}></th>
-                          <th className="border border-black border-t-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: '10px', padding: '5px', borderColor: '#000000', textAlign: 'center' }}></th>
                         </tr>
                       </thead>
                       <tbody>
@@ -2940,7 +2913,7 @@ const ViewServiceReportOBI: React.FC<ViewServiceReportOBIProps> = ({
         <ReportPage isLast>
           <div className="report-pdf-last-main" style={{ width: "100%", flex: 1, display: "flex", flexDirection: "column" }}>
             <ReportPdfPageDeclaration
-              todayDate={todayDate}
+              qaTestDate={formatDate(report.testDate || "")}
               customerCity={placeValue}
               engineerId={report.engineerId}
               engineerName={report.engineerNameRPId}

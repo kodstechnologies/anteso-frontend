@@ -1484,7 +1484,7 @@ const RadiographyFixedContent: React.FC<RadiographyFixedProps> = ({ serviceId, q
         const rows: any[] = [];
         const measHeaders: string[] = [];
         let tol = '0.05';
-        let tolOp = '<=';
+        let tolOp = '<';
         let currentRow: any = null;
         let currentRowIdx = -1;
         data.forEach(row => {

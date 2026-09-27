@@ -9,6 +9,7 @@ import {
     updateTotalFiltrationForRadiographyFixed,
 } from "../../../../../../api";
 import { evaluateTotalFiltrationPassFail } from "./totalFiltrationPassFail";
+import { validateTotalFiltrationSave } from "../shared/validateTotalFiltrationSave";
 interface RowData {
     id: string;
     appliedKvp: string;
@@ -281,6 +282,12 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
     const saveTest = async () => {
         if (!serviceId) {
             toast.error("Service ID is missing");
+            return;
+        }
+
+        const tfValidation = validateTotalFiltrationSave(totalFiltration);
+        if (!tfValidation.ok) {
+            toast.error(tfValidation.message);
             return;
         }
 

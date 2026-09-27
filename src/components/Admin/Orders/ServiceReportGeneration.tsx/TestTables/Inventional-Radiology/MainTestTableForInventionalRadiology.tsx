@@ -1,3 +1,9 @@
+import {
+  formatCoefficientOfLinearityMeasured,
+  formatConsistencyOutputSpecified,
+  formatEffectiveFocalSpotToleranceStr,
+  getRadiationLeakageLevelParameterTitle,
+} from "../shared/mainTestTableDisplay";
 // src/components/reports/TestTables/InventionalRadiology/MainTestTableForInventionalRadiology.tsx
 import React from "react";
 import { formatCentralBeamObservedTilt } from "../centralBeamTiltDisplay";
@@ -197,7 +203,7 @@ const MainTestTableForInventionalRadiology: React.FC<MainTestTableProps> = ({ te
       const mediumUpper = parseFloat(toleranceCriteria.medium?.upperLimit || "1.5");
       const largeMultiplier = parseFloat(toleranceCriteria.large?.multiplier || "0.3");
 
-      const toleranceStr = `+${smallMultiplier} F FOR F < ${smallLimit} mm; +${mediumMultiplier} F FOR ${mediumLower} = F = ${mediumUpper} mm; +${largeMultiplier} F FOR F > ${mediumUpper} mm`;
+      const toleranceStr = formatEffectiveFocalSpotToleranceStr(smallMultiplier, smallLimit, mediumMultiplier, mediumLower, mediumUpper, largeMultiplier);
 
       const testRows = validRows.map((spot: any) => {
         const isPass = spot.remark === "Pass" || spot.remark === "PASS";
@@ -463,7 +469,7 @@ const MainTestTableForInventionalRadiology: React.FC<MainTestTableProps> = ({ te
       addRowsForTest(linearityLabel, [
         {
           specified: kvValue ? `at ${kvValue} kV` : "-",
-          measured: col !== "-" ? `CoL = ${col}` : "-",
+          measured: formatCoefficientOfLinearityMeasured(col),
           tolerance: `${toleranceOperator} ${tolerance}`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         },
@@ -556,7 +562,7 @@ const MainTestTableForInventionalRadiology: React.FC<MainTestTableProps> = ({ te
         );
         const specifiedDisplay =
           kvValue && maValue
-            ? `at ${kvValue} kV ${maValue} mA`
+            ? formatConsistencyOutputSpecified(kvValue, maValue)
             : kvValue
               ? `at ${kvValue} kV`
               : "Varies";
@@ -654,7 +660,7 @@ const MainTestTableForInventionalRadiology: React.FC<MainTestTableProps> = ({ te
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });
-      addRowsForTest("Radiation leakage level at 1m from tube housing", testRows);
+      addRowsForTest(getRadiationLeakageLevelParameterTitle(validRows), testRows);
     }
   }
 

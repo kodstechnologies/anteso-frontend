@@ -601,8 +601,8 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
             disabled={isViewMode}
             className={`px-4 py-2 border rounded font-medium ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
           >
-            <option value="<=">≤</option>
             <option value="<">&lt;</option>
+            <option value="<=">≤</option>
             <option value=">=">≥</option>
             <option value=">">&gt;</option>
           </select>

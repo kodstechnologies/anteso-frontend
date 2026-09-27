@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import QRCode from "qrcode";
 
 export const ReportPdfPageDeclaration: React.FC<{
-    todayDate: string;
+    qaTestDate: string;
     customerCity: string;
     qrCode?: string;
     engineerId?: string;
@@ -12,7 +12,7 @@ export const ReportPdfPageDeclaration: React.FC<{
     authorizedSignatoryName?: string;
     authorizedSignatorySignature?: string;
 }> = ({
-    todayDate,
+    qaTestDate,
     customerCity,
     qrCode,
     engineerId,
@@ -53,7 +53,7 @@ export const ReportPdfPageDeclaration: React.FC<{
 
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: "22mm" }}>
             <div style={{ fontSize: "11px", lineHeight: "1.5" }}>
-                <p><strong>Date:</strong> {todayDate}</p>
+                <p><strong>Date:</strong> {qaTestDate}</p>
                 <p><strong>Place:</strong> {customerCity}</p>
             </div>
             <div style={{ width: "42%", textAlign: "left", fontSize: "11px", lineHeight: "1.35" }}>

@@ -42,11 +42,19 @@ export const ReportPdfPageHeader: React.FC<{
         </tbody>
       </table>
     </div>
-    <img
-      src={logoA}
-      alt="NABL"
-      className="block h-24 self-start m-0 p-0 leading-none print:h-16"
-      style={{ marginTop: "-5mm", display: "block" }}
-    />
+    <div className="flex flex-col items-center">
+      <img
+        src={logoA}
+        alt="NABL"
+        className="block h-24 self-start m-0 p-0 leading-none print:h-16"
+        style={{ marginTop: "-5mm", display: "block" }}
+      />
+      <div 
+        className="text-center font-bold mt-1" 
+        style={{ fontSize: '10px', lineHeight: '1.2' }}
+      >
+        TC-9843
+      </div>
+    </div>
   </div>
 );

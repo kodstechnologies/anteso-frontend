@@ -1430,20 +1430,17 @@ const ViewServiceReportDentalIntra: React.FC<ViewServiceReportDentalIntraProps> 
                     <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
                       <thead className="bg-gray-100">
                         <tr>
-                          <th className="border border-black p-2 print:p-1 text-left" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000' }}>Location (at 1.0 m from the focus)</th>
+                          <th rowSpan={2} className="border border-black p-2 print:p-1 text-left align-middle" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', verticalAlign: 'middle' }}>Location (at 1.0 m from the focus)</th>
                           <th colSpan={5} className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Exposure Level (mR/hr)</th>
-                          <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Result</th>
-                          <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Remarks</th>
+                          <th rowSpan={2} className="border border-black p-2 print:p-1 text-center align-middle" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center', verticalAlign: 'middle' }}>Result</th>
+                          <th rowSpan={2} className="border border-black p-2 print:p-1 text-center align-middle" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center', verticalAlign: 'middle' }}>Remarks</th>
                         </tr>
                         <tr>
-                          <th className="border border-black p-2 print:p-1" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000' }}></th>
                           <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Left</th>
                           <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Right</th>
                           <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Front</th>
                           <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Back</th>
                           <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Top</th>
-                          <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}></th>
-                          <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}></th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1577,36 +1574,31 @@ const ViewServiceReportDentalIntra: React.FC<ViewServiceReportDentalIntraProps> 
                     </colgroup>
                     <thead>
                       <tr style={{ height: '20px' }}>
-                        <th style={cellStyle({ fontWeight: 700, border: '0.1px solid #666', borderBottom: 'none', fontSize: '10px', backgroundColor: '#f9f9f9', color: '#000', padding: '0' })}>
+                        <th rowSpan={2} style={cellStyle({ fontWeight: 700, border: '0.1px solid #666', fontSize: '10px', backgroundColor: '#f9f9f9', color: '#000', padding: '0', verticalAlign: 'middle' })}>
                           <div className="header-cell-simulated" style={{ fontWeight: 700 }}>Location</div>
                         </th>
                         <th colSpan={5} style={cellStyle({ fontWeight: 700, border: '0.1px solid #666', fontSize: '10px', backgroundColor: '#f9f9f9', color: '#000', padding: '0' })}>
                           <div style={{ padding: '4px 2px', fontWeight: 700 }}>Exposure Level (mGy)</div>
                         </th>
-                        <th style={cellStyle({ fontWeight: 700, border: '0.1px solid #666', borderBottom: 'none', fontSize: '10px', backgroundColor: '#f9f9f9', color: '#000', padding: '0' })}>
+                        <th rowSpan={2} style={cellStyle({ fontWeight: 700, border: '0.1px solid #666', fontSize: '10px', backgroundColor: '#f9f9f9', color: '#000', padding: '0', verticalAlign: 'middle' })}>
                           <div className="header-cell-simulated" style={{ fontWeight: 700 }}>Max</div>
                         </th>
-                        <th style={cellStyle({ fontWeight: 700, border: '0.1px solid #666', borderBottom: 'none', fontSize: '10px', backgroundColor: '#f9f9f9', color: '#000', padding: '0' })}>
+                        <th rowSpan={2} style={cellStyle({ fontWeight: 700, border: '0.1px solid #666', fontSize: '10px', backgroundColor: '#f9f9f9', color: '#000', padding: '0', verticalAlign: 'middle' })}>
                           <div className="header-cell-simulated" style={{ fontWeight: 700 }}>Result (mR in one hour)</div>
                         </th>
-                        <th style={cellStyle({ fontWeight: 700, border: '0.1px solid #666', borderBottom: 'none', fontSize: '10px', backgroundColor: '#f9f9f9', color: '#000', padding: '0' })}>
+                        <th rowSpan={2} style={cellStyle({ fontWeight: 700, border: '0.1px solid #666', fontSize: '10px', backgroundColor: '#f9f9f9', color: '#000', padding: '0', verticalAlign: 'middle' })}>
                           <div className="header-cell-simulated" style={{ fontWeight: 700 }}>Result (mGy in one hour)</div>
                         </th>
-                        <th style={cellStyle({ fontWeight: 700, border: '0.1px solid #666', borderBottom: 'none', fontSize: '10px', backgroundColor: '#f9f9f9', color: '#000', padding: '0' })}>
+                        <th rowSpan={2} style={cellStyle({ fontWeight: 700, border: '0.1px solid #666', fontSize: '10px', backgroundColor: '#f9f9f9', color: '#000', padding: '0', verticalAlign: 'middle' })}>
                           <div className="header-cell-simulated" style={{ fontWeight: 700 }}>Remarks</div>
                         </th>
                       </tr>
                       <tr style={{ height: '20px' }}>
-                        <th style={cellStyle({ border: '0.1px solid #666', borderTop: 'none', backgroundColor: '#f9f9f9', padding: '0' })}></th>
                         {["Left", "Right", "Top", "Front", "Back"].map(h => (
                           <th key={h} style={cellStyle({ fontWeight: 700, border: '0.1px solid #666', fontSize: '10px', backgroundColor: '#f9f9f9', color: '#000', padding: '0' })}>
                             <div style={{ padding: '4px 2px' }}>{h}</div>
                           </th>
                         ))}
-                        <th style={cellStyle({ border: '0.1px solid #666', borderTop: 'none', backgroundColor: '#f9f9f9', padding: '0' })}></th>
-                        <th style={cellStyle({ border: '0.1px solid #666', borderTop: 'none', backgroundColor: '#f9f9f9', padding: '0' })}></th>
-                        <th style={cellStyle({ border: '0.1px solid #666', borderTop: 'none', backgroundColor: '#f9f9f9', padding: '0' })}></th>
-                        <th style={cellStyle({ border: '0.1px solid #666', borderTop: 'none', backgroundColor: '#f9f9f9', padding: '0' })}></th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1965,7 +1957,7 @@ const ViewServiceReportDentalIntra: React.FC<ViewServiceReportDentalIntraProps> 
         <ReportPage isLast>
           <div style={{ width: "100%", flex: 1 }}>
             <ReportPdfPageDeclaration
-              todayDate={todayDate}
+              qaTestDate={formatDate(report.testDate || "")}
               customerCity={placeValue}
               engineerId={report.engineerId}
               engineerName={report.engineerNameRPId}

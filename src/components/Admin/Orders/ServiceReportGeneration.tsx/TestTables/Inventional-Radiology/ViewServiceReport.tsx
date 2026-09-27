@@ -9,6 +9,7 @@ import {
   saveGeneratedReportPdfToDb,
   useEmbeddedReportPdfAutoSave,
 } from "../shared/embeddedViewReportPdf";
+import { formatCentralBeamObservedTilt } from "../centralBeamTiltDisplay";
 import MainTestTableForInventionalRadiology from "./MainTestTableForInventionalRadiology";
 import { ReportPdfPageHeader } from "../RadiographyFixed/component/Header";
 import { ReportPdfPageFooter } from "../RadiographyFixed/component/Footer";
@@ -536,7 +537,7 @@ const ViewServiceReport: React.FC<ViewServiceReportProps> = ({
                     Observed tilt
                   </th>
                   <td style={cellStyle({ border: "0.1px solid #666" })}>
-                    {c.observedTilt.value ? `°${c.observedTilt.value}` : "-"}
+                    {formatCentralBeamObservedTilt(c.observedTilt.value)}
                     {c.observedTilt.remark && <span style={{ marginLeft: "8px" }}>{c.observedTilt.remark}</span>}
                   </td>
                 </tr>
@@ -1286,13 +1287,14 @@ const ViewServiceReport: React.FC<ViewServiceReportProps> = ({
           <table className="w-full border-2 border-black compact-table force-small-text" style={{ fontSize: "10px", tableLayout: "fixed", width: "100%" }}>
             <thead className="bg-gray-100">
               <tr>
-                <th className="border border-black border-b-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: "10px", padding: "5px" }}>{stationColumnLabel}</th>
+                <th rowSpan={2} className="border border-black p-1.5 print:p-[3px] text-center" style={{ fontSize: "10px", padding: "5px", verticalAlign: "middle" }}>{stationColumnLabel}</th>
                 <th colSpan={measHeaders.length} className="border border-black p-1.5 print:p-[3px] text-center" style={{ fontSize: "10px", padding: "5px" }}>
                   Output (mGy)
                 </th>
-                <th className="border border-black border-b-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: "10px", padding: "5px" }}>Avg Output</th>
+                <th rowSpan={2} className="border border-black p-1.5 print:p-[3px] text-center" style={{ fontSize: "10px", padding: "5px", verticalAlign: "middle" }}>Avg Output</th>
                 <th
-                  className="border border-black border-b-0 p-1.5 print:p-[3px] text-center"
+                  rowSpan={2}
+                  className="border border-black p-1.5 print:p-[3px] text-center"
                   style={{
                     fontSize: "10px",
                     padding: "4px 6px",
@@ -1300,29 +1302,23 @@ const ViewServiceReport: React.FC<ViewServiceReportProps> = ({
                     width: isMaLoading ? "12%" : "10%",
                     whiteSpace: "normal",
                     lineHeight: 1.25,
+                    verticalAlign: "middle",
                   }}
                 >
                   <div>X</div>
                   <div style={{ fontSize: "9px", fontWeight: 600 }}>({xUnitLabel})</div>
                 </th>
-                <th className="border border-black border-b-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: "10px", padding: "5px" }}>X MAX</th>
-                <th className="border border-black border-b-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: "10px", padding: "5px" }}>X MIN</th>
-                <th className="border border-black border-b-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: "10px", padding: "5px" }}>CoL</th>
-                <th className="border border-black border-b-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: "10px", padding: "5px" }}>Remarks</th>
+                <th rowSpan={2} className="border border-black p-1.5 print:p-[3px] text-center" style={{ fontSize: "10px", padding: "5px", verticalAlign: "middle" }}>X MAX</th>
+                <th rowSpan={2} className="border border-black p-1.5 print:p-[3px] text-center" style={{ fontSize: "10px", padding: "5px", verticalAlign: "middle" }}>X MIN</th>
+                <th rowSpan={2} className="border border-black p-1.5 print:p-[3px] text-center" style={{ fontSize: "10px", padding: "5px", verticalAlign: "middle" }}>CoL</th>
+                <th rowSpan={2} className="border border-black p-1.5 print:p-[3px] text-center" style={{ fontSize: "10px", padding: "5px", verticalAlign: "middle" }}>Remarks</th>
               </tr>
               <tr>
-                <th className="border border-black border-t-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: "10px", padding: "5px" }}></th>
                 {measHeaders.map((header: string, idx: number) => (
                   <th key={idx} className="border border-black p-1.5 print:p-[3px] text-center" style={{ fontSize: "10px", padding: "5px" }}>
                     {header || `Meas ${idx + 1}`}
                   </th>
                 ))}
-                <th className="border border-black border-t-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: "10px", padding: "5px" }}></th>
-                <th className="border border-black border-t-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: "10px", padding: "5px" }}></th>
-                <th className="border border-black border-t-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: "10px", padding: "5px" }}></th>
-                <th className="border border-black border-t-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: "10px", padding: "5px" }}></th>
-                <th className="border border-black border-t-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: "10px", padding: "5px" }}></th>
-                <th className="border border-black border-t-0 p-1.5 print:p-[3px] text-center" style={{ fontSize: "10px", padding: "5px" }}></th>
               </tr>
             </thead>
             <tbody>
@@ -2339,7 +2335,7 @@ const ViewServiceReport: React.FC<ViewServiceReportProps> = ({
         <ReportPage isLast>
           <div className="max-w-5xl mx-auto print:max-w-none" style={{ width: '100%', maxWidth: 'none', minHeight: '90vh' }}>
             <ReportPdfPageDeclaration
-              todayDate={todayDate}
+              qaTestDate={formatDate(report.testDate || "")}
               customerCity={placeValue}
               engineerId={report.engineerId}
               engineerName={report.engineerNameRPId}

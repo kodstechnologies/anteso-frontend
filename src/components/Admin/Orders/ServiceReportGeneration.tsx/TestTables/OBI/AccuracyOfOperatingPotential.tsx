@@ -3,6 +3,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { Plus, Trash2, Save, Edit3, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
 import { evaluateTotalFiltrationPassFail } from "../totalFiltrationPassFail";
+import { validateTotalFiltrationSave } from "../shared/validateTotalFiltrationSave";
 import {
     addAccuracyOfOperatingPotentialForOBI,
     getAccuracyOfOperatingPotentialByServiceIdForOBI,
@@ -280,6 +281,12 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
     const saveTest = async () => {
         if (!serviceId) {
             toast.error("Service ID is missing");
+            return;
+        }
+
+        const tfValidation = validateTotalFiltrationSave(totalFiltration);
+        if (!tfValidation.ok) {
+            toast.error(tfValidation.message);
             return;
         }
 
