@@ -1,4 +1,5 @@
 // src/components/reports/ViewServiceReportFixedRadioFluro.tsx
+import { normalizePlusMinusSign } from "../shared/mainTestTableDisplay";
 import React, { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
@@ -1044,9 +1045,9 @@ const ViewServiceReportFixedRadioFluro: React.FC<ViewServiceReportFixedRadioFlur
                           <th className="border border-black p-2 print:p-1 text-center" style={{ width: '26%', padding: '0px 1px', fontSize: '11px' }}>Measured Focal Spot (Nominal)</th>
                           <th className="border border-black p-2 print:p-1 text-left" style={{ width: '34%', padding: '2px 4px', fontSize: '10px', lineHeight: '1.3' }}>
                             <div><strong>Tolerance:</strong></div>
-                            <div>1. +{testData.effectiveFocalSpot?.toleranceCriteria?.small?.multiplier ?? 0.5} f for f &lt; {testData.effectiveFocalSpot?.toleranceCriteria?.small?.upperLimit ?? 0.8} mm</div>
-                            <div>2. +{testData.effectiveFocalSpot?.toleranceCriteria?.medium?.multiplier ?? 0.4} f for {testData.effectiveFocalSpot?.toleranceCriteria?.medium?.lowerLimit ?? 0.8} &lt;= f &lt;= {testData.effectiveFocalSpot?.toleranceCriteria?.medium?.upperLimit ?? 1.5} mm</div>
-                            <div>3. +{testData.effectiveFocalSpot?.toleranceCriteria?.large?.multiplier ?? 0.3} f for f &gt; {testData.effectiveFocalSpot?.toleranceCriteria?.large?.lowerLimit ?? 1.5} mm</div>
+                            <div>1. +{testData.effectiveFocalSpot?.toleranceCriteria?.small?.multiplier ?? 0.5} f For f &lt; {testData.effectiveFocalSpot?.toleranceCriteria?.small?.upperLimit ?? 0.8} mm</div>
+                            <div>2. +{testData.effectiveFocalSpot?.toleranceCriteria?.medium?.multiplier ?? 0.4} f For {testData.effectiveFocalSpot?.toleranceCriteria?.medium?.lowerLimit ?? 0.8} &lt;= f &lt;= {testData.effectiveFocalSpot?.toleranceCriteria?.medium?.upperLimit ?? 1.5} mm</div>
+                            <div>3. +{testData.effectiveFocalSpot?.toleranceCriteria?.large?.multiplier ?? 0.3} f For f &gt; {testData.effectiveFocalSpot?.toleranceCriteria?.large?.lowerLimit ?? 1.5} mm</div>
                           </th>
                         </tr>
                       </thead>
@@ -1281,7 +1282,7 @@ const ViewServiceReportFixedRadioFluro: React.FC<ViewServiceReportFixedRadioFlur
                     {testData.totalFiltration.tolerance && (
                       <div className="bg-gray-50 p-4 print:p-1 rounded border" style={{ padding: '2px 4px', marginTop: '4px' }}>
                         <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
-                          <strong>Tolerance:</strong> {testData.totalFiltration.tolerance.sign || "±"} {testData.totalFiltration.tolerance.value || "-"} kVp
+                          <strong>Tolerance:</strong> {normalizePlusMinusSign(testData.totalFiltration.tolerance.sign)} {testData.totalFiltration.tolerance.value || "-"} kVp
                         </p>
                       </div>
                     )}

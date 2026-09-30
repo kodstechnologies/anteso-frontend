@@ -3,6 +3,7 @@ import {
   formatConsistencyOutputSpecified,
   formatEffectiveFocalSpotToleranceStr,
   getRadiationLeakageLevelParameterTitle,
+  formatKvpAccuracyTolerance,
 } from "../shared/mainTestTableDisplay";
 // src/components/reports/TestTables/RadiographyMobileHT/MainTestTableForRadiographyMobileHT.tsx
 import React from "react";
@@ -216,7 +217,7 @@ const MainTestTableForRadiographyMobileHT: React.FC<MainTestTableProps> = ({ tes
         return {
           specified: row.setKV || "-",
           measured: row.avgKvp || "-",
-          tolerance: `${toleranceSign} ${toleranceValue} kVp`,
+          tolerance: formatKvpAccuracyTolerance(toleranceSign, toleranceValue),
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });
@@ -269,7 +270,7 @@ const MainTestTableForRadiographyMobileHT: React.FC<MainTestTableProps> = ({ tes
         return {
           specified: row.appliedKvp || "-",
           measured: measuredDisplay,
-          tolerance: `${toleranceSign} ${toleranceValue} kVp`,
+          tolerance: formatKvpAccuracyTolerance(toleranceSign, toleranceValue),
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });

@@ -3,6 +3,8 @@ import {
   formatConsistencyOutputSpecified,
   formatEffectiveFocalSpotToleranceStr,
   getRadiationLeakageLevelParameterTitle,
+  normalizePlusMinusSign,
+  formatKvpAccuracyTolerance,
 } from "../shared/mainTestTableDisplay";
 // src/components/reports/TestTables/InventionalRadiology/MainTestTableForInventionalRadiology.tsx
 import React from "react";
@@ -264,9 +266,7 @@ const MainTestTableForInventionalRadiology: React.FC<MainTestTableProps> = ({ te
   if (testData.accuracyOfOperatingPotential?.table2 && Array.isArray(testData.accuracyOfOperatingPotential.table2)) {
     const validRows = testData.accuracyOfOperatingPotential.table2.filter((row: any) => row.setKV || row.avgKvp);
     if (validRows.length > 0) {
-      const toleranceSign =
-        testData.accuracyOfOperatingPotential.tolerance?.sign ||
-        testData.accuracyOfOperatingPotential.toleranceSign ;
+      const toleranceSign = normalizePlusMinusSign(testData.accuracyOfOperatingPotential.tolerance?.sign || testData.accuracyOfOperatingPotential.toleranceSign);
       const toleranceValue =
         testData.accuracyOfOperatingPotential.tolerance?.value ||
         testData.accuracyOfOperatingPotential.toleranceValue ||
@@ -286,7 +286,7 @@ const MainTestTableForInventionalRadiology: React.FC<MainTestTableProps> = ({ te
         return {
           specified: row.setKV || "-",
           measured: row.avgKvp || "-",
-          tolerance: `${toleranceSign} ${toleranceValue} kVp`,
+          tolerance: formatKvpAccuracyTolerance(toleranceSign, toleranceValue),
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });
@@ -298,7 +298,7 @@ const MainTestTableForInventionalRadiology: React.FC<MainTestTableProps> = ({ te
   if (testData.totalFilteration?.measurements && Array.isArray(testData.totalFilteration.measurements)) {
     const validRows = testData.totalFilteration.measurements.filter((row: any) => row.appliedKvp || row.averageKvp || row.measuredValues);
     if (validRows.length > 0) {
-      const toleranceSign = testData.totalFilteration.tolerance?.sign || "±";
+      const toleranceSign = normalizePlusMinusSign(testData.totalFilteration.tolerance?.sign);
       const toleranceValue = testData.totalFilteration.tolerance?.value || "2.0";
       const testRows = validRows.map((row: any) => {
         let avgKvpNum: number | null = null;
@@ -337,7 +337,7 @@ const MainTestTableForInventionalRadiology: React.FC<MainTestTableProps> = ({ te
         return {
           specified: row.appliedKvp || "-",
           measured: measuredDisplay,
-          tolerance: `${toleranceSign} ${toleranceValue} kVp`,
+          tolerance: formatKvpAccuracyTolerance(toleranceSign, toleranceValue),
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });

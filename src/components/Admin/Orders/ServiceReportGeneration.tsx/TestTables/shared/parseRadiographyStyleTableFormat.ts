@@ -1,6 +1,7 @@
 /** Parse Radiography-Fixed-style vertical TEST: table CSV/Excel for C-Arm and O-Arm. */
 
 import * as XLSX from "xlsx";
+import { normalizePlusMinusSign as sharedNormalizePlusMinusSign } from "./mainTestTableDisplay";
 
 export type RadiographyStyleDevice = "carm" | "oarm";
 
@@ -13,22 +14,10 @@ export type StyleParsedRow = {
 
 const splitLine = (line: string) => line.split(",").map((c) => (c || "").trim());
 
-const normalizeCsvToleranceSign = (raw: unknown): string => {
-  const v = String(raw ?? "")
-    .trim()
-    .replace(/\uFFFD/g, "")
-    .replace(/Â±/g, "±")
-    .replace(/\u00b1/g, "±");
-  if (!v) return "±";
-  if (/^\+-?$|^±$/i.test(v) || /^both$/i.test(v) || /^plus[\s/_-]*minus$/i.test(v)) return "±";
-  if (v === "+" || /^plus$/i.test(v)) return "+";
-  if (v === "-" || /^minus$/i.test(v)) return "-";
-  return "±";
-};
+const normalizeCsvToleranceSign = (raw: unknown): string => sharedNormalizePlusMinusSign(raw);
 
 /** Display-safe ± / + / - (fixes corrupted DB signs like �). */
-export const normalizePlusMinusSign = (raw: unknown): "+" | "-" | "±" =>
-  normalizeCsvToleranceSign(raw) as "+" | "-" | "±";
+export const normalizePlusMinusSign = sharedNormalizePlusMinusSign;
 
 export const normalizeCsvComparisonOperator = (raw: unknown): string => {
   const original = String(raw ?? "")

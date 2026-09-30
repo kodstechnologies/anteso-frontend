@@ -1,4 +1,5 @@
 // src/components/reports/ViewServiceReportRadiographyPortable.tsx
+import { normalizePlusMinusSign } from "../shared/mainTestTableDisplay";
 import React, { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { getReportHeaderForRadiographyPortable, saveReportHeader, getDetails, getTools , saveReportPdfForRadiographyPortable } from "../../../../../../api";
@@ -863,9 +864,9 @@ const ViewServiceReportRadiographyPortable: React.FC<ViewServiceReportRadiograph
                             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                               <strong>Tolerance:</strong>
                             </div>
-                            <div>1. +{testData.effectiveFocalSpot?.toleranceCriteria?.small?.multiplier ?? 0.5} f for f &lt; {testData.effectiveFocalSpot?.toleranceCriteria?.small?.upperLimit ?? 0.8} mm</div>
-                            <div>2. +{testData.effectiveFocalSpot?.toleranceCriteria?.medium?.multiplier ?? 0.4} f for {testData.effectiveFocalSpot?.toleranceCriteria?.medium?.lowerLimit ?? 0.8} &lt;= f &lt;= {testData.effectiveFocalSpot?.toleranceCriteria?.medium?.upperLimit ?? 1.5} mm</div>
-                            <div>3. +{testData.effectiveFocalSpot?.toleranceCriteria?.large?.multiplier ?? 0.3} f for f &gt; {testData.effectiveFocalSpot?.toleranceCriteria?.large?.lowerLimit ?? 1.5} mm</div>
+                            <div>1. +{testData.effectiveFocalSpot?.toleranceCriteria?.small?.multiplier ?? 0.5} f For f &lt; {testData.effectiveFocalSpot?.toleranceCriteria?.small?.upperLimit ?? 0.8} mm</div>
+                            <div>2. +{testData.effectiveFocalSpot?.toleranceCriteria?.medium?.multiplier ?? 0.4} f For {testData.effectiveFocalSpot?.toleranceCriteria?.medium?.lowerLimit ?? 0.8} &lt;= f &lt;= {testData.effectiveFocalSpot?.toleranceCriteria?.medium?.upperLimit ?? 1.5} mm</div>
+                            <div>3. +{testData.effectiveFocalSpot?.toleranceCriteria?.large?.multiplier ?? 0.3} f For f &gt; {testData.effectiveFocalSpot?.toleranceCriteria?.large?.lowerLimit ?? 1.5} mm</div>
                           </th>
                         </tr>
                       </thead>
@@ -1074,15 +1075,7 @@ const ViewServiceReportRadiographyPortable: React.FC<ViewServiceReportRadiograph
                   {aop.tolerance && (
                     <div className="bg-gray-50 p-4 print:p-1 rounded border" style={{ padding: '2px 4px', marginTop: '4px' }}>
                       <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
-                        <strong>Tolerance:</strong> {((sign: any) => {
-                          if (!sign) return "±";
-                          const s = String(sign).toLowerCase().replace(/\s+/g, "");
-                          if (s.includes("plus") && s.includes("minus")) return "±";
-                          if (s === "both" || s === "±") return "±";
-                          if (s === "plus" || s === "+") return "+";
-                          if (s === "minus" || s === "-") return "-";
-                          return sign;
-                        })(aop.tolerance?.sign)} {aop.tolerance.value}{aop.tolerance.type === 'percent' ? '%' : ' kVp'}
+                        <strong>Tolerance:</strong> {normalizePlusMinusSign(aop.tolerance?.sign)} {aop.tolerance.value}{aop.tolerance.type === 'percent' ? '%' : ' kVp'}
                       </p>
                     </div>
                   )}

@@ -4,6 +4,8 @@ import {
   formatConsistencyOutputSpecified,
   formatEffectiveFocalSpotToleranceStr,
   getRadiationLeakageLevelParameterTitle,
+  normalizePlusMinusSign,
+  formatKvpAccuracyTolerance,
 } from "../shared/mainTestTableDisplay";
 import { evaluateTotalFiltrationPassFail } from "../totalFiltrationPassFail";
 import { formatCentralBeamObservedTilt } from "../centralBeamTiltDisplay";
@@ -200,18 +202,7 @@ export const generateFixedRadioFluroSummaryRows = (testData: any, hasTimer: bool
   if (testData.accuracyOfOperatingPotential?.table2 && Array.isArray(testData.accuracyOfOperatingPotential.table2)) {
     const validRows = testData.accuracyOfOperatingPotential.table2.filter((row: any) => row.setKV || row.avgKvp);
     if (validRows.length > 0) {
-      const toleranceSignRaw =
-        testData.accuracyOfOperatingPotential.tolerance?.sign ||
-        testData.accuracyOfOperatingPotential.toleranceSign ||
-        "±";
-      let toleranceSign = toleranceSignRaw;
-      if (typeof toleranceSignRaw === "string") {
-        const lowered = toleranceSignRaw.toLowerCase().replace(/\s+/g, "");
-        if (lowered.includes("plus") && lowered.includes("minus")) toleranceSign = "±";
-        else if (lowered === "plus") toleranceSign = "+";
-        else if (lowered === "minus") toleranceSign = "-";
-      }
-
+      const toleranceSign = normalizePlusMinusSign(testData.accuracyOfOperatingPotential.tolerance?.sign || testData.accuracyOfOperatingPotential.toleranceSign);
       const toleranceValue =
         testData.accuracyOfOperatingPotential.tolerance?.value ||
         testData.accuracyOfOperatingPotential.toleranceValue ||
@@ -232,7 +223,7 @@ export const generateFixedRadioFluroSummaryRows = (testData: any, hasTimer: bool
         return {
           specified: row.setKV || "-",
           measured: row.avgKvp || "-",
-          tolerance: `${toleranceSign} ${toleranceValue} kVp`,
+          tolerance: formatKvpAccuracyTolerance(toleranceSign, toleranceValue),
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });
@@ -244,7 +235,7 @@ export const generateFixedRadioFluroSummaryRows = (testData: any, hasTimer: bool
   if (testData.totalFiltration?.measurements && Array.isArray(testData.totalFiltration.measurements)) {
     const validRows = testData.totalFiltration.measurements.filter((row: any) => row.appliedKvp || row.averageKvp || row.measuredValues);
     if (validRows.length > 0) {
-      const toleranceSign = testData.totalFiltration.tolerance?.sign || "±";
+      const toleranceSign = normalizePlusMinusSign(testData.totalFiltration.tolerance?.sign);
       const toleranceValue = testData.totalFiltration.tolerance?.value || "2.0";
       const testRows = validRows.map((row: any) => {
         let avgKvpNum: number | null = null;
@@ -278,7 +269,7 @@ export const generateFixedRadioFluroSummaryRows = (testData: any, hasTimer: bool
         return {
           specified: row.appliedKvp || "-",
           measured: measuredDisplay,
-          tolerance: `${toleranceSign} ${toleranceValue} kVp`,
+          tolerance: formatKvpAccuracyTolerance(toleranceSign, toleranceValue),
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });

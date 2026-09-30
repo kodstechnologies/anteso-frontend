@@ -1,4 +1,5 @@
 // src/components/reports/ViewServiceReportOArm.tsx
+import { normalizePlusMinusSign } from "../shared/mainTestTableDisplay";
 import React, { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { getReportHeaderForOArm, saveReportHeader, getDetails, getTools , saveReportPdfForOArm } from "../../../../../../api";
@@ -834,7 +835,7 @@ const ViewServiceReportOArm: React.FC<ViewServiceReportOArmProps> = ({
                     {testData.totalFilteration.tolerance && (
                       <div className="bg-gray-50 p-4 print:p-1 rounded border" style={{ padding: '2px 4px', marginTop: '4px' }}>
                         <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
-                          <strong>Tolerance:</strong> {testData.totalFilteration.tolerance.sign } {testData.totalFilteration.tolerance.value || "-"}kVp
+                          <strong>Tolerance:</strong> {normalizePlusMinusSign(testData.totalFilteration.tolerance.sign)}  {testData.totalFilteration.tolerance.value || "-"}kVp
                         </p>
                       </div>
                     )}

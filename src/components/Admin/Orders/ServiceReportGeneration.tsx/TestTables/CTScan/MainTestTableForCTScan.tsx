@@ -1,4 +1,7 @@
-﻿import { formatCoefficientOfLinearityMeasured } from "../shared/mainTestTableDisplay";
+﻿import {
+  formatCoefficientOfLinearityMeasured,
+  normalizePlusMinusSign,
+} from "../shared/mainTestTableDisplay";
 ﻿// // src/components/reports/TestTables/CTScan/MainTestTableForCTScan.tsx
 // import React from "react";
 
@@ -184,8 +187,8 @@ const MainTestTableForCTScan: React.FC<MainTestTableProps> = ({ testData }) => {
     // If index is provided (0, 1, 2), use fixed labels from generator
     if (index !== undefined) {
       if (index === 0) return "0.5 mm";
-      if (index === 1) return "+/-50%";
-      if (index === 2) return "+/-1.0 mm";
+      if (index === 1) return "±50%";
+      if (index === 2) return "±1.0 mm";
     }
 
     const appliedNum = typeof applied === 'string' ? parseFloat(applied) : applied;
@@ -194,9 +197,9 @@ const MainTestTableForCTScan: React.FC<MainTestTableProps> = ({ testData }) => {
     if (appliedNum < 1.0) {
       return "0.5 mm";
     } else if (appliedNum >= 1.0 && appliedNum <= 2.0) {
-      return "Â±50%";
+      return "±50%";
     } else {
-      return "+/-1.0 mm";
+      return "±1.0 mm";
     }
   };
 
@@ -207,9 +210,9 @@ const MainTestTableForCTScan: React.FC<MainTestTableProps> = ({ testData }) => {
     const type = tolerance.type || 'percent';
     const sign = tolerance.sign || 'both';
 
-    const signSymbol = sign === 'both' ? "+/-" : sign === 'plus' ? '+' : '-';
-    const unit = ' kVp';
-    return `${signSymbol}${value}${unit}`;
+    const signSymbol = normalizePlusMinusSign(sign);
+    const unit = type === 'percent' ? '%' : ' kVp';
+    return `${signSymbol} ${value}${unit}`;
   };
 
   // Helper function to format Timer Accuracy tolerance

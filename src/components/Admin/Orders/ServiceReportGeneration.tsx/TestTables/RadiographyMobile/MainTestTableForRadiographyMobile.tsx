@@ -3,6 +3,8 @@ import {
   formatConsistencyOutputSpecified,
   formatEffectiveFocalSpotToleranceStr,
   getRadiationLeakageLevelParameterTitle,
+  normalizePlusMinusSign,
+  formatKvpAccuracyTolerance,
 } from "../shared/mainTestTableDisplay";
 // src/components/reports/TestTables/RadiographyMobile/MainTestTableForRadiographyMobile.tsx
 import React from "react";
@@ -192,40 +194,69 @@ const MainTestTableForRadiographyMobile: React.FC<MainTestTableProps> = ({ testD
   }
 
   // 2. Accuracy of Operating Potential (kVp Accuracy)
-  if (testData.accuracyOfOperatingPotential?.table2 && Array.isArray(testData.accuracyOfOperatingPotential.table2)) {
-    const validRows = testData.accuracyOfOperatingPotential.table2.filter((row: any) => row.setKV || row.avgKvp);
+  {
+    const aop = testData.accuracyOfOperatingPotential;
+    const measurementsRows = Array.isArray(aop?.measurements) && aop.measurements.length > 0
+      ? aop.measurements
+      : [];
+    const table2Rows = Array.isArray(aop?.table2) && aop.table2.length > 0
+      ? aop.table2
+      : [];
+    const totalFiltrationRows = Array.isArray(testData.totalFilteration?.measurements)
+      ? testData.totalFilteration.measurements.map((row: any) => {
+          const measuredValues = Array.isArray(row.measuredValues) ? row.measuredValues : [];
+          const nums = measuredValues.map((v: any) => parseFloat(v)).filter((n: number) => !isNaN(n));
+          const computedAvg = nums.length
+            ? (nums.reduce((a: number, b: number) => a + b, 0) / nums.length).toFixed(2)
+            : "";
+          return {
+            setKV: row.appliedKvp || row.setKV || "",
+            appliedKvp: row.appliedKvp || row.setKV || "",
+            avgKvp: row.averageKvp || row.avgKvp || computedAvg || "",
+            averageKvp: row.averageKvp || row.avgKvp || computedAvg || "",
+            remarks: row.remarks || "",
+          };
+        })
+      : [];
+    const aopRows = measurementsRows.length > 0
+      ? measurementsRows
+      : table2Rows.length > 0
+        ? table2Rows
+        : totalFiltrationRows;
+
+    const validRows = aopRows.filter(
+      (row: any) => row.appliedKvp || row.setKV || row.averageKvp || row.avgKvp
+    );
     if (validRows.length > 0) {
-      const toleranceSign =
-        testData.accuracyOfOperatingPotential.tolerance?.sign ||
-        testData.accuracyOfOperatingPotential.toleranceSign ||
-        "�";
+      const toleranceSign = normalizePlusMinusSign(aop?.tolerance?.sign || aop?.toleranceSign);
       const toleranceValue =
-        testData.accuracyOfOperatingPotential.tolerance?.value ||
-        testData.accuracyOfOperatingPotential.toleranceValue ||
+        aop?.tolerance?.value ||
+        aop?.toleranceValue ||
         "2.0";
       const testRows = validRows.map((row: any) => {
+        const applied = row.appliedKvp ?? row.setKV;
+        const measured = row.averageKvp ?? row.avgKvp;
         let isPass = false;
         if (row.remarks === "PASS" || row.remarks === "Pass") {
           isPass = true;
         } else if (row.remarks === "FAIL" || row.remarks === "Fail") {
           isPass = false;
-        } else {
-          const appliedKvp = parseFloat(row.setKV);
-          const avgKvp = parseFloat(row.avgKvp);
-          if (!isNaN(appliedKvp) && !isNaN(avgKvp) && appliedKvp > 0) {
-            const deviation = Math.abs(((avgKvp - appliedKvp) / appliedKvp) * 100);
-            const tol = parseFloat(toleranceValue);
-            isPass = deviation <= tol;
+        } else if (applied != null && measured != null) {
+          const appliedKvp = parseFloat(String(applied));
+          const avgKvp = parseFloat(String(measured));
+          const tol = parseFloat(toleranceValue);
+          if (!isNaN(appliedKvp) && !isNaN(avgKvp) && appliedKvp > 0 && !isNaN(tol)) {
+            isPass = Math.abs(avgKvp - appliedKvp) <= tol;
           }
         }
         return {
-          specified: row.setKV || "-",
-          measured: row.avgKvp || "-",
-          tolerance: `${toleranceSign} ${toleranceValue} kVp`,
+          specified: applied || "-",
+          measured: measured || "-",
+          tolerance: formatKvpAccuracyTolerance(toleranceSign, toleranceValue),
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });
-      addRowsForTest("Accuracy of Operating Potential (kVp Accuracy)", testRows);
+      addRowsForTest("Accuracy of Operating Potential (kVp Accuracy)", testRows, true);
     }
   }
 
@@ -383,7 +414,7 @@ const MainTestTableForRadiographyMobile: React.FC<MainTestTableProps> = ({ testD
           specified: (row.kv || row.kvp) && (row.ma || row.mas || row.mAs)
             ? formatConsistencyOutputSpecified(row.kv || row.kvp, row.ma || row.mas || row.mAs)
             : ((row.kv || row.kvp) ? `${row.kv || row.kvp} kV` : "Varies"),
-          measured: formattedCv !== "-" ? "CoV = " + formattedCv : "-",
+          measured: formattedCv,
           tolerance: `${toleranceOperator} ${toleranceValue}`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };

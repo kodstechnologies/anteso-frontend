@@ -3,6 +3,8 @@ import {
   formatConsistencyOutputSpecified,
   formatEffectiveFocalSpotToleranceStr,
   getRadiationLeakageLevelParameterTitle,
+  normalizePlusMinusSign,
+  formatKvpAccuracyTolerance,
 } from "../shared/mainTestTableDisplay";
 // src/components/reports/TestTables/RadiographyPortable/MainTestTableForRadiographyPortable.tsx
 import React from "react";
@@ -212,17 +214,7 @@ const MainTestTableForRadiographyPortable: React.FC<MainTestTableProps> = ({ tes
   if (aopRows.length > 0) {
     const validRows = aopRows.filter((row: any) => row.appliedKvp || row.setKV || row.averageKvp || row.avgKvp);
     if (validRows.length > 0) {
-      let rawToleranceSign =
-        aop.tolerance?.sign ||
-        aop.toleranceSign ||
-        "±";
-      let toleranceSign = rawToleranceSign;
-      if (typeof rawToleranceSign === "string") {
-        const lowerSign = rawToleranceSign.toLowerCase().replace(/\s+/g, "");
-        if (lowerSign.includes("plus") && lowerSign.includes("minus")) toleranceSign = "±";
-        else if (lowerSign === "plus") toleranceSign = "+";
-        else if (lowerSign === "minus") toleranceSign = "-";
-      }
+      const toleranceSign = normalizePlusMinusSign(aop.tolerance?.sign || aop.toleranceSign);
       const toleranceValue = aop.tolerance?.value || "2.0";
       const testRows = validRows.map((row: any) => {
         const applied = row.appliedKvp ?? row.setKV;
@@ -242,7 +234,7 @@ const MainTestTableForRadiographyPortable: React.FC<MainTestTableProps> = ({ tes
         return {
           specified: applied || "-",
           measured: measured || "-",
-          tolerance: `${toleranceSign} ${toleranceValue} kVp`,
+          tolerance: formatKvpAccuracyTolerance(toleranceSign, toleranceValue),
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });

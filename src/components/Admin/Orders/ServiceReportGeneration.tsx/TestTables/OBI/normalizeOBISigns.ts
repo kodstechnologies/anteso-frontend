@@ -1,4 +1,5 @@
-/** Mammography-style helpers: fix corrupted DB signs (�) and unicode variants. */
+/** Mammography-style helpers: fix corrupted DB signs and unicode variants. */
+import { normalizePlusMinusSign as sharedNormalizePlusMinusSign } from "../shared/mainTestTableDisplay";
 
 export function normalizeComparisonOperator(raw: any): "<" | ">" | "<=" | ">=" | "=" {
   const s = String(raw ?? "<=")
@@ -18,15 +19,4 @@ export function normalizeComparisonOperator(raw: any): "<" | ">" | "<=" | ">=" |
   return "<=";
 }
 
-export function normalizePlusMinusSign(raw: any): "+" | "-" | "±" {
-  const s = String(raw ?? "both")
-    .trim()
-    .toLowerCase()
-    .replace(/\uFFFD/g, "")
-    .replace(/Â±/g, "±")
-    .replace(/\u00b1/g, "±");
-  if (s === "plus" || s === "+") return "+";
-  if (s === "minus" || s === "-") return "-";
-  if (s === "both" || s === "±" || s === "+/-" || s === "+-" || s === "plusminus" || s === "plus/minus") return "±";
-  return "±";
-}
+export const normalizePlusMinusSign = sharedNormalizePlusMinusSign;

@@ -2,6 +2,8 @@ import {
   formatCoefficientOfLinearityMeasured,
   formatConsistencyOutputSpecified,
   getRadiationLeakageLevelParameterTitle,
+  normalizePlusMinusSign,
+  formatKvpAccuracyTolerance,
 } from "../shared/mainTestTableDisplay";
 // src/components/reports/TestTables/DentalIntra/MainTestTableForDentalIntra.tsx
 import React from "react";
@@ -133,7 +135,7 @@ const MainTestTableForDentalIntra: React.FC<MainTestTableProps> = ({ testData })
   if (testData.accuracyOfOperatingPotentialAndTime?.rows && Array.isArray(testData.accuracyOfOperatingPotentialAndTime.rows)) {
     const validRows = testData.accuracyOfOperatingPotentialAndTime.rows.filter((row: any) => row.appliedKvp || row.avgKvp || row.setTime || row.avgTime);
     if (validRows.length > 0) {
-      const kvpToleranceSign = testData.accuracyOfOperatingPotentialAndTime.kvpToleranceSign || "±";
+      const kvpToleranceSign = normalizePlusMinusSign(testData.accuracyOfOperatingPotentialAndTime.kvpToleranceSign);
       const kvpToleranceValue = testData.accuracyOfOperatingPotentialAndTime.kvpToleranceValue || "5";
       const timeToleranceSign = testData.accuracyOfOperatingPotentialAndTime.timeToleranceSign || "±";
       const timeToleranceValue = testData.accuracyOfOperatingPotentialAndTime.timeToleranceValue || "10";
@@ -157,7 +159,7 @@ const MainTestTableForDentalIntra: React.FC<MainTestTableProps> = ({ testData })
         return {
           specified: row.appliedKvp || "-",
           measured: row.avgKvp || "-",
-          tolerance: `${kvpToleranceSign}${kvpToleranceValue} kVp`,
+          tolerance: formatKvpAccuracyTolerance(kvpToleranceSign, kvpToleranceValue),
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });

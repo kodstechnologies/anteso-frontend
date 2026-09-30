@@ -2,6 +2,8 @@ import {
   formatCoefficientOfLinearityMeasured,
   formatConsistencyOutputSpecified,
   getRadiationLeakageLevelParameterTitle,
+  normalizePlusMinusSign,
+  formatKvpAccuracyTolerance,
 } from "../shared/mainTestTableDisplay";
 // src/components/reports/TestTables/DentalHandHeld/MainTestTableForDentalHandHeld.tsx
 import React from "react";
@@ -136,8 +138,7 @@ const MainTestTableForDentalHandHeld: React.FC<MainTestTableProps> = ({ testData
         testData.accuracyOfOperatingPotential.tolerance?.value ||
         "2.0";
       const toleranceType =
-        testData.accuracyOfOperatingPotential.kvpToleranceSign ||
-        testData.accuracyOfOperatingPotential.tolerance?.type || "±";
+        normalizePlusMinusSign(testData.accuracyOfOperatingPotential.kvpToleranceSign || testData.accuracyOfOperatingPotential.tolerance?.type)
 
       const kvpRows = validRows.map((row: any) => ({
         specified: row.appliedKvp || "-",
@@ -155,7 +156,7 @@ const MainTestTableForDentalHandHeld: React.FC<MainTestTableProps> = ({ testData
       (row: any) => row.appliedKvp || row.averageKvp || row.measuredValues
     );
     if (validRows.length > 0) {
-      const toleranceSign = testData.totalFilteration.tolerance?.sign || "\u00B1";
+      const toleranceSign = normalizePlusMinusSign(testData.totalFilteration.tolerance?.sign);
       const toleranceValue = testData.totalFilteration.tolerance?.value || "2.0";
       const tfMeasRows = validRows.map((row: any) => {
         let avgKvpNum: number | null = null;
@@ -192,7 +193,7 @@ const MainTestTableForDentalHandHeld: React.FC<MainTestTableProps> = ({ testData
         return {
           specified: row.appliedKvp || "-",
           measured: measuredDisplay,
-          tolerance: `${toleranceSign} ${toleranceValue} kVp`,
+          tolerance: formatKvpAccuracyTolerance(toleranceSign, toleranceValue),
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });

@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Edit3, Save, Loader2 } from 'lucide-react';
+import { Edit3, Save, Loader2, Plus, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
   addEffectiveFocalSpotForRadiographyMobile,
@@ -77,12 +77,23 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, on
     ));
   };
 
-  const ensureTwoRows = (inputRows: FocalSpotRow[]): FocalSpotRow[] => {
-    const defaults: FocalSpotRow[] = [
-      { id: 'large', focusType: 'Large Focus', statedNominal: '2', measuredNominal: '', remark: '' },
-      { id: 'small', focusType: 'Small Focus', statedNominal: '0.6', measuredNominal: '', remark: '' },
-    ];
-    return [0, 1].map((idx) => ({ ...defaults[idx], ...(inputRows[idx] || {}) }));
+  const addRow = () => {
+    setRows(prev => [
+      ...prev,
+      {
+        id: `row-${Date.now()}`,
+        focusType: 'Large Focus',
+        statedNominal: '',
+        measuredNominal: '',
+        remark: '',
+      },
+    ]);
+    setIsSaved(false);
+  };
+
+  const removeRow = (id: string) => {
+    setRows(prev => prev.filter(row => row.id !== id));
+    setIsSaved(false);
   };
 
   const mapSpotToRow = (spot: any, idx: number): FocalSpotRow => {
@@ -95,7 +106,7 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, on
         ? (Number(spot.measuredWidth) + Number(spot.measuredHeight)) / 2
         : spot.measuredWidth ?? spot.measuredHeight;
     return {
-      id: idx === 0 ? 'large' : 'small',
+      id: spot._id || `row-${idx}`,
       focusType: spot.focusType || (idx === 0 ? 'Large Focus' : 'Small Focus'),
       statedNominal: String(spot.statedNominal ?? statedFromLegacy ?? ''),
       measuredNominal: String(spot.measuredNominal ?? measuredFromLegacy ?? ''),
@@ -115,7 +126,7 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, on
       setTolLargeMul(String(data.toleranceCriteria.large?.multiplier ?? '0.3'));
     }
     if (data.focalSpots?.length > 0) {
-      setRows(ensureTwoRows(data.focalSpots.slice(0, 2).map(mapSpotToRow)));
+      setRows(data.focalSpots.map(mapSpotToRow));
     }
     setIsSaved(true);
     setIsEditing(false);
@@ -199,7 +210,7 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, on
       }
     }
     if (initialData.focalSpots?.length) {
-      setRows(ensureTwoRows(initialData.focalSpots.slice(0, 2).map(mapSpotToRow)));
+      setRows(initialData.focalSpots.map(mapSpotToRow));
     }
     setIsSaved(false);
     setIsEditing(true);
@@ -395,11 +406,35 @@ const EffectiveFocalSpot: React.FC<Props> = ({ serviceId, testId: propTestId, on
                       {row.remark || '—'}
                     </span>
                   </td>
+                  {!isViewOnly && (
+                    <td className="px-2 py-4 text-center">
+                      <button
+                        type="button"
+                        onClick={() => removeRow(row.id)}
+                        className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
+                        title="Remove row"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+        {!isViewOnly && (
+          <div className="px-6 py-4 bg-gray-50 border-t">
+            <button
+              type="button"
+              onClick={addRow}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
+            >
+              <Plus className="w-4 h-4" />
+              Add Row
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Final Result */}

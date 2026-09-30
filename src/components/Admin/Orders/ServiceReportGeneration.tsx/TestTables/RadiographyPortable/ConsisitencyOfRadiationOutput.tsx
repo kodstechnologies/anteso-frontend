@@ -58,7 +58,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
   ]);
 
   const [tolerance, setTolerance] = useState<Tolerance>({
-    operator: '<=',
+    operator: '<',
     value: '0.05', // decimal, e.g. 0.05 for 5%
   });
 

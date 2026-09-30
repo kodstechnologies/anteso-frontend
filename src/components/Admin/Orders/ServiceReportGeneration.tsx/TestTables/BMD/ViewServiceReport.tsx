@@ -1,4 +1,5 @@
 // src/components/reports/ViewServiceReportBMD.tsx
+import { normalizePlusMinusSign } from "../shared/mainTestTableDisplay";
 import React, { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { getReportHeaderForBMD, saveReportHeaderForBMD, getReportNumbers, getAccuracyOfIrradiationTimeByServiceIdForBMD, getDetails, getAccuracyOfOperatingPotentialAndTimeByServiceIdForBMD, getTools , saveReportPdfForBMD } from "../../../../../../api";
@@ -899,8 +900,8 @@ const ViewServiceReportBMD: React.FC<ViewServiceReportBMDProps> = ({
                   </table>
                 </div>
                 <div className="mt-4 print:mt-1 grid grid-cols-2 gap-4 print:gap-1" style={{ marginTop: '2px' }}>
-                  <p className="text-sm print:text-[9px]" style={{ fontSize: '11px' }}>kVp Tolerance : {testData.accuracyOfOperatingPotential.kvpToleranceSign || "±"} {testData.accuracyOfOperatingPotential.kvpToleranceValue || "5"} kV</p>
-                  <p className="text-sm print:text-[9px]" style={{ fontSize: '11px' }}>Time Tolerance : {testData.accuracyOfOperatingPotential.timeToleranceSign || "±"} {testData.accuracyOfOperatingPotential.timeToleranceValue || "10"} %</p>
+                  <p className="text-sm print:text-[9px]" style={{ fontSize: '11px' }}>kVp Tolerance : {normalizePlusMinusSign(testData.accuracyOfOperatingPotential.kvpToleranceSign)} {testData.accuracyOfOperatingPotential.kvpToleranceValue || "5"} kV</p>
+                  <p className="text-sm print:text-[9px]" style={{ fontSize: '11px' }}>Time Tolerance : {normalizePlusMinusSign(testData.accuracyOfOperatingPotential.timeToleranceSign)} {testData.accuracyOfOperatingPotential.timeToleranceValue || "10"} %</p>
                 </div> */}
 
                 {/* Accuracy of Irradiation Time — shown inside section 1 */}
@@ -1093,7 +1094,7 @@ const ViewServiceReportBMD: React.FC<ViewServiceReportBMDProps> = ({
                     </div>
                     <div className="mt-4 print:mt-1" style={{ marginTop: '2px' }}>
                       <p className="text-sm print:text-[9px]" style={{ fontSize: '11px' }}>
-                        Tolerance : {testData.totalFiltration.tolerance?.sign || "±"} {testData.totalFiltration.tolerance?.value || "2.0"} kV
+                        Tolerance : {normalizePlusMinusSign(testData.totalFiltration.tolerance?.sign)} {testData.totalFiltration.tolerance?.value || "2.0"} kV
                       </p>
                     </div>
                   </div>

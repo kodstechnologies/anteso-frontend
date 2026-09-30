@@ -1,4 +1,5 @@
 // src/components/reports/ViewServiceReportDentalIntra.tsx
+import { normalizePlusMinusSign } from "../shared/mainTestTableDisplay";
 import React, { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
@@ -913,15 +914,13 @@ const ViewServiceReportDentalIntra: React.FC<ViewServiceReportDentalIntraProps> 
                     <div className="bg-gray-50 p-4 print:p-1 rounded border mb-2" style={{ padding: "2px 4px", marginTop: "4px" }}>
                       <p className="text-sm print:text-[9px]" style={{ fontSize: "11px", margin: "2px 0" }}>
                         <strong>Tolerance for kVp:</strong>{" "}
-                        {aopData?.kvpToleranceSign || "±"} {aopData?.kvpToleranceValue || "5"} kV
+                        {normalizePlusMinusSign(aopData?.kvpToleranceSign)} {aopData?.kvpToleranceValue || "5"} kV
                       </p>
                     </div>
                     <div className="bg-gray-50 p-4 print:p-1 rounded border" style={{ padding: "2px 4px", marginTop: "4px" }}>
                       <p className="text-sm print:text-[9px]" style={{ fontSize: "11px", margin: "2px 0" }}>
                         <strong>Tolerance for Irradiation Time:</strong>{" "}
-                        {aopData?.timeToleranceSign ||
-                          aopData?.tolerance?.operator ||
-                          "±"}{" "}
+                        {normalizePlusMinusSign(aopData?.timeToleranceSign)}{" "}
                         {aopData?.timeToleranceValue ?? aopData?.tolerance?.value ?? "10"}%
                       </p>
                     </div>

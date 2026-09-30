@@ -2,6 +2,8 @@ import {
   formatCoefficientOfLinearityMeasured,
   formatConsistencyOutputSpecified,
   getRadiationLeakageLevelParameterTitle,
+  normalizePlusMinusSign,
+  formatKvpAccuracyTolerance,
 } from "../shared/mainTestTableDisplay";
 // src/components/reports/TestTables/OPG/MainTestTableForOPG.tsx
 import React from "react";
@@ -99,9 +101,7 @@ const MainTestTableForOPG: React.FC<MainTestTableProps> = ({ testData }) => {
   if (testData.operatingPotential?.rows && Array.isArray(testData.operatingPotential.rows)) {
     const validRows = testData.operatingPotential.rows.filter((row: any) => row.appliedKvp || row.averageKvp);
     if (validRows.length > 0) {
-      const toleranceSign =
-        testData.operatingPotential.tolerance?.sign ||
-        testData.operatingPotential.toleranceSign || "±";
+      const toleranceSign = normalizePlusMinusSign(testData.operatingPotential.tolerance?.sign || testData.operatingPotential.toleranceSign);
       const toleranceValue = testData.operatingPotential.toleranceValue || "2.0";
       const testRows = validRows.map((row: any) => {
         let isPass = false;
@@ -122,7 +122,7 @@ const MainTestTableForOPG: React.FC<MainTestTableProps> = ({ testData }) => {
         return {
           specified: row.appliedKvp || "-",
           measured: row.averageKvp || "-",
-          tolerance: `${toleranceSign} ${toleranceValue} kVp`,
+          tolerance: formatKvpAccuracyTolerance(toleranceSign, toleranceValue),
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });

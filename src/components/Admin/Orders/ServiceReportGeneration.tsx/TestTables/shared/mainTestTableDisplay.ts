@@ -1,3 +1,17 @@
+/** Normalize stored ± / both / corrupted signs for kVp tolerance display. */
+export function normalizePlusMinusSign(raw: unknown): "+" | "-" | "±" {
+  const v = String(raw ?? "")
+    .trim()
+    .replace(/\uFFFD/g, "")
+    .replace(/Â±/g, "±")
+    .replace(/\u00b1/g, "±");
+  if (!v) return "±";
+  if (/^\+-?$|^±$/i.test(v) || /^both$/i.test(v) || /^plus[\s/_-]*minus$/i.test(v)) return "±";
+  if (v === "+" || /^plus$/i.test(v)) return "+";
+  if (v === "-" || /^minus$/i.test(v)) return "-";
+  return "±";
+}
+
 /** Format degree symbol after the numeric value (e.g. "5°"). */
 export function formatDegreeAfterValue(value: unknown): string {
   if (value === undefined || value === null || value === "") return "-";
@@ -15,7 +29,7 @@ export function formatEffectiveFocalSpotToleranceStr(
   mediumUpper: number | string,
   largeMultiplier: number | string
 ): string {
-  return `+${smallMultiplier} f FOR f < ${smallLimit} mm; +${mediumMultiplier} f FOR ${mediumLower} ≤ f ≤ ${mediumUpper} mm; +${largeMultiplier} f FOR f > ${mediumUpper} mm`;
+  return `+${smallMultiplier} f For f < ${smallLimit} mm; +${mediumMultiplier} f For ${mediumLower} ≤ f ≤ ${mediumUpper} mm; +${largeMultiplier} f For f > ${mediumUpper} mm`;
 }
 
 /** Coefficient of Linearity measured value without "CoL = " prefix. */
@@ -26,9 +40,9 @@ export function formatCoefficientOfLinearityMeasured(col: string | number | unde
   return isNaN(num) ? "-" : s;
 }
 
-/** kVp Accuracy tolerance display unit. */
-export function formatKvpAccuracyTolerance(sign: string, value: string | number): string {
-  return `${sign} ${value} kVp`;
+/** kVp Accuracy tolerance display (e.g. "± 2.0 kVp"). */
+export function formatKvpAccuracyTolerance(sign: unknown, value: string | number): string {
+  return `${normalizePlusMinusSign(sign)} ${value} kVp`;
 }
 
 /** Consistency of radiation output specified value — always uses mAs suffix. */

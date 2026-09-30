@@ -1,4 +1,5 @@
 // src/components/reports/ViewServiceReportOPG.tsx
+import { normalizePlusMinusSign } from "../shared/mainTestTableDisplay";
 import React, { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { getDetails, getReportHeaderForOPG, getTools , saveReportPdfForOPG } from "../../../../../../api";
@@ -1039,10 +1040,11 @@ const ViewServiceReportOPG: React.FC<ViewServiceReportOPGProps> = ({
                       <div className="bg-gray-50 p-4 print:p-1 rounded border" style={{ padding: '2px 4px', marginTop: '4px' }}>
                         <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
                           <strong>Tolerance:</strong>{" "}
-                          {(testData.operatingPotential.toleranceSign ||
+                          {normalizePlusMinusSign(
+                            testData.operatingPotential.toleranceSign ||
                             testData.operatingPotential.tolerance?.sign ||
-                            testData.operatingPotential.tolerance?.type ||
-                            "±")}{" "}
+                            testData.operatingPotential.tolerance?.type
+                          )}{" "}
                           {(testData.operatingPotential.toleranceValue ||
                             testData.operatingPotential.tolerance?.value ||
                             "-")}{" "}

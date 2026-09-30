@@ -1,4 +1,5 @@
 // src/components/reports/ViewServiceReportCTScan.tsx
+import { normalizePlusMinusSign } from "../shared/mainTestTableDisplay";
 import React, { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { getReportHeaderForCTScan, getDetails, getTools , saveReportPdfForCTScan } from "../../../../../../api";
@@ -434,9 +435,9 @@ const ViewServiceReportCTScan: React.FC<ViewServiceReportCTScanProps> = ({
     if (appliedNum < 1.0) {
       return "0.5 mm";
     } else if (appliedNum >= 1.0 && appliedNum <= 2.0) {
-      return "+/-50%";
+      return "±50%";
     } else {
-      return "+/-1.0 mm";
+      return "±1.0 mm";
     }
   };
 
@@ -447,9 +448,9 @@ const ViewServiceReportCTScan: React.FC<ViewServiceReportCTScanProps> = ({
     const type = tolerance.type || 'percent';
     const sign = tolerance.sign || 'both';
 
-    const signSymbol = sign === 'both' ? '±' : sign === 'plus' ? '+' : '-';
+    const signSymbol = normalizePlusMinusSign(sign);
     const unit = type === 'percent' ? '%' : ' kVp';
-    return `${signSymbol}${value}${unit}`;
+    return `${signSymbol} ${value}${unit}`;
   };
 
   // Dynamic mA columns for Measurement of Operating Potential (support maColumnLabels + row.ma)
@@ -633,11 +634,7 @@ const ViewServiceReportCTScan: React.FC<ViewServiceReportCTScanProps> = ({
   // Helper function to format CTDI tolerance
   const formatCtdiTolerance = (tolerance: any): React.ReactNode => {
     const sign =
-      !tolerance || tolerance.sign === "both" || !tolerance.sign
-        ? "±"
-        : tolerance.sign === "plus"
-          ? "+"
-          : "-";
+      normalizePlusMinusSign(tolerance?.sign);
     const value = tolerance?.value || "20";
     return (
       <span

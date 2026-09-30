@@ -1,4 +1,5 @@
 // src/components/reports/ViewServiceReportDentalHandHeld.tsx
+import { normalizePlusMinusSign } from "../shared/mainTestTableDisplay";
 import React, { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
@@ -1033,7 +1034,7 @@ const ViewServiceReportDentalHandHeld: React.FC<ViewServiceReportDentalHandHeldP
 
                 <div className="bg-gray-50 p-4 print:p-1 rounded border mb-4" style={{ padding: '2px 4px', marginTop: '4px' }}>
                   <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
-                    <strong>Tolerance:</strong> {testData.accuracyOfOperatingPotential?.kvpToleranceSign || testData.accuracyOfOperatingPotential?.tolerance?.type || "±"} {testData.accuracyOfOperatingPotential?.kvpToleranceValue || testData.accuracyOfOperatingPotential?.tolerance?.value || "2.0"} kV
+                    <strong>Tolerance:</strong> {normalizePlusMinusSign(testData.accuracyOfOperatingPotential?.kvpToleranceSign || testData.accuracyOfOperatingPotential?.tolerance?.type)} {testData.accuracyOfOperatingPotential?.kvpToleranceValue || testData.accuracyOfOperatingPotential?.tolerance?.value || "2.0"} kV
                   </p>
                 </div>
               </div>

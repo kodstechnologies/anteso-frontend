@@ -3,6 +3,8 @@ import {
   formatConsistencyOutputSpecified,
   formatEffectiveFocalSpotToleranceStr,
   getRadiationLeakageLevelParameterTitle,
+  normalizePlusMinusSign,
+  formatKvpAccuracyTolerance,
 } from "../shared/mainTestTableDisplay";
 // src/components/reports/TestTables/OArm/MainTestTableForOArm.tsx
 import React from "react";
@@ -190,10 +192,7 @@ const MainTestTableForOArm: React.FC<MainTestTableProps> = ({ testData, hasTimer
   if (testData.accuracyOfOperatingPotential?.table2 && Array.isArray(testData.accuracyOfOperatingPotential.table2)) {
     const validRows = testData.accuracyOfOperatingPotential.table2.filter((row: any) => row.setKV || row.avgKvp);
     if (validRows.length > 0) {
-      const toleranceSign =
-        testData.accuracyOfOperatingPotential.tolerance?.sign ||
-        testData.accuracyOfOperatingPotential.toleranceSign ||
-        "±";
+      const toleranceSign = normalizePlusMinusSign(testData.accuracyOfOperatingPotential.tolerance?.sign || testData.accuracyOfOperatingPotential.toleranceSign);
       const toleranceValue =
         testData.accuracyOfOperatingPotential.tolerance?.value ||
         testData.accuracyOfOperatingPotential.toleranceValue ||
@@ -213,7 +212,7 @@ const MainTestTableForOArm: React.FC<MainTestTableProps> = ({ testData, hasTimer
         return {
           specified: row.setKV || "-",
           measured: row.avgKvp || "-",
-          tolerance: `${toleranceSign} ${toleranceValue} kVp`,
+          tolerance: formatKvpAccuracyTolerance(toleranceSign, toleranceValue),
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });
@@ -226,7 +225,7 @@ const MainTestTableForOArm: React.FC<MainTestTableProps> = ({ testData, hasTimer
   if (tfRoot?.measurements && Array.isArray(tfRoot.measurements)) {
     const validRows = tfRoot.measurements.filter((row: any) => row.appliedKvp || row.averageKvp || row.measuredValues);
     if (validRows.length > 0) {
-      const toleranceSign = tfRoot.tolerance?.sign || "±";
+      const toleranceSign = normalizePlusMinusSign(tfRoot.tolerance?.sign);
       const toleranceValue = tfRoot.tolerance?.value || "2.0";
       const testRows = validRows.map((row: any) => {
         let avgKvpNum: number | null = null;
@@ -265,7 +264,7 @@ const MainTestTableForOArm: React.FC<MainTestTableProps> = ({ testData, hasTimer
         return {
           specified: row.appliedKvp || "-",
           measured: measuredDisplay,
-          tolerance: `${toleranceSign} ${toleranceValue} kVp`,
+          tolerance: formatKvpAccuracyTolerance(toleranceSign, toleranceValue),
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });

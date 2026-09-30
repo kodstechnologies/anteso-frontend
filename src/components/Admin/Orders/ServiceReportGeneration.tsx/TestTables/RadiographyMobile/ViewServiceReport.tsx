@@ -10,6 +10,7 @@ import {
   useEmbeddedReportPdfAutoSave,
 } from "../shared/embeddedViewReportPdf";
 import { formatCentralBeamObservedTilt } from "../centralBeamTiltDisplay";
+import { normalizePlusMinusSign } from "../shared/mainTestTableDisplay";
 import MainTestTableForRadiographyMobile from "./MainTestTableForRadiographyMobile";
 import { ReportPdfPageHeader } from "../RadiographyFixed/component/Header";
 import { ReportPdfPageFooter } from "../RadiographyFixed/component/Footer";
@@ -778,7 +779,7 @@ const ViewServiceReportRadiographyMobile: React.FC<ViewServiceReportRadiographyM
                           <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Dimension</th>
                           <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Observed Shift (cm)</th>
                           <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Edge Shift (cm)</th>
-                          <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>% FED</th>
+                          <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>% FFD</th>
                           <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Tolerance (%)</th>
                           <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Remarks</th>
                         </tr>
@@ -907,9 +908,9 @@ const ViewServiceReportRadiographyMobile: React.FC<ViewServiceReportRadiographyM
                               <strong>Tolerance:</strong>
                               {/* <span><strong>FCD (cm)</strong> {testData.effectiveFocalSpot.fcd || "-"}</span> */}
                             </div>
-                            <div>1. +{testData.effectiveFocalSpot?.toleranceCriteria?.small?.multiplier ?? 0.5} f for f &lt; {testData.effectiveFocalSpot?.toleranceCriteria?.small?.upperLimit ?? 0.8} mm</div>
-                            <div>2. +{testData.effectiveFocalSpot?.toleranceCriteria?.medium?.multiplier ?? 0.4} f for {testData.effectiveFocalSpot?.toleranceCriteria?.medium?.lowerLimit ?? 0.8} &lt;= f &lt;= {testData.effectiveFocalSpot?.toleranceCriteria?.medium?.upperLimit ?? 1.5} mm</div>
-                            <div>3. +{testData.effectiveFocalSpot?.toleranceCriteria?.large?.multiplier ?? 0.3} f for f &gt; {testData.effectiveFocalSpot?.toleranceCriteria?.large?.lowerLimit ?? 1.5} mm</div>
+                            <div>1. +{testData.effectiveFocalSpot?.toleranceCriteria?.small?.multiplier ?? 0.5} f For f &lt; {testData.effectiveFocalSpot?.toleranceCriteria?.small?.upperLimit ?? 0.8} mm</div>
+                            <div>2. +{testData.effectiveFocalSpot?.toleranceCriteria?.medium?.multiplier ?? 0.4} f For {testData.effectiveFocalSpot?.toleranceCriteria?.medium?.lowerLimit ?? 0.8} &lt;= f &lt;= {testData.effectiveFocalSpot?.toleranceCriteria?.medium?.upperLimit ?? 1.5} mm</div>
+                            <div>3. +{testData.effectiveFocalSpot?.toleranceCriteria?.large?.multiplier ?? 0.3} f For f &gt; {testData.effectiveFocalSpot?.toleranceCriteria?.large?.lowerLimit ?? 1.5} mm</div>
                           </th>
                         </tr>
                       </thead>
@@ -1127,7 +1128,7 @@ const ViewServiceReportRadiographyMobile: React.FC<ViewServiceReportRadiographyM
                 {testData.accuracyOfOperatingPotential.tolerance && (
                   <div className="bg-gray-50 p-4 print:p-1 rounded border" style={{ padding: "2px 4px", marginTop: "4px" }}>
                     <p className="text-sm print:text-[9px]" style={{ fontSize: "11px", margin: "2px 0" }}>
-                      <strong>Tolerance:</strong> {testData.accuracyOfOperatingPotential.tolerance.sign || "±"} {testData.accuracyOfOperatingPotential.tolerance.value || "-"} kVp
+                      <strong>Tolerance:</strong> {normalizePlusMinusSign(testData.accuracyOfOperatingPotential.tolerance.sign)} {testData.accuracyOfOperatingPotential.tolerance.value || "-"} kVp
                     </p>
                   </div>
                 )}

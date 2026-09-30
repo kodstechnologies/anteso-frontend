@@ -17,6 +17,7 @@ import {
   getMaximumRadiationLevelByServiceIdForMammography,
   getTools,
 saveReportPdfForMammography } from "../../../../../../api";
+import { normalizePlusMinusSign } from "../shared/mainTestTableDisplay";
 import MainTestTableForMammography, {
   generateMammographySummaryRows,
   getMammographySummarySectionNumbers,
@@ -876,14 +877,6 @@ const ViewServiceReportMammography: React.FC<ViewServiceReportMammographyProps> 
     if (s === ">" || s === "greater than" || s === "greaterthan") return ">";
     if (s === "=" || s === "equal" || s === "equals") return "=";
     return "<=";
-  };
-
-  const normalizePlusMinusSign = (raw: any): "+" | "-" | "±" => {
-    const s = String(raw ?? "both").trim().toLowerCase();
-    if (s === "plus" || s === "+") return "+";
-    if (s === "minus" || s === "-") return "-";
-    if (s === "both" || s === "±" || s === "+/-") return "±";
-    return "±";
   };
 
   const compareByOperator = (value: number, threshold: number, rawOperator: any): boolean => {

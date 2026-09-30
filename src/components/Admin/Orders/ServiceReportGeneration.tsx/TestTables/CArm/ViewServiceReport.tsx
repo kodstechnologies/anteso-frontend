@@ -1,4 +1,5 @@
 // src/components/reports/ViewServiceReportCArm.tsx
+import { normalizePlusMinusSign } from "../shared/mainTestTableDisplay";
 import React, { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { getReportHeaderForCArm, getTubeHousingLeakageByServiceIdCArm, getHighContrastResolutionByServiceIdForCArm, getLowContrastResolutionByServiceIdForCArm, getDetails, getTools } from "../../../../../../api";
@@ -985,7 +986,7 @@ const ViewServiceReportCArm: React.FC = () => {
                   if (!tol) return null;
                   return (
                     <p className="text-sm print:text-[9px]" style={{ fontSize: "11px", marginTop: "2px" }}>
-                      <strong>Tolerance:</strong> {tol.sign || "±"} {tol.value || "-"} kVp
+                      <strong>Tolerance:</strong> {normalizePlusMinusSign(tol.sign)} {tol.value || "-"} kVp
                     </p>
                   );
                 })()}

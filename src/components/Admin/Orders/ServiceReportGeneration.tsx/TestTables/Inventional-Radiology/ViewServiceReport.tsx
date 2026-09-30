@@ -1,4 +1,5 @@
 // src/components/reports/ViewServiceReportInventionalRadiology.tsx
+import { normalizePlusMinusSign } from "../shared/mainTestTableDisplay";
 import React, { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { getReportHeaderForInventionalRadiology, getCentralBeamAlignmentByServiceIdForInventionalRadiology, getEffectiveFocalSpotByServiceIdForInventionalRadiology, getConsistencyOfRadiationOutputByServiceIdForInventionalRadiology, getRadiationProtectionSurveyByServiceIdForInventionalRadiology, getAccuracyOfOperatingPotentialByServiceIdForInventionalRadiology, getMeasurementOfMaLinearityByServiceIdForInventionalRadiology, getDetails, getTools , saveReportPdfForInventionalRadiology } from "../../../../../../api";
@@ -1073,7 +1074,7 @@ const ViewServiceReport: React.FC<ViewServiceReportProps> = ({
         {totalData.tolerance && (
           <div className="bg-gray-50 p-4 print:p-1 rounded border" style={{ padding: '2px 4px', marginTop: '4px' }}>
             <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
-              <strong>Tolerance:</strong> {totalData.tolerance.sign || "±"} {totalData.tolerance.value || "-"}kVp
+              <strong>Tolerance:</strong> {normalizePlusMinusSign(totalData.tolerance.sign)} {totalData.tolerance.value || "-"}kVp
             </p>
           </div>
         )}
@@ -1516,9 +1517,9 @@ const ViewServiceReport: React.FC<ViewServiceReportProps> = ({
                       <th className="border border-black p-2 print:p-1 text-center" style={{ width: '26%', padding: '0px 1px', fontSize: '11px' }}>Measured Focal Spot (Nominal)</th>
                       <th className="border border-black p-2 print:p-1 text-left" style={{ width: '34%', padding: '2px 4px', fontSize: '10px', lineHeight: '1.3' }}>
                         <div><strong>Tolerance:</strong></div>
-                        <div>1. +{data.effectiveFocalSpot?.toleranceCriteria?.small?.multiplier ?? 0.5} f for f &lt; {data.effectiveFocalSpot?.toleranceCriteria?.small?.upperLimit ?? 0.8} mm</div>
-                        <div>2. +{data.effectiveFocalSpot?.toleranceCriteria?.medium?.multiplier ?? 0.4} f for {data.effectiveFocalSpot?.toleranceCriteria?.medium?.lowerLimit ?? 0.8} &lt;= f &lt;= {data.effectiveFocalSpot?.toleranceCriteria?.medium?.upperLimit ?? 1.5} mm</div>
-                        <div>3. +{data.effectiveFocalSpot?.toleranceCriteria?.large?.multiplier ?? 0.3} f for f &gt; {data.effectiveFocalSpot?.toleranceCriteria?.large?.lowerLimit ?? 1.5} mm</div>
+                        <div>1. +{data.effectiveFocalSpot?.toleranceCriteria?.small?.multiplier ?? 0.5} f For f &lt; {data.effectiveFocalSpot?.toleranceCriteria?.small?.upperLimit ?? 0.8} mm</div>
+                        <div>2. +{data.effectiveFocalSpot?.toleranceCriteria?.medium?.multiplier ?? 0.4} f For {data.effectiveFocalSpot?.toleranceCriteria?.medium?.lowerLimit ?? 0.8} &lt;= f &lt;= {data.effectiveFocalSpot?.toleranceCriteria?.medium?.upperLimit ?? 1.5} mm</div>
+                        <div>3. +{data.effectiveFocalSpot?.toleranceCriteria?.large?.multiplier ?? 0.3} f For f &gt; {data.effectiveFocalSpot?.toleranceCriteria?.large?.lowerLimit ?? 1.5} mm</div>
                       </th>
                     </tr>
                   </thead>

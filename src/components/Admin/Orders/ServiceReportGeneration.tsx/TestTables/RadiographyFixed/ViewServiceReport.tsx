@@ -15,6 +15,7 @@ import {
   useEmbeddedReportPdfAutoSave,
 } from "../shared/embeddedViewReportPdf";
 import { formatCentralBeamObservedTilt } from "../centralBeamTiltDisplay";
+import { normalizePlusMinusSign } from "../shared/mainTestTableDisplay";
 import MainTestTableForRadiographyFixed, { generateRadiographySummaryRows } from "./MainTestTableForRadiographyFixed";
 import { ReportPdfPageHeader } from "./component/Header";
 import { ReportPdfPageFooter } from "./component/Footer";
@@ -361,13 +362,6 @@ const ViewServiceReportRadiographyFixed: React.FC<ViewServiceReportProps> = ({
 
   const formatDate = (dateStr: string) => (!dateStr ? "-" : new Date(dateStr).toLocaleDateString("en-GB"));
   /** kVp tolerance sign from Total Filtration / AOP save payload ({ sign, value }). */
-  const normalizeKvToleranceSign = (raw: unknown): string => {
-    const s = String(raw ?? "±").trim().toLowerCase();
-    if (s === "plus" || s === "+") return "+";
-    if (s === "minus" || s === "-") return "-";
-    if (s === "both" || s === "±" || s === "+/-") return "±";
-    return String(raw ?? "±").trim() || "±";
-  };
   const todayDate = new Date().toLocaleDateString("en-GB");
   const extractCity = (raw: string) => {
     if (!raw || raw === "N/A") return "";
@@ -938,14 +932,14 @@ const ViewServiceReportRadiographyFixed: React.FC<ViewServiceReportProps> = ({
                         >
                           Tolerance:
                           <br />
-                          1. +{testData.effectiveFocalSpot?.toleranceCriteria?.small?.multiplier ?? 0.5} f for f &lt;{" "}
+                          1. +{testData.effectiveFocalSpot?.toleranceCriteria?.small?.multiplier ?? 0.5} f For f &lt;{" "}
                           {testData.effectiveFocalSpot?.toleranceCriteria?.small?.upperLimit ?? 0.8} mm
                           <br />
-                          2. +{testData.effectiveFocalSpot?.toleranceCriteria?.medium?.multiplier ?? 0.4} f for{" "}
+                          2. +{testData.effectiveFocalSpot?.toleranceCriteria?.medium?.multiplier ?? 0.4} f For{" "}
                           {testData.effectiveFocalSpot?.toleranceCriteria?.medium?.lowerLimit ?? 0.8} &lt;= f &lt;={" "}
                           {testData.effectiveFocalSpot?.toleranceCriteria?.medium?.upperLimit ?? 1.5} mm
                           <br />
-                          3. +{testData.effectiveFocalSpot?.toleranceCriteria?.large?.multiplier ?? 0.3} f for f &gt;{" "}
+                          3. +{testData.effectiveFocalSpot?.toleranceCriteria?.large?.multiplier ?? 0.3} f For f &gt;{" "}
                           {testData.effectiveFocalSpot?.toleranceCriteria?.large?.lowerLimit ?? 1.5} mm
                         </th>
                       </tr>
@@ -1166,7 +1160,7 @@ const ViewServiceReportRadiographyFixed: React.FC<ViewServiceReportProps> = ({
                         kvToleranceVal != null &&
                         String(kvToleranceVal).trim() !== "" && (
                           <p style={{ fontSize: "11px", marginTop: "4px" }}>
-                            <strong>Tolerance:</strong> {normalizeKvToleranceSign(kvTolerance.sign ?? kvTolerance.Sign)}{" "}
+                            <strong>Tolerance:</strong> {normalizePlusMinusSign(kvTolerance.sign ?? kvTolerance.Sign)}{" "}
                             {String(kvToleranceVal).trim()} kVp
                           </p>
                         )}

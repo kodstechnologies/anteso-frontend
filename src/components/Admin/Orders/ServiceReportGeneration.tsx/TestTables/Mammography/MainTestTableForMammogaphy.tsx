@@ -1,3 +1,6 @@
+import {
+  normalizePlusMinusSign,
+} from "../shared/mainTestTableDisplay";
 // src/components/reports/TestTables/Mammography/MainTestTableForMammography.tsx
 import React from "react";
 
@@ -89,15 +92,7 @@ export const generateMammographySummaryRows = (testData: any, hasTimer = false) 
   if (testData.accuracyOfOperatingPotential?.measurements && Array.isArray(testData.accuracyOfOperatingPotential.measurements)) {
     const validRows = testData.accuracyOfOperatingPotential.measurements.filter((row: any) => row.appliedKvp || row.averageKvp);
     if (validRows.length > 0) {
-      const toleranceSignRaw = testData.accuracyOfOperatingPotential.tolerance?.sign || "both";
-      const toleranceSign =
-        toleranceSignRaw === "both" || toleranceSignRaw === "+/-" || toleranceSignRaw === "±"
-          ? "±"
-          : toleranceSignRaw === "plus" || toleranceSignRaw === "+"
-            ? "+"
-            : toleranceSignRaw === "minus" || toleranceSignRaw === "-"
-              ? "-"
-              : String(toleranceSignRaw);
+      const toleranceSign = normalizePlusMinusSign(testData.accuracyOfOperatingPotential.tolerance?.sign);
       const toleranceValue = testData.accuracyOfOperatingPotential.tolerance?.value || "5";
       const toleranceType = testData.accuracyOfOperatingPotential.tolerance?.type || "absolute";
       const toleranceUnit = "kVp";

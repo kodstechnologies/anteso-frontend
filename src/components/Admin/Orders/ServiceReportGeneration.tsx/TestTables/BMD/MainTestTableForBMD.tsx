@@ -2,6 +2,8 @@ import {
   formatCoefficientOfLinearityMeasured,
   formatConsistencyOutputSpecified,
   getRadiationLeakageLevelParameterTitle,
+  normalizePlusMinusSign,
+  formatKvpAccuracyTolerance,
 } from "../shared/mainTestTableDisplay";
 // src/components/reports/TestTables/BMD/MainTestTableForBMD.tsx
 import React from "react";
@@ -144,7 +146,7 @@ const MainTestTableForBMD: React.FC<MainTestTableProps> = ({ testData, hasTimer 
           (Array.isArray(row.measuredValues) && row.measuredValues.length > 0)
       );
       if (validRows.length > 0) {
-        const toleranceSign = test.kvpToleranceSign || test.tolerance?.sign || "\u00B1";
+        const toleranceSign = normalizePlusMinusSign(test.kvpToleranceSign || test.tolerance?.sign);
         const toleranceValue = test.kvpToleranceValue || test.tolerance?.value || "5";
         const testRows = validRows.map((row: any) => {
           const avgKvpDisplay = getAvgKvpDisplay(row);
@@ -163,7 +165,7 @@ const MainTestTableForBMD: React.FC<MainTestTableProps> = ({ testData, hasTimer 
           return {
             specified: row.appliedKvp || row.appliedkVp || "-",
             measured: avgKvpDisplay || "-",
-            tolerance: `${toleranceSign} ${toleranceValue} kVp`,
+            tolerance: formatKvpAccuracyTolerance(toleranceSign, toleranceValue),
             remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
           };
         });
@@ -179,7 +181,7 @@ const MainTestTableForBMD: React.FC<MainTestTableProps> = ({ testData, hasTimer 
       (row: any) => row.appliedKvp || row.averageKvp || row.measuredValues
     );
     if (validRows.length > 0) {
-      const toleranceSign = tfRoot.tolerance?.sign || "\u00B1";
+      const toleranceSign = normalizePlusMinusSign(tfRoot.tolerance?.sign);
       const toleranceValue = tfRoot.tolerance?.value || "2.0";
       const testRows = validRows.map((row: any) => {
         let avgKvpNum: number | null = null;
@@ -218,7 +220,7 @@ const MainTestTableForBMD: React.FC<MainTestTableProps> = ({ testData, hasTimer 
         return {
           specified: row.appliedKvp || "-",
           measured: measuredDisplay,
-          tolerance: `${toleranceSign} ${toleranceValue} kVp`,
+          tolerance: formatKvpAccuracyTolerance(toleranceSign, toleranceValue),
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });

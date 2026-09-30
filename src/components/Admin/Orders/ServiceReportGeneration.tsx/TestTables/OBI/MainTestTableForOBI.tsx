@@ -3,6 +3,7 @@ import {
   formatConsistencyOutputSpecified,
   formatEffectiveFocalSpotToleranceStr,
   getRadiationLeakageLevelParameterTitle,
+  formatKvpAccuracyTolerance,
 } from "../shared/mainTestTableDisplay";
 // src/components/reports/TestTables/OBI/MainTestTableForOBI.tsx
 import React from "react";
@@ -240,7 +241,7 @@ export const generateOBISummaryRows = (testData: any, hasTimer: boolean = false)
           return {
             specified: row.appliedKvp || row.setKV || "-",
             measured: row.averageKvp || row.avgKvp || "-",
-            tolerance: `${toleranceSign} ${toleranceValue} kVp`,
+            tolerance: formatKvpAccuracyTolerance(toleranceSign, toleranceValue),
             remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
           };
         });

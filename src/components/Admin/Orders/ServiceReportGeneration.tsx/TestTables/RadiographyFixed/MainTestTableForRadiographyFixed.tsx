@@ -6,6 +6,8 @@ import {
   formatConsistencyOutputSpecified,
   formatEffectiveFocalSpotToleranceStr,
   getRadiationLeakageLevelParameterTitle,
+  normalizePlusMinusSign,
+  formatKvpAccuracyTolerance,
 } from "../shared/mainTestTableDisplay";
 import { evaluateTotalFiltrationPassFail } from "./totalFiltrationPassFail";
 
@@ -198,10 +200,7 @@ export const generateRadiographySummaryRows = (testData: any, hasTimer: boolean 
     const validRows = sourceRows.filter((row: any) => row.setKV || row.appliedKvp || row.avgKvp || row.averageKvp);
     if (validRows.length > 0) {
       const opPotential = testData.accuracyOfOperatingPotential || {};
-      const toleranceSign =
-        opPotential.tolerance?.sign ||
-        opPotential.toleranceSign ||
-        "±";
+      const toleranceSign = normalizePlusMinusSign(opPotential.tolerance?.sign || opPotential.toleranceSign);
       const toleranceValue =
         opPotential.tolerance?.value ||
         opPotential.toleranceValue ||
@@ -221,7 +220,7 @@ export const generateRadiographySummaryRows = (testData: any, hasTimer: boolean 
         return {
           specified: row.setKV || row.appliedKvp || "-",
           measured: row.avgKvp || row.averageKvp || "-",
-          tolerance: `${toleranceSign} ${toleranceValue} kVp`,
+          tolerance: formatKvpAccuracyTolerance(toleranceSign, toleranceValue),
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });
