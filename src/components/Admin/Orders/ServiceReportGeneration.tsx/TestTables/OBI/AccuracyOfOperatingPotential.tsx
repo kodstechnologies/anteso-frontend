@@ -130,7 +130,7 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
                 console.log('Processing measurements, count:', initialData.measurements.length);
                 const newRows: RowData[] = initialData.measurements.map((m, index) => {
                     const rowApplied = parseFloat(m.appliedKvp || "0");
-                    const tol = parseFloat(initialData.tolerance?.value || "2.0");
+                    const tol = parseFloat(initialData.tolerance?.value || "5.0");
                     const sign = (initialData.tolerance?.sign || "±") as "+" | "-" | "±";
                     
                     const measuredValues = m.measuredValues || [];
@@ -210,7 +210,7 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
                     setTestId(data._id || null);
                     setMAStations(data.mAStations || ["50 mA", "100 mA"]);
                     const loadedToleranceSign = data.tolerance?.sign || "±";
-                    const loadedToleranceValue = data.tolerance?.value || "2.0";
+                    const loadedToleranceValue = data.tolerance?.value || "5.0";
                     setToleranceSign(loadedToleranceSign);
                     setToleranceValue(loadedToleranceValue);
                     

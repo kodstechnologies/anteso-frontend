@@ -440,16 +440,18 @@ const RadiationProtectionInterventionalRadiology: React.FC<Props> = ({ serviceId
 
     return (
         <div className="w-full max-w-7xl mx-auto p-6 space-y-12">
-            {hasValidCalibration === "No" && (
-                <div className="bg-yellow-50 border-2 border-yellow-500 rounded-lg p-4 mb-4">
-                    <p className="text-yellow-800 font-semibold">
-                        ⚠️ Calibration certificate is expired. Please ensure valid calibration certificates are provided for all tools as soon as possible.
+            {(hasValidCalibration === "No" || hasValidCalibration === "N/A") && (
+                <div className="bg-amber-50 border-2 border-amber-500 rounded-lg p-4 mb-4">
+                    <p className="text-amber-800 font-semibold">
+                        ⚠️ Calibration certificate is expired or not valid. You may still fill and save the survey; ensure valid calibration is provided when available.
                     </p>
                 </div>
             )}
-            <h1 className="text-4xl font-bold text-center text-gray-800">
-                Radiation Protection Survey Report
-            </h1>
+            <div className="flex justify-between items-center">
+                <h1 className="text-4xl font-bold text-center text-gray-800 print:text-3xl">
+                    Radiation Protection Survey Report
+                </h1>
+            </div>
 
             <section className="bg-white rounded-2xl shadow-lg border border-gray-200">
                 <div className="px-8 py-5 bg-gradient-to-r from-blue-600 to-blue-700">

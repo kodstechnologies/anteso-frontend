@@ -910,7 +910,7 @@ const OBIContent: React.FC<OBIProps> = ({ serviceId, csvFileUrl, csvFileUrls, qa
                     const measurements: any[] = [];
                     const mAStations: string[] = [];
                     let ffd = '';
-                    let tolerance = { sign: '±', value: '2.0' };
+                    let tolerance = { sign: '±', value: '5.0' };
                     const totalFiltration = { measured: '', required: '2.5', atKvp: '' };
 
                     data.forEach((row) => {

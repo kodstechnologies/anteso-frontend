@@ -1791,6 +1791,12 @@ const ViewServiceReport: React.FC<ViewServiceReportProps> = ({
               </table>
             </div>
           )}
+          <div style={{ marginTop: '4px', fontSize: '11px' }}>
+            <p style={{ margin: '2px 0' }}><strong>Acceptance Criteria:</strong></p>
+            <p style={{ margin: '2px 0' }}>Max Exposure (Manual Mode): ≤ {data.exposureRateTableTop.nonAecTolerance || "5"} cGy/Min</p>
+            <p style={{ margin: '2px 0' }}>Max Exposure (AEC Mode): ≤ {data.exposureRateTableTop.aecTolerance || "10"} cGy/Min</p>
+            <p style={{ margin: '2px 0' }}>Min. Focus to Tabletop Distance: {data.exposureRateTableTop.minFocusDistance || "30"} cm</p>
+          </div>
         </div>
       )}
 

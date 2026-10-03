@@ -49,7 +49,7 @@ const TotalFilterationForFicedRadioFluoro: React.FC<TotalFilterationForFixedRadi
     ]);
 
     const [toleranceSign, setToleranceSign] = useState<"+" | "-" | "±">("±");
-    const [toleranceValue, setToleranceValue] = useState("2.0");
+    const [toleranceValue, setToleranceValue] = useState("5.0");
     const [totalFiltration, setTotalFiltration] = useState({ 
         measured: "", 
         required: "",
@@ -109,7 +109,7 @@ const TotalFilterationForFicedRadioFluoro: React.FC<TotalFilterationForFixedRadi
                     setTestId(data._id || null);
                         setMAStations(data.mAStations || ["50 mA", "100 mA"]);
                     const loadedToleranceSign = data.tolerance?.sign || "±";
-                    const loadedToleranceValue = data.tolerance?.value || "2.0";
+                    const loadedToleranceValue = data.tolerance?.value || "5.0";
                     setToleranceSign(loadedToleranceSign);
                     setToleranceValue(loadedToleranceValue);
                     
@@ -266,6 +266,19 @@ const TotalFilterationForFicedRadioFluoro: React.FC<TotalFilterationForFixedRadi
     const saveTest = async () => {
         if (!serviceId) {
             toast.error("Service ID is missing");
+            return;
+        }
+
+        const kvpRows = rows.filter((row) => String(row.appliedKvp ?? "").trim() !== "");
+        if (kvpRows.length === 0) {
+            toast.error("Please enter Applied kVp for Accuracy of Operating Potential");
+            return;
+        }
+        const missingMeasured = kvpRows.some(
+            (row) => !row.measuredValues.some((value) => String(value ?? "").trim() !== "" && !isNaN(parseFloat(value)))
+        );
+        if (missingMeasured) {
+            toast.error("Please enter measured kVp for Accuracy of Operating Potential");
             return;
         }
 

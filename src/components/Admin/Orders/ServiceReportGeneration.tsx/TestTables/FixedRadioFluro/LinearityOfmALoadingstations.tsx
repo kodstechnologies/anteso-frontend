@@ -52,6 +52,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
   ]);
 
   const [tolerance, setTolerance] = useState<string>('0.1');
+  const [toleranceOperator, setToleranceOperator] = useState<string>('<');
 
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -160,16 +161,38 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
     const colVal = xMax !== '—' && xMin !== '—' && (parseFloat(xMax) + parseFloat(xMin)) > 0
       ? ((parseFloat(xMax) - parseFloat(xMin)) / (parseFloat(xMax) + parseFloat(xMin))).toFixed(4)
       : '—';
-    const pass = colVal !== '—' && parseFloat(colVal) <= tol;
+    let pass = false;
+    if (colVal !== '—') {
+      const colNum = parseFloat(colVal);
+      switch (toleranceOperator) {
+        case '<':
+          pass = colNum < tol;
+          break;
+        case '>':
+          pass = colNum > tol;
+          break;
+        case '<=':
+          pass = colNum <= tol;
+          break;
+        case '>=':
+          pass = colNum >= tol;
+          break;
+        case '=':
+          pass = Math.abs(colNum - tol) < 0.0001;
+          break;
+        default:
+          pass = colNum <= tol;
+      }
+    }
 
     return rowsWithX.map(row => ({
       ...row,
       xMax,
       xMin,
       col: colVal,
-      remarks: pass ? 'Pass' : colVal === '—' ? '' : 'Fail',
+      remarks: colVal === '—' ? '' : pass ? 'Pass' : 'Fail',
     }));
-  }, [table2Rows, tolerance, table1Row.time]);
+  }, [table2Rows, tolerance, toleranceOperator, table1Row.time]);
 
   const hasValidTime = useMemo(() => {
     const timeSec = parseFloat(table1Row.time);
@@ -225,6 +248,10 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
             );
           }
           setTolerance(data.tolerance || '0.1');
+          if (data.toleranceOperator) {
+            const op = String(data.toleranceOperator).trim();
+            setToleranceOperator(['<', '>', '<=', '>=', '='].includes(op) ? op : '<=');
+          }
           setHasSaved(true);
           setIsEditing(false);
         } else {
@@ -253,6 +280,10 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
       }
       if (initialData.tolerance) {
         setTolerance(String(initialData.tolerance));
+      }
+      if (initialData.toleranceOperator) {
+        const op = String(initialData.toleranceOperator).trim();
+        setToleranceOperator(['<', '>', '<=', '>=', '='].includes(op) ? op : '<=');
       }
       if (initialData.table2Rows && initialData.table2Rows.length > 0) {
         const maxMeas = Math.max(
@@ -334,6 +365,11 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
         })),
         measHeaders,
         tolerance,
+        toleranceOperator,
+        xMax: processedTable2[0]?.xMax || '',
+        xMin: processedTable2[0]?.xMin || '',
+        col: processedTable2[0]?.col || '',
+        remarks: processedTable2[0]?.remarks || '',
       };
       
       let result;
@@ -592,8 +628,20 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
               <Plus className="w-4 h-4" /> Add Row
             </button>
           )}
-          <div className="flex items-center gap-2 ml-auto">
-            <span className="text-sm font-medium text-gray-700">Tolerance (CoL) less than</span>
+          <div className="flex items-center gap-3 ml-auto">
+            <span className="text-sm font-medium text-gray-700">Tolerance (CoL)</span>
+            <select
+              value={toleranceOperator}
+              onChange={e => setToleranceOperator(e.target.value)}
+              disabled={isViewMode}
+              className={`px-3 py-2 text-center font-bold border-2 border-blue-400 rounded-lg focus:ring-4 focus:ring-blue-200 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`}
+            >
+              <option value="<">&lt;</option>
+              <option value=">">&gt;</option>
+              <option value="<=">&lt;=</option>
+              <option value=">=">&gt;=</option>
+              <option value="=">=</option>
+            </select>
             <input
               type="number"
               step="0.001"

@@ -1587,7 +1587,7 @@ const RadiographyMobileHTContent: React.FC<RadiographyMobileHTProps> = ({ servic
           ),
           tolerance: {
             sign: tol.Sign || tol.sign || "±",
-            value: tol.Value || tol.value || "2.0",
+            value: tol.Value || tol.value || "5.0",
           },
           totalFiltration: {
             measured: total.Measured || total.measured || "",

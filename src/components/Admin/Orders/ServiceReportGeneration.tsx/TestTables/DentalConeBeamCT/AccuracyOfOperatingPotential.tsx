@@ -92,7 +92,7 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
                     setFfd(data.ffd || "");
                     if (data.measurements && data.measurements.length > 0) {
                         const loadedToleranceSign = data.tolerance?.type || "±";
-                        const loadedToleranceValue = data.tolerance?.value || "2.0";
+                        const loadedToleranceValue = data.tolerance?.value || "5.0";
                         setRows(
                             data.measurements.map((m: any, i: number) => {
                                 const rowApplied = parseFloat(m.appliedKvp || "0");
@@ -118,7 +118,7 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
                         );
                     }
                     setToleranceSign(data.tolerance?.type || "±");
-                    setToleranceValue(data.tolerance?.value || "2.0");
+                    setToleranceValue(data.tolerance?.value || "5.0");
                     setTotalFiltration({
                         measured: data.totalFiltration?.measured || "",
                         required: data.totalFiltration?.required || "",

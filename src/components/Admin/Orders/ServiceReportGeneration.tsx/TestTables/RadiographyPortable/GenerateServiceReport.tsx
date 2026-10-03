@@ -838,7 +838,7 @@ const RadiographyPortableContent: React.FC<RadiographyPortableProps> = ({ servic
         const byRow: Record<number, { appliedKvp?: string; measuredValues?: string[] }> = {};
         const measHeaders: string[] = [];
         let toleranceSign = "±";
-        let toleranceValue = "2.0";
+        let toleranceValue = "5.0";
         const totalFiltration: any = { measured: "", required: "", atKvp: "" };
 
         aop.forEach((r: any) => {

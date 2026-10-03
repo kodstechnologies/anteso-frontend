@@ -1287,7 +1287,7 @@ const RadiographyFixedContent: React.FC<RadiographyFixedProps> = ({ serviceId, q
         newDataForComponents.totalFiltration = {
           mAStations: measHeaders,
           measurements: tfMeasurements,
-          tolerance: { sign: normalizeCsvToleranceSign(tol.Sign || tol.sign || '±'), value: tol.Value || tol.value || '2.0' },
+          tolerance: { sign: normalizeCsvToleranceSign(tol.Sign || tol.sign || '±'), value: tol.Value || tol.value || '5.0' },
           totalFiltration: tfTotalFiltration,
         };
       }
@@ -1344,7 +1344,7 @@ const RadiographyFixedContent: React.FC<RadiographyFixedProps> = ({ serviceId, q
         newDataForComponents.totalFiltration = {
           mAStations: ma.length ? ma : ['50', '100'],
           measurements: meas.filter(Boolean),
-          tolerance: { sign: normalizeCsvToleranceSign(tol.Sign || tol.sign || '±'), value: tol.Value || tol.value || '2.0' },
+          tolerance: { sign: normalizeCsvToleranceSign(tol.Sign || tol.sign || '±'), value: tol.Value || tol.value || '5.0' },
           totalFiltration: { measured: total.Measured || total.measured || '', required: total.Required || total.required || '', atKvp: total.AtKvp || total.atKvp || '' },
         };
       }

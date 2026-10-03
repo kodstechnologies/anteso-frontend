@@ -782,7 +782,7 @@ const GenerateReportForBMDContent: React.FC<BMDProps> = ({ serviceId, csvFileUrl
           const mAStations: string[] = [];
           const measurements: any[] = [];
           let toleranceSign = '±';
-          let toleranceValue = '2.0';
+          let toleranceValue = '5.0';
           let hasToleranceSignFromCsv = false;
           let hasToleranceValueFromCsv = false;
           const totalFiltration = { measured: '', required: '', atKvp: '' };
@@ -880,7 +880,7 @@ const GenerateReportForBMDContent: React.FC<BMDProps> = ({ serviceId, csvFileUrl
                     : (prev.totalFiltration?.tolerance?.sign || '±'),
                   value: hasToleranceValueFromCsv
                     ? toleranceValue
-                    : (prev.totalFiltration?.tolerance?.value || '2.0'),
+                    : (prev.totalFiltration?.tolerance?.value || '5.0'),
                 },
                 totalFiltration: {
                   measured: String(totalFiltration.measured || '').trim() !== ''

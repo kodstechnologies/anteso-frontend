@@ -144,7 +144,7 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
                                 const measuredValues = extractMeasuredValues(m, headers.length);
 
                                 const rowApplied = parseFloat(m.appliedKvp || "0");
-                                const tol = parseFloat(data.kvpToleranceValue || "2.0");
+                                const tol = parseFloat(data.kvpToleranceValue || "5.0");
                                 const sign = (data.kvpToleranceSign || "±") as "+" | "-" | "±";
                                 const avgNum = parseFloat(m.avgKvp || m.averageKvp || "0");
 
@@ -167,7 +167,7 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
                             }) || rows
                         );
                         setToleranceSign(data.kvpToleranceSign || "±");
-                        setToleranceValue(data.kvpToleranceValue || "2.0");
+                        setToleranceValue(data.kvpToleranceValue || "5.0");
                         setTotalFiltration({
                             measured: data.totalFiltration?.measured1 ?? data.totalFiltration?.measured ?? "",
                             required: data.totalFiltration?.measured2 ?? data.totalFiltration?.required ?? "",

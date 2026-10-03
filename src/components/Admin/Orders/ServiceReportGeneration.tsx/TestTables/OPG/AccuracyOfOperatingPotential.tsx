@@ -91,7 +91,7 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
                             })) || rows
                         );
                         setToleranceSign(data.tolerance?.sign || data.tolerance?.type || "±");
-                        setToleranceValue(data.tolerance?.value || "2.0");
+                        setToleranceValue(data.tolerance?.value || "5.0");
                         setTotalFiltration({
                             measured: data.totalFiltration?.measured || "",
                             required: data.totalFiltration?.required || "",

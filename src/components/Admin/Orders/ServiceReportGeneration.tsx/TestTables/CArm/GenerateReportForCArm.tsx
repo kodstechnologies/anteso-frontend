@@ -1198,7 +1198,7 @@ const CArmContent: React.FC<CArmProps> = ({ serviceId, csvFileUrl, csvFileUrls }
       return {
         mAStations: maStations.length ? maStations : undefined,
         measurements,
-        tolerance: { sign: tol.sign || "±", value: tol.value || "2.0" },
+        tolerance: { sign: tol.sign || "±", value: tol.value || "5.0" },
         totalFiltration: {
           measured: total.measured || "",
           required: total.required || "",

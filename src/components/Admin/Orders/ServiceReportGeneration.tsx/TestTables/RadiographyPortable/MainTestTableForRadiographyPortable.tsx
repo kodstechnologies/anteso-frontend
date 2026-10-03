@@ -422,7 +422,7 @@ const MainTestTableForRadiographyPortable: React.FC<MainTestTableProps> = ({ tes
 
         return {
           specified: specifiedDisplay,
-          measured: formattedCv !== "-" ? "CoV = " + formattedCv : "-",
+          measured: formattedCv,
           tolerance: `${toleranceOperator} ${toleranceValue}`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };

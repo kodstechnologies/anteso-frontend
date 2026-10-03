@@ -206,7 +206,7 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, initialData, qa
         if (data) {
           setTestId(data._id || null);
           const savedDate = data.surveyDate ? new Date(data.surveyDate).toISOString().split('T')[0] : "";
-          setSurveyDate(savedDate || defaultSurveyDate());
+          setSurveyDate(defaultSurveyDate());
           setHasValidCalibration(data.hasValidCalibration || "");
           setAppliedCurrent(data.appliedCurrent || "100");
           setAppliedVoltage(data.appliedVoltage || "80");
@@ -306,6 +306,13 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, initialData, qa
 
   return (
     <div className="w-full max-w-7xl mx-auto p-6 space-y-12">
+      {(hasValidCalibration === "No" || hasValidCalibration === "N/A") && (
+        <div className="bg-amber-50 border-2 border-amber-500 rounded-lg p-4 mb-4">
+          <p className="text-amber-800 font-semibold">
+            ⚠️ Calibration certificate is expired or not valid. You may still fill and save the survey; ensure valid calibration is provided when available.
+          </p>
+        </div>
+      )}
       <h1 className="text-4xl font-bold text-center text-gray-800">
         Radiation Protection Survey Report
       </h1>

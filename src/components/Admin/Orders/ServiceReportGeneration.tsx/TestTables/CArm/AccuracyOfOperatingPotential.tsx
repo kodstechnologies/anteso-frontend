@@ -47,7 +47,7 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
   ]);
 
   const [toleranceSign, setToleranceSign] = useState<"+" | "-" | "±">("±");
-  const [toleranceValue, setToleranceValue] = useState("2.0");
+  const [toleranceValue, setToleranceValue] = useState("5.0");
   const [totalFiltration, setTotalFiltration] = useState({ measured: "", required: "", atKvp: "" });
 
   // Load existing test data
@@ -72,7 +72,7 @@ const AccuracyOfOperatingPotential: React.FC<AccuracyOfOperatingPotentialProps> 
             })) || rows
           );
           setToleranceSign(data.tolerance?.type || "±");
-          setToleranceValue(data.tolerance?.value || "2.0");
+          setToleranceValue(data.tolerance?.value || "5.0");
           setTotalFiltration({
             measured: data.totalFiltration?.measured || "",
             required: data.totalFiltration?.required || "",

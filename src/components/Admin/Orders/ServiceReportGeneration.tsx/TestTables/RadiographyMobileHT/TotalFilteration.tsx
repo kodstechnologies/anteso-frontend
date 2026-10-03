@@ -50,7 +50,7 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
     ]);
 
     const [toleranceSign, setToleranceSign] = useState<"+" | "-" | "±">("±");
-    const [toleranceValue, setToleranceValue] = useState("2.0");
+    const [toleranceValue, setToleranceValue] = useState("5.0");
     const [totalFiltration, setTotalFiltration] = useState({ 
         measured: "", 
         required: "",
@@ -176,7 +176,7 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
                     setTestId(data._id || null);
                     setMAStations(data.mAStations || ["50 mA", "100 mA"]);
                     const loadedToleranceSign = data.tolerance?.sign || "±";
-                    const loadedToleranceValue = data.tolerance?.value || "2.0";
+                    const loadedToleranceValue = data.tolerance?.value || "5.0";
                     setToleranceSign(loadedToleranceSign);
                     setToleranceValue(loadedToleranceValue);
                     

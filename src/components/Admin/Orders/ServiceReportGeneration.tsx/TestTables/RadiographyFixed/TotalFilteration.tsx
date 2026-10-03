@@ -208,7 +208,7 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
                     setTestId(data._id || null);
                     setMAStations(data.mAStations || ["50 mA", "100 mA"]);
                     const loadedToleranceSign = normalizeToleranceSign(data.tolerance?.sign);
-                    const loadedToleranceValue = data.tolerance?.value || "2.0";
+                    const loadedToleranceValue = data.tolerance?.value || "5.0";
                     setToleranceSign(loadedToleranceSign);
                     setToleranceValue(loadedToleranceValue);
 

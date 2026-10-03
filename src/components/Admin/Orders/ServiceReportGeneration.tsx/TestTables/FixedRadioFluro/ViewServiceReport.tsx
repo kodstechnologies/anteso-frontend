@@ -725,7 +725,7 @@ const ViewServiceReportFixedRadioFluro: React.FC<ViewServiceReportFixedRadioFlur
             <SectionTitle title="3. Details Of Device Under Test" />
             <div className="space-y-[2px]">
               {[
-                ["Nomenclature / Type of equipment", safeVal(report.nomenclature)],
+                ["Nomenclature", safeVal(report.nomenclature)],
                 ["Make", safeVal(report.make) || "-"],
                 ["Model", safeVal(report.model)],
                 ["Sl. No.", safeVal(report.slNumber)],
@@ -853,6 +853,27 @@ const ViewServiceReportFixedRadioFluro: React.FC<ViewServiceReportFixedRadioFlur
                   srNo: sourceRow.srNo,
                   parameter: `${sourceRow.parameter} (Cont.)`,
                   rowSpan: groupCountInStore,
+                  ...(sourceRow.hasSpecifiedRowSpan
+                    ? {
+                        specified: sourceRow.specified,
+                        specifiedRowSpan: groupCountInStore,
+                        hasSpecifiedRowSpan: true,
+                      }
+                    : {}),
+                  ...(sourceRow.hasToleranceRowSpan
+                    ? {
+                        tolerance: sourceRow.tolerance,
+                        toleranceRowSpan: groupCountInStore,
+                        hasToleranceRowSpan: true,
+                      }
+                    : {}),
+                  ...(sourceRow.hasMeasuredRowSpan
+                    ? {
+                        measured: sourceRow.measured,
+                        measuredRowSpan: groupCountInStore,
+                        hasMeasuredRowSpan: true,
+                      }
+                    : {}),
                 };
               }
               return r;
@@ -919,7 +940,7 @@ const ViewServiceReportFixedRadioFluro: React.FC<ViewServiceReportFixedRadioFlur
                         <th className="border border-black p-2 print:p-1 text-center font-bold" style={{ padding: '0px 1px', fontSize: '10px' }}>Dimension (cm)</th>
                         <th className="border border-black p-2 print:p-1 text-center font-bold" style={{ padding: '0px 1px', fontSize: '10px' }}>Observed Shift (cm)</th>
                         <th className="border border-black p-2 print:p-1 text-center font-bold" style={{ padding: '0px 1px', fontSize: '10px' }}>Shift in Edges (cm)</th>
-                        <th className="border border-black p-2 print:p-1 text-center font-bold" style={{ padding: '0px 1px', fontSize: '10px' }}>% of FED</th>
+                        <th className="border border-black p-2 print:p-1 text-center font-bold" style={{ padding: '0px 1px', fontSize: '10px' }}>% of FFD</th>
                         <th className="border border-black p-2 print:p-1 text-center font-bold" style={{ padding: '0px 1px', fontSize: '10px' }}>Tolerance (%)</th>
                         <th className="border border-black p-2 print:p-1 text-center font-bold" style={{ padding: '0px 1px', fontSize: '10px' }}>Remarks</th>
                       </tr>
@@ -1677,7 +1698,7 @@ const ViewServiceReportFixedRadioFluro: React.FC<ViewServiceReportFixedRadioFlur
                     <tbody>
                       <tr className="bg-blue-50">
                         <td className="border border-black p-2 print:p-1 text-left font-medium">Diameter of the smallest size hole clearly resolved on the monitor</td>
-                        <td className="border border-black p-2 print:p-1 text-center font-bold">{safeVal(testData.lowContrastResolution.smallestHoleSize || "1.0")} mm</td>
+                        <td className="border border-black p-2 print:p-1 text-center font-bold">{safeVal(testData.lowContrastResolution.smallestHoleSize || "1.0")} mm size hole is Resolve on Monitor</td>
                       </tr>
                       <tr>
                         <td className="border border-black p-2 print:p-1 text-left font-medium">Recommended performance standard</td>
@@ -1697,7 +1718,7 @@ const ViewServiceReportFixedRadioFluro: React.FC<ViewServiceReportFixedRadioFlur
                     <tbody>
                       <tr className="bg-blue-50">
                         <td className="border border-black p-2 print:p-1 text-left font-medium">Bar strips resolved on the monitor</td>
-                        <td className="border border-black p-2 print:p-1 text-center font-bold">{safeVal(testData.highContrastResolution.measuredLpPerMm || "1.0")} lp/mm</td>
+                        <td className="border border-black p-2 print:p-1 text-center font-bold">{safeVal(testData.highContrastResolution.measuredLpPerMm || "1.0")} lp/mm is Resolve on Monitor</td>
                       </tr>
                       <tr>
                         <td className="border border-black p-2 print:p-1 text-left font-medium">Recommended performance standard</td>
@@ -1769,6 +1790,12 @@ const ViewServiceReportFixedRadioFluro: React.FC<ViewServiceReportFixedRadioFlur
                       )}
                     </tbody>
                   </table>
+                </div>
+                <div style={{ marginTop: '4px', fontSize: '11px' }}>
+                  <p style={{ margin: '2px 0' }}><strong>Acceptance Criteria:</strong></p>
+                  <p style={{ margin: '2px 0' }}>Max Exposure (Manual Mode): ≤ {testData.exposureRate.nonAecTolerance || "5"} cGy/Min</p>
+                  <p style={{ margin: '2px 0' }}>Max Exposure (AEC Mode): ≤ {testData.exposureRate.aecTolerance || "10"} cGy/Min</p>
+                  <p style={{ margin: '2px 0' }}>Min. Focus to Tabletop Distance: {testData.exposureRate.minFocusDistance || "30"} cm</p>
                 </div>
               </div>
             )}

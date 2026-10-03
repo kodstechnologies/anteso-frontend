@@ -47,7 +47,6 @@ import Congruence from "./CongruenceOfRadiation";
 import CentralBeamAlignment from "./CentralBeamAlignment";
 import EffectiveFocalSpot from "./EffectiveFocalSpot";
 import AccuracyOfIrradiationTime from "./AccuracyOfIrradiationTime";
-import AccuracyOfOperatingPotential from "./AccuracyOfOperatingPotential";
 import TotalFilteration from "./TotalFilteration";
 import LinearityOfMasLoading from "./LinearityOfMasLoading";
 import LinearityOfmALoading from "./LinearityOfmALoadingstations";
@@ -389,7 +388,7 @@ const RadioFluroContent: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, c
             { name: "Congruence of radiation & Optical Field", check: async () => { try { return isSaved(await getCongruenceByServiceIdForFixedRadioFluro(serviceId)); } catch { return false; } } },
             { name: "Central Beam Alignment", check: async () => { try { return isSaved(await getCentralBeamAlignmentByServiceIdForFixedRadioFluro(serviceId)); } catch { return false; } } },
             { name: "Effective Focal Spot Measurement", check: async () => { try { return isSaved(await getEffectiveFocalSpotByServiceIdForFixedRadioFluro(serviceId)); } catch { return false; } } },
-            { name: "Total Filteration", check: async () => { try { return isSaved(await getTotalFiltrationByServiceIdForFixedRadioFluro(serviceId)); } catch { return false; } } },
+            { name: "Accuracy of Operating Potential", check: async () => { try { return isSaved(await getTotalFiltrationByServiceIdForFixedRadioFluro(serviceId)); } catch { return false; } } },
             { name: "Output Consistency", check: async () => { try { return isSaved(await getOutputConsistencyByServiceIdForFixedRadioFluro(serviceId)); } catch { return false; } } },
             { name: "Low Contrast Resolution", check: async () => { try { return isSaved(await getLowContrastResolutionByServiceIdForFixedRadioFluro(serviceId)); } catch { return false; } } },
             { name: "High Contrast Resolution", check: async () => { try { return isSaved(await getHighContrastResolutionByServiceIdForFixedRadioFluro(serviceId)); } catch { return false; } } },
@@ -922,7 +921,7 @@ const RadioFluroContent: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, c
                     const mAStations: string[] = [];
                     const measurements: any[] = [];
                     let toleranceSign = '±';
-                    let toleranceValue = '2.0';
+                    let toleranceValue = '5.0';
                     const totalFiltration = { measured: '', required: '', atKvp: '' };
                     const filtrationTolerance = {
                         forKvGreaterThan70: '1.5',
@@ -1010,7 +1009,9 @@ const RadioFluroContent: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, c
                         if (field === 'Table1_kV' || field === 'ExposureCondition_kv') table1.kv = value;
                         if (field === 'Table1_Time' || field === 'ExposureCondition_time') table1.time = value;
                         if (field === 'Tolerance' || field === 'Tolerance_value') tolerance = value;
-                        if (field === 'ToleranceOperator' || field === 'Tolerance_operator') toleranceOperator = value || '<=';
+                        if (field === 'ToleranceOperator' || field === 'Tolerance_Operator' || field === 'Tolerance_operator') {
+                            toleranceOperator = normalizeCsvComparisonOperator(value) || value || '<=';
+                        }
 
                         if (field === 'Table2_mAApplied' || field === 'Table2_mAsApplied' || field === 'Table2_ma') {
                             currentRowIdx++;
@@ -2085,16 +2086,7 @@ const RadioFluroContent: React.FC<RadioFluroProps> = ({ serviceId, csvFileUrl, c
                         : []),
 
                     { 
-                        title: "Accuracy Of Operating Potential",
-                        component: (
-                            <AccuracyOfOperatingPotential 
-                                key={`accuracy-op-${refreshKey}`}
-                                serviceId={serviceId}
-                            />
-                        )
-                    },
-                    { 
-                        title: "Total Filtration", 
+                        title: "Accuracy of Operating Potential", 
                         component: (
                             <TotalFilteration 
                                 key={`total-filtration-${refreshKey}`}

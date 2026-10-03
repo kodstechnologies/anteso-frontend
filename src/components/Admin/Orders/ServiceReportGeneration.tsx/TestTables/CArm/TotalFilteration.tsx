@@ -47,7 +47,7 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
     ]);
 
     const [toleranceSign, setToleranceSign] = useState<"+" | "-" | "±">("±");
-    const [toleranceValue, setToleranceValue] = useState("2.0");
+    const [toleranceValue, setToleranceValue] = useState("5.0");
     const [totalFiltration, setTotalFiltration] = useState({ measured: "", required: "", atKvp: "" });
     const [filtrationTolerance, setFiltrationTolerance] = useState({
         forKvLessThan70: "1.5",
@@ -182,7 +182,7 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
                         })) || rows
                     );
                     setToleranceSign(data.tolerance?.sign || "±");
-                    setToleranceValue(data.tolerance?.value || "2.0");
+                    setToleranceValue(data.tolerance?.value || "5.0");
                     setTotalFiltration({
                         measured: data.totalFiltration?.measured || "",
                         required: data.totalFiltration?.required || "",

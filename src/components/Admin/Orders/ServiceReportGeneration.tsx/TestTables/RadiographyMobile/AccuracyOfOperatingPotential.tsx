@@ -213,7 +213,7 @@ const AccuracyOfOperatingPotential: React.FC<Props> = ({
         }
         if (Array.isArray(rec.table2) && rec.table2.length > 0) {
           const tolSign = (rec.tolerance?.sign as "+" | "-" | "±") || "±";
-          const tolVal = parseFloat(String(rec.tolerance?.value ?? "2.0")) || 0;
+          const tolVal = parseFloat(String(rec.tolerance?.value ?? "5.0")) || 0;
           setRows(
             rec.table2.map((r: any) => {
               const measuredValues = Array.isArray(r.measuredValues)

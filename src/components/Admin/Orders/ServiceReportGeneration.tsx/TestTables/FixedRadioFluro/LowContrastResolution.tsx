@@ -180,7 +180,7 @@ const LowContrastResolution: React.FC<Props> = ({ serviceId, csvDataVersion, ini
                 />
               </td>
               <td className="px-6 py-4 text-sm text-gray-600">
-                mm hole pattern is resolved 
+                mm size hole is Resolve on Monitor
               </td>
             </tr>
 

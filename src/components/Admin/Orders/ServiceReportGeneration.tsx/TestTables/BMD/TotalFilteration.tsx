@@ -48,7 +48,7 @@ const TotalFilterationForInventionalRadiology: React.FC<TotalFilterationForInven
     ]);
 
     const [toleranceSign, setToleranceSign] = useState<"+" | "-" | "±">("±");
-    const [toleranceValue, setToleranceValue] = useState("2.0");
+    const [toleranceValue, setToleranceValue] = useState("5.0");
     const [totalFiltration, setTotalFiltration] = useState({
         measured: "",
         required: "",
@@ -112,7 +112,7 @@ const TotalFilterationForInventionalRadiology: React.FC<TotalFilterationForInven
                     setTestId(data._id || null);
                     setMAStations(data.mAStations || ["50 mA", "100 mA"]);
                     const loadedToleranceSign = data.tolerance?.sign || "±";
-                    const loadedToleranceValue = data.tolerance?.value || "2.0";
+                    const loadedToleranceValue = data.tolerance?.value || "5.0";
                     setToleranceSign(loadedToleranceSign);
                     setToleranceValue(loadedToleranceValue);
 
@@ -189,11 +189,11 @@ const TotalFilterationForInventionalRadiology: React.FC<TotalFilterationForInven
         if (data.tolerance) {
             const sign = data.tolerance.sign;
             setToleranceSign(sign === 'both' ? '±' : (sign as "+" | "-" | "±") || "±");
-            setToleranceValue(data.tolerance.value || "2.0");
+            setToleranceValue(data.tolerance.value || "5.0");
         }
 
         if (data.measurements?.length > 0) {
-            const tol = parseFloat(data.tolerance?.value || "2.0");
+            const tol = parseFloat(data.tolerance?.value || "5.0");
             const sign = (data.tolerance?.sign === 'both' ? '±' : data.tolerance?.sign || "±") as "+" | "-" | "±";
             setRows(
                 data.measurements.map((m: any, i: number) => {

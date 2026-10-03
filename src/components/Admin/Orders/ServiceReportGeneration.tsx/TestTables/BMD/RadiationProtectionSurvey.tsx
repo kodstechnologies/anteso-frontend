@@ -126,7 +126,7 @@ const RadiationProtectionSurvey: React.FC<Props> = ({
           const testData = data.data;
           setTestId(testData._id);
           const savedDate = testData.surveyDate ? new Date(testData.surveyDate).toISOString().split('T')[0] : "";
-          setSurveyDate(savedDate || defaultSurveyDate());
+          setSurveyDate(defaultSurveyDate());
           // Calibration status is set by the tools check useEffect, don't override it here
           // (The tools check will run and set it based on current calibration dates)
           setAppliedCurrent(testData.appliedCurrent || "100");
@@ -374,10 +374,10 @@ const RadiationProtectionSurvey: React.FC<Props> = ({
 
   return (
     <div className="w-full max-w-7xl mx-auto p-6 space-y-12">
-      {hasValidCalibration === "No" && (
-        <div className="bg-red-50 border-2 border-red-500 rounded-lg p-4 mb-4">
-          <p className="text-red-800 font-semibold">
-            ⚠️ Calibration certificate is expired. Please verify tools calibration, then review and save this survey.
+      {(hasValidCalibration === "No" || hasValidCalibration === "N/A") && (
+        <div className="bg-amber-50 border-2 border-amber-500 rounded-lg p-4 mb-4">
+          <p className="text-amber-800 font-semibold">
+            ⚠️ Calibration certificate is expired or not valid. You may still fill and save the survey; ensure valid calibration is provided when available.
           </p>
         </div>
       )}

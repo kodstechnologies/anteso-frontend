@@ -29,25 +29,29 @@ export const generateFixedRadioFluroSummaryRows = (testData: any, hasTimer: bool
   const addRowsForTest = (
     parameter: string,
     testRows: Array<{
-      specified: string | number;
-      measured: string | number;
-      tolerance: string;
+      specified: React.ReactNode;
+      measured: React.ReactNode;
+      tolerance: React.ReactNode;
       remarks: "Pass" | "Fail";
     }>,
     toleranceRowSpan: boolean = false,
-    measuredRowSpan: boolean = false
+    measuredRowSpan: boolean = false,
+    specifiedRowSpan: boolean = false
   ) => {
     if (testRows.length === 0) return;
 
     const sharedTolerance = toleranceRowSpan ? testRows[0]?.tolerance : null;
     const sharedMeasured = measuredRowSpan ? testRows[0]?.measured : null;
+    const sharedSpecified = specifiedRowSpan ? testRows[0]?.specified : null;
 
     testRows.forEach((testRow, idx) => {
       rows.push({
         srNo: idx === 0 ? srNo++ : null,
         parameter: idx === 0 ? parameter : null,
         rowSpan: idx === 0 ? testRows.length : 0,
-        specified: testRow.specified,
+        specified: specifiedRowSpan ? (idx === 0 ? sharedSpecified : null) : testRow.specified,
+        specifiedRowSpan: specifiedRowSpan ? (idx === 0 ? testRows.length : 0) : 0,
+        hasSpecifiedRowSpan: specifiedRowSpan,
         measured: measuredRowSpan ? (idx === 0 ? sharedMeasured : null) : testRow.measured,
         measuredRowSpan: measuredRowSpan ? (idx === 0 ? testRows.length : 0) : 0,
         hasMeasuredRowSpan: measuredRowSpan,
@@ -454,7 +458,7 @@ export const generateFixedRadioFluroSummaryRows = (testData: any, hasTimer: bool
 
         return {
           specified: specifiedDisplay,
-          measured: formattedCv !== "-" ? "CoV = " + formattedCv : "-",
+          measured: formattedCv !== "-" ? "" + formattedCv : "-",
           tolerance: `${toleranceOperator} ${toleranceValue}`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
@@ -470,9 +474,9 @@ export const generateFixedRadioFluroSummaryRows = (testData: any, hasTimer: bool
       const limit = testData.lowContrastResolution.recommendedStandard || "4";
       const isPass = parseFloat(hole) <= parseFloat(limit);
       addRowsForTest("Low Contrast Resolution", [{
-        specified: "Smallest Visible Hole",
+        specified: "",
         measured: `${hole} mm`,
-        tolerance: `≤ ${limit} mm`,
+        tolerance: `≤ ${limit} mm hole pattern must be resolved`,
         remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
       }]);
     }
@@ -485,9 +489,9 @@ export const generateFixedRadioFluroSummaryRows = (testData: any, hasTimer: bool
       const limit = testData.highContrastResolution.recommendedStandard || "1.0";
       const isPass = parseFloat(lp) >= parseFloat(limit);
       addRowsForTest("High Contrast Resolution", [{
-        specified: "Line Pairs per mm",
+        specified: "",
         measured: `${lp} lp/mm`,
-        tolerance: `≥ ${limit} lp/mm`,
+        tolerance: `≥ ${limit} lp/mm pattern must be resolved`,
         remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
       }]);
     }
@@ -497,18 +501,28 @@ export const generateFixedRadioFluroSummaryRows = (testData: any, hasTimer: bool
   if (testData.exposureRate?.rows && Array.isArray(testData.exposureRate.rows)) {
     const validRows = testData.exposureRate.rows.filter((row: any) => row.exposure);
     if (validRows.length > 0) {
-      const testRows = validRows.map((row: any) => {
-        const isAec = row.remark?.toLowerCase().includes("aec") || false;
-        const tolerance = isAec ? (testData.exposureRate.aecTolerance || "10") : (testData.exposureRate.nonAecTolerance || "5");
-        const isPass = parseFloat(row.exposure) <= parseFloat(tolerance);
-        return {
-          specified: `${row.appliedKv || "-"} kV at ${row.appliedMa || "-"} mA`,
-          measured: `${row.exposure || "-"} cGy/min`,
-          tolerance: `≤ ${tolerance} cGy/min`,
-          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
-        };
+      const aecTolerance = testData.exposureRate.aecTolerance || "10";
+      const manualTolerance = testData.exposureRate.nonAecTolerance || "5";
+      rows.push({
+        srNo: srNo++,
+        parameter: "Exposure Rate at Table Top",
+        isFirstRow: true,
+        rowSpan: 1,
+        exposureRateBlock: true,
+        aecTolerance,
+        manualTolerance,
+        measurements: validRows.map((row: any) => {
+          const isAec = String(row.remark || "").toLowerCase().includes("aec");
+          const tolerance = isAec ? aecTolerance : manualTolerance;
+          const isPass = parseFloat(row.exposure) <= parseFloat(tolerance);
+          return {
+            kv: row.appliedKv || "-",
+            ma: row.appliedMa || "-",
+            exposure: row.exposure || "-",
+            remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
+          };
+        }),
       });
-      addRowsForTest("Exposure Rate at Table Top", testRows);
     }
   }
 
@@ -665,13 +679,77 @@ const MainTestTableForFixedRadioFluro: React.FC<MainTestTableProps> = ({
               <th className="border border-black px-3 py-3 print:px-2 print:py-1.5 w-12 text-center align-middle font-bold">Sr. No.</th>
               <th className="border border-black px-4 py-3 print:px-2 print:py-1.5 text-center align-middle font-bold w-72">Parameters Used</th>
               <th className="border border-black px-4 py-3 print:px-2 print:py-1.5 text-center align-middle font-bold w-32">Specified Values</th>
-              <th className="border border-black px-4 py-3 print:px-2 print:py-1.5 text-center align-middle font-bold w-32">Measured Values</th>
+              <th colSpan={2} className="border border-black px-4 py-3 print:px-2 print:py-1.5 text-center align-middle font-bold w-32">Measured Values</th>
               <th className="border border-black px-4 py-3 print:px-2 print:py-1.5 text-center align-middle font-bold w-40">Tolerance</th>
               <th className="border border-black px-4 py-3 print:px-2 print:py-1.5 text-center align-middle font-bold bg-green-100 w-24">Remarks</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((row, index) => {
+              const cellClass = "border border-black px-2 py-2 print:px-1 print:py-1 text-center align-middle";
+
+              if (row.exposureRateBlock) {
+                const measurements = row.measurements || [];
+                const totalRows = measurements.length * 3;
+                const remarkClass = (remarks: string) =>
+                  `border border-black px-2 py-2 print:px-1 print:py-1 text-center align-middle ${
+                    remarks === "Pass" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+                  }`;
+
+                return measurements.flatMap((measurement: any, measurementIndex: number) =>
+                  [0, 1, 2].map((part) => (
+                    <tr key={`${index}-${measurementIndex}-${part}`}>
+                      {measurementIndex === 0 && part === 0 && (
+                        <td rowSpan={totalRows} className="border border-black px-3 py-3 print:px-2 print:py-1.5 text-center align-middle">
+                          {row.srNo}
+                        </td>
+                      )}
+                      {measurementIndex === 0 && part === 0 && (
+                        <td rowSpan={totalRows} className="border border-black px-4 py-3 print:px-2 print:py-1.5 text-center align-middle leading-tight font-normal">
+                          {row.parameter}
+                        </td>
+                      )}
+                      {part === 0 && (
+                        <td rowSpan={2} className={cellClass}>Measured At</td>
+                      )}
+                      {part === 2 && (
+                        <td className={cellClass}>At Tabletop</td>
+                      )}
+                      {part === 0 && (
+                        <>
+                          <td className={cellClass}>kVp</td>
+                          <td className={cellClass}>mA</td>
+                        </>
+                      )}
+                      {part === 1 && (
+                        <>
+                          <td className={cellClass}>{measurement.kv}</td>
+                          <td className={cellClass}>{measurement.ma}</td>
+                        </>
+                      )}
+                      {part === 2 && (
+                        <>
+                          <td className={cellClass}>{measurement.exposure}</td>
+                          <td className={cellClass}>cGy/Min</td>
+                        </>
+                      )}
+                      {measurementIndex === 0 && part === 0 && (
+                        <td rowSpan={totalRows} className={`${cellClass} leading-tight`}>
+                          <div>Tolerance :</div>
+                          <div>1. Exposure Rate without AEC mode ≤ {row.manualTolerance} cGy/Min</div>
+                          <div>2. Exposure Rate with AEC mode ≤ {row.aecTolerance} cGy/Min</div>
+                        </td>
+                      )}
+                      {part === 0 && (
+                        <td rowSpan={3} className={remarkClass(measurement.remarks)}>
+                          {measurement.remarks}
+                        </td>
+                      )}
+                    </tr>
+                  ))
+                );
+              }
+
               const shouldRenderTolerance =
                 (!row.hasToleranceRowSpan && row.toleranceRowSpan === 0) ||
                 (row.hasToleranceRowSpan && row.isFirstRow);
@@ -679,6 +757,10 @@ const MainTestTableForFixedRadioFluro: React.FC<MainTestTableProps> = ({
               const shouldRenderMeasured =
                 (!row.hasMeasuredRowSpan && row.measuredRowSpan === 0) ||
                 (row.hasMeasuredRowSpan && row.isFirstRow);
+
+              const shouldRenderSpecified =
+                (!row.hasSpecifiedRowSpan && !row.specifiedRowSpan) ||
+                (row.hasSpecifiedRowSpan && row.isFirstRow);
 
               return (
                 <tr key={index}>
@@ -692,9 +774,17 @@ const MainTestTableForFixedRadioFluro: React.FC<MainTestTableProps> = ({
                       {row.parameter}
                     </td>
                   )}
-                  <td className="border border-black px-4 py-3 text-center align-middle">{row.specified}</td>
+                  {shouldRenderSpecified && (
+                    <td
+                      {...(row.specifiedRowSpan > 0 ? { rowSpan: row.specifiedRowSpan } : {})}
+                      className="border border-black px-4 py-3 text-center align-middle"
+                    >
+                      {row.specified}
+                    </td>
+                  )}
                   {shouldRenderMeasured && (
                     <td
+                      colSpan={2}
                       {...(row.measuredRowSpan > 0 ? { rowSpan: row.measuredRowSpan } : {})}
                       className="border border-black px-4 py-3 text-center align-middle"
                     >

@@ -365,7 +365,6 @@ const ViewServiceReportRadiographyPortable: React.FC<ViewServiceReportRadiograph
   }
 
   const toolsArray = report.toolsUsed || [];
-  const notesArray = report.notes && report.notes.length > 0 ? report.notes : defaultNotes;
   const leadOwnerRole = String(
     report?.leadOwnerType ||
     report?.leadOwnerRole ||
@@ -641,20 +640,6 @@ const ViewServiceReportRadiographyPortable: React.FC<ViewServiceReportRadiograph
                 )}
               </tbody>
             </table>
-          </section>
-
-          {/* Notes */}
-          <section className="mb-3 text-[10px]">
-            <SectionTitle title="5. Notes" />
-            <div className="space-y-[2px]">
-              {notesArray.map((n) => (
-                <div key={n.slNo} className="flex">
-                  <div className="w-10 text-right pr-1">{n.slNo}</div>
-                  <div className="w-2">:</div>
-                  <div className="flex-1 break-words">{n.text}</div>
-                </div>
-              ))}
-            </div>
           </section>
 
           <ReportPdfPageNoteQR report={report!} />

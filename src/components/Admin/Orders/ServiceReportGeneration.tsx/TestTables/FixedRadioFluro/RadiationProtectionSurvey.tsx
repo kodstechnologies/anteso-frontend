@@ -34,12 +34,19 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, refreshKey, ini
     return today.toISOString().split('T')[0];
   };
 
+  const toInputDate = (value: any): string => {
+    if (!value) return "";
+    const text = String(value);
+    return text.includes("T") ? text.split("T")[0] : text;
+  };
+
   const [testId, setTestId] = useState<string | null>(null);
   const [isSaved, setIsSaved] = useState(false);
   const [isEditing, setIsEditing] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [surveyDate, setSurveyDate] = useState<string>(getTodayDate());
+  const defaultSurveyDate = () => toInputDate(qaSubmittedDate) || getTodayDate();
+  const [surveyDate, setSurveyDate] = useState<string>(defaultSurveyDate());
   const [hasValidCalibration, setHasValidCalibration] = useState<string>("");
 
   const [appliedCurrent, setAppliedCurrent] = useState<string>("100");
@@ -58,12 +65,6 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, refreshKey, ini
     { id: "8", location: "Outside Patient Entrance Door", mRPerHr: "", mRPerWeek: "", result: "", category: "public" },
     { id: "9", location: "Patient Waiting Area", mRPerHr: "", mRPerWeek: "", result: "", category: "public" },
   ]);
-
-  const toInputDate = (value: any): string => {
-    if (!value) return "";
-    const text = String(value);
-    return text.includes("T") ? text.split("T")[0] : text;
-  };
 
   // Formula: mR/week = (Workload × mR/hr) / (60 × mA used)
   const calculateMRPerWeek = (mRPerHr: string) => {
@@ -189,7 +190,7 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, refreshKey, ini
         const detailsRes = await getDetails(serviceId);
         const details = detailsRes?.data;
         const srfDate = toInputDate(details?.srfDate || details?.orderCreatedAt);
-        if (srfDate) setSurveyDate(prev => prev || srfDate);
+        if (!qaSubmittedDate && srfDate) setSurveyDate(prev => prev || srfDate);
       } catch {
         // Keep existing behavior if details API fails
       }
@@ -209,9 +210,7 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, refreshKey, ini
         const data = res?.data;
         if (data) {
           setTestId(data._id || null);
-          const savedDate = data.surveyDate ? new Date(data.surveyDate).toISOString().split('T')[0] : "";
-          const defaultFromQa = qaSubmittedDate ? new Date(qaSubmittedDate).toISOString().split('T')[0] : getTodayDate();
-          setSurveyDate(savedDate || defaultFromQa);
+          setSurveyDate(defaultSurveyDate());
           // Calibration status is set by the tools check useEffect, don't override it here
           // (The tools check will run and set it based on current calibration dates)
           setAppliedCurrent(data.appliedCurrent || "100");
@@ -233,8 +232,7 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, refreshKey, ini
           setIsSaved(true);
           setIsEditing(false);
         } else {
-          const defaultDate = qaSubmittedDate ? new Date(qaSubmittedDate).toISOString().split('T')[0] : getTodayDate();
-          setSurveyDate(defaultDate);
+          setSurveyDate(defaultSurveyDate());
           setIsEditing(true);
         }
       } catch (err: any) {
@@ -253,7 +251,7 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, refreshKey, ini
   useEffect(() => {
     if (initialData && refreshKey !== undefined) {
       console.log('RadiationProtectionSurvey: Loading CSV data', initialData);
-      if (initialData.surveyDate) setSurveyDate(initialData.surveyDate);
+      setSurveyDate(defaultSurveyDate());
       if (initialData.hasValidCalibration) setHasValidCalibration(initialData.hasValidCalibration);
       if (initialData.appliedCurrent) setAppliedCurrent(String(initialData.appliedCurrent));
       if (initialData.appliedVoltage) setAppliedVoltage(String(initialData.appliedVoltage));
@@ -284,11 +282,6 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, refreshKey, ini
     }
     if (!hasValidCalibration.trim()) {
       toast.error("Please select calibration status");
-      return;
-    }
-    // Prevent submission if calibration is "No"
-    if (hasValidCalibration === "No") {
-      toast.error("Cannot submit test: Calibration certificate is expired. Please ensure all tools have valid calibration certificates.");
       return;
     }
 
@@ -342,16 +335,18 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, refreshKey, ini
 
   return (
     <div className="w-full max-w-7xl mx-auto p-6 space-y-12">
-      {hasValidCalibration === "No" && (
+      {(hasValidCalibration === "No" || hasValidCalibration === "N/A") && (
         <div className="bg-amber-50 border-2 border-amber-500 rounded-lg p-4 mb-4">
           <p className="text-amber-800 font-semibold">
             ⚠️ Calibration certificate is expired or not valid. You may still fill and save the survey; ensure valid calibration is provided when available.
           </p>
         </div>
       )}
-      <h1 className="text-4xl font-bold text-center text-gray-800">
-        Radiation Protection Survey Report
-      </h1>
+      <div className="flex justify-between items-center">
+        <h1 className="text-4xl font-bold text-center text-gray-800 print:text-3xl">
+          Radiation Protection Survey Report
+        </h1>
+      </div>
 
       {/* 1. Survey Details */}
       <section className="bg-white rounded-2xl shadow-lg border border-gray-200">

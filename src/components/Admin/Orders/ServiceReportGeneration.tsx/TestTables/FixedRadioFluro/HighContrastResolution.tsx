@@ -175,7 +175,7 @@ const HighContrastResolution: React.FC<Props> = ({ serviceId, csvDataVersion, in
                 />
               </td>
               <td className="px-6 py-4 text-sm text-gray-600">
-                lp/mm pattern is resolved
+                lp/mm is Resolve on Monitor
               </td>
             </tr>
 
