@@ -525,7 +525,7 @@ const MeasurementOfCTDI: React.FC<Props> = ({ serviceId, testId: propTestId, tub
             {/* ==================== Table 2: CTDI Results ==================== */}
             <div className="bg-white shadow-md rounded-lg overflow-hidden">
                 <h3 className="px-6 py-3 text-lg font-semibold bg-blue-50 border-b">
-                    CTDI Results (mGy/100mAs)
+                    CTDI Results
                 </h3>
                 <div className="overflow-x-auto">
                     <table className="min-w-full divide-y divide-gray-200">

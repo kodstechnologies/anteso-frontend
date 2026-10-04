@@ -276,7 +276,7 @@ const LowContrastResolutionForCTScan: React.FC<Props> = ({
                       } focus:ring-4 focus:ring-indigo-300 ${isViewOnly ? 'cursor-not-allowed' : ''}`}
                     placeholder="5.0"
                   />
-                  <p className="text-sm text-gray-600 mt-2">mm (smallest visible object)</p>
+                  <p className="text-sm text-gray-600 mt-2">mm</p>
                 </td>
                 <td className="py-6 px-4 text-center">
                   <div className="flex items-center justify-center gap-3">

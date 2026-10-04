@@ -73,9 +73,9 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
     },
   ]);
 
-  const [workload, setWorkload] = useState<string>('');
+  const [workload, setWorkload] = useState<string>('20');
   const [workloadUnit, setWorkloadUnit] = useState<string>('mA in one hour');
-  const [toleranceValue, setToleranceValue] = useState<string>('1');
+  const [toleranceValue, setToleranceValue] = useState<string>('0.25');
   const [toleranceOperator, setToleranceOperator] = useState<ToleranceOp>('<');
   const [toleranceTime, setToleranceTime] = useState<string>('1');
 

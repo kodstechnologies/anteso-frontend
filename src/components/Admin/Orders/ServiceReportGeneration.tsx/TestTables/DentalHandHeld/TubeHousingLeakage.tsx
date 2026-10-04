@@ -69,8 +69,8 @@ export default function TubeHousingLeakage({
     },
   ]);
 
-  const [workload, setWorkload] = useState<string>('');
-  const [toleranceValue, setToleranceValue] = useState<string>('1');
+  const [workload, setWorkload] = useState<string>('20');
+  const [toleranceValue, setToleranceValue] = useState<string>('0.25');
   const [toleranceOperator, setToleranceOperator] = useState<'less than' | 'greater than' | '=' | 'less than or equal to' | 'greater than or equal to'>('less than');
   const [toleranceTime, setToleranceTime] = useState<string>('1');
 

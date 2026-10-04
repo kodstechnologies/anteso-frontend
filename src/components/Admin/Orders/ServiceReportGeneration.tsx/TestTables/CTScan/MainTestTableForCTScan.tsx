@@ -495,7 +495,7 @@ const MainTestTableForCTScan: React.FC<MainTestTableProps> = ({ testData }) => {
                     : "=";
           return {
             specified: row.kvp ? `${row.kvp} kVp` : "Varies with kVp",
-            measured: formattedCov !== "-" ? "CoV = " + formattedCov : "-",
+            measured: formattedCov !== "-" ? " " + formattedCov : "-",
             tolerance: `${operatorSymbol} ${tolValue}`,
             remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
             toleranceRowSpan: idx === 0 ? validRows.length : 0,
@@ -515,7 +515,7 @@ const MainTestTableForCTScan: React.FC<MainTestTableProps> = ({ testData }) => {
     const kvp = testData.ctdi.table1?.[0]?.kvp || "-";
     const tolValue = tolerance?.value ? parseFloat(tolerance.value) : 20;
     const tolSign = tolerance?.sign === 'plus' ? '+' : tolerance?.sign === 'minus' ? '-' : '+/-';
-    const tolStr = `${tolSign}${tolValue}% of the quoted value (Expected) || ±40% of the quoted value (Maximum)`;
+    const tolStr = `${tolSign}${tolValue}% of the quoted value (Expected) `;
 
     const calculateCtdiPass = (measured: any, specified: any) => {
       const m = parseFloat(measured);
@@ -567,7 +567,7 @@ const MainTestTableForCTScan: React.FC<MainTestTableProps> = ({ testData }) => {
     const contrastLevel = testData.lowContrastResolution.result?.contrastLevel || testData.lowContrastResolution.contrastLevel || "-";
     const isPass = observedSize !== "-" && parseFloat(observedSize) <= 5.0;
     addRowsForTest("Low Contrast Resolution", [{
-      specified: `Contrast: ${contrastLevel}%`,
+      specified: `${contrastLevel}%`,
       measured: `${observedSize} mm`,
       tolerance: "<= 5.0 mm at 1% contrast",
       remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
@@ -610,8 +610,8 @@ const MainTestTableForCTScan: React.FC<MainTestTableProps> = ({ testData }) => {
       const observedSize = hcr.result.observedSize ?? "-";
       const contrastDiff = hcr.result.contrastDifference ?? "-";
       testRows = [{
-        specified: `Contrast Difference: ${contrastDiff}`,
-        measured: `Observed Size: ${observedSize} lp/mm`,
+        specified: `${contrastDiff}`,
+        measured: `Observed Size: ${observedSize} lp/cm`,
         criteria: "-",
         tolerance: highContrastTolerance,
         remarks: "Pass" as "Pass" | "Fail",

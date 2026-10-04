@@ -312,7 +312,7 @@ const HighContrastResolutionForCTScan: React.FC<Props> = ({
                       } focus:ring-4 focus:ring-indigo-300 ${isViewOnly ? 'cursor-not-allowed' : ''}`}
                     placeholder="1.0"
                   />
-                  <p className="text-sm text-gray-600 mt-2">lp/mm</p>
+                  <p className="text-sm text-gray-600 mt-2">lp/cm</p>
                 </td>
                 <td className="py-6 px-4 text-center">
                   <div className="flex items-center justify-center gap-3">

@@ -326,7 +326,7 @@ const MainTestTableForOPG: React.FC<MainTestTableProps> = ({ testData }) => {
 
         return {
           specified: specifiedDisplay,
-          measured: formattedCv !== "-" ? `CoV = ${formattedCv}` : "-",
+          measured: formattedCv !== "-" ? ` ${formattedCv}` : "-",
           tolerance: `${toleranceOperator} ${toleranceValue}`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };

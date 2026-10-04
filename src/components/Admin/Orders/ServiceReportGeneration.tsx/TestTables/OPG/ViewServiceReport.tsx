@@ -873,7 +873,7 @@ const ViewServiceReportOPG: React.FC<ViewServiceReportOPGProps> = ({
               <thead>
                 <tr>
                   {["Sl No.", "Nomenclature", "Make", "Model", "Sr. No.", "Certificate No.", "Valid Till"].map((h, i) => (
-                    <th key={h} style={{ fontWeight: 700, border: "0.1px solid #666", fontSize: "9px", lineHeight: "1.2", whiteSpace: "normal", wordBreak: "break-word", overflowWrap: "anywhere", padding: "3px 4px", width: ["6%", "18%", "12%", "12%", "10%", "10%", "16%", "16%"][i] }}>
+                    <th key={h} style={{ fontWeight: 700, border: "0.1px solid #666", fontSize: "9px", lineHeight: "1.2", whiteSpace: "normal", wordBreak: "break-word", overflowWrap: "anywhere", padding: "3px 4px", width: ["6%", "20%", "12%", "12%", "12%", "18%", "20%"][i] }}>
                       {h}
                     </th>
                   ))}
@@ -883,19 +883,19 @@ const ViewServiceReportOPG: React.FC<ViewServiceReportOPGProps> = ({
                 {toolsArray.length > 0 ? (
                   toolsArray.map((tool, i) => (
                     <tr key={i}>
-                      <td style={{ border: "0.1px solid #666", fontSize: "11px", lineHeight: "1.3", padding: "4px 6px 4px 6px" }}>{i + 1}</td>
-                      <td style={{ border: "0.1px solid #666", fontSize: "11px", lineHeight: "1.3", padding: "4px 6px 4px 6px" }}>{tool.nomenclature}</td>
-                      <td style={{ border: "0.1px solid #666", fontSize: "11px", lineHeight: "1.3", padding: "4px 6px 4px 6px" }}>{tool.make || "-"}</td>
-                      <td style={{ border: "0.1px solid #666", fontSize: "11px", lineHeight: "1.3", padding: "4px 6px 4px 6px" }}>{tool.model || "-"}</td>
-                      <td style={{ border: "0.1px solid #666", fontSize: "11px", lineHeight: "1.3", padding: "4px 6px 4px 6px" }}>{tool.SrNo}</td>
+                      <td style={{ border: "0.1px solid #666", fontSize: "11px", lineHeight: "1.3", padding: "4px 6px 4px 6px", wordBreak: "break-word", overflowWrap: "anywhere" }}>{i + 1}</td>
+                      <td style={{ border: "0.1px solid #666", fontSize: "11px", lineHeight: "1.3", padding: "4px 6px 4px 6px", wordBreak: "break-word", overflowWrap: "anywhere" }}>{tool.nomenclature}</td>
+                      <td style={{ border: "0.1px solid #666", fontSize: "11px", lineHeight: "1.3", padding: "4px 6px 4px 6px", wordBreak: "break-word", overflowWrap: "anywhere" }}>{tool.make || "-"}</td>
+                      <td style={{ border: "0.1px solid #666", fontSize: "11px", lineHeight: "1.3", padding: "4px 6px 4px 6px", wordBreak: "break-word", overflowWrap: "anywhere" }}>{tool.model || "-"}</td>
+                      <td style={{ border: "0.1px solid #666", fontSize: "11px", lineHeight: "1.3", padding: "4px 6px 4px 6px", wordBreak: "break-word", overflowWrap: "anywhere" }}>{tool.SrNo}</td>
                  
-                      <td style={{ border: "0.1px solid #666", fontSize: "11px", lineHeight: "1.3", padding: "4px 6px 4px 6px" }}>{tool.calibrationCertificateNo}</td>
-                      <td style={{ border: "0.1px solid #666", fontSize: "11px", lineHeight: "1.3", padding: "4px 6px 4px 6px" }}>{formatDate(tool.calibrationValidTill)}</td>
+                      <td style={{ border: "0.1px solid #666", fontSize: "11px", lineHeight: "1.3", padding: "4px 6px 4px 6px", wordBreak: "break-word", overflowWrap: "anywhere" }}>{tool.calibrationCertificateNo}</td>
+                      <td style={{ border: "0.1px solid #666", fontSize: "11px", lineHeight: "1.3", padding: "4px 6px 4px 6px", wordBreak: "break-word", overflowWrap: "anywhere" }}>{formatDate(tool.calibrationValidTill)}</td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={8} style={{ border: "0.1px solid #666", fontSize: "11px", lineHeight: "1.3", padding: "4px 6px 4px 6px" }}>No tools recorded</td>
+                    <td colSpan={7} style={{ border: "0.1px solid #666", fontSize: "11px", lineHeight: "1.3", padding: "4px 6px 4px 6px" }}>No tools recorded</td>
                   </tr>
                 )}
               </tbody>
@@ -1068,7 +1068,7 @@ const ViewServiceReportOPG: React.FC<ViewServiceReportOPGProps> = ({
 
                   return (
                     <div className="border border-black rounded" style={{ padding: '4px 6px', marginTop: '4px' }}>
-                      <h4 className="font-semibold mb-2" style={{ fontSize: '11px', marginBottom: '4px' }}>3.Total Filtration</h4>
+                      <h4 className="font-semibold mb-2" style={{ fontSize: '11px', marginBottom: '4px' }}>{nextDetailedSectionNumber()}. Total Filtration</h4>
                       <table className="w-full border border-black text-sm compact-table" style={{ fontSize: '11px', borderCollapse: 'collapse', borderSpacing: '0' }}>
                         <tbody>
                           <tr>
@@ -1641,7 +1641,7 @@ const ViewServiceReportOPG: React.FC<ViewServiceReportOPGProps> = ({
                 </h3>
                 {(radiationProtectionSurveyView.surveyDate || radiationProtectionSurveyView.hasValidCalibration) && (
                   <div style={{ marginBottom: "4px" }}>
-                    <p style={{ fontSize: "10px", fontWeight: "bold", marginBottom: "2px" }}>1. Survey Details</p>
+                    <p style={{ fontSize: "10px", fontWeight: "bold", marginBottom: "2px" }}>Survey Details</p>
                     <table style={tableStyle} className="compact-table">
                       <tbody>
                         <tr>
@@ -1664,7 +1664,7 @@ const ViewServiceReportOPG: React.FC<ViewServiceReportOPGProps> = ({
                 )}
                 {(radiationProtectionSurveyView.appliedCurrent || radiationProtectionSurveyView.appliedVoltage) && (
                   <div style={{ marginBottom: "4px" }}>
-                    <p style={{ fontSize: "10px", fontWeight: "bold", marginBottom: "2px" }}>2. Equipment Setting</p>
+                    <p style={{ fontSize: "10px", fontWeight: "bold", marginBottom: "2px" }}>Equipment Setting</p>
                     <table style={tableStyle} className="compact-table">
                       <tbody>
                         {[
@@ -1725,7 +1725,7 @@ const ViewServiceReportOPG: React.FC<ViewServiceReportOPGProps> = ({
             {radiationProtectionSurveyView && (
               <div className="mb-4 test-section" style={{ marginBottom: "8px" }}>
                 <div style={{ marginBottom: "4px" }}>
-                  <p style={{ fontSize: "10px", fontWeight: "bold", marginBottom: "2px" }}>4. Calculation Formula</p>
+                  <p style={{ fontSize: "10px", fontWeight: "bold", marginBottom: "2px" }}>Calculation Formula</p>
                   <table style={tableStyle} className="compact-table">
                     <tbody>
                       <tr>
@@ -1754,7 +1754,7 @@ const ViewServiceReportOPG: React.FC<ViewServiceReportOPGProps> = ({
                     const publicResult = parseFloat(maxPublicWeekly) > 0 ? (parseFloat(maxPublicWeekly) <= 2 ? "Pass" : "Fail") : "";
                     return (
                       <div style={{ marginBottom: "4px" }}>
-                        <p style={{ fontSize: "10px", fontWeight: "bold", marginBottom: "2px" }}>5. Summary of Maximum Radiation Level/week (mR/wk)</p>
+                        <p style={{ fontSize: "10px", fontWeight: "bold", marginBottom: "2px" }}>Summary of Maximum Radiation Level/week (mR/wk)</p>
                         <table style={tableStyle} className="compact-table">
                           <thead>
                             <tr>
@@ -1812,7 +1812,7 @@ const ViewServiceReportOPG: React.FC<ViewServiceReportOPGProps> = ({
                     );
                   })()}
                 <div style={{ marginBottom: "4px" }}>
-                  <p style={{ fontSize: "10px", fontWeight: "bold", marginBottom: "2px" }}>6. Permissible Limit</p>
+                  <p style={{ fontSize: "10px", fontWeight: "bold", marginBottom: "2px" }}>Permissible Limit</p>
                   <table style={tableStyle} className="compact-table">
                     <tbody>
                       <tr>

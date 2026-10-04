@@ -341,11 +341,6 @@ const RadiationProtectionSurvey: React.FC<Props> = ({ serviceId, refreshKey, ini
       toast.error("Please select calibration status");
       return;
     }
-    // Prevent submission if calibration is "No"
-    if (hasValidCalibration === "No") {
-      toast.error("Cannot submit test: Calibration certificate is expired. Please ensure all tools have valid calibration certificates.");
-      return;
-    }
 
     const payload = {
       surveyDate: normalizedSurveyDate,

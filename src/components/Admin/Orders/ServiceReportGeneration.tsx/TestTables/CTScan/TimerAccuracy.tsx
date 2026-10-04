@@ -43,7 +43,7 @@ const TimerAccuracy: React.FC<Props> = ({ serviceId, testId: propTestId, tubeId,
   ]);
 
   const [tolerance, setTolerance] = useState<string>('10');
-  const [toleranceOperator, setToleranceOperator] = useState<string>('<=');
+  const [toleranceOperator, setToleranceOperator] = useState<string>('<');
 
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
