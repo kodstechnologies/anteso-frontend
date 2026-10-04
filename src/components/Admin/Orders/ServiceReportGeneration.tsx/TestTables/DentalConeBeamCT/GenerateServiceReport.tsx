@@ -839,6 +839,7 @@ const DentalConeBeamCTContent: React.FC<{ serviceId: string; qaTestDate?: string
 
             const payload = {
                 ...formData,
+                hasTimer, // Include timer preference in saved report header
                 rpid: formData.rpId,
                 rpID: formData.rpId,
                 RPId: formData.rpId,
@@ -1027,7 +1028,18 @@ const DentalConeBeamCTContent: React.FC<{ serviceId: string; qaTestDate?: string
                     }
 
                     setCsvData(grouped);
-                    const hasTimerSection = !!(grouped['accuracyOfIrradiationTime']?.length);
+                    
+                    // Determine hasTimer from the Excel data structure:
+                    // - If accuracyOfIrradiationTime exists OR linearityOfMaLoading exists → timer = true
+                    // - If linearityOfMasLoading exists → timer = false
+                    // - Prefer explicit timer test data, then check linearity type
+                    let hasTimerSection = false;
+                    if (grouped['accuracyOfIrradiationTime']?.length || grouped['linearityOfMaLoading']?.length) {
+                        hasTimerSection = true;
+                    } else if (grouped['linearityOfMasLoading']?.length) {
+                        hasTimerSection = false;
+                    }
+                    
                     setHasTimer(hasTimerSection);
                     setShowTimerModal(false);
                     if (serviceId) {

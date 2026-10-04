@@ -449,6 +449,7 @@ const ViewServiceReportCBCT: React.FC<ViewServiceReportCBCTProps> = ({
           }
 
           setTestData({
+            hasTimer: data.hasTimer, // Include hasTimer from saved report header
             irradiationTime: data.AccuracyOfIrradiationTimeCBCT || null,
             operatingPotential: transformedOperatingPotential,
             outputConsistency: data.OutputConsistencyForCBCT || null,
@@ -783,7 +784,7 @@ const ViewServiceReportCBCT: React.FC<ViewServiceReportCBCTProps> = ({
               <thead>
                 <tr>
                   {["Sl No.", "Nomenclature", "Make", "Model", "Sr. No.", "Certificate No.", "Valid Till"].map((h, i) => (
-                    <th key={h} style={{ fontWeight: 700, border: "0.1px solid #666", fontSize: "9px", lineHeight: "1.2", whiteSpace: "normal", wordBreak: "break-word", overflowWrap: "anywhere", padding: "3px 4px", width: ["6%", "18%", "12%", "12%", "10%", "10%", "16%", "16%"][i] }}>
+                    <th key={h} style={{ fontWeight: 700, border: "0.1px solid #666", fontSize: "9px", lineHeight: "1.2", whiteSpace: "normal", wordBreak: "break-word", overflowWrap: "anywhere", padding: "3px 4px", width: ["6%", "20%", "12%", "12%", "12%", "18%", "20%"][i] }}>
                       {h}
                     </th>
                   ))}
@@ -793,19 +794,19 @@ const ViewServiceReportCBCT: React.FC<ViewServiceReportCBCTProps> = ({
                 {toolsArray.length > 0 ? (
                   toolsArray.map((tool, i) => (
                     <tr key={i}>
-                      <td style={{ border: "0.1px solid #666", fontSize: "11px", lineHeight: "1.3", padding: "4px 6px 4px 6px" }}>{i + 1}</td>
-                      <td style={{ border: "0.1px solid #666", fontSize: "11px", lineHeight: "1.3", padding: "4px 6px 4px 6px" }}>{tool.nomenclature}</td>
-                      <td style={{ border: "0.1px solid #666", fontSize: "11px", lineHeight: "1.3", padding: "4px 6px 4px 6px" }}>{tool.make || "-"}</td>
-                      <td style={{ border: "0.1px solid #666", fontSize: "11px", lineHeight: "1.3", padding: "4px 6px 4px 6px" }}>{tool.model || "-"}</td>
-                      <td style={{ border: "0.1px solid #666", fontSize: "11px", lineHeight: "1.3", padding: "4px 6px 4px 6px" }}>{tool.SrNo}</td>
+                      <td style={{ border: "0.1px solid #666", fontSize: "11px", lineHeight: "1.3", padding: "4px 6px 4px 6px", wordBreak: "break-word", overflowWrap: "anywhere" }}>{i + 1}</td>
+                      <td style={{ border: "0.1px solid #666", fontSize: "11px", lineHeight: "1.3", padding: "4px 6px 4px 6px", wordBreak: "break-word", overflowWrap: "anywhere" }}>{tool.nomenclature}</td>
+                      <td style={{ border: "0.1px solid #666", fontSize: "11px", lineHeight: "1.3", padding: "4px 6px 4px 6px", wordBreak: "break-word", overflowWrap: "anywhere" }}>{tool.make || "-"}</td>
+                      <td style={{ border: "0.1px solid #666", fontSize: "11px", lineHeight: "1.3", padding: "4px 6px 4px 6px", wordBreak: "break-word", overflowWrap: "anywhere" }}>{tool.model || "-"}</td>
+                      <td style={{ border: "0.1px solid #666", fontSize: "11px", lineHeight: "1.3", padding: "4px 6px 4px 6px", wordBreak: "break-word", overflowWrap: "anywhere" }}>{tool.SrNo}</td>
                  
-                      <td style={{ border: "0.1px solid #666", fontSize: "11px", lineHeight: "1.3", padding: "4px 6px 4px 6px" }}>{tool.calibrationCertificateNo}</td>
-                      <td style={{ border: "0.1px solid #666", fontSize: "11px", lineHeight: "1.3", padding: "4px 6px 4px 6px" }}>{formatDate(tool.calibrationValidTill)}</td>
+                      <td style={{ border: "0.1px solid #666", fontSize: "11px", lineHeight: "1.3", padding: "4px 6px 4px 6px", wordBreak: "break-word", overflowWrap: "anywhere" }}>{tool.calibrationCertificateNo}</td>
+                      <td style={{ border: "0.1px solid #666", fontSize: "11px", lineHeight: "1.3", padding: "4px 6px 4px 6px", wordBreak: "break-word", overflowWrap: "anywhere" }}>{formatDate(tool.calibrationValidTill)}</td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={8} style={{ border: "0.1px solid #666", fontSize: "11px", lineHeight: "1.3", padding: "4px 6px 4px 6px" }}>No tools recorded</td>
+                    <td colSpan={7} style={{ border: "0.1px solid #666", fontSize: "11px", lineHeight: "1.3", padding: "4px 6px 4px 6px" }}>No tools recorded</td>
                   </tr>
                 )}
               </tbody>
@@ -1107,16 +1108,24 @@ const ViewServiceReportCBCT: React.FC<ViewServiceReportCBCTProps> = ({
               const table1 = Array.isArray(testData.linearityOfMaLoading.table1)
                 ? testData.linearityOfMaLoading.table1?.[0]
                 : testData.linearityOfMaLoading.table1;
+              
+              // Use saved hasTimer preference from report header
+              const savedHasTimer = testData.hasTimer;
               const hasTime = table1?.time !== undefined && table1?.time !== null && String(table1?.time).trim() !== "";
               const timeStr = hasTime ? String(table1?.time).trim() : '';
               const timeVal = parseFloat(timeStr);
               const hasValidTime = timeStr !== '' && !isNaN(timeVal) && timeVal > 0;
               const hasMasShape = rows.some((row: any) => row.mAsRange || row.mAsApplied);
-              const isMasLinearity = !hasTime || hasMasShape;
-              const xUnitLabel = hasValidTime && !hasMasShape ? 'mGy/(mA*s)' : isMasLinearity ? 'mGy/mAs' : 'mGy/mA';
-              const linearityHeading = isMasLinearity
-                ? "Linearity of mAs Loading (Coefficient of Linearity)"
-                : "Linearity of mA Loading (Coefficient of Linearity)";
+              
+              // Use saved preference if available, otherwise calculate from data
+              const isMaLinearity = savedHasTimer !== undefined && savedHasTimer !== null 
+                ? savedHasTimer 
+                : (hasValidTime && !hasMasShape);
+              
+              const xUnitLabel = isMaLinearity ? 'mGy/mA' : 'mGy/mAs';
+              const linearityHeading = isMaLinearity
+                ? "Linearity of mA Loading (Coefficient of Linearity)"
+                : "Linearity of mAs Loading (Coefficient of Linearity)";
 
               const xResults = rows.map((row: any) => {
                 const outputsArr = Array.isArray(row.measuredOutputs) ? row.measuredOutputs : [];
@@ -1156,7 +1165,7 @@ const ViewServiceReportCBCT: React.FC<ViewServiceReportCBCTProps> = ({
                           <tr className="bg-blue-50">
                             <th className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>FDD (cm)</th>
                             <th className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>kV</th>
-                            {hasTime && !hasMasShape && (
+                            {isMaLinearity && (
                               <th className="border border-black p-1 text-center font-bold" style={{ padding: '0px 2px', fontSize: '10px' }}>Time (Sec)</th>
                             )}
                           </tr>
@@ -1165,7 +1174,7 @@ const ViewServiceReportCBCT: React.FC<ViewServiceReportCBCTProps> = ({
                           <tr className="text-center" style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
                             <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{table1?.fcd || "-"}</td>
                             <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{table1?.kv || "-"}</td>
-                            {hasTime && !hasMasShape && (
+                            {isMaLinearity && (
                               <td className="border border-black p-1 text-center" style={{ padding: '0px 2px', fontSize: '10px' }}>{table1?.time || "-"}</td>
                             )}
                           </tr>
@@ -1180,7 +1189,7 @@ const ViewServiceReportCBCT: React.FC<ViewServiceReportCBCTProps> = ({
                         <tr style={{ height: '20px' }}>
                           <th rowSpan={2} className="border border-black text-center align-middle" style={{ padding: '0', fontSize: '11px', borderColor: '#000000', backgroundColor: '#f3f4f6', verticalAlign: 'middle' }}>
                             <div className="header-cell-simulated" style={{ fontWeight: 700, padding: '4px 2px' }}>
-                              {isMasLinearity ? "mAs Range" : "mA Applied"}
+                              {isMaLinearity ? "mA Applied" : "mAs Range"}
                             </div>
                           </th>
                           <th colSpan={Math.max(measCount, 1)} className="border border-black text-center" style={{ padding: '0', fontSize: '11px', borderColor: '#000000', backgroundColor: '#f3f4f6' }}>
@@ -1656,7 +1665,7 @@ const ViewServiceReportCBCT: React.FC<ViewServiceReportCBCTProps> = ({
 
                 {/* 1. Survey Details */}
                 <div className="mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
-                  <h4 className="text-lg font-semibold mb-4 print:mb-1 print:text-xs" style={{ marginBottom: '4px', fontSize: '10px' }}>1. Survey Details</h4>
+                  <h4 className="text-lg font-semibold mb-4 print:mb-1 print:text-xs" style={{ marginBottom: '4px', fontSize: '10px' }}>Survey Details</h4>
                   <div className="overflow-x-auto">
                     <table className="w-full border-2 border-black text-sm print:text-[10px] compact-table" style={{ fontSize: '11px', borderCollapse: 'collapse', borderSpacing: '0' }}>
                       <tbody>
@@ -1675,7 +1684,7 @@ const ViewServiceReportCBCT: React.FC<ViewServiceReportCBCTProps> = ({
 
                 {/* 2. Equipment Setting */}
                 <div className="mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
-                  <h4 className="text-lg font-semibold mb-4 print:mb-1 print:text-xs" style={{ marginBottom: '4px', fontSize: '10px' }}>2. Equipment Setting</h4>
+                  <h4 className="text-lg font-semibold mb-4 print:mb-1 print:text-xs" style={{ marginBottom: '4px', fontSize: '10px' }}>Equipment Setting</h4>
                   <div className="overflow-x-auto">
                     <table className="w-full border-2 border-black text-sm print:text-[10px] compact-table" style={{ fontSize: '11px', borderCollapse: 'collapse', borderSpacing: '0' }}>
                       <tbody>
@@ -1702,7 +1711,7 @@ const ViewServiceReportCBCT: React.FC<ViewServiceReportCBCTProps> = ({
 
                 {/* 3. Measured Maximum Radiation Levels */}
                 <div className="mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
-                  <h4 className="text-lg font-semibold mb-4 print:mb-1 print:text-[10px]" style={{ marginBottom: '2px', fontSize: '11px' }}>3. Measured Maximum Radiation Levels (mR/hr) at different Locations</h4>
+                  <h4 className="text-lg font-semibold mb-4 print:mb-1 print:text-[10px]" style={{ marginBottom: '2px', fontSize: '11px' }}>Measured Maximum Radiation Levels (mR/hr) at different Locations</h4>
                   <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
                     <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
                       <thead className="bg-gray-100">
@@ -1733,7 +1742,7 @@ const ViewServiceReportCBCT: React.FC<ViewServiceReportCBCTProps> = ({
 
                 {/* 4. Calculation Formula */}
                 <div className="mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
-                  <h4 className="text-lg font-semibold mb-4 print:mb-1 print:text-[10px]" style={{ marginBottom: '2px', fontSize: '11px' }}>4. Calculation Formula</h4>
+                  <h4 className="text-lg font-semibold mb-4 print:mb-1 print:text-[10px]" style={{ marginBottom: '2px', fontSize: '11px' }}>Calculation Formula</h4>
                   <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
                     <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', borderCollapse: 'collapse', borderSpacing: '0' }}>
                       <tbody>
@@ -1771,7 +1780,7 @@ const ViewServiceReportCBCT: React.FC<ViewServiceReportCBCTProps> = ({
 
                   return (
                     <div className="mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
-                      <h4 className="text-lg font-semibold mb-4 print:mb-1 print:text-[10px]" style={{ marginBottom: '2px', fontSize: '11px' }}>5. Summary of Maximum Radiation Level/week (mR/wk)</h4>
+                      <h4 className="text-lg font-semibold mb-4 print:mb-1 print:text-[10px]" style={{ marginBottom: '2px', fontSize: '11px' }}>Summary of Maximum Radiation Level/week (mR/wk)</h4>
                       <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
                         <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
                           <thead className="bg-gray-100">
@@ -1835,7 +1844,7 @@ const ViewServiceReportCBCT: React.FC<ViewServiceReportCBCTProps> = ({
 
                 {/* 6. Permissible Limit */}
                 <div className="mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
-                  <h4 className="text-lg font-semibold mb-4 print:mb-1 print:text-[10px]" style={{ marginBottom: '2px', fontSize: '11px' }}>6. Permissible Limit</h4>
+                  <h4 className="text-lg font-semibold mb-4 print:mb-1 print:text-[10px]" style={{ marginBottom: '2px', fontSize: '11px' }}>Permissible Limit</h4>
                   <div className="overflow-x-auto">
                     <table className="w-full border-2 border-black text-sm print:text-[10px] compact-table" style={{ fontSize: '11px', borderCollapse: 'collapse', borderSpacing: '0' }}>
                       <tbody>

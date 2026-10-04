@@ -59,7 +59,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
   ]);
 
   const [tolerance, setTolerance] = useState<string>('0.05');
-  const [toleranceOperator, setToleranceOperator] = useState<string>('<=');
+  const [toleranceOperator, setToleranceOperator] = useState<string>('<');
 
   // Auto-calculate Mean, COV, and Remarks using useMemo
   // This creates a computed version without modifying state, avoiding circular dependency

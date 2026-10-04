@@ -173,10 +173,20 @@ const MainTestTableForDentalConeBeamCT: React.FC<MainTestTableProps> = ({ testDa
     if (validRows.length > 0) {
       const table1 = Array.isArray(linearityMaLoading?.table1) ? linearityMaLoading?.table1?.[0] : linearityMaLoading?.table1;
       const hasTime = table1?.time !== undefined && table1?.time !== null && String(table1?.time).trim() !== "";
+      const timeStr = hasTime ? String(table1?.time).trim() : '';
+      const timeVal = parseFloat(timeStr);
+      const hasValidTime = timeStr !== '' && !isNaN(timeVal) && timeVal > 0;
       const hasMasShape = validRows.some((row: any) => row.mAsRange || row.mAsApplied);
-      const linearityHeading = (!hasTime || hasMasShape)
-        ? "Linearity of mAs Loading (Coefficient of Linearity)"
-        : "Linearity of mA Loading (Coefficient of Linearity)";
+      
+      // Use saved hasTimer preference from testData if available
+      const savedHasTimer = testData.hasTimer;
+      const isMaLinearity = savedHasTimer !== undefined && savedHasTimer !== null 
+        ? savedHasTimer 
+        : (hasValidTime && !hasMasShape);
+      
+      const linearityHeading = isMaLinearity
+        ? "Linearity of mA Loading (Coefficient of Linearity)"
+        : "Linearity of mAs Loading (Coefficient of Linearity)";
 
       const tolerance = linearityMaLoading.tolerance || "0.1";
       const toleranceOperator = linearityMaLoading.toleranceOperator || "<=";
@@ -313,7 +323,7 @@ const MainTestTableForDentalConeBeamCT: React.FC<MainTestTableProps> = ({ testDa
 
         return {
           specified: specifiedDisplay,
-          measured: formattedCv !== "-" ? `CoV = ${formattedCv}` : "-",
+          measured: formattedCv !== "-" ? ` ${formattedCv}` : "-",
           tolerance: `${toleranceOperator} ${toleranceValue}`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
