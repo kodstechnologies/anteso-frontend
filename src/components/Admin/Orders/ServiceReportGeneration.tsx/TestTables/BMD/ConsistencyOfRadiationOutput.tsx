@@ -60,7 +60,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
   const [measurementHeaders, setMeasurementHeaders] = useState<string[]>(['Meas 1', 'Meas 2', 'Meas 3', 'Meas 4', 'Meas 5']);
 
   const [tolerance, setTolerance] = useState<Tolerance>({
-    operator: '<=',
+    operator: '<',
     value: '5.0',
   });
 

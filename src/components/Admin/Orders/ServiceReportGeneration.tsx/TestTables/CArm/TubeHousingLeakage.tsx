@@ -11,17 +11,15 @@ import {
 } from "../../../../../../api";
 import { normalizeCsvComparisonOperator } from "../shared/parseRadiographyStyleTableFormat";
 
-type ToleranceOperator = '<=' | '>=' | '<' | '>' | '=';
+type ToleranceOperator = '<' | '>' | '=';
 
 const evaluateTolerance = (actual: number, limit: number, operator: string): boolean => {
   const op = normalizeCsvComparisonOperator(operator) as ToleranceOperator;
   switch (op) {
     case '<': return actual < limit;
     case '>': return actual > limit;
-    case '>=': return actual >= limit;
     case '=': return Math.abs(actual - limit) < 0.01;
-    case '<=':
-    default: return actual <= limit;
+    default: return false;
   }
 };
 
@@ -75,7 +73,7 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
 
   const [workload, setWorkload] = useState<string>('');
   const [toleranceValue, setToleranceValue] = useState<string>('1');
-  const [toleranceOperator, setToleranceOperator] = useState<ToleranceOperator>('<=');
+  const [toleranceOperator, setToleranceOperator] = useState<ToleranceOperator>('<');
   const [toleranceTime] = useState<string>('1');
 
   // Handle CSV initial data
@@ -85,7 +83,7 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
         const s: SettingsRow = { fcd: "100", kv: "120", ma: "21", time: "2.0" };
         let w = "";
         let tVal = "1.0";
-        let tOp: ToleranceOperator = "<=";
+        let tOp: ToleranceOperator = "<";
 
         const rowMap: Record<number, Partial<LeakageRow> & { location?: LeakageRow['location'] }> = {};
 
@@ -620,9 +618,7 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
               disabled={isViewMode}
               className={`px-2 py-1 border rounded text-sm font-medium ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
             >
-              <option value="<=">&lt;=</option>
               <option value="<">&lt;</option>
-              <option value=">=">&gt;=</option>
               <option value=">">&gt;</option>
               <option value="=">=</option>
             </select>

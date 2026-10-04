@@ -12,23 +12,19 @@ import toast from 'react-hot-toast';
 import { normalizeCsvComparisonOperator } from '../shared/parseRadiographyStyleTableFormat';
 import { useRegisterTestExport } from '../shared/TestExportRegistry';
 
-type ToleranceOp = '<' | '<=' | '>' | '>=' | '=';
+type ToleranceOp = '<' | '>' | '=';
 
 const compareByToleranceOp = (result: number, tol: number, op: string): boolean => {
   const normalized = normalizeCsvComparisonOperator(op) as ToleranceOp;
   switch (normalized) {
     case '<':
       return result < tol;
-    case '<=':
-      return result <= tol;
     case '>':
       return result > tol;
-    case '>=':
-      return result >= tol;
     case '=':
       return Math.abs(result - tol) < 0.001;
     default:
-      return result <= tol;
+      return false;
   }
 };
 
@@ -80,7 +76,7 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
   const [workload, setWorkload] = useState<string>('');
   const [workloadUnit, setWorkloadUnit] = useState<string>('mA in one hour');
   const [toleranceValue, setToleranceValue] = useState<string>('1');
-  const [toleranceOperator, setToleranceOperator] = useState<ToleranceOp>('<=');
+  const [toleranceOperator, setToleranceOperator] = useState<ToleranceOp>('<');
   const [toleranceTime, setToleranceTime] = useState<string>('1');
 
   const [isSaving, setIsSaving] = useState(false);
@@ -717,9 +713,7 @@ export default function RadiationLeakageLevelFromXRay({ serviceId, testId: propT
             className={`px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'}`}
           >
             <option value="<">&lt;</option>
-            <option value="<=">≤</option>
             <option value=">">&gt;</option>
-            <option value=">=">≥</option>
             <option value="=">=</option>
           </select>
           <span className="text-sm text-gray-600">in</span>

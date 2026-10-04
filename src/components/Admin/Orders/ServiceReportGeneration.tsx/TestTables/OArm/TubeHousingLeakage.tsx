@@ -11,17 +11,15 @@ import {
 } from '../../../../../../api';
 import { normalizeCsvComparisonOperator } from '../shared/parseRadiographyStyleTableFormat';
 
-type ToleranceOperator = '<=' | '>=' | '<' | '>' | '=';
+type ToleranceOperator = '<' | '>' | '=';
 
 const evaluateTolerance = (actual: number, limit: number, operator: string): boolean => {
   const op = normalizeCsvComparisonOperator(operator) as ToleranceOperator;
   switch (op) {
     case '<': return actual < limit;
     case '>': return actual > limit;
-    case '>=': return actual >= limit;
     case '=': return Math.abs(actual - limit) < 0.01;
-    case '<=':
-    default: return actual <= limit;
+    default: return actual < limit;
   }
 };
 
@@ -75,7 +73,7 @@ export default function TubeHousingLeakageForOArm({ serviceId, testId: propTestI
 
   const [workload, setWorkload] = useState<string>('');
   const [toleranceValue, setToleranceValue] = useState<string>('1');
-  const [toleranceOperator, setToleranceOperator] = useState<ToleranceOperator>('<=');
+  const [toleranceOperator, setToleranceOperator] = useState<ToleranceOperator>('<');
   const formatToleranceEquivalentMR = (value: string): string => {
     const numeric = Number(value);
     if (!Number.isFinite(numeric)) return '0.000';
@@ -582,9 +580,7 @@ export default function TubeHousingLeakageForOArm({ serviceId, testId: propTestI
             disabled={isViewMode}
             className={`px-4 py-2 border rounded-lg font-medium ${isViewMode ? 'bg-gray-100' : ''}`}
           >
-            <option value="<=">&lt;=</option>
             <option value="<">&lt;</option>
-            <option value=">=">&gt;=</option>
             <option value=">">&gt;</option>
             <option value="=">=</option>
           </select>

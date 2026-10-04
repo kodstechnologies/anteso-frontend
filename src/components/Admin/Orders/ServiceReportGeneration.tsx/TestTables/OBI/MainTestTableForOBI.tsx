@@ -429,7 +429,7 @@ export const generateOBISummaryRows = (testData: any, hasTimer: boolean = false)
 
         return {
           specified: specifiedDisplay,
-          measured: formattedCv !== "-" ? "CoV = " + formattedCv : "-",
+          measured: formattedCv !== "-" ? "" + formattedCv : "-",
           tolerance: `${toleranceOperator} ${toleranceValue}`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
@@ -437,6 +437,46 @@ export const generateOBISummaryRows = (testData: any, hasTimer: boolean = false)
       addRowsForTest("Consistency of Radiation Output (CoV)", testRows, true);
     }
   }
+
+  // --- OBI-specific sections (unchanged behaviour, string tolerances) ---
+
+  if (testData.lowContrastSensitivity) {
+    const lcsData = testData.lowContrastSensitivity;
+    if (lcsData.smallestHoleSize || lcsData.recommendedStandard) {
+      const measured = parseFloat(lcsData.smallestHoleSize || "999");
+      const standard = parseFloat(lcsData.recommendedStandard || "0");
+      const isPass = !isNaN(measured) && !isNaN(standard) && measured < standard;
+
+      addRowsForTest("Low Contrast Resolution", [
+        {
+          specified: "",
+          measured: lcsData.smallestHoleSize || "-",
+          tolerance: lcsData.recommendedStandard ? `${lcsData.recommendedStandard} mm hole pattern must be resolved` : "-",
+          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
+        },
+      ]);
+    }
+  }
+
+  if (testData.highContrastSensitivity) {
+    const hcsData = testData.highContrastSensitivity;
+    if (hcsData.measuredLpPerMm || hcsData.recommendedStandard) {
+      const measured = parseFloat(hcsData.measuredLpPerMm || "0");
+      const standard = parseFloat(hcsData.recommendedStandard || "0");
+      const isPass = !isNaN(measured) && !isNaN(standard) && measured > standard;
+
+      addRowsForTest("High Contrast Resolution", [
+        {
+          specified: "",
+          measured: hcsData.measuredLpPerMm || "-",
+          tolerance: hcsData.recommendedStandard ? `${hcsData.recommendedStandard} lp/mm pattern must be resolved` : "-",
+          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
+        },
+      ]);
+    }
+  }
+
+
 
   // Radiation leakage level — RadiographyFixed pattern; OBI uses tubeHousingLeakage (result = mR in one hour ? use mGy/h path)
   const leakageBlock = testData.radiationLeakageLevel || testData.tubeHousingLeakage;
@@ -538,43 +578,7 @@ export const generateOBISummaryRows = (testData: any, hasTimer: boolean = false)
     }
   }
 
-  // --- OBI-specific sections (unchanged behaviour, string tolerances) ---
 
-  if (testData.lowContrastSensitivity) {
-    const lcsData = testData.lowContrastSensitivity;
-    if (lcsData.smallestHoleSize || lcsData.recommendedStandard) {
-      const measured = parseFloat(lcsData.smallestHoleSize || "999");
-      const standard = parseFloat(lcsData.recommendedStandard || "0");
-      const isPass = !isNaN(measured) && !isNaN(standard) && measured < standard;
-
-      addRowsForTest("Low Contrast Resolution", [
-        {
-          specified: `Recommended <= ${lcsData.recommendedStandard || "-"} mm`,
-          measured: lcsData.smallestHoleSize ? `${lcsData.smallestHoleSize} mm` : "-",
-          tolerance: `< ${lcsData.recommendedStandard || "-"} mm`,
-          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
-        },
-      ]);
-    }
-  }
-
-  if (testData.highContrastSensitivity) {
-    const hcsData = testData.highContrastSensitivity;
-    if (hcsData.measuredLpPerMm || hcsData.recommendedStandard) {
-      const measured = parseFloat(hcsData.measuredLpPerMm || "0");
-      const standard = parseFloat(hcsData.recommendedStandard || "0");
-      const isPass = !isNaN(measured) && !isNaN(standard) && measured > standard;
-
-      addRowsForTest("High Contrast Resolution", [
-        {
-          specified: `Recommended >= ${hcsData.recommendedStandard || "-"} lp/mm`,
-          measured: hcsData.measuredLpPerMm ? `${hcsData.measuredLpPerMm} lp/mm` : "-",
-          tolerance: `> ${hcsData.recommendedStandard || "-"} lp/mm`,
-          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
-        },
-      ]);
-    }
-  }
 
   if (testData.linearityOfMaLoading?.measurementRows && Array.isArray(testData.linearityOfMaLoading.measurementRows)) {
     const validRows = testData.linearityOfMaLoading.measurementRows.filter((row: any) => row.maApplied || row.mGyPerMAs);

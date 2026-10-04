@@ -75,7 +75,7 @@ export default function RadiationLeakageLevel({ serviceId, testId: propTestId, o
 
   const [workload, setWorkload] = useState<string>('');
   const [toleranceValue, setToleranceValue] = useState<string>('1');
-  const [toleranceOperator, setToleranceOperator] = useState<ToleranceOp>('<=');
+  const [toleranceOperator, setToleranceOperator] = useState<ToleranceOp>('<');
   const [toleranceTime, setToleranceTime] = useState<string>('1');
 
   const [isSaving, setIsSaving] = useState(false);

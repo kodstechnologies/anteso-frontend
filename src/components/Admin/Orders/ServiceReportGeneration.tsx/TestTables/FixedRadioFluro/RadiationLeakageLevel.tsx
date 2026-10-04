@@ -37,41 +37,41 @@ interface Props {
   initialData?: any;
 }
 
-type LeakageToleranceOperator = 'less than or equal to' | 'greater than or equal to' | '=';
+type LeakageToleranceOperator = 'less than' | 'greater than' | '=';
 
-/** Map Excel/API symbols (`<`, `<=`, `≤`, etc.) to select option values. */
+/** Map Excel/API symbols (`<`, `>`, `=`) to select option values. */
 function normalizeLeakageToleranceOperator(raw: unknown): LeakageToleranceOperator {
   const s = String(raw ?? '')
     .trim()
     .toLowerCase()
-    .replace(/\s+/g, ' ')
-    .replace(/≤/g, '<=')
-    .replace(/≥/g, '>=');
-  if (!s) return 'less than or equal to';
+    .replace(/\s+/g, ' ');
+  if (!s) return 'less than';
   if (s === '=' || s === '==' || s === 'equals' || s === 'equal to') return '=';
   if (
     s === '<' ||
     s === '<=' ||
     s === 'lt' ||
     s === 'lte' ||
+    s === '≤' ||
     s === 'less than' ||
     s === 'less than or equal' ||
     s === 'less than or equal to'
   ) {
-    return 'less than or equal to';
+    return 'less than';
   }
   if (
     s === '>' ||
     s === '>=' ||
     s === 'gt' ||
     s === 'gte' ||
+    s === '≥' ||
     s === 'greater than' ||
     s === 'greater than or equal' ||
     s === 'greater than or equal to'
   ) {
-    return 'greater than or equal to';
+    return 'greater than';
   }
-  return 'less than or equal to';
+  return 'less than';
 }
 
 export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRefresh, refreshKey, initialData }: Props) {
@@ -92,7 +92,7 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
 
   const [workload, setWorkload] = useState<string>('');
   const [toleranceValue, setToleranceValue] = useState<string>('1');
-  const [toleranceOperator, setToleranceOperator] = useState<LeakageToleranceOperator>('less than or equal to');
+  const [toleranceOperator, setToleranceOperator] = useState<LeakageToleranceOperator>('less than');
   const [toleranceTime, setToleranceTime] = useState<string>('1');
 
   const [isSaving, setIsSaving] = useState(false);
@@ -134,8 +134,8 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
         if (tol > 0) {
           const op = normalizeLeakageToleranceOperator(toleranceOperator);
           let pass = false;
-          if (op === 'less than or equal to') pass = mgyValue <= tol;
-          if (op === 'greater than or equal to') pass = mgyValue >= tol;
+          if (op === 'less than') pass = mgyValue < tol;
+          if (op === 'greater than') pass = mgyValue > tol;
           if (op === '=') pass = Math.abs(mgyValue - tol) < 0.01;
           remark = pass ? 'Pass' : 'Fail';
         }
@@ -192,8 +192,8 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
 
     let pass = false;
     const op = normalizeLeakageToleranceOperator(toleranceOperator);
-    if (op === 'less than or equal to') pass = result <= tol;
-    if (op === 'greater than or equal to') pass = result >= tol;
+    if (op === 'less than') pass = result < tol;
+    if (op === 'greater than') pass = result > tol;
     if (op === '=') pass = Math.abs(result - tol) < 0.01;
 
     return pass ? 'Pass' : 'Fail';
@@ -657,8 +657,8 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
               disabled={isViewMode}
               className={`px-2 py-1 border rounded text-sm font-medium ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
             >
-              <option value="less than or equal to">&lt;</option>
-              <option value="greater than or equal to">&gt;</option>
+              <option value="less than">&lt;</option>
+              <option value="greater than">&gt;</option>
               <option value="=">{'='}</option>
             </select>
             {' '}

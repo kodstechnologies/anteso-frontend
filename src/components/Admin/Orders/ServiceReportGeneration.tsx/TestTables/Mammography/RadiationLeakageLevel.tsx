@@ -10,20 +10,20 @@ import {
   updateRadiationLeakageLevelForMammography,
 } from '../../../../../../api';
 
-type RadiationLeakageToleranceOperator = 'less than or equal to' | 'greater than or equal to' | '=';
+type RadiationLeakageToleranceOperator = 'less than' | 'greater than' | '=';
 
 const normalizeRadiationLeakageToleranceOperator = (
   raw: string | undefined
 ): RadiationLeakageToleranceOperator => {
   const v = String(raw ?? '').trim().toLowerCase();
-  if (!v) return 'less than or equal to';
-  if (v.includes('less than or equal') || v === '<=' || v === '=<') return 'less than or equal to';
-  if (v.includes('greater than or equal') || v === '>=' || v === '=>') return 'greater than or equal to';
-  if (v === '<' || (v.includes('less than') && !v.includes('equal'))) return 'less than or equal to';
-  if (v === '>' || (v.includes('greater than') && !v.includes('equal'))) return 'greater than or equal to';
+  if (!v) return 'less than';
+  if (v.includes('less than or equal') || v === '<=' || v === '=<' || v === '≤') return 'less than';
+  if (v.includes('greater than or equal') || v === '>=' || v === '=>' || v === '≥') return 'greater than';
+  if (v === '<' || (v.includes('less than') && !v.includes('equal'))) return 'less than';
+  if (v === '>' || (v.includes('greater than') && !v.includes('equal'))) return 'greater than';
   if (v === '=' || v === '==') return '=';
-  if (raw === 'less than or equal to' || raw === 'greater than or equal to' || raw === '=') return raw;
-  return 'less than or equal to';
+  if (raw === 'less than' || raw === 'greater than' || raw === '=') return raw;
+  return 'less than';
 };
 
 interface SettingsRow {
@@ -79,7 +79,7 @@ export default function RadiationLeakageLevel({ serviceId, testId: propTestId, o
 
   const [workload, setWorkload] = useState<string>('40');
   const [toleranceValue, setToleranceValue] = useState<string>('0.02');
-  const [toleranceOperator, setToleranceOperator] = useState<RadiationLeakageToleranceOperator>('less than or equal to');
+  const [toleranceOperator, setToleranceOperator] = useState<RadiationLeakageToleranceOperator>('less than');
   const [toleranceTime, setToleranceTime] = useState<string>('1');
 
   const [isSaving, setIsSaving] = useState(false);
@@ -119,8 +119,8 @@ export default function RadiationLeakageLevel({ serviceId, testId: propTestId, o
         const tol = parseFloat(toleranceValue) || 0;
         if (tol > 0) {
           let pass = false;
-          if (toleranceOperator === 'less than or equal to') pass = mgyValue <= tol;
-          if (toleranceOperator === 'greater than or equal to') pass = mgyValue >= tol;
+          if (toleranceOperator === 'less than') pass = mgyValue < tol;
+          if (toleranceOperator === 'greater than') pass = mgyValue > tol;
           if (toleranceOperator === '=') pass = Math.abs(mgyValue - tol) < 0.01;
           remark = pass ? 'Pass' : 'Fail';
         }
@@ -176,8 +176,8 @@ export default function RadiationLeakageLevel({ serviceId, testId: propTestId, o
     if (!toleranceValue || globalMaxResultMR === 0) return '';
 
     let pass = false;
-    if (toleranceOperator === 'less than or equal to') pass = result <= tol;
-    if (toleranceOperator === 'greater than or equal to') pass = result >= tol;
+    if (toleranceOperator === 'less than') pass = result < tol;
+    if (toleranceOperator === 'greater than') pass = result > tol;
     if (toleranceOperator === '=') pass = Math.abs(result - tol) < 0.01;
 
     return pass ? 'Pass' : 'Fail';
@@ -304,7 +304,7 @@ export default function RadiationLeakageLevel({ serviceId, testId: propTestId, o
       setLeakageRows([{ location: 'Tube', left: '', right: '', front: '', back: '', top: '', max: '', result: '', unit: 'mR/h', mgy: '', remark: '' }]);
       setWorkload('40');
       setToleranceValue('0.02');
-      setToleranceOperator('less than or equal to');
+      setToleranceOperator('less than');
       setToleranceTime('1');
       setHasSaved(false);
       setIsEditing(false);
@@ -726,8 +726,8 @@ export default function RadiationLeakageLevel({ serviceId, testId: propTestId, o
               disabled={isViewMode}
               className={`px-2 py-1 border rounded text-sm font-medium ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
             >
-              <option value="less than or equal to">&lt;</option>
-              <option value="greater than or equal to">&gt;</option>
+              <option value="less than">&lt;</option>
+              <option value="greater than">&gt;</option>
               <option value="=">{'='}</option>
             </select>
             {' '}

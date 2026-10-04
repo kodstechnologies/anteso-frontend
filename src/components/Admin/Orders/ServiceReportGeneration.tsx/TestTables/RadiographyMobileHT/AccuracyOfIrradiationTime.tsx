@@ -50,7 +50,7 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
     { id: "1", setTime: "", measuredTime: "" },
   ]);
 
-  const [toleranceOperator, setToleranceOperator] = useState("<=");
+  const [toleranceOperator, setToleranceOperator] = useState("<");
   const [toleranceValue, setToleranceValue] = useState("10");
   const hasLoadedFromCSV = useRef(false);
 
@@ -159,7 +159,7 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
               }))
               : [{ id: "1", setTime: "", measuredTime: "" }]
           );
-          setToleranceOperator(data.tolerance?.operator || "<=");
+          setToleranceOperator(data.tolerance?.operator || "<");
           setToleranceValue(data.tolerance?.value || "10");
           setIsSaved(true);
           setIsEditing(false);

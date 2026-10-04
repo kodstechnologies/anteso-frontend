@@ -119,7 +119,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
   };
 
     const [tolerance, setTolerance] = useState<Tolerance>({
-        operator: '<=',
+        operator: '<',
         value: '0.05', // Default 0.05 to match typical OBI usage or C-Arm? C-Arm uses 0.02. Retaining 0.05 as per original OBI file.
     });
 

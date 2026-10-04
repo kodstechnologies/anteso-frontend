@@ -796,7 +796,7 @@ const ViewServiceReportBMD: React.FC<ViewServiceReportBMDProps> = ({
               <thead>
                 <tr>
                   {["Sl No.", "Nomenclature", "Make", "Model", "Sr. No.", "Certificate No.", "Valid Till"].map((h, i) => (
-                    <th key={h} style={{ fontWeight: 700, border: "0.1px solid #666", fontSize: "9px", lineHeight: "1.2", whiteSpace: "normal", wordBreak: "break-word", overflowWrap: "anywhere", padding: "3px 4px", width: ["6%", "18%", "12%", "12%", "10%", "10%", "16%", "16%"][i] }}>
+                    <th key={h} style={{ fontWeight: 700, border: "0.1px solid #666", fontSize: "9px", lineHeight: "1.2", whiteSpace: "normal", wordBreak: "break-word", overflowWrap: "anywhere", padding: "3px 4px", width: ["6%", "20%", "12%", "12%", "12%", "18%", "20%"][i] }}>
                       {h}
                     </th>
                   ))}
@@ -806,18 +806,18 @@ const ViewServiceReportBMD: React.FC<ViewServiceReportBMDProps> = ({
                 {toolsArray.length > 0 ? (
                   toolsArray.map((tool, i) => (
                     <tr key={i}>
-                      <td style={{ border: "0.1px solid #666", fontSize: "11px", lineHeight: "1.3", padding: "4px 6px 4px 6px" }}>{i + 1}</td>
-                      <td style={{ border: "0.1px solid #666", fontSize: "11px", lineHeight: "1.3", padding: "4px 6px 4px 6px" }}>{tool.nomenclature}</td>
-                      <td style={{ border: "0.1px solid #666", fontSize: "11px", lineHeight: "1.3", padding: "4px 6px 4px 6px" }}>{tool.make || "-"}</td>
-                      <td style={{ border: "0.1px solid #666", fontSize: "11px", lineHeight: "1.3", padding: "4px 6px 4px 6px" }}>{tool.model || "-"}</td>
-                      <td style={{ border: "0.1px solid #666", fontSize: "11px", lineHeight: "1.3", padding: "4px 6px 4px 6px" }}>{tool.SrNo}</td>
-                      <td style={{ border: "0.1px solid #666", fontSize: "11px", lineHeight: "1.3", padding: "4px 6px 4px 6px" }}>{tool.calibrationCertificateNo}</td>
-                      <td style={{ border: "0.1px solid #666", fontSize: "11px", lineHeight: "1.3", padding: "4px 6px 4px 6px" }}>{formatDate(tool.calibrationValidTill)}</td>
+                      <td style={{ border: "0.1px solid #666", fontSize: "11px", lineHeight: "1.3", padding: "4px 6px 4px 6px", wordBreak: "break-word", overflowWrap: "anywhere" }}>{i + 1}</td>
+                      <td style={{ border: "0.1px solid #666", fontSize: "11px", lineHeight: "1.3", padding: "4px 6px 4px 6px", wordBreak: "break-word", overflowWrap: "anywhere" }}>{tool.nomenclature}</td>
+                      <td style={{ border: "0.1px solid #666", fontSize: "11px", lineHeight: "1.3", padding: "4px 6px 4px 6px", wordBreak: "break-word", overflowWrap: "anywhere" }}>{tool.make || "-"}</td>
+                      <td style={{ border: "0.1px solid #666", fontSize: "11px", lineHeight: "1.3", padding: "4px 6px 4px 6px", wordBreak: "break-word", overflowWrap: "anywhere" }}>{tool.model || "-"}</td>
+                      <td style={{ border: "0.1px solid #666", fontSize: "11px", lineHeight: "1.3", padding: "4px 6px 4px 6px", wordBreak: "break-word", overflowWrap: "anywhere" }}>{tool.SrNo}</td>
+                      <td style={{ border: "0.1px solid #666", fontSize: "11px", lineHeight: "1.3", padding: "4px 6px 4px 6px", wordBreak: "break-word", overflowWrap: "anywhere" }}>{tool.calibrationCertificateNo}</td>
+                      <td style={{ border: "0.1px solid #666", fontSize: "11px", lineHeight: "1.3", padding: "4px 6px 4px 6px", wordBreak: "break-word", overflowWrap: "anywhere" }}>{formatDate(tool.calibrationValidTill)}</td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={8} style={{ border: "0.1px solid #666", fontSize: "11px", lineHeight: "1.3", padding: "4px 6px 4px 6px" }}>No tools recorded</td>
+                    <td colSpan={7} style={{ border: "0.1px solid #666", fontSize: "11px", lineHeight: "1.3", padding: "4px 6px 4px 6px" }}>No tools recorded</td>
                   </tr>
                 )}
               </tbody>
@@ -1193,6 +1193,7 @@ const ViewServiceReportBMD: React.FC<ViewServiceReportBMDProps> = ({
                 {(() => {
                   const rows = testData.linearityOfMaLoading.rows;
                   const tolVal = parseFloat(testData.linearityOfMaLoading.tolerance ?? '0.1') || 0.1;
+                  const tolOp = testData.linearityOfMaLoading.toleranceOperator || '<=';
                   const xValues: number[] = [];
                   const processed = rows.map((row: any) => {
                     const outputs = (row.measuredOutputs ?? []).map((v: any) => parseFloat(v)).filter((v: number) => !isNaN(v) && v > 0);
@@ -1209,7 +1210,22 @@ const ViewServiceReportBMD: React.FC<ViewServiceReportBMDProps> = ({
                   const xMin = hasData ? Math.min(...xValues) : NaN;
                   const col = hasData && (xMax + xMin) > 0 ? Math.abs(xMax - xMin) / (xMax + xMin) : NaN;
                   const colDisplay = !isNaN(col) ? col.toFixed(4) : (rows[0]?.coefficient || '—');
-                  const pass = !isNaN(col) ? col <= tolVal : (rows[0]?.remark?.toUpperCase() === 'PASS');
+                  
+                  // Evaluate pass/fail based on toleranceOperator
+                  let pass = false;
+                  if (!isNaN(col)) {
+                    switch (tolOp) {
+                      case '<': pass = col < tolVal; break;
+                      case '<=': pass = col <= tolVal; break;
+                      case '>': pass = col > tolVal; break;
+                      case '>=': pass = col >= tolVal; break;
+                      case '=': pass = Math.abs(col - tolVal) < 0.0001; break;
+                      default: pass = col <= tolVal;
+                    }
+                  } else {
+                    pass = rows[0]?.remark?.toUpperCase() === 'PASS';
+                  }
+                  
                   const remarkDisplay = !isNaN(col) ? (pass ? 'PASS' : 'FAIL') : (rows[0]?.remark || '—');
                   const measHeadersRaw = Array.isArray(testData.linearityOfMaLoading.measHeaders)
                     ? testData.linearityOfMaLoading.measHeaders
@@ -1271,7 +1287,9 @@ const ViewServiceReportBMD: React.FC<ViewServiceReportBMDProps> = ({
                 })()}
 
                 <div className="mt-2 print:mt-1" style={{ marginTop: '4px' }}>
-                  <p className="text-sm print:text-[9px]" style={{ fontSize: '11px' }}>Tolerance : Coefficient of Linearity {testData.linearityOfMaLoading.tolerance || "0.1"}</p>
+                  <p className="text-sm print:text-[9px]" style={{ fontSize: '11px' }}>
+                    Tolerance : Coefficient of Linearity {testData.linearityOfMaLoading.toleranceOperator || '≤'} {testData.linearityOfMaLoading.tolerance || '0.1'}
+                  </p>
                 </div>
               </div>
             )}

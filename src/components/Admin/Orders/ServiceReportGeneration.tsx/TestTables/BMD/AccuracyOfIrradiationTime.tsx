@@ -52,7 +52,7 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
   ]);
 
   // Tolerance
-  const [toleranceOperator, setToleranceOperator] = useState("<=");
+  const [toleranceOperator, setToleranceOperator] = useState("<");
   const [toleranceValue, setToleranceValue] = useState("10");
 
   const updateTable1 = (field: keyof Table1Row, value: string) => {

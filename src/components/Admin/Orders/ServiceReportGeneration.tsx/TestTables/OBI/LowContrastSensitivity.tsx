@@ -200,8 +200,10 @@ const LowContrastSensitivity: React.FC<Props> = ({
                   placeholder="2.5"
                 />
               </td>
-              <td className="px-6 py-4 text-sm text-gray-600">
-                mm (smaller is better)
+              <td className="px-6 py-4">
+                <p className="text-sm font-semibold text-blue-700 bg-blue-50 px-3 py-2 rounded border border-blue-200">
+                  {smallestHoleSize || '—'} mm size hole is Resolved on Monitor
+                </p>
               </td>
             </tr>
 
@@ -221,8 +223,10 @@ const LowContrastSensitivity: React.FC<Props> = ({
                   placeholder="3.0"
                 />
               </td>
-              <td className="px-6 py-4 text-sm text-gray-600">
-                Maximum acceptable hole size
+              <td className="px-6 py-4">
+                <p className="text-sm font-semibold text-green-700 bg-green-50 px-3 py-2 rounded border border-green-200">
+                  {recommendedStandard || '—'} mm hole pattern must be resolved
+                </p>
               </td>
             </tr>
           </tbody>

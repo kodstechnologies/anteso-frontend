@@ -65,7 +65,7 @@ export default function RadiationLeakageLevelFromXRay({
   const [workload, setWorkload] = useState<string>('');
   const [workloadUnit, setWorkloadUnit] = useState<string>('mA in one hour');
   const [toleranceValue, setToleranceValue] = useState<string>('1');
-  const [toleranceOperator, setToleranceOperator] = useState<'less than or equal to' | 'greater than or equal to' | '='>('less than or equal to');
+  const [toleranceOperator, setToleranceOperator] = useState<'less than' | 'greater than' | '='>('less than');
   const [toleranceTime, setToleranceTime] = useState<string>('1');
 
   const [isSaving, setIsSaving] = useState(false);
@@ -107,8 +107,8 @@ export default function RadiationLeakageLevelFromXRay({
     if (!toleranceValue || !maxRadiationLeakage) return '';
 
     let pass = false;
-    if (toleranceOperator === 'less than or equal to') pass = maxLeak <= tol;
-    if (toleranceOperator === 'greater than or equal to') pass = maxLeak >= tol;
+    if (toleranceOperator === 'less than') pass = maxLeak < tol;
+    if (toleranceOperator === 'greater than') pass = maxLeak > tol;
     if (toleranceOperator === '=') pass = Math.abs(maxLeak - tol) < 0.001;
 
     return pass ? 'Pass' : 'Fail';
@@ -186,7 +186,7 @@ export default function RadiationLeakageLevelFromXRay({
         setWorkload(rec.workload || '');
         setWorkloadUnit(rec.workloadUnit || 'mA in one hour');
         setToleranceValue(rec.toleranceValue || '');
-        setToleranceOperator(rec.toleranceOperator || 'less than or equal to');
+        setToleranceOperator(rec.toleranceOperator || 'less than');
         setToleranceTime(rec.toleranceTime || '');
 
         setHasSaved(true);
@@ -577,8 +577,8 @@ export default function RadiationLeakageLevelFromXRay({
             className={`px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${isViewMode ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-300' : 'border-gray-300'
               }`}
           >
-            <option value="less than or equal to">less than or equal to</option>
-            <option value="greater than or equal to">greater than or equal to</option>
+            <option value="less than">&lt;</option>
+            <option value="greater than">&gt;</option>
             <option value="=">=</option>
           </select>
           <span className="text-sm text-gray-600">in</span>

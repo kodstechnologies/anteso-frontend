@@ -10,23 +10,19 @@ import {
 } from '../../../../../../api';
 import { normalizeCsvComparisonOperator } from '../shared/parseRadiographyStyleTableFormat';
 
-type ToleranceOp = '<' | '<=' | '>' | '>=' | '=';
+type ToleranceOp = '<' | '>' | '=';
 
 const compareByToleranceOp = (result: number, tol: number, op: string): boolean => {
     const normalized = normalizeCsvComparisonOperator(op) as ToleranceOp;
     switch (normalized) {
         case '<':
             return result < tol;
-        case '<=':
-            return result <= tol;
         case '>':
             return result > tol;
-        case '>=':
-            return result >= tol;
         case '=':
             return Math.abs(result - tol) < 0.01;
         default:
-            return result <= tol;
+            return result < tol;
     }
 };
 
@@ -96,7 +92,7 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
 
     const [workload, setWorkload] = useState<string>('');
     const [toleranceValue, setToleranceValue] = useState<string>('1');
-    const [toleranceOperator, setToleranceOperator] = useState<ToleranceOp>('<=');
+    const [toleranceOperator, setToleranceOperator] = useState<ToleranceOp>('<');
     const [toleranceTime, setToleranceTime] = useState<string>('1');
 
     const [isSaving, setIsSaving] = useState(false);
@@ -660,9 +656,7 @@ export default function TubeHousingLeakage({ serviceId, testId: propTestId, onRe
                             className={`px-2 py-1 border rounded text-sm font-medium ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
                         >
                             <option value="<">&lt;</option>
-                            <option value="<=">&lt;=</option>
                             <option value=">">&gt;</option>
-                            <option value=">=">&gt;=</option>
                             <option value="=">=</option>
                         </select>
                         {' '}

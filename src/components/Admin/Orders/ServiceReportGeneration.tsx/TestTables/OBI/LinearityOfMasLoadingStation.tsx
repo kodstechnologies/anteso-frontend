@@ -75,7 +75,7 @@ const LinearityOfMasLoading: React.FC<Props> = ({ serviceId, testId: propTestId,
     ]);
 
     const [tolerance, setTolerance] = useState<string>('0.1');
-    const [toleranceOperator, setToleranceOperator] = useState<string>('<=');
+    const [toleranceOperator, setToleranceOperator] = useState<string>('<');
 
     // Handlers
     const addMeasColumn = () => {

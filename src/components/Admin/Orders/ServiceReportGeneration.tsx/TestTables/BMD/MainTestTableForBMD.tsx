@@ -176,57 +176,6 @@ const MainTestTableForBMD: React.FC<MainTestTableProps> = ({ testData, hasTimer 
 
   // Total Filtration — RadiographyFixed (BMD uses totalFiltration)
   const tfRoot = testData.totalFiltration;
-  if (tfRoot?.measurements && Array.isArray(tfRoot.measurements)) {
-    const validRows = tfRoot.measurements.filter(
-      (row: any) => row.appliedKvp || row.averageKvp || row.measuredValues
-    );
-    if (validRows.length > 0) {
-      const toleranceSign = normalizePlusMinusSign(tfRoot.tolerance?.sign);
-      const toleranceValue = tfRoot.tolerance?.value || "2.0";
-      const testRows = validRows.map((row: any) => {
-        let avgKvpNum: number | null = null;
-        if (row.averageKvp !== undefined && row.averageKvp !== null && row.averageKvp !== "") {
-          const val = parseFloat(row.averageKvp);
-          if (!isNaN(val)) avgKvpNum = val;
-        }
-        if (avgKvpNum === null && Array.isArray(row.measuredValues) && row.measuredValues.length > 0) {
-          const vals = row.measuredValues
-            .map((v: any) => parseFloat(v))
-            .filter((v: number) => !isNaN(v));
-          if (vals.length > 0) avgKvpNum = vals.reduce((a: number, b: number) => a + b, 0) / vals.length;
-        }
-        let measuredDisplay: string;
-        if (avgKvpNum !== null) {
-          measuredDisplay = avgKvpNum.toFixed(2);
-        } else if (Array.isArray(row.measuredValues) && row.measuredValues.length > 0) {
-          measuredDisplay =
-            row.measuredValues.filter((v: any) => v !== undefined && v !== null && v !== "").join(", ") || "-";
-        } else {
-          measuredDisplay = "-";
-        }
-
-        let isPass = false;
-        if (row.remarks === "PASS" || row.remarks === "Pass") isPass = true;
-        else if (row.remarks === "FAIL" || row.remarks === "Fail") isPass = false;
-        else if (avgKvpNum !== null) {
-          const appliedKvp = parseFloat(row.appliedKvp);
-          if (!isNaN(appliedKvp) && appliedKvp > 0) {
-            const deviation = Math.abs(((avgKvpNum - appliedKvp) / appliedKvp) * 100);
-            const tol = parseFloat(toleranceValue);
-            if (!isNaN(tol)) isPass = deviation <= tol;
-          }
-        }
-
-        return {
-          specified: row.appliedKvp || "-",
-          measured: measuredDisplay,
-          tolerance: formatKvpAccuracyTolerance(toleranceSign, toleranceValue),
-          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
-        };
-      });
-      addRowsForTest("Accuracy of Operating Potential", testRows);
-    }
-  }
 
   {
     const tfInner = tfRoot?.totalFiltration;
@@ -529,7 +478,7 @@ const MainTestTableForBMD: React.FC<MainTestTableProps> = ({ testData, hasTimer 
 
         return {
           specified: specifiedDisplay,
-          measured: formattedCv !== "-" ? "CoV = " + formattedCv : "-",
+          measured: formattedCv !== "-" ? "" + formattedCv : "-",
           tolerance: `${toleranceOperator} ${toleranceValue}`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };

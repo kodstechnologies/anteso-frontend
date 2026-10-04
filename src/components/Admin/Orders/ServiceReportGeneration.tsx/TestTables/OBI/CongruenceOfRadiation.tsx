@@ -301,17 +301,7 @@ const CongruenceOfRadiation: React.FC<Props> = ({ serviceId, testId: propTestId,
             </tbody>
           </table>
         </div>
-        {!isViewOnly && (
-          <div className="px-6 py-4 bg-gray-50 border-t">
-            <button
-              onClick={addTechniqueRow}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
-            >
-              <Plus className="w-4 h-4" />
-              Add Row
-            </button>
-          </div>
-        )}
+    
       </div>
 
       {/* Table 2: Congruence Measurement */}
@@ -326,7 +316,7 @@ const CongruenceOfRadiation: React.FC<Props> = ({ serviceId, testId: propTestId,
                 <th className="px-6 py-4 text-left text-xs font-bold text-purple-900 ">Dimension (cm)</th>
                 <th className="px-6 py-4 text-left text-xs font-bold text-purple-900 ">Observed Shift (cm)</th>
                 <th className="px-6 py-4 text-left text-xs font-bold text-purple-900 ">Shift in Edges (cm)</th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-purple-900 ">% of FED</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-purple-900 ">% of FFD</th>
                 <th className="px-6 py-4 text-left text-xs font-bold text-purple-900 ">Tolerance (%)</th>
                 <th className="px-6 py-4 text-left text-xs font-bold text-purple-900 ">Remarks</th>
               </tr>

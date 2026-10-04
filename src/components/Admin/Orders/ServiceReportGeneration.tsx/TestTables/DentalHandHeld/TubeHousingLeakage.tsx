@@ -71,7 +71,7 @@ export default function TubeHousingLeakage({
 
   const [workload, setWorkload] = useState<string>('');
   const [toleranceValue, setToleranceValue] = useState<string>('1');
-  const [toleranceOperator, setToleranceOperator] = useState<'less than or equal to' | 'greater than or equal to' | '='>('less than or equal to');
+  const [toleranceOperator, setToleranceOperator] = useState<'less than' | 'greater than' | '=' | 'less than or equal to' | 'greater than or equal to'>('less than');
   const [toleranceTime, setToleranceTime] = useState<string>('1');
 
   const maValue = parseFloat(settings.ma) || 0;
@@ -109,8 +109,8 @@ export default function TubeHousingLeakage({
         const tol = parseFloat(toleranceValue) || 0;
         if (tol > 0) {
           let pass = false;
-          if (toleranceOperator === 'less than or equal to') pass = mgyValue <= tol;
-          if (toleranceOperator === 'greater than or equal to') pass = mgyValue >= tol;
+          if (toleranceOperator === 'less than') pass = mgyValue < tol;
+          if (toleranceOperator === 'greater than') pass = mgyValue > tol;
           if (toleranceOperator === '=') pass = Math.abs(mgyValue - tol) < 0.01;
           remark = pass ? 'Pass' : 'Fail';
         }
@@ -152,8 +152,8 @@ export default function TubeHousingLeakage({
     const tol = parseFloat(toleranceValue) || 0;
     if (!toleranceValue || globalMaxResultMR === 0) return '';
     let pass = false;
-    if (toleranceOperator === 'less than or equal to') pass = result <= tol;
-    if (toleranceOperator === 'greater than or equal to') pass = result >= tol;
+    if (toleranceOperator === 'less than') pass = result < tol;
+    if (toleranceOperator === 'greater than') pass = result > tol;
     if (toleranceOperator === '=') pass = Math.abs(result - tol) < 0.01;
     return pass ? 'Pass' : 'Fail';
   }, [globalMaxResultMGy, toleranceValue, toleranceOperator, globalMaxResultMR]);
@@ -211,7 +211,7 @@ export default function TubeHousingLeakage({
     );
   }, [serviceId, settings, leakageRows, workload, toleranceValue]);
 
-  const mapToleranceOperator = (op: string): typeof toleranceOperator => {
+  const mapToleranceOperator = (op: string): 'less than' | 'greater than' | '=' | 'less than or equal to' | 'greater than or equal to' => {
     const s = String(op || '').trim().toLowerCase();
     if (s === '<=' || s === '≤' || s === 'less than or equal to') return 'less than or equal to';
     if (s === '>=' || s === '≥' || s === 'greater than or equal to') return 'greater than or equal to';
@@ -690,8 +690,8 @@ export default function TubeHousingLeakage({
               disabled={isViewMode}
               className={`px-2 py-1 border rounded text-sm font-medium ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
             >
-              <option value="less than or equal to">&lt;</option>
-              <option value="greater than or equal to">&gt;</option>
+              <option value="less than">&lt;</option>
+              <option value="greater than">&gt;</option>
               <option value="=">{'='}</option>
             </select>
             {' '}
