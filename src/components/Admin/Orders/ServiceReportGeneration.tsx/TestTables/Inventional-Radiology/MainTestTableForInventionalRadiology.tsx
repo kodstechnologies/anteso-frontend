@@ -569,12 +569,79 @@ const MainTestTableForInventionalRadiology: React.FC<MainTestTableProps> = ({ te
 
         return {
           specified: specifiedDisplay,
-          measured: formattedCv !== "-" ? "CoV = " + formattedCv : "-",
+          measured: formattedCv !== "-" ? " " + formattedCv : "-",
           tolerance: `${toleranceOperator} ${toleranceValue}`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });
       addRowsForTest("Consistency of Radiation Output (CoV)", testRows, true);
+    }
+  }
+
+  // --- Inventional-specific sections (after Consistency of Radiation Output) ---
+  // Low Contrast Resolution
+  if (testData.lowContrastResolution) {
+    const smallestHoleSize = testData.lowContrastResolution.smallestHoleSize || "";
+    const recommendedStandard = testData.lowContrastResolution.recommendedStandard || "3.0";
+    const measured = parseFloat(smallestHoleSize);
+    const standard = parseFloat(recommendedStandard);
+    const isPass = !isNaN(measured) && !isNaN(standard) && measured <= standard;
+    addRowsForTest("Low Contrast Resolution", [
+      {
+        specified: "",
+        measured: smallestHoleSize ? `${smallestHoleSize} mm Hole is Visible` : "-",
+        tolerance: `${recommendedStandard} mm hole pattern must be resolved`,
+        remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
+      },
+    ]);
+  }
+
+  // High Contrast Resolution
+  if (testData.highContrastResolution) {
+    const measuredLpPerMm = testData.highContrastResolution.measuredLpPerMm || "";
+    const recommendedStandard = testData.highContrastResolution.recommendedStandard || "1.50";
+    const measured = parseFloat(measuredLpPerMm);
+    const standard = parseFloat(recommendedStandard);
+    const isPass = !isNaN(measured) && !isNaN(standard) && measured >= standard;
+    addRowsForTest("High Contrast Resolution", [
+      {
+        specified: "",
+        measured: measuredLpPerMm ? `${measuredLpPerMm} lp/mm Pattern is Resolved` : "-",
+        tolerance: `${recommendedStandard} lp/mm pattern must be resolved`,
+        remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
+      },
+    ]);
+  }
+
+  // Exposure Rate at Table Top
+  if (testData.exposureRateTableTop?.rows && Array.isArray(testData.exposureRateTableTop.rows)) {
+    const validRows = testData.exposureRateTableTop.rows.filter((row: any) => row.distance || row.exposure);
+    if (validRows.length > 0) {
+      const aecTolStr = testData.exposureRateTableTop.aecTolerance || "10";
+      const manualTolStr = testData.exposureRateTableTop.nonAecTolerance || "5";
+
+      const testRows = validRows.map((row: any) => {
+        const aecTol = parseFloat(aecTolStr) || 0;
+        const manualTol = parseFloat(manualTolStr) || 0;
+        const exposure = parseFloat(row.exposure);
+        const mode = row.remark || row.mode || "";
+        let isPass = String(row.result || "").toUpperCase() === "PASS";
+        if (!row.result && !isNaN(exposure) && mode) {
+          isPass =
+            ((mode === "AEC Mode" || mode === "AEC") && exposure <= aecTol) ||
+            ((mode === "Manual Mode" || mode === "Manual") && exposure <= manualTol);
+        }
+        const isAEC = mode === "AEC Mode" || mode === "AEC";
+        const toleranceVal = isAEC ? aecTolStr : manualTolStr;
+
+        return {
+          specified: row.distance ? `${row.distance} cm` : "-",
+          measured: row.exposure ? `${row.exposure} cGy/min` : "-",
+          tolerance: `= ${toleranceVal} cGy/min`,
+          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
+        };
+      });
+      addRowsForTest("Exposure Rate at Table Top", testRows);
     }
   }
 
@@ -690,70 +757,6 @@ const MainTestTableForInventionalRadiology: React.FC<MainTestTableProps> = ({ te
         };
       });
       addRowsForTest("Radiation Protection Survey", testRows);
-    }
-  }
-
-  // --- Inventional-specific sections (after shared QA blocks) ---
-  if (testData.lowContrastResolution) {
-    const smallestHoleSize = testData.lowContrastResolution.smallestHoleSize || "";
-    const recommendedStandard = testData.lowContrastResolution.recommendedStandard || "3.0";
-    const measured = parseFloat(smallestHoleSize);
-    const standard = parseFloat(recommendedStandard);
-    const isPass = !isNaN(measured) && !isNaN(standard) && measured <= standard;
-    addRowsForTest("Low Contrast Resolution", [
-      {
-        specified: "Smallest Visible Hole",
-        measured: smallestHoleSize ? `${smallestHoleSize} mm` : "-",
-        tolerance: `= ${recommendedStandard} mm`,
-        remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
-      },
-    ]);
-  }
-
-  if (testData.highContrastResolution) {
-    const measuredLpPerMm = testData.highContrastResolution.measuredLpPerMm || "";
-    const recommendedStandard = testData.highContrastResolution.recommendedStandard || "1.50";
-    const measured = parseFloat(measuredLpPerMm);
-    const standard = parseFloat(recommendedStandard);
-    const isPass = !isNaN(measured) && !isNaN(standard) && measured >= standard;
-    addRowsForTest("High Contrast Resolution", [
-      {
-        specified: "Line Pairs per mm",
-        measured: measuredLpPerMm ? `${measuredLpPerMm} lp/mm` : "-",
-        tolerance: `= ${recommendedStandard} lp/mm`,
-        remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
-      },
-    ]);
-  }
-
-  if (testData.exposureRateTableTop?.rows && Array.isArray(testData.exposureRateTableTop.rows)) {
-    const validRows = testData.exposureRateTableTop.rows.filter((row: any) => row.distance || row.exposure);
-    if (validRows.length > 0) {
-      const aecTolStr = testData.exposureRateTableTop.aecTolerance || "10";
-      const manualTolStr = testData.exposureRateTableTop.nonAecTolerance || "5";
-
-      const testRows = validRows.map((row: any) => {
-        const aecTol = parseFloat(aecTolStr) || 0;
-        const manualTol = parseFloat(manualTolStr) || 0;
-        const exposure = parseFloat(row.exposure);
-        const mode = row.remark || row.mode || "";
-        let isPass = String(row.result || "").toUpperCase() === "PASS";
-        if (!row.result && !isNaN(exposure) && mode) {
-          isPass =
-            ((mode === "AEC Mode" || mode === "AEC") && exposure <= aecTol) ||
-            ((mode === "Manual Mode" || mode === "Manual") && exposure <= manualTol);
-        }
-        const isAEC = mode === "AEC Mode" || mode === "AEC";
-        const toleranceVal = isAEC ? aecTolStr : manualTolStr;
-
-        return {
-          specified: row.distance ? `${row.distance} cm` : "-",
-          measured: row.exposure ? `${row.exposure} cGy/min` : "-",
-          tolerance: `= ${toleranceVal} cGy/min`,
-          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
-        };
-      });
-      addRowsForTest("Exposure Rate at Table Top", testRows);
     }
   }
 

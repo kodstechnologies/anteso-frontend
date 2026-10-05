@@ -376,11 +376,6 @@ const CArmContent: React.FC<CArmProps> = ({ serviceId, csvFileUrl, csvFileUrls }
     }
     checks.push(
       { name: "Total Filtration", check: async () => { try { return isSaved(await getTotalFilterationByServiceIdForCArm(serviceId)); } catch { return false; } } },
-      { name: "Consistency Of Radiation Output", check: async () => { try { return isSaved(await getOutputConsistencyByServiceIdForCArm(serviceId)); } catch { return false; } } },
-      { name: "Low Contrast Resolution", check: async () => { try { return isSaved(await getLowContrastResolutionByServiceIdForCArm(serviceId)); } catch { return false; } } },
-      { name: "High Contrast Resolution", check: async () => { try { return isSaved(await getHighContrastResolutionByServiceIdForCArm(serviceId)); } catch { return false; } } },
-      { name: "Exposure Rate At Table Top", check: async () => { try { return isSaved(await getExposureRateByServiceIdForCArm(serviceId)); } catch { return false; } } },
-      { name: "Tube Housing Leakage", check: async () => { try { return isSaved(await getTubeHousingLeakageByServiceIdCArm(serviceId)); } catch { return false; } } },
     );
     if (hasTimer === true) {
       checks.push(
@@ -389,6 +384,13 @@ const CArmContent: React.FC<CArmProps> = ({ serviceId, csvFileUrl, csvFileUrls }
     } else if (hasTimer === false) {
       checks.push({ name: "Linearity Of mAs Loading", check: async () => { try { return isSaved(await getLinearityOfMasLoadingStationsByServiceIdForCArm(serviceId)); } catch { return false; } } });
     }
+    checks.push(
+      { name: "Consistency Of Radiation Output", check: async () => { try { return isSaved(await getOutputConsistencyByServiceIdForCArm(serviceId)); } catch { return false; } } },
+      { name: "Low Contrast Resolution", check: async () => { try { return isSaved(await getLowContrastResolutionByServiceIdForCArm(serviceId)); } catch { return false; } } },
+      { name: "High Contrast Resolution", check: async () => { try { return isSaved(await getHighContrastResolutionByServiceIdForCArm(serviceId)); } catch { return false; } } },
+      { name: "Exposure Rate At Table Top", check: async () => { try { return isSaved(await getExposureRateByServiceIdForCArm(serviceId)); } catch { return false; } } },
+      { name: "Tube Housing Leakage", check: async () => { try { return isSaved(await getTubeHousingLeakageByServiceIdCArm(serviceId)); } catch { return false; } } },
+    );
     const results = await Promise.all(checks.map(async (c) => ({ name: c.name, saved: await c.check() })));
     return results.filter((r) => !r.saved).map((r) => r.name);
   };
@@ -1589,6 +1591,32 @@ const CArmContent: React.FC<CArmProps> = ({ serviceId, csvFileUrl, csvFileUrls }
               initialData={csvDataForComponents['Total Filtration']}
             />
           },
+          // 4. Linearity — timer present: mA only; no timer: mAs only (same sequence as MainTestTable)
+          ...(hasTimer === true
+            ? [
+              {
+                title: "Linearity of mA Loading",
+                component: <LinearityOfMaLoading
+                  key={`linearity-ma-${refreshKey}`}
+                  serviceId={serviceId}
+                  refreshKey={refreshKey}
+                  initialData={csvDataForComponents['Linearity of mA Loading']}
+                />
+              },
+            ]
+            : hasTimer === false
+              ? [{
+                title: "Linearity of mAs Loading",
+                component: <LinearityOfMasLoading
+                  key={`linearity-mas-${refreshKey}-${csvDataVersion}`}
+                  serviceId={serviceId}
+                  refreshKey={refreshKey}
+                  csvDataVersion={csvDataVersion}
+                  initialData={csvDataForComponents['Linearity of mAs Loading']}
+                />
+              }]
+              : []
+          ),
           {
             title: "Consistency Of Radiation Output",
             component: <ConsisitencyOfRadiationOutput
@@ -1635,33 +1663,6 @@ const CArmContent: React.FC<CArmProps> = ({ serviceId, csvFileUrl, csvFileUrls }
               initialData={csvDataForComponents['Tube Housing Leakage']}
             />
           },
-
-          // Conditional Linearity Test — timer present: mA only; no timer: mAs only
-          ...(hasTimer === true
-            ? [
-              {
-                title: "Linearity of mA Loading",
-                component: <LinearityOfMaLoading
-                  key={`linearity-ma-${refreshKey}`}
-                  serviceId={serviceId}
-                  refreshKey={refreshKey}
-                  initialData={csvDataForComponents['Linearity of mA Loading']}
-                />
-              },
-            ]
-            : hasTimer === false
-              ? [{
-                title: "Linearity of mAs Loading",
-                component: <LinearityOfMasLoading
-                  key={`linearity-mas-${refreshKey}-${csvDataVersion}`}
-                  serviceId={serviceId}
-                  refreshKey={refreshKey}
-                  csvDataVersion={csvDataVersion}
-                  initialData={csvDataForComponents['Linearity of mAs Loading']}
-                />
-              }]
-              : []
-          ),
 
         ].map((item, idx) => (
           <Disclosure key={idx} defaultOpen={idx === 0}>

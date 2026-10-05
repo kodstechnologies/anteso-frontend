@@ -21,6 +21,19 @@ const MainTestTableForCArm: React.FC<MainTestTableProps> = ({ testData, hasTimer
   const rows: any[] = [];
   let srNo = 1;
 
+  /**
+   * Test Sequence:
+   * 1. Accuracy of Irradiation Time (if hasTimer)
+   * 2. Accuracy of Operating Potential
+   * 3. Total Filtration
+   * 4. Linearity of mA/mAs Loading
+   * 5. Consistency of Radiation Output (CoV)
+   * 6. Low Contrast Resolution
+   * 7. High Contrast Resolution
+   * 8. Exposure Rate at Table Top
+   * 9. Radiation Leakage Level at 1m from Tube Housing
+   */
+
   const asDisplayNumber = (value: any): string | null => {
     if (value === undefined || value === null || value === "") return null;
     const n = typeof value === "number" ? value : parseFloat(String(value));
@@ -61,104 +74,7 @@ const MainTestTableForCArm: React.FC<MainTestTableProps> = ({ testData, hasTimer
     });
   };
 
-  // Congruence of Radiation & Optical Field — RadiographyFixed
-  if (testData.congruence?.congruenceMeasurements && Array.isArray(testData.congruence.congruenceMeasurements)) {
-    const validRows = testData.congruence.congruenceMeasurements.filter((row: any) => row.dimension || row.percentFED);
-    if (validRows.length > 0) {
-      const testRows = validRows.map((row: any) => {
-        const percentFED = row.percentFED || "-";
-        const tolerance = row.tolerance || "2";
-        const isPass = row.remark === "Pass" || (percentFED !== "-" && parseFloat(percentFED) <= parseFloat(tolerance));
-        return {
-          specified: row.dimension || "-",
-          measured: percentFED !== "-" ? `${percentFED}%` : "-",
-          tolerance: `= ${tolerance}%`,
-          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
-        };
-      });
-      addRowsForTest("Congruence of Radiation & Optical Field", testRows);
-    }
-  }
-
-  // Central Beam Alignment — RadiographyFixed
-  if (testData.centralBeamAlignment?.observedTilt) {
-    const tiltValue = testData.centralBeamAlignment.observedTilt.value || "-";
-    const toleranceOperator = testData.centralBeamAlignment.tolerance?.operator || "<=";
-    const toleranceValue = testData.centralBeamAlignment.tolerance?.value || "5";
-
-    let isPass = false;
-    if (
-      testData.centralBeamAlignment.observedTilt.remark === "Pass" ||
-      testData.centralBeamAlignment.observedTilt.remark === "PASS"
-    ) {
-      isPass = true;
-    } else if (
-      testData.centralBeamAlignment.observedTilt.remark === "Fail" ||
-      testData.centralBeamAlignment.observedTilt.remark === "FAIL"
-    ) {
-      isPass = false;
-    } else if (tiltValue !== "-") {
-      const observed = parseFloat(tiltValue);
-      const tol = parseFloat(toleranceValue);
-      if (!isNaN(observed) && !isNaN(tol)) {
-        if (toleranceOperator === "<") isPass = observed < tol;
-        else if (toleranceOperator === ">") isPass = observed > tol;
-        else if (toleranceOperator === "<=") isPass = observed <= tol;
-        else if (toleranceOperator === ">=") isPass = observed >= tol;
-        else if (toleranceOperator === "=") isPass = Math.abs(observed - tol) < 0.01;
-      }
-    }
-
-    const specifiedValue = `${toleranceOperator} ${toleranceValue}°`;
-    const toleranceDisplay = `${toleranceOperator} ${toleranceValue}°`;
-
-    addRowsForTest("Central Beam Alignment", [
-      {
-        specified: specifiedValue,
-        measured: formatCentralBeamObservedTilt(tiltValue),
-        tolerance: toleranceDisplay,
-        remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
-      },
-    ]);
-  }
-
-  // Effective Focal Spot Size — RadiographyFixed
-  if (testData.effectiveFocalSpot?.focalSpots && Array.isArray(testData.effectiveFocalSpot.focalSpots)) {
-    const validRows = testData.effectiveFocalSpot.focalSpots.filter((spot: any) => spot.focusType || spot.measuredWidth);
-    if (validRows.length > 0) {
-      const formatValue = (val: any) => {
-        if (val === undefined || val === null || val === "") return null;
-        const numVal = typeof val === "number" ? val : parseFloat(val);
-        if (isNaN(numVal)) return null;
-        return numVal.toFixed(1);
-      };
-
-      const toleranceCriteria = testData.effectiveFocalSpot.toleranceCriteria || {};
-      const smallMultiplier = parseFloat(toleranceCriteria.small?.multiplier || "0.5");
-      const smallLimit = parseFloat(toleranceCriteria.small?.upperLimit || "0.8");
-      const mediumMultiplier = parseFloat(toleranceCriteria.medium?.multiplier || "0.4");
-      const mediumLower = parseFloat(toleranceCriteria.medium?.lowerLimit || "0.8");
-      const mediumUpper = parseFloat(toleranceCriteria.medium?.upperLimit || "1.5");
-      const largeMultiplier = parseFloat(toleranceCriteria.large?.multiplier || "0.3");
-
-      const toleranceStr = formatEffectiveFocalSpotToleranceStr(smallMultiplier, smallLimit, mediumMultiplier, mediumLower, mediumUpper, largeMultiplier);
-
-      const testRows = validRows.map((spot: any) => {
-        const isPass = spot.remark === "Pass" || spot.remark === "PASS";
-        const statedWidth = formatValue(spot.statedWidth);
-        const measuredWidth = formatValue(spot.measuredWidth);
-        return {
-          specified: statedWidth !== null ? `${statedWidth} mm` : "-",
-          measured: measuredWidth !== null ? `${measuredWidth} mm` : "-",
-          tolerance: toleranceStr,
-          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
-        };
-      });
-      addRowsForTest("Effective Focal Spot Size", testRows, true);
-    }
-  }
-
-  // Accuracy of Irradiation Time(sec) — only when unit has a timer
+  // 1. Accuracy of Irradiation Time(sec) — only when unit has a timer
   const irrBlock = testData.accuracyOfIrradiationTime || testData.irradiationTime;
   if (hasTimer && irrBlock?.irradiationTimes && Array.isArray(irrBlock.irradiationTimes)) {
     const validRows = irrBlock.irradiationTimes.filter((row: any) => row.setTime || row.measuredTime);
@@ -189,7 +105,7 @@ const MainTestTableForCArm: React.FC<MainTestTableProps> = ({ testData, hasTimer
     }
   }
 
-  // Accuracy of Operating Potential (kVp Accuracy) — RadiographyFixed table2 (if present on CArm payload)
+  // 2. Accuracy of Operating Potential (kVp Accuracy) — RadiographyFixed table2 (if present on CArm payload)
   if (testData.accuracyOfOperatingPotential?.table2 && Array.isArray(testData.accuracyOfOperatingPotential.table2)) {
     const validRows = testData.accuracyOfOperatingPotential.table2.filter((row: any) => row.setKV || row.avgKvp);
     if (validRows.length > 0) {
@@ -221,7 +137,7 @@ const MainTestTableForCArm: React.FC<MainTestTableProps> = ({ testData, hasTimer
     }
   }
 
-  // Accuracy of Operating Potential (from total filtration measurements) — RadiographyFixed; CArm uses operatingPotential === totalFilteration
+  // 2. Accuracy of Operating Potential (from total filtration measurements) — RadiographyFixed; CArm uses operatingPotential === totalFilteration
   const tfRoot = testData.totalFilteration || testData.operatingPotential;
   if (tfRoot?.measurements && Array.isArray(tfRoot.measurements)) {
     const validRows = tfRoot.measurements.filter(
@@ -275,7 +191,7 @@ const MainTestTableForCArm: React.FC<MainTestTableProps> = ({ testData, hasTimer
     }
   }
 
-  // Total Filtration — C-Arm stores mm Al in `measured`, kVp in `atKvp` (often omitted ? use measurements[].appliedKvp)
+  // 3. Total Filtration — C-Arm stores mm Al in `measured`, kVp in `atKvp` (often omitted ? use measurements[].appliedKvp)
   if (testData.totalFilteration?.totalFiltration) {
     const tfRoot = testData.totalFilteration;
     const tf = tfRoot.totalFiltration;
@@ -324,7 +240,7 @@ const MainTestTableForCArm: React.FC<MainTestTableProps> = ({ testData, hasTimer
     ]);
   }
 
-  // Linearity of mAs Loading — only when timer is not present
+  // 4. Linearity of mAs Loading — only when timer is not present
   const masTable2 = testData.linearityOfMasLoading?.table2;
   const masValidRows =
     Array.isArray(masTable2) ? masTable2.filter((row: any) => row.mAsApplied) : [];
@@ -410,7 +326,7 @@ const MainTestTableForCArm: React.FC<MainTestTableProps> = ({ testData, hasTimer
     ]);
   }
 
-  // C-Arm: mA linearity when timer is present — single summary row like Fixed CoL summary
+  // 4. Linearity of mA Loading — when timer is present
   if (hasTimer) {
     const maLob = testData.linearityOfMaLoading;
     const maRows = maLob?.table2Rows || maLob?.table2;
@@ -458,7 +374,7 @@ const MainTestTableForCArm: React.FC<MainTestTableProps> = ({ testData, hasTimer
     }
   }
 
-  // Consistency of Radiation Output (CoV) — RadiographyFixed (CArm tolerance may be a plain string)
+  // 5. Consistency of Radiation Output (CoV) — RadiographyFixed (CArm tolerance may be a plain string)
   if (testData.outputConsistency?.outputRows && Array.isArray(testData.outputConsistency.outputRows)) {
     const validRows = testData.outputConsistency.outputRows.filter(
       (row: any) =>
@@ -549,7 +465,7 @@ const MainTestTableForCArm: React.FC<MainTestTableProps> = ({ testData, hasTimer
 
         return {
           specified: specifiedDisplay,
-          measured: formattedCv !== "-" ? "CoV = " + formattedCv : "-",
+          measured: formattedCv !== "-" ? " " + formattedCv : "-",
           tolerance: `${toleranceOperator} ${toleranceValue}`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
@@ -558,7 +474,73 @@ const MainTestTableForCArm: React.FC<MainTestTableProps> = ({ testData, hasTimer
     }
   }
 
-  // Radiation leakage level at 1m from tube housing — RadiographyFixed; CArm uses tubeHousingLeakage / leakageRows
+  // 6. Low Contrast Resolution
+  if (testData.lowContrastResolution) {
+    const smallestHoleSize = testData.lowContrastResolution.smallestHoleSize || "";
+    const recommendedStandard = testData.lowContrastResolution.recommendedStandard || "3.0";
+    const measured = parseFloat(smallestHoleSize);
+    const standard = parseFloat(recommendedStandard);
+    const isPass = !isNaN(measured) && !isNaN(standard) && measured < standard;
+    addRowsForTest("Low Contrast Resolution", [
+      {
+        specified: "",
+        measured: smallestHoleSize ? `${smallestHoleSize} mm Hole is Visible` : "-",
+        tolerance: `${recommendedStandard} mm hole pattern must be resolved`,
+        remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
+      },
+    ]);
+  }
+
+  // 7. High Contrast Resolution
+  if (testData.highContrastResolution) {
+    const measuredLpPerMm = testData.highContrastResolution.measuredLpPerMm || "";
+    const recommendedStandard = testData.highContrastResolution.recommendedStandard || "1.50";
+    const measured = parseFloat(measuredLpPerMm);
+    const standard = parseFloat(recommendedStandard);
+    const isPass = !isNaN(measured) && !isNaN(standard) && measured > standard;
+    addRowsForTest("High Contrast Resolution", [
+      {
+        specified: recommendedStandard !== "1.50" ? `${recommendedStandard} lp/mm` : "1.50 lp/mm",
+        measured: measuredLpPerMm ? `${measuredLpPerMm} lp/mm` : "-",
+        tolerance: `> ${recommendedStandard} lp/mm`,
+        remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
+      },
+    ]);
+  }
+
+  // 8. Exposure Rate at Table Top
+  if (testData.exposureRateTableTop?.rows && Array.isArray(testData.exposureRateTableTop.rows)) {
+    const validRows = testData.exposureRateTableTop.rows.filter((row: any) => row.distance || row.exposure);
+    if (validRows.length > 0) {
+      const aecTolerance = testData.exposureRateTableTop.aecTolerance || "10";
+      const nonAecTolerance = testData.exposureRateTableTop.nonAecTolerance || "5";
+
+      const testRows = validRows.map((row: any) => {
+        const computed = computeExposureRateRowResult(row, aecTolerance, nonAecTolerance);
+        const isPass =
+          computed === "PASS" ||
+          (computed === "" && (row.result === "PASS" || row.result === "Pass"));
+        const mode = row.remark;
+        let toleranceDisplay = "As per standard";
+
+        if (mode === "AEC Mode") {
+          toleranceDisplay = `= ${aecTolerance} cGy/Min`;
+        } else if (mode === "Manual Mode") {
+          toleranceDisplay = `= ${nonAecTolerance} cGy/Min`;
+        }
+
+        return {
+          specified: row.distance ? `${row.distance} cm` : "-",
+          measured: row.exposure ? `${row.exposure} cGy/min` : "-",
+          tolerance: toleranceDisplay,
+          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
+        };
+      });
+      addRowsForTest("Exposure Rate at Table Top", testRows);
+    }
+  }
+
+  // 9. Radiation Leakage Level at 1m from Tube Housing
   const leakParent = testData.radiationLeakageLevel || testData.tubeHousingLeakage;
   const leakMeasurements =
     leakParent &&
@@ -632,92 +614,6 @@ const MainTestTableForCArm: React.FC<MainTestTableProps> = ({ testData, hasTimer
         };
       });
       addRowsForTest(getRadiationLeakageLevelParameterTitle(validRows), testRows);
-    }
-  }
-
-  // Radiation Protection Survey — RadiographyFixed
-  if (testData.radiationProtectionSurvey?.locations && Array.isArray(testData.radiationProtectionSurvey.locations)) {
-    const validRows = testData.radiationProtectionSurvey.locations.filter((loc: any) => loc.location || loc.mRPerWeek);
-    if (validRows.length > 0) {
-      const testRows = validRows.map((loc: any) => {
-        const mRPerWeek = loc.mRPerWeek || "-";
-        const limit = loc.category === "worker" ? 40 : 2;
-        const isPass =
-          loc.result === "PASS" ||
-          loc.result === "Pass" ||
-          (mRPerWeek !== "-" && parseFloat(mRPerWeek) <= limit);
-        return {
-          specified: loc.location || "-",
-          measured: mRPerWeek !== "-" ? `${mRPerWeek} mR/week` : "-",
-          tolerance: loc.category === "worker" ? "= 40 mR/week" : "= 2 mR/week",
-          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
-        };
-      });
-      addRowsForTest("Radiation Protection Survey", testRows);
-    }
-  }
-
-  // --- C-Arm specific (unchanged intent) ---
-  if (testData.lowContrastResolution) {
-    const smallestHoleSize = testData.lowContrastResolution.smallestHoleSize || "";
-    const recommendedStandard = testData.lowContrastResolution.recommendedStandard || "3.0";
-    const measured = parseFloat(smallestHoleSize);
-    const standard = parseFloat(recommendedStandard);
-    const isPass = !isNaN(measured) && !isNaN(standard) && measured < standard;
-    addRowsForTest("Low Contrast Resolution", [
-      {
-        specified: recommendedStandard !== "3.0" ? `${recommendedStandard} mm` : "3.0 mm",
-        measured: smallestHoleSize ? `${smallestHoleSize} mm` : "-",
-        tolerance: `< ${recommendedStandard} mm`,
-        remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
-      },
-    ]);
-  }
-
-  if (testData.highContrastResolution) {
-    const measuredLpPerMm = testData.highContrastResolution.measuredLpPerMm || "";
-    const recommendedStandard = testData.highContrastResolution.recommendedStandard || "1.50";
-    const measured = parseFloat(measuredLpPerMm);
-    const standard = parseFloat(recommendedStandard);
-    const isPass = !isNaN(measured) && !isNaN(standard) && measured > standard;
-    addRowsForTest("High Contrast Resolution", [
-      {
-        specified: recommendedStandard !== "1.50" ? `${recommendedStandard} lp/mm` : "1.50 lp/mm",
-        measured: measuredLpPerMm ? `${measuredLpPerMm} lp/mm` : "-",
-        tolerance: `> ${recommendedStandard} lp/mm`,
-        remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
-      },
-    ]);
-  }
-
-  if (testData.exposureRateTableTop?.rows && Array.isArray(testData.exposureRateTableTop.rows)) {
-    const validRows = testData.exposureRateTableTop.rows.filter((row: any) => row.distance || row.exposure);
-    if (validRows.length > 0) {
-      const aecTolerance = testData.exposureRateTableTop.aecTolerance || "10";
-      const nonAecTolerance = testData.exposureRateTableTop.nonAecTolerance || "5";
-
-      const testRows = validRows.map((row: any) => {
-        const computed = computeExposureRateRowResult(row, aecTolerance, nonAecTolerance);
-        const isPass =
-          computed === "PASS" ||
-          (computed === "" && (row.result === "PASS" || row.result === "Pass"));
-        const mode = row.remark;
-        let toleranceDisplay = "As per standard";
-
-        if (mode === "AEC Mode") {
-          toleranceDisplay = `= ${aecTolerance} cGy/Min`;
-        } else if (mode === "Manual Mode") {
-          toleranceDisplay = `= ${nonAecTolerance} cGy/Min`;
-        }
-
-        return {
-          specified: row.distance ? `${row.distance} cm` : "-",
-          measured: row.exposure ? `${row.exposure} cGy/min` : "-",
-          tolerance: toleranceDisplay,
-          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
-        };
-      });
-      addRowsForTest("Exposure Rate at Table Top", testRows);
     }
   }
 

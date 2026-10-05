@@ -47,7 +47,7 @@ const MeasurementOfMaLinearity: React.FC<Props> = ({ serviceId, tubeId, testId: 
   ]);
 
   const [tolerance, setTolerance] = useState<string>("0.1");
-  const [toleranceOperator, setToleranceOperator] = useState<string>("<=");
+  const [toleranceOperator, setToleranceOperator] = useState<string>("<");
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);

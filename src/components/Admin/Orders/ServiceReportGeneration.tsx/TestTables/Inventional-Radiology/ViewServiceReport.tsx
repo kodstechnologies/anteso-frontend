@@ -1040,7 +1040,6 @@ const ViewServiceReport: React.FC<ViewServiceReportProps> = ({
     if (!totalData?.measurements?.length) return null;
     return (
       <div className="mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
-        <h4 className="text-lg font-semibold mb-4 print:mb-1 print:text-xs" style={{ marginBottom: '4px', fontSize: '10px' }}>Accuracy of Operating Potential</h4>
         <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
           <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
             <thead className="bg-gray-100">
@@ -1945,12 +1944,12 @@ const ViewServiceReport: React.FC<ViewServiceReportProps> = ({
                   toolsArray.map((tool, i) => (
                     <tr key={i}>
                       <td style={cellStyle({ border: "0.1px solid #666" })}>{i + 1}</td>
-                      <td style={cellStyle({ border: "0.1px solid #666" })}>{tool.nomenclature}</td>
-                      <td style={cellStyle({ border: "0.1px solid #666" })}>{tool.make || "-"}</td>
-                      <td style={cellStyle({ border: "0.1px solid #666" })}>{tool.model || "-"}</td>
-                      <td style={cellStyle({ border: "0.1px solid #666" })}>{tool.SrNo}</td>
+                      <td style={cellStyle({ border: "0.1px solid #666", whiteSpace: "normal", wordBreak: "break-word", overflowWrap: "anywhere" })}>{tool.nomenclature}</td>
+                      <td style={cellStyle({ border: "0.1px solid #666", whiteSpace: "normal", wordBreak: "break-word", overflowWrap: "anywhere" })}>{tool.make || "-"}</td>
+                      <td style={cellStyle({ border: "0.1px solid #666", whiteSpace: "normal", wordBreak: "break-word", overflowWrap: "anywhere" })}>{tool.model || "-"}</td>
+                      <td style={cellStyle({ border: "0.1px solid #666", whiteSpace: "normal", wordBreak: "break-word", overflowWrap: "anywhere" })}>{tool.SrNo}</td>
                       
-                      <td style={cellStyle({ border: "0.1px solid #666" })}>{tool.calibrationCertificateNo}</td>
+                      <td style={cellStyle({ border: "0.1px solid #666", whiteSpace: "normal", wordBreak: "break-word", overflowWrap: "anywhere" })}>{tool.calibrationCertificateNo}</td>
                       <td style={cellStyle({ border: "0.1px solid #666" })}>{formatDate(tool.calibrationValidTill)}</td>
                     </tr>
                   ))
@@ -1979,7 +1978,6 @@ const ViewServiceReport: React.FC<ViewServiceReportProps> = ({
             </div>
           </section>
 
-          <ReportPdfPageNoteQR report={report as any} />
         </ReportPage>
 
         {/* PAGE 2+ - SUMMARY TABLE */}
@@ -2123,7 +2121,7 @@ const ViewServiceReport: React.FC<ViewServiceReportProps> = ({
                 {/* 1. Survey details */}
                 {(testData.radiationProtectionSurvey.surveyDate || testData.radiationProtectionSurvey.hasValidCalibration) && (
                   <div className="mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
-                    <h4 className="text-lg font-semibold mb-4 print:mb-1 print:text-xs" style={{ marginBottom: '4px', fontSize: '10px' }}>1. Radiation Protection Survey</h4>
+                    <h4 className="text-lg font-semibold mb-4 print:mb-1 print:text-xs" style={{ marginBottom: '4px', fontSize: '10px' }}>Radiation Protection Survey</h4>
                     <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
                       <table className="w-full border-2 border-black text-sm compact-table" style={{ fontSize: '11px', borderCollapse: 'collapse', borderSpacing: '0' }}>
                         <tbody>
@@ -2144,7 +2142,7 @@ const ViewServiceReport: React.FC<ViewServiceReportProps> = ({
                 {/* 2. Equipment Setting */}
                 {(testData.radiationProtectionSurvey.appliedCurrent || testData.radiationProtectionSurvey.appliedVoltage || testData.radiationProtectionSurvey.exposureTime || testData.radiationProtectionSurvey.workload) && (
                   <div className="mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
-                    <h4 className="text-lg font-semibold mb-4 print:mb-1 print:text-xs" style={{ marginBottom: '4px', fontSize: '10px' }}>2. Equipment Setting</h4>
+                    <h4 className="text-lg font-semibold mb-4 print:mb-1 print:text-xs" style={{ marginBottom: '4px', fontSize: '10px' }}>Equipment Setting</h4>
                     <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
                       <table className="w-full border-2 border-black text-sm compact-table" style={{ fontSize: '11px', borderCollapse: 'collapse', borderSpacing: '0' }}>
                         <tbody>
@@ -2173,7 +2171,7 @@ const ViewServiceReport: React.FC<ViewServiceReportProps> = ({
                 {/* 3. Measured Maximum Radiation Levels */}
                 {testData.radiationProtectionSurvey.locations?.length > 0 && (
                   <div className="mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
-                    <h4 className="text-lg font-semibold mb-4 print:mb-1 print:text-xs" style={{ marginBottom: '4px', fontSize: '10px' }}>3. Measured Maximum Radiation Levels (mR/hr) at different Locations</h4>
+                    <h4 className="text-lg font-semibold mb-4 print:mb-1 print:text-xs" style={{ marginBottom: '4px', fontSize: '10px' }}>Measured Maximum Radiation Levels (mR/hr) at different Locations</h4>
                     <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
                       <table className="w-full border-2 border-black text-sm compact-table" style={{ fontSize: '11px', borderCollapse: 'collapse', borderSpacing: '0' }}>
                         <thead className="bg-gray-100">
@@ -2205,7 +2203,7 @@ const ViewServiceReport: React.FC<ViewServiceReportProps> = ({
 
                 {/* 4. Calculation Formula */}
                 <div className="mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
-                  <h4 className="text-lg font-semibold mb-4 print:mb-1 print:text-xs" style={{ marginBottom: '4px', fontSize: '10px' }}>4. Calculation Formula</h4>
+                  <h4 className="text-lg font-semibold mb-4 print:mb-1 print:text-xs" style={{ marginBottom: '4px', fontSize: '10px' }}>Calculation Formula</h4>
                   <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
                     <table className="w-full border-2 border-black text-sm compact-table" style={{ fontSize: '11px', borderCollapse: 'collapse', borderSpacing: '0' }}>
                       <tbody>
@@ -2243,7 +2241,7 @@ const ViewServiceReport: React.FC<ViewServiceReportProps> = ({
 
                   return (
                     <div className="mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
-                      <h4 className="text-lg font-semibold mb-4 print:mb-1 print:text-xs" style={{ marginBottom: '4px', fontSize: '10px' }}>5. Summary of Maximum Radiation Level/week (mR/wk)</h4>
+                      <h4 className="text-lg font-semibold mb-4 print:mb-1 print:text-xs" style={{ marginBottom: '4px', fontSize: '10px' }}>Summary of Maximum Radiation Level/week (mR/wk)</h4>
                       <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
                         <table className="w-full border-2 border-black text-sm compact-table" style={{ fontSize: '11px', borderCollapse: 'collapse', borderSpacing: '0' }}>
                           <thead className="bg-gray-100">

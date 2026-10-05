@@ -63,7 +63,7 @@ const ConsistencyOfRadiationOutput: React.FC<Props> = ({
         operator: '<=' | '<' | '>=' | '>';
         value: string;
     }>({
-        operator: '<=',
+        operator: '<',
         value: '0.05',
     });
 

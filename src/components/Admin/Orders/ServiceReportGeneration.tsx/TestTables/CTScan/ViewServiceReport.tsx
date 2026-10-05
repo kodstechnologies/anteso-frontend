@@ -662,100 +662,51 @@ const ViewServiceReportCTScan: React.FC<ViewServiceReportCTScanProps> = ({
     return `+/-${tolerance}%`;
   };
 
-  // Helper to render High Contrast Resolution content (table2 or result/operatingParams)
+  // Helper to render High Contrast Resolution content (2-row format matching C-Arm)
   const renderHighContrastContent = (hcr: any) => {
     if (!hcr) return null;
     
+    // Extract measured value - prioritize table2 format
+    const measuredLp = 
+      hcr.table2?.length > 0 && hcr.table2[0]?.value
+        ? String(hcr.table2[0].value).trim()
+        : hcr.result?.observedSize
+          ? String(hcr.result.observedSize).trim()
+          : hcr.observedSize != null && String(hcr.observedSize).trim() !== ""
+            ? String(hcr.observedSize).trim()
+            : "";
+    
+    // Get recommended standard (tolerance)
+    const standard = 
+      hcr.tolerance?.expectedSize
+        ? String(hcr.tolerance.expectedSize).trim()
+        : hcr.tolerance?.size
+          ? String(hcr.tolerance.size).trim()
+          : "1.6";
+    
     return (
-      <>
-        {/* Operating Parameters */}
-        {hcr.operatingParams && (
-          <div className="mb-4 print:mb-2">
-            <h4 className="text-sm font-semibold mb-2 print:mb-1 print:text-xs" style={{ fontSize: '10px', marginBottom: '4px' }}>Operating Parameters</h4>
-            <div className="overflow-x-auto mb-4 print:mb-2">
-              <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
-                <thead className="bg-gray-100">
-                  <tr>
-                    <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>kVp</th>
-                    <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>mAs</th>
-                    <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Slice Thickness (mm)</th>
-                    <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Window Width</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr className="text-center" style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
-                    <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{hcr.operatingParams.kvp || "-"}</td>
-                    <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{hcr.operatingParams.mas || "-"}</td>
-                    <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{hcr.operatingParams.sliceThickness || "-"}</td>
-                    <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{hcr.operatingParams.ww || "-"}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-
-        {/* High Contrast Resolution Result */}
-        <h4 className="text-sm font-semibold mb-2 print:mb-1 print:text-xs" style={{ fontSize: '10px', marginBottom: '4px' }}>Result</h4>
-        {hcr.table2?.length > 0 ? (
-          <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
-            <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
-              <thead className="bg-gray-100">
-                <tr>
-                  <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Size (mm)</th>
-                  <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Value</th>
-                  <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>Unit</th>
-                </tr>
-              </thead>
-              <tbody>
-                {hcr.table2.map((row: any, i: number) => (
-                  <tr key={i} className="text-center" style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
-                    <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.size || "-"}</td>
-                    <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.value || "-"}</td>
-                    <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.unit || "-"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : hcr.result ? (
-          <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
-            <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
-              <tbody>
-                <tr className="text-center" style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
-                  <td className="border border-black p-2 print:p-1 text-left" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'left', width: '50%' }}>Size of the smallest resolvable bar/hole pattern :</td>
-                  <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center', width: '20%' }}>{hcr.result.observedSize || "-"}</td>
-                  <td className="border border-black p-2 print:p-1 text-left" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'left', width: '30%' }}>lp/cm at {hcr.result.contrastDifference || "-"} % Contrast Difference</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
-            <table className="w-full border-2 border-black text-sm print:text-[9px]" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', maxWidth: '500px' }}>
-              <tbody>
-                <tr className="bg-gray-50"><td className="border border-black p-2 print:p-1 font-medium" style={{ width: '40%' }}>Observed Size (lp/mm)</td><td className="border border-black p-2 print:p-1">{hcr.observedSize ?? "-"}</td></tr>
-                <tr><td className="border border-black p-2 print:p-1 font-medium">Contrast Difference</td><td className="border border-black p-2 print:p-1">{hcr.contrastDifference ?? "-"}</td></tr>
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        {/* Tolerance */}
-        {hcr.tolerance && (
-          <div className="mb-4 print:mb-2">
-            <h4 className="text-sm font-semibold mb-2 print:mb-1 print:text-xs" style={{ fontSize: '10px', marginBottom: '4px' }}>Tolerance</h4>
-            <div style={{ fontSize: '11px' }}>
-              <p className="text-sm print:text-[9px] mb-1" style={{ fontSize: '11px', marginBottom: '2px' }}>
-                • At {hcr.tolerance.contrastDifference || "10"}% contrast difference the size of the bar/hole pattern that could be resolvable should be {hcr.tolerance.size || "1.6"} mm (= {hcr.tolerance.lpCm || "3.12"} lp/cm).
-              </p>
-              <p className="text-sm print:text-[9px]" style={{ fontSize: '11px' }}>
-                • Expected high contrast resolution: {hcr.tolerance.expectedSize || "0.8"} mm (= {hcr.tolerance.expectedLpCm || "6.25"} lp/cm)
-              </p>
-            </div>
-          </div>
-        )}
-      </>
+      <div className="overflow-x-auto mb-6">
+        <table className="w-full border-2 border-black text-sm compact-table" style={{ fontSize: "11px", borderCollapse: "collapse" }}>
+          <tbody>
+            <tr>
+              <td className="border border-black p-2 font-medium" style={{ padding: "4px 6px", textAlign: "left" }}>
+                Bar strips resolved on the monitor (lp/mm)
+              </td>
+              <td className="border border-black p-2 text-center font-semibold" style={{ padding: "4px 6px" }}>
+                {measuredLp || "-"} lp/mm pattern must be resolved
+              </td>
+            </tr>
+            <tr>
+              <td className="border border-black p-2 font-medium" style={{ padding: "4px 6px", textAlign: "left" }}>
+                Recommended performance standard
+              </td>
+              <td className="border border-black p-2 text-center" style={{ padding: "4px 6px" }}>
+                {standard} lp/mm pattern must be resolved
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     );
   };
 

@@ -54,7 +54,7 @@ const AccuracyOfIrradiationTime: React.FC<AccuracyOfIrradiationTimeProps> = ({
   ]);
 
   // Tolerance
-  const [toleranceOperator, setToleranceOperator] = useState("<=");
+  const [toleranceOperator, setToleranceOperator] = useState("<");
   const [toleranceValue, setToleranceValue] = useState("10");
 
   // Handle CSV initial data
