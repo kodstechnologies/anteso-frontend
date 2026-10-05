@@ -6,8 +6,8 @@ export interface DentalIntraExportData {
     accuracyOfOperatingPotential?: any;
     accuracyOfOperatingPotentialAndTime?: any;
     accuracyOfIrradiationTime?: any;
+    linearityOfTime?: any;
     linearityOfMaLoading?: any;
-    linearityOfMasLoading?: any;
     consistencyOfRadiationOutput?: any;
     radiationLeakageLevel?: any;
     radiationProtectionSurvey?: any;
@@ -125,33 +125,34 @@ export const createDentalIntraUploadableExcel = (
         }
     }
 
-    // 2. LINEARITY OF mAs LOADING
-    if (data.linearityOfMasLoading) {
-        const lm = data.linearityOfMasLoading;
-        const t1 = Array.isArray(lm.table1) ? lm.table1[0] || {} : lm.table1 || {};
-        const rows = Array.isArray(lm.table2) ? lm.table2 : lm.readings || [];
+    // 2. LINEARITY OF TIME
+    if (data.linearityOfTime) {
+        const lt = data.linearityOfTime;
+        const t1 = Array.isArray(lt.table1) ? lt.table1[0] || {} : lt.table1 || {};
+        const rows = Array.isArray(lt.table2) ? lt.table2 : lt.readings || [];
         const maxMeas = Math.max(0, ...rows.map((r: any) => getMeasuredOutputs(r).length));
         const measHeaders = resolveMeasHeaders(
-            lm.measHeaders || lm.measurementHeaders,
+            lt.measHeaders || lt.measurementHeaders,
             maxMeas,
             "Measured mR"
         );
-        allData.push(["TEST: LINEARITY OF mAs LOADING"]);
-        allData.push(["FDD (cm)", "kV", "mAs Range", ...measHeaders, "Average", "mR/mAs", "CoL"]);
-        rows.forEach((row: any) => {
+        allData.push(["TEST: LINEARITY OF TIME"]);
+        allData.push(["FDD (cm)", "kV", "mA", "Time Station (sec)", ...measHeaders, "Average", "mGy/sec", "CoL"]);
+        rows.forEach((row: any, idx: number) => {
             const outs = getMeasuredOutputs(row);
             allData.push([
-                t1.fcd || t1.fdd || "",
-                t1.kv || "",
-                row.mas || row.mAsRange || row.mAsApplied || "",
+                idx === 0 ? (t1.fcd || t1.fdd || "") : "",
+                idx === 0 ? (t1.kv || "") : "",
+                idx === 0 ? (t1.ma || "") : "",
+                row.time || "",
                 ...measHeaders.map((_, i) => outs[i] ?? ""),
                 row.average || "",
-                row.x || row.mRmAs || "",
+                row.x || "",
                 row.col || "",
             ]);
         });
-        allData.push(["Tolerance Operator", lm.toleranceOperator || "<="]);
-        allData.push(["Tolerance Value (CoL)", lm.tolerance || "0.1"]);
+        allData.push(["Tolerance Operator", lt.toleranceOperator || "<="]);
+        allData.push(["Tolerance Value (CoL)", lt.tolerance || "0.1"]);
         allData.push([]);
     }
 
@@ -167,17 +168,18 @@ export const createDentalIntraUploadableExcel = (
             "Measured mR"
         );
         allData.push(["TEST: LINEARITY OF mA LOADING"]);
-        allData.push(["FDD (cm)", "kV", "Time", "mA Station", ...measHeaders, "Average", "mR/mAs"]);
-        rows.forEach((row: any) => {
+        allData.push(["FDD (cm)", "kV", "Time", "mA Station", ...measHeaders, "Average", "mR/mAs", "CoL"]);
+        rows.forEach((row: any, idx: number) => {
             const outs = getMeasuredOutputs(row);
             allData.push([
-                t1.fcd || t1.fdd || "",
-                t1.kv || "",
-                t1.time || row.time || "",
-                row.ma || row.mAApplied || row.time || "",
+                idx === 0 ? (t1.fcd || t1.fdd || "") : "",
+                idx === 0 ? (t1.kv || "") : "",
+                idx === 0 ? (t1.time || "") : "",
+                row.ma || row.mAApplied || "",
                 ...measHeaders.map((_, i) => outs[i] ?? ""),
                 row.average || "",
                 row.x || row.mRmAs || "",
+                row.col || "",
             ]);
         });
         allData.push(["Tolerance Operator", lm.toleranceOperator || "<="]);

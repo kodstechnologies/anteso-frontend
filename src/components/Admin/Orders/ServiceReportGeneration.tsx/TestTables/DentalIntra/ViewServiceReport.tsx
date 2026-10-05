@@ -404,48 +404,38 @@ const ViewServiceReportDentalIntra: React.FC<ViewServiceReportDentalIntraProps> 
             }
           }
 
-          const masData = data.LinearityOfmAsLoadingDentalIntra || null;
-          const hasMasRows = !!(
-            masData &&
-            Array.isArray((masData as any).table2) &&
-            (masData as any).table2.length > 0
-          );
-          // If mAs linearity exists, treat as "No timer" mode and suppress timer-based sections.
           setTestData({
             accuracyOfOperatingPotentialAndTime: accuracyData,
-            accuracyOfIrradiationTime: hasMasRows ? null : (accuracyData || data.AccuracyOfIrradiationTimeDentalIntra || null),
-            linearityOfTime: hasMasRows ? null : (data.LinearityOfTimeDentalIntra || null),
-            linearityOfMasLoading: masData,
+            accuracyOfIrradiationTime: accuracyData || data.AccuracyOfIrradiationTimeDentalIntra || null,
+            linearityOfTime: data.LinearityOfTimeDentalIntra || null,
+            linearityOfMaLoading: data.LinearityOfMaLoadingDentalIntra || null,
             reproducibilityOfRadiationOutput: data.ReproducibilityOfRadiationOutputDentalIntra || null,
             tubeHousingLeakage: data.TubeHousingLeakageDentalIntra || null,
             radiationLeakageLevel: data.RadiationLeakageTestDentalIntra || null,
             radiationProtectionSurvey: data.RadiationProtectionSurveyDentalIntra || null,
           });
 
-          // Fetch irradiation time directly to get testConditions (fcd, kv, ma)
-          if (!hasMasRows) {
-            try {
-              const irradRes = await getAccuracyOfIrradiationTimeByServiceIdForDentalIntra(serviceId);
-              const irradData = irradRes?.data?.data || irradRes?.data || irradRes;
-              if (irradData && typeof irradData === "object") {
-                const tc = irradData.testConditions || {};
-                setTestData((prev: any) => ({
-                  ...prev,
-                  // Keep AOP from dedicated fetch; fill irradiation from same combined document
-                  accuracyOfOperatingPotentialAndTime:
-                    prev.accuracyOfOperatingPotentialAndTime || irradData,
-                  accuracyOfIrradiationTime: {
-                    ...irradData,
-                    testConditions: {
-                      fcd: tc.fcd ?? tc.ffd ?? "",
-                      kv: tc.kv ?? "",
-                      ma: tc.ma ?? "",
-                    },
+          // Fetch combined accuracy document for irradiation test conditions when needed
+          try {
+            const irradRes = await getAccuracyOfIrradiationTimeByServiceIdForDentalIntra(serviceId);
+            const irradData = irradRes?.data?.data || irradRes?.data || irradRes;
+            if (irradData && typeof irradData === "object") {
+              const tc = irradData.testConditions || {};
+              setTestData((prev: any) => ({
+                ...prev,
+                accuracyOfOperatingPotentialAndTime:
+                  prev.accuracyOfOperatingPotentialAndTime || irradData,
+                accuracyOfIrradiationTime: {
+                  ...irradData,
+                  testConditions: {
+                    fcd: tc.fcd ?? tc.ffd ?? "",
+                    kv: tc.kv ?? "",
+                    ma: tc.ma ?? "",
                   },
-                }));
-              }
-            } catch { /* ignore */ }
-          }
+                },
+              }));
+            }
+          } catch { /* ignore */ }
           onReportLoaded?.();
         } else {
           setNotFound(true);
@@ -611,14 +601,10 @@ const ViewServiceReportDentalIntra: React.FC<ViewServiceReportDentalIntraProps> 
     textAlign: "center",
   };
 
-  const hasMasLinearity = !!(testData.linearityOfMasLoading?.table2?.length > 0);
-  const showIrradiationSection = !(
-    testData.linearityOfMasLoading &&
-    Array.isArray(testData.linearityOfMasLoading.table2) &&
-    testData.linearityOfMasLoading.table2.length > 0
-  );
+  const hasLinearityOfTime = !!(testData.linearityOfTime?.table2?.length > 0);
+  const hasMaLinearity = !!(testData.linearityOfMaLoading?.table2?.length > 0);
+  const showIrradiationSection = true;
   const hasOperatingPotential = !!(testData?.accuracyOfOperatingPotentialAndTime);
-  const hasMaLinearity = !!(testData.linearityOfTime?.table2?.length > 0);
   const hasConsistency = !!(testData.reproducibilityOfRadiationOutput?.outputRows?.length > 0);
   const hasTubeLeakage = !!(testData.tubeHousingLeakage?.leakageMeasurements?.length > 0);
   const hasRadiationLeakage = !!(
@@ -627,9 +613,9 @@ const ViewServiceReportDentalIntra: React.FC<ViewServiceReportDentalIntraProps> 
   );
   const hasSurvey = !!testData.radiationProtectionSurvey;
   const hasAnyDetailed =
-    hasMasLinearity ||
     showIrradiationSection ||
     hasOperatingPotential ||
+    hasLinearityOfTime ||
     hasMaLinearity ||
     hasConsistency ||
     hasTubeLeakage ||
@@ -989,146 +975,64 @@ const ViewServiceReportDentalIntra: React.FC<ViewServiceReportDentalIntraProps> 
         )}
 
         {/* PAGE 4 - DETAILED TEST RESULTS (PART 1b) - mAs / mA Linearity */}
-        {(hasMasLinearity || hasMaLinearity) && (
+        {(hasLinearityOfTime || hasMaLinearity) && (
         <ReportPage>
           <div style={{ width: "100%", flex: 1 }}>
             {!hasOperatingPotential && (
               <h2 className="font-bold text-center underline mb-4" style={{ fontSize: "16px" }}>DETAILED TEST RESULTS</h2>
             )}
 
-  {/* 2b. Linearity of mAs Loading */}
-            {testData.linearityOfMasLoading?.table2 && Array.isArray(testData.linearityOfMasLoading.table2) && testData.linearityOfMasLoading.table2.length > 0 && (() => {
-              const processedRows = testData.linearityOfMasLoading.table2 || [];
-              const measHeadersRaw = Array.isArray(testData.linearityOfMasLoading.measHeaders)
-                ? testData.linearityOfMasLoading.measHeaders
-                : [];
-              const maxOutLen = Math.max(
-                0,
-                ...processedRows.map((r: any) => (r.measuredOutputs || []).length),
-                measHeadersRaw.length,
-              );
-              const measHeaders =
-                measHeadersRaw.length > 0
-                  ? Array.from({ length: Math.max(maxOutLen, measHeadersRaw.length) }, (_, i) =>
-                      String(measHeadersRaw[i] ?? "").trim() || `Measured mR ${i + 1}`
-                    )
-                  : Array.from({ length: Math.max(maxOutLen, 1) }, (_, i) => `Measured mR ${i + 1}`);
-              return (
-                <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
-                  <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>{nextDetailedSectionNumber()}. Linearity of mAs Loading</h3>
-
-                  {testData.linearityOfMasLoading.table1 && (
-                    <div className="mb-6 print:mb-1 bg-gray-50 p-4 print:p-1 rounded border overflow-x-auto" style={{ marginBottom: '4px', padding: '2px 4px' }}>
-                      <p className="font-semibold mb-2 print:mb-0.5 print:text-xs" style={{ marginBottom: '2px', fontSize: '8px' }}>Test Conditions:</p>
-                      {(() => {
-                        const showTimeColumn = String(testData.linearityOfMasLoading.table1.time ?? "").trim() !== "";
-                        return (
-                      <table className="w-full border border-black text-sm print:text-[9px]" style={{ fontSize: '11px', borderCollapse: 'collapse', borderSpacing: 0 }}>
-                        <thead className="bg-gray-100">
-                          <tr>
-                            <th className="border border-black px-2 py-1 text-center" style={{ padding: '0px 1px' }}>FDD (cm)</th>
-                            <th className="border border-black px-2 py-1 text-center" style={{ padding: '0px 1px' }}>kV</th>
-                            {showTimeColumn && (
-                              <th className="border border-black px-2 py-1 text-center" style={{ padding: '0px 1px' }}>Time (sec)</th>
-                            )}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          <tr>
-                            <td className="border border-black px-2 py-1 text-center" style={{ padding: '0px 1px' }}>{testData.linearityOfMasLoading.table1.fcd || "-"}</td>
-                            <td className="border border-black px-2 py-1 text-center" style={{ padding: '0px 1px' }}>{testData.linearityOfMasLoading.table1.kv || "-"}</td>
-                            {showTimeColumn && (
-                              <td className="border border-black px-2 py-1 text-center" style={{ padding: '0px 1px' }}>{testData.linearityOfMasLoading.table1.time || "-"}</td>
-                            )}
-                          </tr>
-                        </tbody>
-                      </table>
-                        );
-                      })()}
-                    </div>
-                  )}
-
-                  <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
-                    <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
-                      <thead className="bg-gray-100">
-                        <tr>
-                          <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>mAs</th>
-                          {measHeaders.map((header: string, idx: number) => (
-                            <th key={idx} className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{header}</th>
-                          ))}
-                          <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center', backgroundColor: 'rgba(191, 219, 254, 0.5)' }}>Average</th>
-                          <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center', backgroundColor: 'rgba(254, 249, 195, 0.5)' }}>X (mGy/mAs)</th>
-                          <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>X Max</th>
-                          <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>X Min</th>
-                          <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>CoL</th>
-                          <th className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center', backgroundColor: 'rgba(220, 252, 231, 0.5)' }}>Remarks</th>
+            {/* Linearity of Time */}
+            {testData.linearityOfTime?.table2?.length > 0 && (
+              <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
+                <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>{nextDetailedSectionNumber()}. Linearity of Time</h3>
+                <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
+                  <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', borderCollapse: 'collapse', borderSpacing: '0' }}>
+                    <thead className="bg-gray-100">
+                      <tr>
+                        <th className="border border-black p-2 print:p-1 text-center">Time (sec)</th>
+                        <th className="border border-black p-2 print:p-1 text-center">Avg Output</th>
+                        <th className="border border-black p-2 print:p-1 text-center">X (mGy/sec)</th>
+                        <th className="border border-black p-2 print:p-1 text-center">X MAX</th>
+                        <th className="border border-black p-2 print:p-1 text-center">X MIN</th>
+                        <th className="border border-black p-2 print:p-1 text-center">CoL</th>
+                        <th className="border border-black p-2 print:p-1 text-center bg-green-100">Remarks</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {testData.linearityOfTime.table2.map((row: any, i: number) => (
+                        <tr key={i} className="text-center">
+                          <td className="border border-black p-2 print:p-1 font-semibold">{row.time || "-"}</td>
+                          <td className="border border-black p-2 print:p-1">{row.average || "-"}</td>
+                          <td className="border border-black p-2 print:p-1">{row.x || "-"}</td>
+                          {i === 0 && (
+                            <>
+                              <td rowSpan={testData.linearityOfTime.table2.length} className="border border-black p-2 print:p-1 align-middle">{testData.linearityOfTime.xMax || "-"}</td>
+                              <td rowSpan={testData.linearityOfTime.table2.length} className="border border-black p-2 print:p-1 align-middle">{testData.linearityOfTime.xMin || "-"}</td>
+                              <td rowSpan={testData.linearityOfTime.table2.length} className="border border-black p-2 print:p-1 font-bold align-middle">{testData.linearityOfTime.col || "-"}</td>
+                              <td rowSpan={testData.linearityOfTime.table2.length} className={`border border-black p-2 print:p-1 font-bold align-middle ${testData.linearityOfTime.remarks?.toUpperCase() === "PASS" ? "text-green-800 bg-green-100" : "text-red-800 bg-red-100"}`}>
+                                {testData.linearityOfTime.remarks || "-"}
+                              </td>
+                            </>
+                          )}
                         </tr>
-                      </thead>
-                      <tbody>
-                        {processedRows.map((row: any, i: number) => (
-                          <tr key={i} className="text-center" style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
-                            <td className="border border-black p-2 print:p-1 font-semibold text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.ma || "-"}</td>
-                            {measHeaders.map((_: string, idx: number) => (
-                              <td key={idx} className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{(row.measuredOutputs || [])[idx] || "-"}</td>
-                            ))}
-                            <td className="border border-black p-2 print:p-1 font-bold text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center', backgroundColor: 'rgba(191, 219, 254, 0.3)' }}>{row.average || "-"}</td>
-                            <td className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center', backgroundColor: 'rgba(254, 249, 195, 0.3)' }}>{row.x || "-"}</td>
-                            {i === 0 && (
-                              <>
-                                <td rowSpan={processedRows.length} className="border border-black p-2 print:p-1 text-center align-middle" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center', verticalAlign: 'middle' }}>
-                                  {testData.linearityOfMasLoading?.table2?.[0]?.xMax || "-"}
-                                </td>
-                                <td rowSpan={processedRows.length} className="border border-black p-2 print:p-1 text-center align-middle" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center', verticalAlign: 'middle' }}>
-                                  {testData.linearityOfMasLoading?.table2?.[0]?.xMin || "-"}
-                                </td>
-                                <td rowSpan={processedRows.length} className="border border-black p-2 print:p-1 font-semibold text-center align-middle" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center', verticalAlign: 'middle' }}>
-                                  {testData.linearityOfMasLoading?.table2?.[0]?.col || "-"}
-                                </td>
-                                <td rowSpan={processedRows.length} className={`border border-black p-2 print:p-1 font-bold text-center align-middle ${testData.linearityOfMasLoading?.table2?.[0]?.remarks === "Pass" ? "text-green-600" : "text-red-600"}`} style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center', verticalAlign: 'middle', backgroundColor: 'rgba(220, 252, 231, 0.3)' }}>
-                                  {testData.linearityOfMasLoading?.table2?.[0]?.remarks || "-"}
-                                </td>
-                              </>
-                            )}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-
-                  <div className="mt-4 bg-gray-50 p-4 print:p-1 rounded border" style={{ padding: '2px 4px' }}>
-                    <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
-                      <strong>Tolerance (CoL):</strong>{" "}
-                      {normalizeComparisonOperator(
-                        testData.linearityOfMasLoading?.toleranceOperator ||
-                        testData.linearityOfMasLoading?.tolerance?.operator ||
-                        "<="
-                      )}{" "}
-                      {testData.linearityOfMasLoading?.toleranceValue ||
-                        testData.linearityOfMasLoading?.tolerance?.value ||
-                        testData.linearityOfMasLoading?.tolerance ||
-                        "0.1"}
-                    </p>
-                  </div>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-              );
-            })()}
+                <div className="bg-gray-50 p-4 print:p-1 rounded border mt-4" style={{ padding: '2px 4px' }}>
+                  <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
+                    <strong>Tolerance (CoL):</strong> {normalizeComparisonOperator(testData.linearityOfTime?.toleranceOperator || "<=")} {testData.linearityOfTime?.tolerance || "0.1"}
+                  </p>
+                </div>
+              </div>
+            )}
 
-            {/* 2. Linearity of mA Loading */}
-            {testData.linearityOfTime?.table2 && Array.isArray(testData.linearityOfTime.table2) && testData.linearityOfTime.table2.length > 0 && (() => {
-              const ma = parseFloat(testData.linearityOfTime.table1?.ma || "0");
-              const processedRows = (testData.linearityOfTime.table2 || []).map((row: any) => {
-                let x = row.x;
-                if (!x || x === "-" || x === "") {
-                  const outputs = (row.measuredOutputs || []).map((v: string) => parseFloat(v)).filter((v: number) => !isNaN(v) && v > 0);
-                  const avg = outputs.length > 0 ? outputs.reduce((a: number, b: number) => a + b, 0) / outputs.length : 0;
-                  const time = parseFloat(row.time || "0");
-                  const mAs = ma > 0 && time > 0 ? ma * time : 0;
-                  x = avg > 0 && mAs > 0 ? (avg / mAs).toFixed(4) : "-";
-                }
-                return { ...row, x };
-              });
-              const measHeadersRaw = Array.isArray(testData.linearityOfTime.measHeaders)
-                ? testData.linearityOfTime.measHeaders
+            {/* Linearity of mA Loading */}
+            {testData.linearityOfMaLoading?.table2 && Array.isArray(testData.linearityOfMaLoading.table2) && testData.linearityOfMaLoading.table2.length > 0 && (() => {
+              const processedRows = testData.linearityOfMaLoading.table2 || [];
+              const measHeadersRaw = Array.isArray(testData.linearityOfMaLoading.measHeaders)
+                ? testData.linearityOfMaLoading.measHeaders
                 : [];
               const maxOutLen = Math.max(
                 0,
@@ -1146,7 +1050,7 @@ const ViewServiceReportDentalIntra: React.FC<ViewServiceReportDentalIntraProps> 
                 <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
                   <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>{nextDetailedSectionNumber()}. Linearity of mA Loading</h3>
 
-                  {testData.linearityOfTime?.table1 && (
+                  {testData.linearityOfMaLoading?.table1 && (
                     <div className="mb-6 print:mb-1 bg-gray-50 p-4 print:p-1 rounded border overflow-x-auto" style={{ marginBottom: '4px', padding: '2px 4px' }}>
                       <p className="font-semibold mb-2 print:mb-0.5 print:text-xs" style={{ marginBottom: '2px', fontSize: '8px' }}>Test Conditions:</p>
                       <table className="w-full border border-black text-sm print:text-[9px]" style={{ fontSize: '11px', borderCollapse: 'collapse', borderSpacing: 0 }}>
@@ -1154,14 +1058,14 @@ const ViewServiceReportDentalIntra: React.FC<ViewServiceReportDentalIntraProps> 
                           <tr>
                             <th className="border border-black px-2 py-1 text-center" style={{ padding: '0px 1px' }}>FDD (cm)</th>
                             <th className="border border-black px-2 py-1 text-center" style={{ padding: '0px 1px' }}>kV</th>
-                            <th className="border border-black px-2 py-1 text-center" style={{ padding: '0px 1px' }}>time(sec)</th>
+                            <th className="border border-black px-2 py-1 text-center" style={{ padding: '0px 1px' }}>Time (sec)</th>
                           </tr>
                         </thead>
                         <tbody>
                           <tr>
-                            <td className="border border-black px-2 py-1 text-center" style={{ padding: '0px 1px' }}>{testData.linearityOfTime.table1.fcd || "-"}</td>
-                            <td className="border border-black px-2 py-1 text-center" style={{ padding: '0px 1px' }}>{testData.linearityOfTime.table1.kv || "-"}</td>
-                            <td className="border border-black px-2 py-1 text-center" style={{ padding: '0px 1px' }}>{testData.linearityOfTime.table1.ma || "-"}</td>
+                            <td className="border border-black px-2 py-1 text-center" style={{ padding: '0px 1px' }}>{testData.linearityOfMaLoading.table1.fcd || "-"}</td>
+                            <td className="border border-black px-2 py-1 text-center" style={{ padding: '0px 1px' }}>{testData.linearityOfMaLoading.table1.kv || "-"}</td>
+                            <td className="border border-black px-2 py-1 text-center" style={{ padding: '0px 1px' }}>{testData.linearityOfMaLoading.table1.time || testData.linearityOfMaLoading.table1.ma || "-"}</td>
                           </tr>
                         </tbody>
                       </table>
@@ -1187,7 +1091,7 @@ const ViewServiceReportDentalIntra: React.FC<ViewServiceReportDentalIntraProps> 
                       <tbody>
                         {processedRows.map((row: any, i: number) => (
                           <tr key={i} className="text-center" style={{ height: 'auto', minHeight: '0', lineHeight: '1.0', padding: '0', margin: '0' }}>
-                            <td className="border border-black p-2 print:p-1 font-semibold text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.time || "-"}</td>
+                            <td className="border border-black p-2 print:p-1 font-semibold text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{row.ma || row.time || "-"}</td>
                             {measHeaders.map((_: string, idx: number) => (
                               <td key={idx} className="border border-black p-2 print:p-1 text-center" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center' }}>{(row.measuredOutputs || [])[idx] || "-"}</td>
                             ))}
@@ -1196,17 +1100,17 @@ const ViewServiceReportDentalIntra: React.FC<ViewServiceReportDentalIntraProps> 
                             {i === 0 && (
                               <>
                                 <td rowSpan={processedRows.length} className="border border-black p-2 print:p-1 text-center align-middle" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center', verticalAlign: 'middle' }}>
-                                  {testData.linearityOfTime?.xMax || "-"}
+                                  {testData.linearityOfMaLoading?.table2?.[0]?.xMax || testData.linearityOfMaLoading?.xMax || "-"}
                                 </td>
                                 <td rowSpan={processedRows.length} className="border border-black p-2 print:p-1 text-center align-middle" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center', verticalAlign: 'middle' }}>
-                                  {testData.linearityOfTime?.xMin || "-"}
+                                  {testData.linearityOfMaLoading?.table2?.[0]?.xMin || testData.linearityOfMaLoading?.xMin || "-"}
                                 </td>
                                 <td rowSpan={processedRows.length} className="border border-black p-2 print:p-1 font-semibold text-center align-middle" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center', verticalAlign: 'middle' }}>
-                                  {testData.linearityOfTime?.col || "-"}
+                                  {testData.linearityOfMaLoading?.table2?.[0]?.col || testData.linearityOfMaLoading?.col || "-"}
                                 </td>
                                 <td rowSpan={processedRows.length} className="border border-black p-2 print:p-1 font-bold text-center align-middle" style={{ padding: '0px 1px', fontSize: '11px', lineHeight: '1.0', minHeight: '0', height: 'auto', borderColor: '#000000', textAlign: 'center', verticalAlign: 'middle', backgroundColor: 'rgba(220, 252, 231, 0.3)' }}>
-                                  <span className={testData.linearityOfTime?.remarks === "Pass" ? "text-green-600" : testData.linearityOfTime?.remarks === "Fail" ? "text-red-600" : "text-gray-600"}>
-                                    {testData.linearityOfTime?.remarks || "-"}
+                                  <span className={(testData.linearityOfMaLoading?.table2?.[0]?.remarks || testData.linearityOfMaLoading?.remarks) === "Pass" ? "text-green-600" : (testData.linearityOfMaLoading?.table2?.[0]?.remarks || testData.linearityOfMaLoading?.remarks) === "Fail" ? "text-red-600" : "text-gray-600"}>
+                                    {testData.linearityOfMaLoading?.table2?.[0]?.remarks || testData.linearityOfMaLoading?.remarks || "-"}
                                   </span>
                                 </td>
                               </>
@@ -1221,13 +1125,13 @@ const ViewServiceReportDentalIntra: React.FC<ViewServiceReportDentalIntraProps> 
                     <p className="text-sm print:text-[9px]" style={{ fontSize: '11px', margin: '2px 0' }}>
                       <strong>Tolerance (CoL):</strong>{" "}
                       {normalizeComparisonOperator(
-                        testData.linearityOfTime?.toleranceOperator ||
-                        testData.linearityOfTime?.tolerance?.operator ||
+                        testData.linearityOfMaLoading?.toleranceOperator ||
+                        testData.linearityOfMaLoading?.tolerance?.operator ||
                         "<="
                       )}{" "}
-                      {testData.linearityOfTime?.toleranceValue ||
-                        testData.linearityOfTime?.tolerance?.value ||
-                        testData.linearityOfTime?.tolerance ||
+                      {testData.linearityOfMaLoading?.toleranceValue ||
+                        testData.linearityOfMaLoading?.tolerance?.value ||
+                        testData.linearityOfMaLoading?.tolerance ||
                         "0.1"}
                     </p>
                   </div>
@@ -1729,7 +1633,7 @@ const ViewServiceReportDentalIntra: React.FC<ViewServiceReportDentalIntraProps> 
                 <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>{nextDetailedSectionNumber()}. Details of Radiation Protection Survey</h3>
                 {(testData.radiationProtectionSurvey.surveyDate || testData.radiationProtectionSurvey.hasValidCalibration) && (
                   <div className="mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
-                    <h4 className="text-lg font-semibold mb-4 print:mb-1 print:text-xs" style={{ marginBottom: '4px', fontSize: '10px' }}>1. Survey Details</h4>
+                    <h4 className="text-lg font-semibold mb-4 print:mb-1 print:text-xs" style={{ marginBottom: '4px', fontSize: '10px' }}>Survey Details</h4>
                     <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
                       <table className="w-full border-2 border-black text-sm compact-table" style={{ fontSize: '11px', borderCollapse: 'collapse', borderSpacing: '0' }}>
                         <tbody>
@@ -1748,7 +1652,7 @@ const ViewServiceReportDentalIntra: React.FC<ViewServiceReportDentalIntraProps> 
                 )}
                 {(testData.radiationProtectionSurvey.appliedCurrent || testData.radiationProtectionSurvey.appliedVoltage || testData.radiationProtectionSurvey.exposureTime || testData.radiationProtectionSurvey.workload) && (
                   <div className="mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
-                    <h4 className="text-lg font-semibold mb-4 print:mb-1 print:text-xs" style={{ marginBottom: '4px', fontSize: '10px' }}>2. Equipment Setting</h4>
+                    <h4 className="text-lg font-semibold mb-4 print:mb-1 print:text-xs" style={{ marginBottom: '4px', fontSize: '10px' }}>Equipment Setting</h4>
                     <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
                       <table className="w-full border-2 border-black text-sm compact-table" style={{ fontSize: '11px', borderCollapse: 'collapse', borderSpacing: '0' }}>
                         <tbody>
@@ -1775,7 +1679,7 @@ const ViewServiceReportDentalIntra: React.FC<ViewServiceReportDentalIntraProps> 
                 )}
                 {testData.radiationProtectionSurvey.locations?.length > 0 && (
                   <div className="mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
-                    <h4 className="text-lg font-semibold mb-4 print:mb-1 print:text-xs" style={{ marginBottom: '4px', fontSize: '10px' }}>3. Measured Maximum Radiation Levels (mR/hr) at different Locations</h4>
+                    <h4 className="text-lg font-semibold mb-4 print:mb-1 print:text-xs" style={{ marginBottom: '4px', fontSize: '10px' }}>Measured Maximum Radiation Levels (mR/hr) at different Locations</h4>
                     <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
                       <table className="w-full border-2 border-black text-sm compact-table" style={{ fontSize: '11px', borderCollapse: 'collapse', borderSpacing: '0' }}>
                         <thead className="bg-gray-100">
@@ -1817,7 +1721,7 @@ const ViewServiceReportDentalIntra: React.FC<ViewServiceReportDentalIntraProps> 
             {testData.radiationProtectionSurvey && (
               <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
                 <div className="mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
-                  <h4 className="text-lg font-semibold mb-4 print:mb-1 print:text-xs" style={{ marginBottom: '4px', fontSize: '10px' }}>4. Calculation Formula</h4>
+                  <h4 className="text-lg font-semibold mb-4 print:mb-1 print:text-xs" style={{ marginBottom: '4px', fontSize: '10px' }}>Calculation Formula</h4>
                   <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
                     <table className="w-full border-2 border-black text-sm compact-table" style={{ fontSize: '11px', borderCollapse: 'collapse', borderSpacing: '0' }}>
                       <tbody>
@@ -1854,7 +1758,7 @@ const ViewServiceReportDentalIntra: React.FC<ViewServiceReportDentalIntraProps> 
 
                   return (
                     <div className="mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
-                      <h4 className="text-lg font-semibold mb-4 print:mb-1 print:text-xs" style={{ marginBottom: '4px', fontSize: '10px' }}>5. Summary of Maximum Radiation Level/week (mR/wk)</h4>
+                      <h4 className="text-lg font-semibold mb-4 print:mb-1 print:text-xs" style={{ marginBottom: '4px', fontSize: '10px' }}>Summary of Maximum Radiation Level/week (mR/wk)</h4>
                       <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
                         <table className="w-full border-2 border-black text-sm compact-table" style={{ fontSize: '11px', borderCollapse: 'collapse', borderSpacing: '0' }}>
                           <thead className="bg-gray-100">
@@ -1919,7 +1823,7 @@ const ViewServiceReportDentalIntra: React.FC<ViewServiceReportDentalIntraProps> 
                   );
                 })()}
                 <div className="mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
-                  <h4 className="text-lg font-semibold mb-4 print:mb-1 print:text-xs" style={{ marginBottom: '4px', fontSize: '10px' }}>6. Permissible Limit</h4>
+                  <h4 className="text-lg font-semibold mb-4 print:mb-1 print:text-xs" style={{ marginBottom: '4px', fontSize: '10px' }}>Permissible Limit</h4>
                   <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
                     <table className="w-full border-2 border-black text-sm compact-table" style={{ fontSize: '11px', borderCollapse: 'collapse', borderSpacing: '0' }}>
                       <tbody>

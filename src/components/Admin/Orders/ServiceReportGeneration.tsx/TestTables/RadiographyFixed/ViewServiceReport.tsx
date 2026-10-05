@@ -1982,7 +1982,7 @@ const ViewServiceReportRadiographyFixed: React.FC<ViewServiceReportProps> = ({
                 {(testData.radiationProtectionSurvey.surveyDate ||
                   testData.radiationProtectionSurvey.hasValidCalibration) && (
                     <div style={{ marginBottom: "8px" }}>
-                      <p style={{ fontSize: "10px", fontWeight: "bold", marginBottom: "4px" }}>1. Survey Details</p>
+                      <p style={{ fontSize: "10px", fontWeight: "bold", marginBottom: "4px" }}>Survey Details</p>
                       <table style={tableStyle} className="compact-table">
                         <tbody>
                           <tr>
@@ -2020,7 +2020,7 @@ const ViewServiceReportRadiographyFixed: React.FC<ViewServiceReportProps> = ({
                   )}
                 {(testData.radiationProtectionSurvey.appliedCurrent || testData.radiationProtectionSurvey.appliedVoltage) && (
                   <div style={{ marginBottom: "8px" }}>
-                    <p style={{ fontSize: "10px", fontWeight: "bold", marginBottom: "4px" }}>2. Equipment Setting</p>
+                    <p style={{ fontSize: "10px", fontWeight: "bold", marginBottom: "4px" }}>Equipment Setting</p>
                     <table style={tableStyle} className="compact-table">
                       <tbody>
                         {[
@@ -2051,7 +2051,7 @@ const ViewServiceReportRadiographyFixed: React.FC<ViewServiceReportProps> = ({
                 {testData.radiationProtectionSurvey.locations?.length > 0 && (
                   <div style={{ marginBottom: "6px" }}>
                     <p style={{ fontSize: "10px", fontWeight: "bold", marginBottom: "10px" }}>
-                      3. Measured Maximum Radiation Levels (mR/hr) at different Locations
+                      Measured Maximum Radiation Levels (mR/hr) at different Locations
                     </p>
                     <table style={tableStyle} className="compact-table">
                       <thead>
@@ -2093,7 +2093,7 @@ const ViewServiceReportRadiographyFixed: React.FC<ViewServiceReportProps> = ({
             {testData.radiationProtectionSurvey && (
               <div className="mb-4 test-section">
                 <div style={{ marginBottom: "20px" }}>
-                  <p style={{ fontSize: "10px", fontWeight: "bold", marginBottom: "10px" }}>4. Calculation Formula</p>
+                  <p style={{ fontSize: "10px", fontWeight: "bold", marginBottom: "10px" }}>Calculation Formula</p>
                   <table style={tableStyle} className="compact-table">
                     <tbody>
                       <tr>
@@ -2138,7 +2138,7 @@ const ViewServiceReportRadiographyFixed: React.FC<ViewServiceReportProps> = ({
                     return (
                       <div style={{ marginBottom: "20px" }}>
                         <p style={{ fontSize: "10px", fontWeight: "bold", marginBottom: "10px" }}>
-                          5. Summary of Maximum Radiation Level/week (mR/wk)
+                          Summary of Maximum Radiation Level/week (mR/wk)
                         </p>
                         <table style={tableStyle} className="compact-table">
                           <thead>
@@ -2207,7 +2207,7 @@ const ViewServiceReportRadiographyFixed: React.FC<ViewServiceReportProps> = ({
                     );
                   })()}
                 <div style={{ marginBottom: "20px" }}>
-                  <p style={{ fontSize: "10px", fontWeight: "bold", marginBottom: "10px" }}>6. Permissible Limit</p>
+                  <p style={{ fontSize: "10px", fontWeight: "bold", marginBottom: "10px" }}>Permissible Limit</p>
                   <table style={tableStyle} className="compact-table">
                     <tbody>
                       <tr>

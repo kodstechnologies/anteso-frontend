@@ -592,6 +592,20 @@ const ViewServiceReportCArm: React.FC = () => {
         ? false
         : hasMasLinearity && !hasMaLinearity;
 
+  // Detailed section numbers follow MainTestTable sequence; skip Irradiation when no timer
+  const hasTimerSelected = timerChoice === true;
+  const detailedSec = {
+    irradiation: hasTimerSelected ? 1 : null as number | null,
+    operatingPotential: hasTimerSelected ? 2 : 1,
+    totalFiltration: hasTimerSelected ? 3 : 2,
+    linearity: hasTimerSelected ? 4 : 3,
+    consistency: hasTimerSelected ? 5 : 4,
+    lowContrast: hasTimerSelected ? 6 : 5,
+    highContrast: hasTimerSelected ? 7 : 6,
+    exposureRate: hasTimerSelected ? 8 : 7,
+    leakage: hasTimerSelected ? 9 : 8,
+  };
+
   // Split detailed results across A4 shells so PDF capture keeps header/footer per page
   const hasDetailedPart1 = !!(
     (timerChoice === true && testData.irradiationTime) ||
@@ -860,7 +874,7 @@ const ViewServiceReportCArm: React.FC = () => {
             {/* 1. Accuracy of Irradiation Time — only when unit has a timer */}
             {timerChoice === true && testData.irradiationTime && (
               <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
-                <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>1. Accuracy of Irradiation Time</h3>
+                <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>{detailedSec.irradiation}. Accuracy of Irradiation Time</h3>
                 {testData.irradiationTime.testConditions && (
                   <div className="mb-6 print:mb-1 bg-gray-50 p-4 print:p-1 rounded border overflow-x-auto" style={{ marginBottom: '4px', padding: '2px 4px' }}>
                     <p className="font-semibold mb-2 print:mb-0.5 print:text-xs" style={{ marginBottom: '2px', fontSize: '8px' }}>Test Conditions:</p>
@@ -953,7 +967,7 @@ const ViewServiceReportCArm: React.FC = () => {
             {/* 2. Accuracy of Operating Potential (from Total Filtration document) */}
             {testData.operatingPotential?.measurements?.length > 0 && (
               <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
-                <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>2. Accuracy of Operating Potential</h3>
+                <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>{detailedSec.operatingPotential}. Accuracy of Operating Potential</h3>
                 <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
                   <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
                     <thead className="bg-gray-100">
@@ -1040,7 +1054,7 @@ const ViewServiceReportCArm: React.FC = () => {
                   return (
                     <div className="rounded" style={{ padding: "4px 6px", marginTop: "4px" }}>
                       <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: "4px", fontSize: "12px" }}>
-                        3. Total Filtration
+                        {detailedSec.totalFiltration}. Total Filtration
                       </h3>
                       <table className="w-full border border-black text-sm compact-table" style={{ fontSize: "11px", borderCollapse: "collapse", borderSpacing: "0" }}>
                         <tbody>
@@ -1102,7 +1116,7 @@ const ViewServiceReportCArm: React.FC = () => {
             {/* 4. Linearity of mAs Loading — when timer is not present */}
             {showMasLinearity && testData.linearityOfMasLoading && (
               <div className="mb-4 test-section">
-                <TestSectionTitle num={4} title="Linearity of mAs Loading" />
+                <TestSectionTitle num={detailedSec.linearity} title="Linearity of mAs Loading" />
                 {testData.linearityOfMasLoading.table1 &&
                   (() => {
                     const t1 = Array.isArray(testData.linearityOfMasLoading.table1)
@@ -1336,7 +1350,7 @@ const ViewServiceReportCArm: React.FC = () => {
             {/* 4. Linearity of mA Loading — when timer is present */}
             {showMaLinearity && testData.linearityOfMaLoading && (
               <div className="mb-4 test-section">
-                <TestSectionTitle num={4} title="Linearity of mA Loading" />
+                <TestSectionTitle num={detailedSec.linearity} title="Linearity of mA Loading" />
                 {testData.linearityOfMaLoading.table1 &&
                   (() => {
                     const t1 = Array.isArray(testData.linearityOfMaLoading.table1)
@@ -1637,7 +1651,7 @@ const ViewServiceReportCArm: React.FC = () => {
             {/* 5. Consistency of Radiation Output */}
             {testData.outputConsistency && (
               <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
-                <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>5. Consistency of Radiation Output</h3>
+                <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>{detailedSec.consistency}. Consistency of Radiation Output</h3>
                 {testData.outputConsistency.outputRows?.length > 0 && (() => {
                   const oc = testData.outputConsistency;
                   const headers =
@@ -1760,7 +1774,7 @@ const ViewServiceReportCArm: React.FC = () => {
               return (
                 <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: "8px" }}>
                   <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: "4px", fontSize: "12px" }}>
-                    6. Low Contrast Resolution
+                    {detailedSec.lowContrast}. Low Contrast Resolution
                   </h3>
                   <div className="overflow-x-auto mb-6">
                     <table className="w-full border-2 border-black text-sm compact-table" style={{ fontSize: "11px", borderCollapse: "collapse" }}>
@@ -1805,7 +1819,7 @@ const ViewServiceReportCArm: React.FC = () => {
               return (
                 <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: "8px" }}>
                   <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: "4px", fontSize: "12px" }}>
-                    7. High Contrast Resolution
+                    {detailedSec.highContrast}. High Contrast Resolution
                   </h3>
                   <div className="overflow-x-auto mb-6">
                     <table className="w-full border-2 border-black text-sm compact-table" style={{ fontSize: "11px", borderCollapse: "collapse" }}>
@@ -1845,7 +1859,7 @@ const ViewServiceReportCArm: React.FC = () => {
             {/* 8. Exposure Rate at Table Top */}
             {testData.exposureRateTableTop && (
               <div className="mb-8 print:mb-2 print:break-inside-avoid test-section" style={{ marginBottom: '8px' }}>
-                <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>8. Exposure Rate at Table Top</h3>
+                <h3 className="text-xl font-bold mb-6 print:mb-1 print:text-sm" style={{ marginBottom: '4px', fontSize: '12px' }}>{detailedSec.exposureRate}. Exposure Rate at Table Top</h3>
                 {testData.exposureRateTableTop.rows?.length > 0 && (
                   <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
                     <table className="w-full border-2 border-black text-sm print:text-[9px] compact-table" style={{ fontSize: '11px', tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0' }}>
@@ -1939,7 +1953,7 @@ const ViewServiceReportCArm: React.FC = () => {
               if (!(leakageMeasurements.length > 0 || displayFcd || displayKv || displayMa)) return null;
               return (
                 <div className="mb-4 test-section" style={{ marginBottom: "8px" }}>
-                  <TestSectionTitle num={9} title="Radiation Leakage Level at 1m from Tube Housing" />
+                  <TestSectionTitle num={detailedSec.leakage} title="Radiation Leakage Level at 1m from Tube Housing" />
                   <div style={{ marginBottom: "12px" }}>
                     <p style={{ fontSize: "10px", fontWeight: "bold", marginBottom: "6px" }}>1. Operating Parameters</p>
                     <table style={{ ...tableStyle, width: "100%", maxWidth: "400px" }}>

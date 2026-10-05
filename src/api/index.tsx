@@ -8916,7 +8916,7 @@ export const updateTotalFiltrationForDentalIntra = async (testId: string, payloa
 export const addLinearityOfMaLoadingForDentalIntra = async (serviceId: string, payload: any) => {
     const token = Cookies.get("accessToken");
     const res = await api.post(
-        `/service-report/dental-intra/linearity-of-time/${serviceId}`,
+        `/service-report/dental-intra/linearity-of-ma-loading/${serviceId}`,
         payload,
         { headers: { Authorization: `Bearer ${token}` } }
     );
@@ -8927,7 +8927,7 @@ export const getLinearityOfMaLoadingByServiceIdForDentalIntra = async (serviceId
     const token = Cookies.get("accessToken");
     try {
         const res = await api.get(
-            `/service-report/dental-intra/linearity-of-time-by-service/${serviceId}`,
+            `/service-report/dental-intra/linearity-of-ma-loading-by-serviceId/${serviceId}`,
             { headers: { Authorization: `Bearer ${token}` } }
         );
         return res.data;
@@ -8940,7 +8940,7 @@ export const getLinearityOfMaLoadingByServiceIdForDentalIntra = async (serviceId
 export const getLinearityOfMaLoadingByTestIdForDentalIntra = async (testId: string) => {
     const token = Cookies.get("accessToken");
     const res = await api.get(
-        `/service-report/dental-intra/linearity-of-time/${testId}`,
+        `/service-report/dental-intra/linearity-of-ma-loading/${testId}`,
         { headers: { Authorization: `Bearer ${token}` } }
     );
     return res.data;
@@ -8949,7 +8949,7 @@ export const getLinearityOfMaLoadingByTestIdForDentalIntra = async (testId: stri
 export const updateLinearityOfMaLoadingForDentalIntra = async (testId: string, payload: any) => {
     const token = Cookies.get("accessToken");
     const res = await api.put(
-        `/service-report/dental-intra/linearity-of-time/${testId}`,
+        `/service-report/dental-intra/linearity-of-ma-loading/${testId}`,
         payload,
         { headers: { Authorization: `Bearer ${token}` } }
     );

@@ -183,9 +183,10 @@ const OArmContent: React.FC<OArmProps> = ({ serviceId, csvFileUrl, csvFileUrls }
         setDetails(detRes.data);
         const data = detRes.data;
         const firstTest = data.qaTests?.[0];
-        const srfDateStr = data.completedAt ? new Date(data.completedAt).toISOString().split("T")[0] : "";
         const testDateSource = firstTest?.qatestSubmittedAt || firstTest?.createdAt;
         const testDateStr = testDateSource ? new Date(testDateSource).toISOString().split("T")[0] : "";
+        const completedDateStr = data.completedAt ? new Date(data.completedAt).toISOString().split("T")[0] : "";
+        const srfDateStr = completedDateStr || testDateStr;
         let testDueDateStr = "";
         if (testDateStr) {
           const d = new Date(testDateStr);
@@ -295,7 +296,7 @@ const OArmContent: React.FC<OArmProps> = ({ serviceId, csvFileUrl, csvFileUrls }
             customerName: res.data.customerName || prev.customerName,
             address: res.data.address || prev.address,
             srfNumber: res.data.srfNumber || prev.srfNumber,
-            srfDate: res.data.srfDate || prev.srfDate,
+            srfDate: res.data.srfDate || prev.srfDate || res.data.testDate,
             reportULRNumber: res.data.reportULRNumber || prev.reportULRNumber,
             testReportNumber: res.data.testReportNumber || prev.testReportNumber,
             issueDate: res.data.issueDate || prev.issueDate,
@@ -355,20 +356,23 @@ const OArmContent: React.FC<OArmProps> = ({ serviceId, csvFileUrl, csvFileUrls }
   };
 
   const getUnsavedTestNames = async (): Promise<string[]> => {
-    const checks: { name: string; check: () => Promise<boolean> }[] = [
-      { name: "Total Filteration", check: async () => { try { return isSaved(await getTotalFilterationByServiceIdForOArm(serviceId)); } catch { return false; } } },
-      { name: "Consistency Of Radiation Output", check: async () => { try { return isSaved(await getOutputConsistencyByServiceIdForOArm(serviceId)); } catch { return false; } } },
-      { name: "High Contrast Resolution", check: async () => { try { return isSaved(await getHighContrastResolutionByServiceIdForOArm(serviceId)); } catch { return false; } } },
-      { name: "Low Contrast Resolution", check: async () => { try { return isSaved(await getLowContrastResolutionByServiceIdForOArm(serviceId)); } catch { return false; } } },
-      { name: "Exposure Rate At Table Top", check: async () => { try { return isSaved(await getExposureRateByServiceIdForOArm(serviceId)); } catch { return false; } } },
-      { name: "Tube Housing Leakage", check: async () => { try { return isSaved(await getTubeHousingLeakageByServiceIdForOArm(serviceId)); } catch { return false; } } },
-    ];
+    const checks: { name: string; check: () => Promise<boolean> }[] = [];
     if (hasTimer === true) {
       checks.push({ name: "Accuracy Of Irradiation Time", check: async () => { try { return isSaved(await getAccuracyOfIrradiationTimeByServiceIdForOArm(serviceId)); } catch { return false; } } });
+    }
+    checks.push({ name: "Accuracy of Operating Potential & Total Filtration", check: async () => { try { return isSaved(await getTotalFilterationByServiceIdForOArm(serviceId)); } catch { return false; } } });
+    if (hasTimer === true) {
       checks.push({ name: "Linearity Of mA Loading", check: async () => { try { return isSaved(await getLinearityOfMasLoadingStationByServiceIdForOArm(serviceId)); } catch { return false; } } });
     } else if (hasTimer === false) {
       checks.push({ name: "Linearity Of mAs Loading", check: async () => { try { return isSaved(await getLinearityOfMasLoadingStationByServiceIdForOArm(serviceId)); } catch { return false; } } });
     }
+    checks.push(
+      { name: "Consistency Of Radiation Output", check: async () => { try { return isSaved(await getOutputConsistencyByServiceIdForOArm(serviceId)); } catch { return false; } } },
+      { name: "Tube Housing Leakage", check: async () => { try { return isSaved(await getTubeHousingLeakageByServiceIdForOArm(serviceId)); } catch { return false; } } },
+      { name: "High Contrast Resolution", check: async () => { try { return isSaved(await getHighContrastResolutionByServiceIdForOArm(serviceId)); } catch { return false; } } },
+      { name: "Low Contrast Resolution", check: async () => { try { return isSaved(await getLowContrastResolutionByServiceIdForOArm(serviceId)); } catch { return false; } } },
+      { name: "Exposure Rate At Table Top", check: async () => { try { return isSaved(await getExposureRateByServiceIdForOArm(serviceId)); } catch { return false; } } },
+    );
     const results = await Promise.all(checks.map(async (c) => ({ name: c.name, saved: await c.check() })));
     return results.filter((r) => !r.saved).map((r) => r.name);
   };
@@ -1346,13 +1350,7 @@ const OArmContent: React.FC<OArmProps> = ({ serviceId, csvFileUrl, csvFileUrls }
 
         {[
           ...(hasTimer ? [{ title: "Accuracy of Irradiation Time", component: <AccuracyOfIrradiationTimeOArm serviceId={serviceId} csvData={csvDataForComponents['Accuracy of Irradiation Time']} /> }] : []),
-          { title: "Total Filtration", component: <TotalFilteration key={`total-filtration-${refreshKey}`} serviceId={serviceId} csvData={csvDataForComponents['Total Filtration']} csvDataVersion={csvDataVersion} /> },
-          { title: "Consistency Of Radiation Output", component: <OutputConsisitency key={`output-consistency-${refreshKey}`} serviceId={serviceId} csvData={csvDataForComponents['Output Consistency']} /> },
-          { title: "High Contrast Resolution", component: <HighContrastResolution key={`high-contrast-${refreshKey}`} serviceId={serviceId} csvData={csvDataForComponents['High Contrast Resolution']} /> },
-          { title: "Low Contrast Resolution", component: <LowContrastResolution key={`low-contrast-${refreshKey}`} serviceId={serviceId} csvData={csvDataForComponents['Low Contrast Resolution']} /> },
-          { title: "Exposure Rate At Table Top", component: <ExposureRateAtTableTop key={`exposure-rate-${refreshKey}`} serviceId={serviceId} csvData={csvDataForComponents['Exposure Rate At Table Top']} /> },
-          { title: "Tube Housing Leakage", component: <TubeHousingLeakage key={`tube-leakage-${refreshKey}`} serviceId={serviceId} csvData={csvDataForComponents['Tube Housing Leakage']} /> },
-
+          { title: "Accuracy of Operating Potential & Total Filtration", component: <TotalFilteration key={`total-filtration-${refreshKey}`} serviceId={serviceId} csvData={csvDataForComponents['Total Filtration']} csvDataVersion={csvDataVersion} /> },
           ...(hasTimer === true
             ? [{
               title: "Linearity Of mA Loading",
@@ -1374,6 +1372,11 @@ const OArmContent: React.FC<OArmProps> = ({ serviceId, csvFileUrl, csvFileUrls }
                 />,
               }]
               : []),
+          { title: "Consistency Of Radiation Output", component: <OutputConsisitency key={`output-consistency-${refreshKey}`} serviceId={serviceId} csvData={csvDataForComponents['Output Consistency']} /> },
+          { title: "Tube Housing Leakage", component: <TubeHousingLeakage key={`tube-leakage-${refreshKey}`} serviceId={serviceId} csvData={csvDataForComponents['Tube Housing Leakage']} /> },
+          { title: "High Contrast Resolution", component: <HighContrastResolution key={`high-contrast-${refreshKey}`} serviceId={serviceId} csvData={csvDataForComponents['High Contrast Resolution']} /> },
+          { title: "Low Contrast Resolution", component: <LowContrastResolution key={`low-contrast-${refreshKey}`} serviceId={serviceId} csvData={csvDataForComponents['Low Contrast Resolution']} /> },
+          { title: "Exposure Rate At Table Top", component: <ExposureRateAtTableTop key={`exposure-rate-${refreshKey}`} serviceId={serviceId} csvData={csvDataForComponents['Exposure Rate At Table Top']} /> },
         ].map((item, idx) => (
           <Disclosure key={idx} defaultOpen={idx === 0}>
             {({ open }) => (

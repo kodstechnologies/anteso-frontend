@@ -548,7 +548,7 @@ const AccuracyOfOperatingPotentialAndTime: React.FC<Props> = ({
   return (
     <div className="p-6 max-w-full space-y-8">
       <h2 className="text-xl font-semibold text-gray-800 border-b pb-4">
-        ACCURACY OF OPERATING POTENTIAL &amp; TIME
+        Accuracy of Operating Potential &amp; Time
       </h2>
 
       <div className="bg-white rounded-lg shadow-sm border overflow-hidden">

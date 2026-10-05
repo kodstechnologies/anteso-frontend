@@ -1612,7 +1612,7 @@ const ViewServiceReportCTScan: React.FC<ViewServiceReportCTScanProps> = ({
         {(survey.surveyDate || survey.hasValidCalibration) && (
           <div className="mb-6 print:mb-1" style={{ marginBottom: "4px" }}>
             <h4 className="text-lg font-semibold mb-4 print:mb-1 print:text-xs" style={{ marginBottom: "4px", fontSize: "10px" }}>
-              1. Survey Details
+              Survey Details
             </h4>
             <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: "4px" }}>
               <table className="w-full border-2 border-black text-sm compact-table" style={{ fontSize: "11px", borderCollapse: "collapse", borderSpacing: "0" }}>
@@ -1642,7 +1642,7 @@ const ViewServiceReportCTScan: React.FC<ViewServiceReportCTScanProps> = ({
         {(survey.appliedCurrent || survey.appliedVoltage || survey.exposureTime || survey.workload) && (
           <div className="mb-6 print:mb-1" style={{ marginBottom: "4px" }}>
             <h4 className="text-lg font-semibold mb-4 print:mb-1 print:text-xs" style={{ marginBottom: "4px", fontSize: "10px" }}>
-              2. Equipment Setting
+              Equipment Setting
             </h4>
             <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: "4px" }}>
               <table className="w-full border-2 border-black text-sm compact-table" style={{ fontSize: "11px", borderCollapse: "collapse", borderSpacing: "0" }}>
@@ -1666,7 +1666,7 @@ const ViewServiceReportCTScan: React.FC<ViewServiceReportCTScanProps> = ({
         {survey.locations?.length > 0 && (
           <div className="mb-6 print:mb-1" style={{ marginBottom: "4px" }}>
             <h4 className="text-lg font-semibold mb-4 print:mb-1 print:text-xs" style={{ marginBottom: "4px", fontSize: "10px" }}>
-              3. Measured Maximum Radiation Levels (mR/hr) at different Locations
+              Measured Maximum Radiation Levels (mR/hr) at different Locations
             </h4>
             <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: "4px" }}>
               <table className="w-full border-2 border-black text-sm compact-table" style={{ fontSize: "11px", borderCollapse: "collapse", borderSpacing: "0" }}>
@@ -1722,7 +1722,7 @@ const ViewServiceReportCTScan: React.FC<ViewServiceReportCTScanProps> = ({
       <div className="mb-4 test-section" style={{ marginBottom: "8px" }}>
         <div className="mb-6 print:mb-1" style={{ marginBottom: "4px" }}>
           <h4 className="text-lg font-semibold mb-4 print:mb-1 print:text-xs" style={{ marginBottom: "4px", fontSize: "10px" }}>
-            4. Calculation Formula
+            Calculation Formula
           </h4>
           <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: "4px" }}>
             <table className="w-full border-2 border-black text-sm compact-table" style={{ fontSize: "11px", borderCollapse: "collapse", borderSpacing: "0" }}>
@@ -1758,7 +1758,7 @@ const ViewServiceReportCTScan: React.FC<ViewServiceReportCTScanProps> = ({
           return (
             <div className="mb-6 print:mb-1" style={{ marginBottom: "4px" }}>
               <h4 className="text-lg font-semibold mb-4 print:mb-1 print:text-xs" style={{ marginBottom: "4px", fontSize: "10px" }}>
-                5. Summary of Maximum Radiation Level/week (mR/wk)
+                Summary of Maximum Radiation Level/week (mR/wk)
               </h4>
               <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: "4px" }}>
                 <table className="w-full border-2 border-black text-sm compact-table" style={{ fontSize: "11px", borderCollapse: "collapse", borderSpacing: "0" }}>
@@ -1834,7 +1834,7 @@ const ViewServiceReportCTScan: React.FC<ViewServiceReportCTScanProps> = ({
 
         <div className="mb-6 print:mb-1" style={{ marginBottom: "4px" }}>
           <h4 className="text-lg font-semibold mb-4 print:mb-1 print:text-xs" style={{ marginBottom: "4px", fontSize: "10px" }}>
-            6. Permissible Limit
+            Permissible Limit
           </h4>
           <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: "4px" }}>
             <table className="w-full border-2 border-black text-sm compact-table" style={{ fontSize: "11px", borderCollapse: "collapse", borderSpacing: "0" }}>

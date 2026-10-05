@@ -1911,7 +1911,7 @@ const ViewServiceReportFixedRadioFluro: React.FC<ViewServiceReportFixedRadioFlur
                 {/* 1. Survey Details */}
                 {(testData.radiationProtectionSurvey.surveyDate || testData.radiationProtectionSurvey.hasValidCalibration) && (
                   <div className="mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
-                    <h4 className="text-lg font-semibold mb-4 print:mb-1 print:text-xs" style={{ marginBottom: '4px', fontSize: '10px' }}>1. Survey Details</h4>
+                    <h4 className="text-lg font-semibold mb-4 print:mb-1 print:text-xs" style={{ marginBottom: '4px', fontSize: '10px' }}>Survey Details</h4>
                     <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
                       <table className="w-full border-2 border-black text-sm compact-table" style={{ fontSize: '11px', borderCollapse: 'collapse', borderSpacing: '0' }}>
                         <tbody>
@@ -1932,7 +1932,7 @@ const ViewServiceReportFixedRadioFluro: React.FC<ViewServiceReportFixedRadioFlur
                 {/* 2. Equipment Setting */}
                 {(testData.radiationProtectionSurvey.appliedCurrent || testData.radiationProtectionSurvey.appliedVoltage || testData.radiationProtectionSurvey.exposureTime || testData.radiationProtectionSurvey.workload) && (
                   <div className="mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
-                    <h4 className="text-lg font-semibold mb-4 print:mb-1 print:text-xs" style={{ marginBottom: '4px', fontSize: '10px' }}>2. Equipment Setting</h4>
+                    <h4 className="text-lg font-semibold mb-4 print:mb-1 print:text-xs" style={{ marginBottom: '4px', fontSize: '10px' }}>Equipment Setting</h4>
                     <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
                       <table className="w-full border-2 border-black text-sm compact-table" style={{ fontSize: '11px', borderCollapse: 'collapse', borderSpacing: '0' }}>
                         <tbody>
@@ -1961,7 +1961,7 @@ const ViewServiceReportFixedRadioFluro: React.FC<ViewServiceReportFixedRadioFlur
                 {/* 3. Measured Maximum Radiation Levels */}
                 {(testData.radiationProtectionSurvey.locations?.length > 0 || (testData.radiationProtectionSurvey.surveyRows && testData.radiationProtectionSurvey.surveyRows.length > 0)) && (
                   <div className="mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
-                    <h4 className="text-lg font-semibold mb-4 print:mb-1 print:text-xs" style={{ marginBottom: '4px', fontSize: '10px' }}>3. Measured Maximum Radiation Levels (mR/hr) at different Locations</h4>
+                    <h4 className="text-lg font-semibold mb-4 print:mb-1 print:text-xs" style={{ marginBottom: '4px', fontSize: '10px' }}>Measured Maximum Radiation Levels (mR/hr) at different Locations</h4>
                     <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
                       <table className="w-full border-2 border-black text-sm compact-table" style={{ fontSize: '11px', borderCollapse: 'collapse', borderSpacing: '0' }}>
                         <thead className="bg-gray-100">
@@ -2003,7 +2003,7 @@ const ViewServiceReportFixedRadioFluro: React.FC<ViewServiceReportFixedRadioFlur
               <div className="mb-4 test-section">
                 {/* 4. Calculation Formula */}
                 <div className="mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
-                  <h4 className="text-lg font-semibold mb-4 print:mb-1 print:text-xs" style={{ marginBottom: '4px', fontSize: '10px' }}>4. Calculation Formula</h4>
+                  <h4 className="text-lg font-semibold mb-4 print:mb-1 print:text-xs" style={{ marginBottom: '4px', fontSize: '10px' }}>Calculation Formula</h4>
                   <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
                     <table className="w-full border-2 border-black text-sm compact-table" style={{ fontSize: '11px', borderCollapse: 'collapse', borderSpacing: '0' }}>
                       <tbody>
@@ -2027,7 +2027,7 @@ const ViewServiceReportFixedRadioFluro: React.FC<ViewServiceReportFixedRadioFlur
                   const publicResult = parseFloat(maxPublicWeekly) > 0 && parseFloat(maxPublicWeekly) <= 2 ? "Pass" : parseFloat(maxPublicWeekly) > 2 ? "Fail" : "";
                   return (
                     <div className="mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
-                      <h4 className="text-lg font-semibold mb-4 print:mb-1 print:text-xs" style={{ marginBottom: '4px', fontSize: '10px' }}>5. Summary of Maximum Radiation Level/week (mR/wk)</h4>
+                      <h4 className="text-lg font-semibold mb-4 print:mb-1 print:text-xs" style={{ marginBottom: '4px', fontSize: '10px' }}>Summary of Maximum Radiation Level/week (mR/wk)</h4>
                       <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: '4px' }}>
                         <table className="w-full border-2 border-black text-sm compact-table" style={{ fontSize: '11px', borderCollapse: 'collapse', borderSpacing: '0' }}>
                           <thead className="bg-gray-100">

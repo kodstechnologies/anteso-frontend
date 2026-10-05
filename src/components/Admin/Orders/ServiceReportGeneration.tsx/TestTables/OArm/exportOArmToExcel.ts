@@ -153,8 +153,17 @@ export const createOArmUploadableExcel = (data: OArmExportData): XLSX.WorkBook =
       const outs = (r.outputs || []).map((o: any) => (typeof o === "object" ? o.value : o) ?? "");
       allData.push([r.kvp ?? r.kv ?? "", r.ma ?? r.mas ?? "", ...measHeaders.map((_: string, i: number) => outs[i] ?? "")]);
     });
-    allData.push(["Tolerance Operator", "<="]);
-    allData.push(["Tolerance Value (CoV)", oc.tolerance ?? "0.02"]);
+    const tolRaw = oc.tolerance;
+    const tolOp =
+      tolRaw && typeof tolRaw === "object"
+        ? tolRaw.operator || "<="
+        : oc.toleranceOperator || "<=";
+    const tolVal =
+      tolRaw && typeof tolRaw === "object"
+        ? tolRaw.value ?? "0.02"
+        : tolRaw ?? "0.02";
+    allData.push(["Tolerance Operator", tolOp]);
+    allData.push(["Tolerance Value (CoV)", tolVal]);
     addBlank();
   }
 

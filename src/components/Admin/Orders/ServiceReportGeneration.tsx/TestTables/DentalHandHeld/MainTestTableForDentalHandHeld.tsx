@@ -128,9 +128,39 @@ const MainTestTableForDentalHandHeld: React.FC<MainTestTableProps> = ({ testData
 
 
 
-  // 1. Accuracy of Operating Potential (kVp)
-  // Payload: { measurements: [{ appliedKvp, averageKvp, remarks }], tolerance: { value } }
-  if (testData.accuracyOfOperatingPotential?.measurements && Array.isArray(testData.accuracyOfOperatingPotential.measurements)) {
+  // 1. Accuracy of Operating Potential (kVp) — combined document (preferred)
+  if (testData.accuracyOfOperatingPotentialAndTime?.rows && Array.isArray(testData.accuracyOfOperatingPotentialAndTime.rows)) {
+    const validRows = testData.accuracyOfOperatingPotentialAndTime.rows.filter(
+      (row: any) => row.appliedKvp || row.avgKvp || row.setTime || row.avgTime
+    );
+    if (validRows.length > 0) {
+      const kvpToleranceSign = normalizePlusMinusSign(testData.accuracyOfOperatingPotentialAndTime.kvpToleranceSign);
+      const kvpToleranceValue = testData.accuracyOfOperatingPotentialAndTime.kvpToleranceValue || "2.0";
+      const kvpRows = validRows.map((row: any) => {
+        const appliedKvp = parseFloat(row.appliedKvp);
+        const avgKvp = parseFloat(row.avgKvp ?? row.averageKvp);
+        const tolKvp = parseFloat(kvpToleranceValue) || 0;
+        let isPass = false;
+        if (row.remark === "PASS" || row.remark === "Pass") isPass = true;
+        else if (row.remark === "FAIL" || row.remark === "Fail") isPass = false;
+        else if (!isNaN(appliedKvp) && !isNaN(avgKvp) && appliedKvp > 0) {
+          isPass =
+            kvpToleranceSign === "±"
+              ? Math.abs(avgKvp - appliedKvp) <= tolKvp
+              : kvpToleranceSign === "+"
+                ? avgKvp <= appliedKvp + tolKvp
+                : avgKvp >= appliedKvp - tolKvp;
+        }
+        return {
+          specified: row.appliedKvp || "-",
+          measured: row.avgKvp || row.averageKvp || "-",
+          tolerance: formatKvpAccuracyTolerance(kvpToleranceSign, kvpToleranceValue),
+          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
+        };
+      });
+      addRowsForTest("Accuracy of Operating Potential (kVp)", kvpRows);
+    }
+  } else if (testData.accuracyOfOperatingPotential?.measurements && Array.isArray(testData.accuracyOfOperatingPotential.measurements)) {
     const validRows = testData.accuracyOfOperatingPotential.measurements.filter((row: any) => row.appliedKvp || row.averageKvp);
     if (validRows.length > 0) {
       const toleranceValue =
@@ -202,7 +232,9 @@ const MainTestTableForDentalHandHeld: React.FC<MainTestTableProps> = ({ testData
   }
 
   {
-    const tfInner = testData.totalFilteration?.totalFiltration;
+    const tfInner =
+      testData.accuracyOfOperatingPotentialAndTime?.totalFiltration ||
+      testData.totalFilteration?.totalFiltration;
     if (tfInner && typeof tfInner === "object") {
       const measuredStr =
         tfInner.required ??
@@ -217,7 +249,9 @@ const MainTestTableForDentalHandHeld: React.FC<MainTestTableProps> = ({ testData
       const measuredDisplay = measuredStr !== "" && measuredStr != null ? String(measuredStr) : "-";
 
       if (atKvp !== "-" || measuredDisplay !== "-") {
-        const ft = testData.totalFilteration.filtrationTolerance || {
+        const ft =
+          testData.accuracyOfOperatingPotentialAndTime?.filtrationTolerance ||
+          testData.totalFilteration.filtrationTolerance || {
           forKvGreaterThan70: "1.5",
           forKvBetween70And100: "2.0",
           forKvGreaterThan100: "2.5",
@@ -365,109 +399,6 @@ const MainTestTableForDentalHandHeld: React.FC<MainTestTableProps> = ({ testData
     if (validRows.length > 0) {
       addLinearityOfMaLoadingSummary(lob, validRows, "Linearity of mA Loading (Coefficient of Linearity)");
       addedMaLinearityFromMaLoading = true;
-    }
-  }
-
-  // RadiographyFixed (hasTimer): mA linearity is read from linearityOfMasLoading rows with mAsApplied only
-  if (
-    hasTimer &&
-    !addedMaLinearityFromMaLoading &&
-    testData.linearityOfMasLoading?.table2 &&
-    Array.isArray(testData.linearityOfMasLoading.table2)
-  ) {
-    const masLob = testData.linearityOfMasLoading;
-    const maRows = masLob.table2.filter((row: any) => row.mAsApplied);
-    if (maRows.length > 0) {
-      addLinearityOfMaLoadingSummary(masLob, maRows, "Linearity of mA Loading (Coefficient of Linearity)");
-      addedMaLinearityFromMaLoading = true;
-    }
-  }
-
-  // Linearity of mA/mAs loading — RadiographyFixed (single block: mAsApplied only; label from hasTimer)
-  if (testData.linearityOfMasLoading?.table2 && Array.isArray(testData.linearityOfMasLoading.table2)) {
-    const linearityLabel = hasTimer
-      ? "Linearity of mA Loading (Coefficient of Linearity)"
-      : "Linearity of mAs Loading (Coefficient of Linearity)";
-
-    const lob = testData.linearityOfMasLoading;
-    const validRows = lob.table2.filter((row: any) => row.mAsApplied);
-    if (validRows.length > 0 && !(hasTimer && addedMaLinearityFromMaLoading)) {
-      const tolerance = linearityToleranceValue(lob.tolerance, "0.1");
-      const toleranceOperator = linearityToleranceOperator(lob.tolerance, lob.toleranceOperator, "<=");
-
-      const getVal = (o: any): number => {
-        if (o == null) return NaN;
-        if (typeof o === "number") return o;
-        if (typeof o === "string") return parseFloat(o);
-        if (typeof o === "object" && "value" in o) return parseFloat((o as { value?: unknown }).value as string);
-        return NaN;
-      };
-
-      let colValue = lob.col || lob.coefficient || lob.colValue;
-      const parsedStoredCol = parseFloat(String(colValue));
-      if (!colValue || isNaN(parsedStoredCol)) {
-        const xValues: number[] = [];
-        validRows.forEach((row: any) => {
-          const outputs = (row.measuredOutputs ?? [])
-            .map(getVal)
-            .filter((v: number) => !isNaN(v) && v > 0);
-          const avg =
-            outputs.length > 0 ? outputs.reduce((a: number, b: number) => a + b, 0) / outputs.length : null;
-
-          const mAsLabel = String(row.mAsApplied ?? row.mAsRange ?? "");
-          const match = mAsLabel.match(/(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)/);
-          const midMas = match
-            ? (parseFloat(match[1]) + parseFloat(match[2])) / 2
-            : parseFloat(mAsLabel) || 0;
-
-          if (avg !== null && midMas > 0) {
-            const xVal = avg / midMas;
-            if (isFinite(xVal)) xValues.push(xVal);
-          }
-        });
-
-        if (xValues.length > 0) {
-          const xMax = Math.max(...xValues);
-          const xMin = Math.min(...xValues);
-          if (xMax + xMin > 0) {
-            colValue = Math.abs(xMax - xMin) / (xMax + xMin);
-          }
-        }
-      }
-
-      const colRaw = parseFloat(String(colValue));
-      const col = !isNaN(colRaw) && isFinite(colRaw) ? colRaw.toFixed(3) : "-";
-
-      let isPass = lob.remarks === "Pass" || lob.remarks === "PASS";
-      if (!isPass && col !== "-") {
-        const c = parseFloat(col);
-        const t = parseFloat(String(tolerance));
-        if (toleranceOperator === "<=") isPass = c <= t;
-        else if (toleranceOperator === "<") isPass = c < t;
-        else if (toleranceOperator === ">=") isPass = c >= t;
-        else if (toleranceOperator === ">") isPass = c > t;
-      }
-
-      const tableLevelKv =
-        lob?.kv ??
-        lob?.kV ??
-        lob?.setKv ??
-        lob?.setKV ??
-        (Array.isArray(lob?.table1) ? lob?.table1?.[0]?.kv : lob?.table1?.kv);
-
-      const firstRow = validRows[0] || {};
-      const kvValue = asDisplayNumber(
-        firstRow.kv ?? firstRow.kV ?? firstRow.setKV ?? firstRow.setKv ?? tableLevelKv
-      );
-      const testRows = [
-        {
-          specified: kvValue ? `at ${kvValue} kV` : "-",
-          measured: formatCoefficientOfLinearityMeasured(col),
-          tolerance: `${toleranceOperator} ${tolerance}`,
-          remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
-        },
-      ];
-      addRowsForTest(linearityLabel, testRows);
     }
   }
 

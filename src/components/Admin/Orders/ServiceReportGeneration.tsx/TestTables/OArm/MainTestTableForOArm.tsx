@@ -466,6 +466,7 @@ const MainTestTableForOArm: React.FC<MainTestTableProps> = ({ testData, hasTimer
           else if (toleranceOperator === "<") isPass = cv < tol;
           else if (toleranceOperator === ">=") isPass = cv >= tol;
           else if (toleranceOperator === ">") isPass = cv > tol;
+          else if (toleranceOperator === "=") isPass = Math.abs(cv - tol) < 0.0001;
         }
 
         const kvValue = asDisplayNumber(row.kv ?? row.kV ?? row.kvp ?? row.setKV ?? row.setKv ?? tableLevelKv);
@@ -488,7 +489,7 @@ const MainTestTableForOArm: React.FC<MainTestTableProps> = ({ testData, hasTimer
 
         return {
           specified: specifiedDisplay,
-          measured: formattedCv !== "-" ? "CoV = " + formattedCv : "-",
+          measured: formattedCv !== "-" ? " " + formattedCv : "-",
           tolerance: `${toleranceOperator} ${toleranceValue}`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };

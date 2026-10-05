@@ -18,20 +18,21 @@ import { getDetails, getAssignedToolsForEngineerByMachine, saveReportHeaderForDe
 
 // Test-table imports
 import AccuracyOfOperatingPotentialAndTime from "./AccuracyOfOperatingPotentialAndTime";
+import LinearityOfTime from "./LinearityOfTime";
 import LinearityOfmALoading from "./LinearityOfmALoading"
-import LinearityOfMasLoading from "./LinearityOfMasLoading";
 import ConsistencyOfRadiationOutput from "./ConsistencyOfRadiationOutput";
 import RadiationLeakageLevel from "./RadiationLeakageLevel";
 import DetailsOfRadiationProtection from "./DetailsOfRadiationProtection";
 
 import { createDentalIntraUploadableExcel, DentalIntraExportData } from "./exportDentalIntraToExcel";
+import { createDentalIntraImportTemplateWorkbook } from "./exportDentalIntraTemplate";
 import { isExcelFileUrl, resolvePrefillSpreadsheetUrls } from "../../../../../../utils/spreadsheetFile";
 import { normalizeCsvComparisonOperator } from "../shared/parseRadiographyStyleTableFormat";
 import { TestExportRegistryProvider, useTestExportRegistry } from "../shared/TestExportRegistry";
 import {
     getAccuracyOfOperatingPotentialAndTimeByServiceIdForDentalIntra,
+    getLinearityOfTimeByServiceIdForDentalIntra,
     getLinearityOfMaLoadingByServiceIdForDentalIntra,
-    getLinearityOfMasLoadingByServiceIdForDentalIntra,
     getConsistencyOfRadiationOutputByServiceIdForDentalIntra,
     getRadiationLeakageLevelByServiceIdForDentalIntra,
     getRadiationProtectionSurveyByServiceIdForDentalIntra
@@ -295,7 +296,6 @@ const GenerateReportForDentalContent: React.FC<DentalProps> = ({ serviceId, qaTe
                         AccuracyOfIrradiationTimeDentalIntra: combinedId,
                         LinearityOfTimeDentalIntra: res.data.LinearityOfTimeDentalIntra?._id || res.data.LinearityOfTimeDentalIntra,
                         LinearityOfMaLoadingDentalIntra: res.data.LinearityOfMaLoadingDentalIntra?._id || res.data.LinearityOfMaLoadingDentalIntra,
-                        LinearityOfmAsLoadingDentalIntra: res.data.LinearityOfmAsLoadingDentalIntra?._id || res.data.LinearityOfmAsLoadingDentalIntra,
                         ConsistencyOfRadiationOutputDentalIntra: res.data.ConsistencyOfRadiationOutputDentalIntra?._id || res.data.ConsistencyOfRadiationOutputDentalIntra,
                         ReproducibilityOfRadiationOutputDentalIntra: res.data.ReproducibilityOfRadiationOutputDentalIntra?._id || res.data.ReproducibilityOfRadiationOutputDentalIntra,
                         RadiationLeakageLevelDentalIntra: res.data.RadiationLeakageLevelDentalIntra?._id || res.data.RadiationLeakageLevelDentalIntra,
@@ -332,7 +332,7 @@ const GenerateReportForDentalContent: React.FC<DentalProps> = ({ serviceId, qaTe
     const getUnsavedTestNames = async (): Promise<string[]> => {
         const checks: { name: string; check: () => Promise<boolean> }[] = [
             { name: "Accuracy Of Operating Potential & Time", check: async () => { try { return isSaved(await getAccuracyOfOperatingPotentialAndTimeByServiceIdForDentalIntra(serviceId)); } catch { return false; } } },
-            { name: "Linearity Of mAs Loading", check: async () => { try { return isSaved(await getLinearityOfMasLoadingByServiceIdForDentalIntra(serviceId)); } catch { return false; } } },
+            { name: "Linearity Of Time", check: async () => { try { return isSaved(await getLinearityOfTimeByServiceIdForDentalIntra(serviceId)); } catch { return false; } } },
             { name: "Linearity Of mA Loading", check: async () => { try { return isSaved(await getLinearityOfMaLoadingByServiceIdForDentalIntra(serviceId)); } catch { return false; } } },
             { name: "Consistency Of Radiation Output", check: async () => { try { return isSaved(await getConsistencyOfRadiationOutputByServiceIdForDentalIntra(serviceId)); } catch { return false; } } },
             { name: "Radiation Leakage Level", check: async () => { try { return isSaved(await getRadiationLeakageLevelByServiceIdForDentalIntra(serviceId)); } catch { return false; } } },
@@ -497,6 +497,7 @@ const GenerateReportForDentalContent: React.FC<DentalProps> = ({ serviceId, qaTe
             },
             'linearityOfMaLoading': {
                 'mA Station': 'mA_Station',
+                'mA': 'mA_Station',
                 'Measured mR 1': 'Measured_0', 'Measured mR 2': 'Measured_1', 'Measured mR 3': 'Measured_2', 'Measured mR 4': 'Measured_3', 'Measured mR 5': 'Measured_4',
                 'kV': 'kV', 'Time': 'time', 'FCD': 'FCD', 'FDD': 'FCD', 'FDD (cm)': 'FCD',
                 'Tolerance Operator': 'Tolerance_Operator', 'tolerance operator': 'Tolerance_Operator',
@@ -517,6 +518,7 @@ const GenerateReportForDentalContent: React.FC<DentalProps> = ({ serviceId, qaTe
             },
             'LinearityOfTime': {
                 'FCD': 'FCD', 'FDD': 'FCD', 'FDD (cm)': 'FCD', 'kV': 'kV', 'mA': 'mA',
+                'Time': 'time',
                 'Time Station (sec)': 'time',
                 'Measured mR 1': 'Measured_0', 'Measured mR 2': 'Measured_1', 'Measured mR 3': 'Measured_2',
             },
@@ -587,7 +589,7 @@ const GenerateReportForDentalContent: React.FC<DentalProps> = ({ serviceId, qaTe
                 'Tolerance Sign', 'Tolerance Value (kVp)', 'Tolerance Value', 'Tolerance',
             ]),
             linearityOfMaLoading: new Set([
-                'mA Station', 'kV', 'Time', 'FCD', 'FDD', 'FDD (cm)',
+                'mA Station', 'mA', 'kV', 'Time', 'FCD', 'FDD', 'FDD (cm)',
                 'Measured mR 1', 'Measured mR 2', 'Measured mR 3', 'Measured mR 4', 'Measured mR 5',
                 'Tolerance Operator', 'tolerance operator', 'Tol Operator', 'tol operator',
                 'Tolerance Sign', 'tolerance sign',
@@ -922,6 +924,12 @@ const GenerateReportForDentalContent: React.FC<DentalProps> = ({ serviceId, qaTe
         }
     };
 
+    const handleDownloadImportTemplate = () => {
+        const wb = createDentalIntraImportTemplateWorkbook();
+        XLSX.writeFile(wb, "DentalIntra_Test_Data_Import_Template.xlsx");
+        toast.success("Import template downloaded");
+    };
+
     const handleExportToExcel = async () => {
         if (!serviceId) {
             toast.error("Invalid Service ID");
@@ -950,7 +958,17 @@ const GenerateReportForDentalContent: React.FC<DentalProps> = ({ serviceId, qaTe
                 } catch (err) { console.log("AccuracyOfOperatingPotentialAndTime data not found"); }
             }
 
-            // 2. Linearity of mA / mAs Loading
+            // 2. Linearity of Time
+            if (pageData.LinearityOfTime != null || pageData.linearityOfTime != null) {
+                exportData.linearityOfTime = pageData.LinearityOfTime || pageData.linearityOfTime;
+            } else {
+                try {
+                    const res = await getLinearityOfTimeByServiceIdForDentalIntra(serviceId);
+                    if (res?.data) exportData.linearityOfTime = res.data;
+                } catch (err) { console.log("LinearityOfTime data not found"); }
+            }
+
+            // 3. Linearity of mA Loading
             if (pageData.linearityOfMaLoading != null) {
                 exportData.linearityOfMaLoading = pageData.linearityOfMaLoading;
             } else {
@@ -959,16 +977,8 @@ const GenerateReportForDentalContent: React.FC<DentalProps> = ({ serviceId, qaTe
                     if (res?.data) exportData.linearityOfMaLoading = res.data;
                 } catch (err) { console.log("LinearityOfMaLoading data not found"); }
             }
-            if (pageData.linearityOfMasLoading != null) {
-                exportData.linearityOfMasLoading = pageData.linearityOfMasLoading;
-            } else {
-                try {
-                    const res = await getLinearityOfMasLoadingByServiceIdForDentalIntra(serviceId);
-                    if (res?.data) exportData.linearityOfMasLoading = res.data;
-                } catch (err) { console.log("LinearityOfMasLoading data not found"); }
-            }
 
-            // 3. Consistency of Radiation Output
+            // 4. Consistency of Radiation Output
             if (pageData.consistencyOfRadiationOutput != null) {
                 exportData.consistencyOfRadiationOutput = pageData.consistencyOfRadiationOutput;
             } else {
@@ -1091,6 +1101,13 @@ const GenerateReportForDentalContent: React.FC<DentalProps> = ({ serviceId, qaTe
                         {csvUploading ? "Uploading..." : "Import Excel Data"}
                     </button>
                 </div>
+                <button
+                    type="button"
+                    onClick={handleDownloadImportTemplate}
+                    className="px-6 py-2 bg-gray-600 text-white font-semibold rounded-lg hover:bg-gray-700 transition shadow"
+                >
+                    Download Import Template
+                </button>
                 <button
                     type="button"
                     onClick={handleExportToExcel}
@@ -1300,7 +1317,7 @@ const GenerateReportForDentalContent: React.FC<DentalProps> = ({ serviceId, qaTe
 
                 {[
                     {
-                        title: "ACCURACY OF OPERATING POTENTIAL & TIME",
+                        title: "Accuracy of Operating Potential & Time",
                         component: <AccuracyOfOperatingPotentialAndTime
                             serviceId={serviceId}
                             testId={savedTestIds.AccuracyOfOperatingPotentialAndTimeDentalIntra || savedTestIds.AccuracyOfOperatingPotentialDentalIntra || null}
@@ -1318,12 +1335,11 @@ const GenerateReportForDentalContent: React.FC<DentalProps> = ({ serviceId, qaTe
                         />
                     },
                     {
-                        title: "Linearity Of mAs Loading",
-                        component: <LinearityOfMasLoading
+                        title: "Linearity Of Time",
+                        component: <LinearityOfTime
                             serviceId={serviceId}
-                            testId={savedTestIds.LinearityOfmAsLoadingDentalIntra || null}
-                            onTestSaved={(id) => setSavedTestIds(prev => ({ ...prev, LinearityOfmAsLoadingDentalIntra: id }))}
-                            csvData={csvDataForComponents['linearityOfMasLoading']}
+                            testId={savedTestIds.LinearityOfTimeDentalIntra || undefined}
+                            csvData={csvDataForComponents['LinearityOfTime']}
                         />,
                     },
                     {

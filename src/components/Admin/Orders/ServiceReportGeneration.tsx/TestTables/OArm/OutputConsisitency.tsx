@@ -32,6 +32,22 @@ interface Props {
   csvData?: any[];
 }
 
+const passesTolerance = (cov: number, tol: number, operator: string) => {
+  switch (operator) {
+    case '<':
+      return cov < tol;
+    case '>':
+      return cov > tol;
+    case '>=':
+      return cov >= tol;
+    case '=':
+      return Math.abs(cov - tol) < 0.0001;
+    case '<=':
+    default:
+      return cov <= tol;
+  }
+};
+
 const OutputConsistencyForOArm: React.FC<Props> = ({
   serviceId,
   testId: propTestId = null,
@@ -64,11 +80,12 @@ const OutputConsistencyForOArm: React.FC<Props> = ({
   ]);
 
   const [headers, setHeaders] = useState<string[]>(INITIAL_HEADERS);
-  const [tolerance, setTolerance] = useState<string>('0.02'); // Decimal: 2% = 0.02
+  const [tolerance, setTolerance] = useState<string>('0.05'); // Decimal: 2% = 0.02
+  const [toleranceOperator, setToleranceOperator] = useState<string>('<');
 
   // Auto-calculate Mean, COV (decimal), and Remark per row
   const processedRows = useMemo(() => {
-    const tol = parseFloat(tolerance) || 0.02;
+    const tol = parseFloat(tolerance) || 0.05;
 
     return outputRows.map(row => {
       const nums = row.outputs
@@ -87,7 +104,7 @@ const OutputConsistencyForOArm: React.FC<Props> = ({
         cov = Math.sqrt(variance) / mean;
       }
 
-      const remark = cov <= tol ? 'Pass' : 'Fail';
+      const remark = passesTolerance(cov, tol, toleranceOperator) ? 'Pass' : 'Fail';
 
       return {
         ...row,
@@ -96,7 +113,7 @@ const OutputConsistencyForOArm: React.FC<Props> = ({
         remark,
       };
     });
-  }, [outputRows, tolerance]);
+  }, [outputRows, tolerance, toleranceOperator]);
 
   // Final Result (overall)
   const finalRemark = useMemo(() => {
@@ -155,7 +172,14 @@ const OutputConsistencyForOArm: React.FC<Props> = ({
               remark: '',
             }]
           );
-          setTolerance(data.tolerance || '0.02');
+          const tolRaw = data.tolerance;
+          if (tolRaw && typeof tolRaw === 'object') {
+            setTolerance(String(tolRaw.value ?? '0.02'));
+            setToleranceOperator(String(tolRaw.operator || '<='));
+          } else {
+            setTolerance(tolRaw != null && tolRaw !== '' ? String(tolRaw) : '0.02');
+            setToleranceOperator(String(data.toleranceOperator || '<='));
+          }
           setIsSaved(true);
         } else {
           // Reset to initial state with 5 columns
@@ -194,6 +218,7 @@ const OutputConsistencyForOArm: React.FC<Props> = ({
         if (field === 'Param_FFD' && val) setParameters(p => ({ ...p, ffd: String(val) }));
         if (field === 'Param_Time' && val) setParameters(p => ({ ...p, time: String(val) }));
         if (field === 'Tolerance_Value' && val) setTolerance(String(val));
+        if (field === 'Tolerance_Operator' && val) setToleranceOperator(String(val));
         if (field?.startsWith('Header_')) {
           const idx = parseInt(field.replace('Header_', ''), 10) - 1;
           while (h.length <= idx) h.push(`Meas ${h.length + 1}`);
@@ -283,7 +308,10 @@ const OutputConsistencyForOArm: React.FC<Props> = ({
         remark: row.remark || "",
       })),
       measurementHeaders: headers,
-      tolerance: tolerance.trim(),
+      tolerance: {
+        operator: toleranceOperator,
+        value: tolerance.trim(),
+      },
     };
 
     try {
@@ -538,10 +566,22 @@ const OutputConsistencyForOArm: React.FC<Props> = ({
       {/* Tolerance & Final Result */}
       <div className="bg-white shadow-md rounded-lg p-6 max-w-md">
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          Tolerance (COV Less than or equal to)
+          Tolerance (COV)
         </label>
         <div className="flex items-center gap-3 mb-4">
-          <span className="text-sm text-gray-600">Less than or equal to</span>
+          <span className="text-sm text-gray-600">COV</span>
+          <select
+            value={toleranceOperator}
+            onChange={(e) => setToleranceOperator(e.target.value)}
+            disabled={isViewMode}
+            className={`px-3 py-2 border rounded-md text-sm font-medium focus:outline-none focus:ring-2 focus:ring-teal-500 ${isViewMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+          >
+            <option value="<">&lt;</option>
+            <option value="<=">&lt;=</option>
+            <option value=">">&gt;</option>
+            <option value=">=">&gt;=</option>
+            <option value="=">=</option>
+          </select>
           <input
             type="text"
             value={tolerance}

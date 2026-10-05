@@ -41,7 +41,7 @@ export default function AccuracyOfIrradiationTimeOArm({ serviceId, csvData, onRe
 
   const [table1Row, setTable1Row] = useState({ fcd: '', kv: '', ma: '' });
   const [table2Rows, setTable2Rows] = useState<Table2Row[]>([{ id: '1', setTime: '', measuredTime: '' }]);
-  const [toleranceOperator, setToleranceOperator] = useState('<=');
+  const [toleranceOperator, setToleranceOperator] = useState('<');
   const [toleranceValue, setToleranceValue] = useState('10');
 
   // Load saved data

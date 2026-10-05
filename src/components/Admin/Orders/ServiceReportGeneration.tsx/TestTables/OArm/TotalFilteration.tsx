@@ -376,7 +376,7 @@ const TotalFilteration: React.FC<TotalFilterationProps> = ({
                 <div className="bg-white shadow-lg rounded-lg overflow-hidden border border-gray-200">
                     <div className="px-6 py-4 bg-blue-50 border-b border-gray-300">
                         <h3 className="text-xl font-bold text-blue-900">
-                            Accuracy of kVp at Different mA Stations
+                            Accuracy of Operating Potential
                         </h3>
                     </div>
 

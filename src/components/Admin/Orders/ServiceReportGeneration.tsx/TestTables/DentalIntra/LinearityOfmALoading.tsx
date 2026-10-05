@@ -219,13 +219,13 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
           setTable1Row({
             fcd: data.table1?.fcd || '',
             kv: data.table1?.kv || '',
-            time: data.table1?.ma || '', // Map backend ma to frontend time
+            time: data.table1?.time || data.table1?.ma || '',
           });
           if (Array.isArray(data.table2) && data.table2.length > 0) {
             setTable2Rows(
               data.table2.map((r: any, i: number) => ({
                 id: String(i + 1),
-                ma: r.time || '', // Map backend time to frontend ma
+                ma: r.ma || r.time || '',
                 measuredOutputs: (r.measuredOutputs || []).map((v: any) => (v != null ? String(v) : '')),
                 average: r.average || '',
                 x: r.x || '',
@@ -362,10 +362,10 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
         table1: {
           fcd: table1Row.fcd,
           kv: table1Row.kv,
-          ma: table1Row.time, // Map frontend time to backend ma
+          time: table1Row.time,
         },
         table2: processedTable2.map(r => ({
-          time: r.ma, // Map frontend ma to backend time
+          ma: r.ma,
           measuredOutputs: r.measuredOutputs.map(v => {
             const val = v.trim();
             return val === '' ? '' : val;
@@ -403,6 +403,7 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
 
       if (currentTestId) {
         result = await updateLinearityOfMaLoadingForDentalIntra(currentTestId, payload);
+        onTestSaved?.(currentTestId);
         toast.success('Updated successfully!');
       } else {
         result = await addLinearityOfMaLoadingForDentalIntra(serviceId, payload);
@@ -443,11 +444,9 @@ const LinearityOfMaLoading: React.FC<Props> = ({ serviceId, testId: propTestId, 
       table1: {
         fcd: table1Row.fcd,
         kv: table1Row.kv,
-        ma: table1Row.time,
         time: table1Row.time,
       },
       table2: processedTable2.map((r) => ({
-        time: r.ma,
         ma: r.ma,
         measuredOutputs: r.measuredOutputs.map((v) => {
           const val = v.trim();

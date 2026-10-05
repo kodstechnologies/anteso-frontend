@@ -1047,7 +1047,7 @@ const ViewServiceReportOBI: React.FC<ViewServiceReportOBIProps> = ({
 
         <div className="mb-6 print:mb-1" style={{ marginBottom: "4px" }}>
           <h4 className="text-lg font-semibold mb-4 print:mb-1 print:text-xs" style={{ marginBottom: "4px", fontSize: "10px" }}>
-            1. Survey Details
+            Survey Details
           </h4>
           <div className="overflow-x-auto">
             <table className="w-full border-2 border-black text-sm print:text-[10px] compact-table" style={{ fontSize: "11px", borderCollapse: "collapse", borderSpacing: "0" }}>
@@ -1075,7 +1075,7 @@ const ViewServiceReportOBI: React.FC<ViewServiceReportOBIProps> = ({
 
         <div className="mb-6 print:mb-1" style={{ marginBottom: "4px" }}>
           <h4 className="text-lg font-semibold mb-4 print:mb-1 print:text-xs" style={{ marginBottom: "4px", fontSize: "10px" }}>
-            2. Equipment Setting
+            Equipment Setting
           </h4>
           <div className="overflow-x-auto">
             <table className="w-full border-2 border-black text-sm print:text-[10px] compact-table" style={{ fontSize: "11px", borderCollapse: "collapse", borderSpacing: "0" }}>
@@ -1103,7 +1103,7 @@ const ViewServiceReportOBI: React.FC<ViewServiceReportOBIProps> = ({
         {survey.locations?.length > 0 && (
           <div className="mb-6 print:mb-1">
             <h4 className="text-lg print:text-sm font-semibold mb-4 print:mb-1" style={{ fontSize: "11px", marginBottom: "4px" }}>
-              3. Measured Maximum Radiation Levels (mR/hr) at different Locations
+              Measured Maximum Radiation Levels (mR/hr) at different Locations
             </h4>
             <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: "4px" }}>
               <table className="w-full border-2 border-black text-sm print:text-[10px] compact-table" style={{ fontSize: "11px", borderCollapse: "collapse", borderSpacing: "0" }}>
@@ -1174,7 +1174,7 @@ const ViewServiceReportOBI: React.FC<ViewServiceReportOBIProps> = ({
       <div className="mb-4 test-section" style={{ marginBottom: "8px" }}>
         <div className="mb-6 print:mb-1" style={{ marginBottom: "4px" }}>
           <h4 className="text-lg font-semibold mb-4 print:mb-1 print:text-xs" style={{ marginBottom: "4px", fontSize: "10px" }}>
-            4. Calculation Formula
+            Calculation Formula
           </h4>
           <div className="overflow-x-auto mb-6 print:mb-1" style={{ marginBottom: "4px" }}>
             <table className="w-full border-2 border-black text-sm compact-table" style={{ fontSize: "11px", borderCollapse: "collapse", borderSpacing: "0" }}>
@@ -1192,7 +1192,7 @@ const ViewServiceReportOBI: React.FC<ViewServiceReportOBIProps> = ({
         {survey.locations?.length > 0 && (
           <>
             <h4 className="text-lg font-semibold mb-4 print:mb-1 print:text-xs" style={{ marginBottom: "4px", fontSize: "11px" }}>
-              5. Summary of Maximum Radiation Level/week
+              Summary of Maximum Radiation Level/week
             </h4>
             <div className="grid grid-cols-2 gap-4 mb-6 print:mb-1" style={{ marginBottom: "4px" }}>
               <div className="bg-blue-50/50 p-4 print:p-1 rounded border border-blue-100 flex items-center justify-between" style={{ padding: "4px 6px" }}>
@@ -1248,7 +1248,7 @@ const ViewServiceReportOBI: React.FC<ViewServiceReportOBIProps> = ({
 
         <div className="mb-6 print:mb-1" style={{ marginBottom: "4px" }}>
           <h4 className="text-lg font-semibold mb-4 print:mb-1 print:text-[10px]" style={{ marginBottom: "2px", fontSize: "11px" }}>
-            6. Permissible Limit
+            Permissible Limit
           </h4>
           <div className="overflow-x-auto">
             <table className="w-full border-2 border-black text-sm print:text-[10px] compact-table" style={{ fontSize: "11px", borderCollapse: "collapse", borderSpacing: "0" }}>

@@ -229,92 +229,41 @@ const MainTestTableForDentalIntra: React.FC<MainTestTableProps> = ({ testData })
     }
   }
 
-  // Linearity of mAs loading (Coefficient of Linearity) — RadiographyFixed pattern (table2 + CoL + kV in specified)
-  if (testData.linearityOfMasLoading?.table2 && Array.isArray(testData.linearityOfMasLoading.table2)) {
-    const linearityLabel = "Linearity of mAs loading (Coefficient of Linearity)";
-    const validRows = testData.linearityOfMasLoading.table2.filter((row: any) => row.mAsApplied || row.mAsRange || row.ma);
+  // Linearity of mA Loading (Coefficient of Linearity)
+  if (testData.linearityOfMaLoading?.table2 && Array.isArray(testData.linearityOfMaLoading.table2)) {
+    const validRows = testData.linearityOfMaLoading.table2.filter((row: any) => row.ma || row.time);
     if (validRows.length > 0) {
-      const tolerance = testData.linearityOfMasLoading.tolerance || "0.1";
-      const toleranceOperator = testData.linearityOfMasLoading.toleranceOperator || "<=";
-
-      const getVal = (o: any): number => {
-        if (o == null) return NaN;
-        if (typeof o === "number") return o;
-        if (typeof o === "string") return parseFloat(o);
-        if (typeof o === "object" && "value" in o) return parseFloat((o as any).value);
-        return NaN;
-      };
-
-      let colValue =
-        testData.linearityOfMasLoading.col ||
-        testData.linearityOfMasLoading.coefficient ||
-        testData.linearityOfMasLoading.colValue;
-      const parsedStoredCol = parseFloat(String(colValue));
-      if (!colValue || isNaN(parsedStoredCol)) {
-        const xValues: number[] = [];
-        validRows.forEach((row: any) => {
-          const outputs = (row.measuredOutputs ?? [])
-            .map(getVal)
-            .filter((v: number) => !isNaN(v) && v > 0);
-          const avg =
-            outputs.length > 0 ? outputs.reduce((a: number, b: number) => a + b, 0) / outputs.length : null;
-
-          const mAsLabel = String(row.mAsApplied ?? row.mAsRange ?? row.ma ?? "");
-          const match = mAsLabel.match(/(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)/);
-          const midMas = match ? (parseFloat(match[1]) + parseFloat(match[2])) / 2 : parseFloat(mAsLabel) || 0;
-
-          if (avg !== null && midMas > 0) {
-            const xVal = avg / midMas;
-            if (isFinite(xVal)) xValues.push(xVal);
-          }
-        });
-
-        if (xValues.length > 0) {
-          const xMax = Math.max(...xValues);
-          const xMin = Math.min(...xValues);
-          if (xMax + xMin > 0) {
-            colValue = Math.abs(xMax - xMin) / (xMax + xMin);
-          }
-        }
-      }
-
-      const colRaw = parseFloat(String(colValue));
+      const tolerance = testData.linearityOfMaLoading.tolerance || "0.1";
+      const toleranceOperator = testData.linearityOfMaLoading.toleranceOperator || "<=";
+      const colRaw = parseFloat(String(testData.linearityOfMaLoading.col ?? validRows[0]?.col ?? ""));
       const col = !isNaN(colRaw) && isFinite(colRaw) ? colRaw.toFixed(3) : "-";
-
       let isPass =
-        testData.linearityOfMasLoading.remarks === "Pass" ||
-        testData.linearityOfMasLoading.remarks === "PASS";
+        testData.linearityOfMaLoading.remarks === "Pass" ||
+        testData.linearityOfMaLoading.remarks === "PASS" ||
+        validRows[0]?.remarks === "Pass";
       if (!isPass && col !== "-") {
         const c = parseFloat(col);
-        const t = parseFloat(tolerance);
+        const t = parseFloat(String(tolerance));
         if (toleranceOperator === "<=") isPass = c <= t;
         else if (toleranceOperator === "<") isPass = c < t;
         else if (toleranceOperator === ">=") isPass = c >= t;
         else if (toleranceOperator === ">") isPass = c > t;
       }
-
       const tableLevelKv =
-        testData.linearityOfMasLoading?.kv ??
-        testData.linearityOfMasLoading?.kV ??
-        testData.linearityOfMasLoading?.setKv ??
-        testData.linearityOfMasLoading?.setKV ??
-        (Array.isArray(testData.linearityOfMasLoading?.table1)
-          ? testData.linearityOfMasLoading?.table1?.[0]?.kv
-          : testData.linearityOfMasLoading?.table1?.kv);
-
-      const firstRow = validRows[0] || {};
-      const kvValue = asDisplayNumber(
-        firstRow.kv ?? firstRow.kV ?? firstRow.setKV ?? firstRow.setKv ?? tableLevelKv
-      );
-      const testRows = [
+        testData.linearityOfMaLoading?.kv ??
+        testData.linearityOfMaLoading?.kV ??
+        (Array.isArray(testData.linearityOfMaLoading?.table1)
+          ? testData.linearityOfMaLoading?.table1?.[0]?.kv
+          : testData.linearityOfMaLoading?.table1?.kv);
+      const kvValue = asDisplayNumber(tableLevelKv);
+      addRowsForTest("Linearity of mA Loading (Coefficient of Linearity)", [
         {
           specified: kvValue ? `at ${kvValue} kV` : "-",
           measured: formatCoefficientOfLinearityMeasured(col),
           tolerance: `${toleranceOperator} ${tolerance}`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         },
-      ];
-      addRowsForTest(linearityLabel, testRows);
+      ]);
     }
   }
 
@@ -394,7 +343,7 @@ const MainTestTableForDentalIntra: React.FC<MainTestTableProps> = ({ testData })
 
         return {
           specified: specifiedDisplay,
-          measured: formattedCv !== "-" ? "CoV = " + formattedCv : "-",
+          measured: formattedCv !== "-" ? " " + formattedCv : "-",
           tolerance: `${toleranceOperator} ${toleranceValue}`,
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
