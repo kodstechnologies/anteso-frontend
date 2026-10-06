@@ -224,7 +224,16 @@ const ViewServiceReportOArm: React.FC<ViewServiceReportOArmProps> = ({
             leadOwnerName: data.leadOwnerName || detailsLeadOwnerName || "",
             srfNumber: data.srfNumber || "N/A",
             srfDate: data.srfDate || data.testDate || qaTestDateStr,
-            reportULRNumber: data.reportULRNumber || "N/A",
+            reportULRNumber:
+              data.reportULRNumber ||
+              data.reportUlrNumber ||
+              data.reportULRNo ||
+              data.ulrNumber ||
+              detailsFirstQaTest?.reportULRNumber ||
+              detailsFirstQaTest?.reportUlrNumber ||
+              detailsFirstQaTest?.reportULRNo ||
+              detailsFirstQaTest?.ulrNumber ||
+              "N/A",
             testReportNumber: data.testReportNumber || "N/A",
             issueDate: data.issueDate || "",
             nomenclature: data.nomenclature || "O-Arm",
