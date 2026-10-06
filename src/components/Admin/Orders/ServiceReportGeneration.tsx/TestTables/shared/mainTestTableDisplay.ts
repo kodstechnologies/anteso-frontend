@@ -1,3 +1,22 @@
+/** Show 0 and 0.0. Only null, undefined, and blank become the fallback. */
+export function displayNumeric(value: unknown, fallback = "-"): string {
+  if (value == null) return fallback;
+  if (typeof value === "object" && "value" in (value as object)) {
+    return displayNumeric((value as { value?: unknown }).value, fallback);
+  }
+  const text = String(value).trim();
+  return text === "" ? fallback : text;
+}
+
+/** Parse a typed number, keeping 0 and 0.0. Blank stays empty. */
+export function parseOptionalNumber(value: unknown): number | null {
+  if (value == null) return null;
+  const text = String(value).trim();
+  if (text === "") return null;
+  const n = Number(text);
+  return Number.isFinite(n) ? n : null;
+}
+
 /** Normalize stored ± / both / corrupted signs for kVp tolerance display. */
 export function normalizePlusMinusSign(raw: unknown): "+" | "-" | "±" {
   const v = String(raw ?? "")

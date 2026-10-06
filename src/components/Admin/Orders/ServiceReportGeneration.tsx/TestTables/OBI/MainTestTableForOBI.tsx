@@ -4,6 +4,7 @@ import {
   formatEffectiveFocalSpotToleranceStr,
   getRadiationLeakageLevelParameterTitle,
   formatKvpAccuracyTolerance,
+  displayNumeric,
 } from "../shared/mainTestTableDisplay";
 // src/components/reports/TestTables/OBI/MainTestTableForOBI.tsx
 import React from "react";
@@ -72,11 +73,11 @@ export const generateOBISummaryRows = (testData: any, hasTimer: boolean = false)
   // Congruence of Radiation & Optical Field (RadiographyFixed + OBI key)
   const congruenceBlock = testData.congruenceOfRadiation || testData.congruence;
   if (congruenceBlock?.congruenceMeasurements && Array.isArray(congruenceBlock.congruenceMeasurements)) {
-    const validRows = congruenceBlock.congruenceMeasurements.filter((row: any) => row.dimension || row.percentFED);
+    const validRows = congruenceBlock.congruenceMeasurements.filter((row: any) => row.dimension || (row.percentFED != null && row.percentFED !== ""));
     if (validRows.length > 0) {
       const testRows = validRows.map((row: any) => {
-        const percentFED = unwrapVal(row.percentFED) || "-";
-        const tolerance = unwrapVal(row.tolerance) || "2";
+        const percentFED = displayNumeric(unwrapVal(row.percentFED));
+        const tolerance = displayNumeric(unwrapVal(row.tolerance), "2");
         const isPass =
           row.remark === "Pass" ||
           row.remark === "PASS" ||

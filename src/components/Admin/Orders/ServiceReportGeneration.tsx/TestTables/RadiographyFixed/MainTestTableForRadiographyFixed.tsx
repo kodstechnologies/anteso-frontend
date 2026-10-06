@@ -8,6 +8,7 @@ import {
   getRadiationLeakageLevelParameterTitle,
   normalizePlusMinusSign,
   formatKvpAccuracyTolerance,
+  displayNumeric,
 } from "../shared/mainTestTableDisplay";
 import { evaluateTotalFiltrationPassFail } from "./totalFiltrationPassFail";
 
@@ -71,11 +72,11 @@ export const generateRadiographySummaryRows = (testData: any, hasTimer: boolean 
 
   // 1. Congruence of Radiation & Optical Field
   if (testData.congruence?.congruenceMeasurements && Array.isArray(testData.congruence.congruenceMeasurements)) {
-    const validRows = testData.congruence.congruenceMeasurements.filter((row: any) => row.dimension || row.percentFED);
+    const validRows = testData.congruence.congruenceMeasurements.filter((row: any) => row.dimension || (row.percentFED != null && row.percentFED !== ""));
     if (validRows.length > 0) {
       const testRows = validRows.map((row: any) => {
-        const percentFED = row.percentFED || "-";
-        const tolerance = row.tolerance || "2";
+        const percentFED = displayNumeric(row.percentFED);
+        const tolerance = displayNumeric(row.tolerance, "2");
         const isPass = row.remark === "Pass" || (percentFED !== "-" && parseFloat(percentFED) <= parseFloat(tolerance));
         return {
           specified: row.dimension || "-",

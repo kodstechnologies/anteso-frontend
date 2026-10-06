@@ -9,6 +9,7 @@ import {
   getCongruenceByServiceIdForRadiographyPortable,
   updateCongruenceForRadiographyPortable,
 } from '../../../../../../api';
+import { parseOptionalNumber } from '../shared/mainTestTableDisplay';
 
 interface TechniqueRow {
   id: string;
@@ -55,15 +56,16 @@ const CongruenceOfRadiation: React.FC<Props> = ({ serviceId, testId: propTestId,
 
   // Auto-calculate % FED = (Observed Shift + Edge Shift) / FCD × 100
   const processedRows = useMemo(() => {
-    const fcd = parseFloat(techniqueRows[0]?.fcd) || 0;
+    const fcd = parseOptionalNumber(techniqueRows[0]?.fcd);
 
     return congruenceRows.map(row => {
-      const obs = parseFloat(row.observedShift) || 0;
-      const edge = parseFloat(row.edgeShift) || 0;
-      const sum = obs + edge;
-      const percentFED = fcd > 0 ? ((sum / fcd) * 100).toFixed(2) : '';
-      const tol = parseFloat(row.tolerance) || 0;
-      const remark = percentFED && tol > 0
+      const obs = parseOptionalNumber(row.observedShift);
+      const edge = parseOptionalNumber(row.edgeShift);
+      const hasShift = obs != null || edge != null;
+      const sum = (obs ?? 0) + (edge ?? 0);
+      const percentFED = hasShift && fcd != null && fcd > 0 ? ((sum / fcd) * 100).toFixed(2) : '';
+      const tol = parseOptionalNumber(row.tolerance);
+      const remark = percentFED !== '' && tol != null
         ? (parseFloat(percentFED) <= tol ? 'Pass' : 'Fail')
         : '';
 
@@ -121,6 +123,7 @@ const CongruenceOfRadiation: React.FC<Props> = ({ serviceId, testId: propTestId,
         const row1 = t2DataGrouped[firstIdx] || {};
         const row2 = secondIdx != null ? t2DataGrouped[secondIdx] : row1;
         // X row: deviationX, edgeShift from edgeShiftX or edgeShift (or row1.edgeShift for single-row template)
+        const asText = (value: unknown) => (value == null || value === '' ? '' : String(value));
         const edgeShiftX = row1.edgeShiftX ?? row1.edgeShift ?? '';
         // Y row: deviationY, edgeShift from edgeShiftY or row2.edgeShift
         const edgeShiftY = row2.edgeShiftY ?? row2.edgeShift ?? '';
@@ -129,19 +132,19 @@ const CongruenceOfRadiation: React.FC<Props> = ({ serviceId, testId: propTestId,
           {
             id: 'x',
             dimension: 'Ι X Ι + Ι X’ Ι',
-            observedShift: row1.deviationX || '',
-            edgeShift: edgeShiftX,
+            observedShift: asText(row1.deviationX),
+            edgeShift: asText(edgeShiftX),
             percentFED: '',
-            tolerance: row1.tolerance || row2.tolerance || '2',
+            tolerance: asText(row1.tolerance ?? row2.tolerance) || '2',
             remark: ''
           },
           {
             id: 'y',
             dimension: 'Ι Y Ι + Ι Y’ Ι',
-            observedShift: row2.deviationY || row1.deviationY || '',
-            edgeShift: edgeShiftY,
+            observedShift: asText(row2.deviationY ?? row1.deviationY),
+            edgeShift: asText(edgeShiftY),
             percentFED: '',
-            tolerance: row2.tolerance || row1.tolerance || '2',
+            tolerance: asText(row2.tolerance ?? row1.tolerance) || '2',
             remark: ''
           },
         ]);
@@ -211,10 +214,10 @@ const CongruenceOfRadiation: React.FC<Props> = ({ serviceId, testId: propTestId,
       techniqueFactors: techniqueRows,
       congruenceMeasurements: processedRows.map(r => ({
         dimension: r.dimension,
-        observedShift: parseFloat(r.observedShift) || 0,
-        edgeShift: parseFloat(r.edgeShift) || 0,
-        percentFED: parseFloat(r.percentFED) || 0,
-        tolerance: parseFloat(r.tolerance) || 0,
+        observedShift: parseOptionalNumber(r.observedShift),
+        edgeShift: parseOptionalNumber(r.edgeShift),
+        percentFED: parseOptionalNumber(r.percentFED),
+        tolerance: parseOptionalNumber(r.tolerance),
         remark: r.remark,
       })),
     };
@@ -349,8 +352,8 @@ const CongruenceOfRadiation: React.FC<Props> = ({ serviceId, testId: propTestId,
                   </td>
                   <td className="px-6 py-4">
                     <input
-                      type="number"
-                      step="0.1"
+                      type="text"
+                      inputMode="decimal"
                       value={row.observedShift}
                       onChange={(e) => updateCongruenceRow(row.id, 'observedShift', e.target.value)}
                       disabled={isViewOnly}
@@ -360,8 +363,8 @@ const CongruenceOfRadiation: React.FC<Props> = ({ serviceId, testId: propTestId,
                   </td>
                   <td className="px-6 py-4">
                     <input
-                      type="number"
-                      step="0.1"
+                      type="text"
+                      inputMode="decimal"
                       value={row.edgeShift}
                       onChange={(e) => updateCongruenceRow(row.id, 'edgeShift', e.target.value)}
                       disabled={isViewOnly}
@@ -370,7 +373,7 @@ const CongruenceOfRadiation: React.FC<Props> = ({ serviceId, testId: propTestId,
                     />
                   </td>
                   <td className="px-6 py-4 text-center font-bold bg-purple-50">
-                    {row.percentFED || '—'}%
+                    {row.percentFED !== '' ? row.percentFED : '—'}%
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center justify-center gap-1">

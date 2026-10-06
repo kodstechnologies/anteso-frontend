@@ -7,6 +7,7 @@ import {
   getCongruenceByServiceIdForRadiographyMobileHT,
   updateCongruenceForRadiographyMobileHT,
 } from '../../../../../../api';
+import { parseOptionalNumber } from '../shared/mainTestTableDisplay';
 
 interface TechniqueRow {
   id: string;
@@ -52,15 +53,18 @@ const CongruenceOfRadiation: React.FC<Props> = ({ serviceId, testId: propTestId,
 
   // Auto-calculate % FED and Remarks
   const processedRows = useMemo(() => {
-    const fcd = parseFloat(techniqueRows[0]?.fcd) || 100;
+    const fcd = parseOptionalNumber(techniqueRows[0]?.fcd);
 
     return congruenceRows.map(row => {
-      const obs = parseFloat(row.observedShift) || 0;
-      const edge = parseFloat(row.edgeShift) || 0;
-      const sum = obs + edge;
-      const percentFED = fcd > 0 ? ((sum / fcd) * 100).toFixed(2) : '0.00';
-      const tol = parseFloat(row.tolerance) || 2;
-      const remark = sum > 0 ? (parseFloat(percentFED) <= tol ? 'Pass' : 'Fail') : '';
+      const obs = parseOptionalNumber(row.observedShift);
+      const edge = parseOptionalNumber(row.edgeShift);
+      const hasShift = obs != null || edge != null;
+      const sum = (obs ?? 0) + (edge ?? 0);
+      const percentFED = hasShift && fcd != null && fcd > 0 ? ((sum / fcd) * 100).toFixed(2) : '';
+      const tol = parseOptionalNumber(row.tolerance);
+      const remark = percentFED !== '' && tol != null
+        ? (parseFloat(percentFED) <= tol ? 'Pass' : 'Fail')
+        : '';
 
       return {
         ...row,
@@ -113,9 +117,9 @@ const CongruenceOfRadiation: React.FC<Props> = ({ serviceId, testId: propTestId,
       setCongruenceRows(initialData.congruenceRows.map((r: any, i: number) => ({
         id: i === 0 ? 'x' : i === 1 ? 'y' : String(i),
         dimension: r.dimension || '',
-        observedShift: r.observedShift || '',
-        edgeShift: r.edgeShift || '',
-        percentFED: r.percentFED || '',
+        observedShift: r.observedShift == null ? '' : String(r.observedShift),
+        edgeShift: r.edgeShift == null ? '' : String(r.edgeShift),
+        percentFED: r.percentFED == null ? '' : String(r.percentFED),
         tolerance: r.tolerance || '2',
         remark: (r.remark as 'Pass' | 'Fail' | '') || '',
       })));
@@ -192,10 +196,10 @@ const CongruenceOfRadiation: React.FC<Props> = ({ serviceId, testId: propTestId,
       })),
       congruenceMeasurements: processedRows.map(r => ({
         dimension: r.dimension,
-        observedShift: parseFloat(r.observedShift) || 0,
-        edgeShift: parseFloat(r.edgeShift) || 0,
-        percentFED: parseFloat(r.percentFED) || 0,
-        tolerance: parseFloat(r.tolerance) || 2,
+        observedShift: parseOptionalNumber(r.observedShift),
+        edgeShift: parseOptionalNumber(r.edgeShift),
+        percentFED: parseOptionalNumber(r.percentFED),
+        tolerance: parseOptionalNumber(r.tolerance),
         remark: r.remark,
       })),
     };
@@ -338,8 +342,8 @@ const CongruenceOfRadiation: React.FC<Props> = ({ serviceId, testId: propTestId,
                   </td>
                   <td className="px-6 py-4">
                     <input
-                      type="number"
-                      step="0.1"
+                      type="text"
+                      inputMode="decimal"
                       value={row.observedShift}
                       onChange={(e) => updateCongruenceRow(row.id, 'observedShift', e.target.value)}
                       disabled={isViewOnly}
@@ -349,8 +353,8 @@ const CongruenceOfRadiation: React.FC<Props> = ({ serviceId, testId: propTestId,
                   </td>
                   <td className="px-6 py-4">
                     <input
-                      type="number"
-                      step="0.1"
+                      type="text"
+                      inputMode="decimal"
                       value={row.edgeShift}
                       onChange={(e) => updateCongruenceRow(row.id, 'edgeShift', e.target.value)}
                       disabled={isViewOnly}
@@ -359,7 +363,7 @@ const CongruenceOfRadiation: React.FC<Props> = ({ serviceId, testId: propTestId,
                     />
                   </td>
                   <td className="px-6 py-4 text-center font-bold bg-purple-50">
-                    {row.percentFED || '—'}%
+                    {row.percentFED !== '' ? row.percentFED : '—'}%
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center justify-center gap-1">

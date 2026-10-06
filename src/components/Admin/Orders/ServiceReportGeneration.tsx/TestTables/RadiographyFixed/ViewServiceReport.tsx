@@ -1,5 +1,6 @@
 // src/components/reports/ViewServiceReportRadiographyFixed.tsx
 import React, { useEffect, useState } from "react";
+import { displayNumeric } from "../shared/mainTestTableDisplay";
 import { useSearchParams } from "react-router-dom";
 import {
   getDetails,
@@ -804,10 +805,10 @@ const ViewServiceReportRadiographyFixed: React.FC<ViewServiceReportProps> = ({
                       {testData.congruence.congruenceMeasurements.map((row: any, i: number) => (
                         <tr key={i}>
                           <td style={cellStyle({ border: "0.1px solid #666" })}>{row.dimension || "-"}</td>
-                          <td style={cellStyle({ border: "0.1px solid #666" })}>{row.observedShift || "-"}</td>
-                          <td style={cellStyle({ border: "0.1px solid #666" })}>{row.edgeShift || "-"}</td>
-                          <td style={cellStyle({ border: "0.1px solid #666" })}>{row.percentFED || "-"}</td>
-                          <td style={cellStyle({ border: "0.1px solid #666" })}>{row.tolerance || "-"}</td>
+                          <td style={cellStyle({ border: "0.1px solid #666" })}>{displayNumeric(row.observedShift)}</td>
+                          <td style={cellStyle({ border: "0.1px solid #666" })}>{displayNumeric(row.edgeShift)}</td>
+                          <td style={cellStyle({ border: "0.1px solid #666" })}>{displayNumeric(row.percentFED)}</td>
+                          <td style={cellStyle({ border: "0.1px solid #666" })}>{displayNumeric(row.tolerance)}</td>
                           <td style={cellStyle({ border: "0.1px solid #666" })}>{row.remark || "-"}</td>
                         </tr>
                       ))}
