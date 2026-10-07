@@ -218,7 +218,7 @@ const MainTestTableForCTScan: React.FC<MainTestTableProps> = ({ testData }) => {
   // Helper function to format Timer Accuracy tolerance
   const formatTimerAccuracyTolerance = (tolerance: string | number): string => {
     if (!tolerance) return "-";
-    return `+/-${tolerance}%`;
+    return `±${tolerance}%`;
   };
 
   const addRowsForTest = (
@@ -514,7 +514,7 @@ const MainTestTableForCTScan: React.FC<MainTestTableProps> = ({ testData }) => {
     const tolerance = testData.ctdi.tolerance;
     const kvp = testData.ctdi.table1?.[0]?.kvp || "-";
     const tolValue = tolerance?.value ? parseFloat(tolerance.value) : 20;
-    const tolSign = tolerance?.sign === 'plus' ? '+' : tolerance?.sign === 'minus' ? '-' : '+/-';
+    const tolSign = tolerance?.sign === 'plus' ? '+' : tolerance?.sign === 'minus' ? '-' : '±';
     const tolStr = `${tolSign}${tolValue}% of the quoted value (Expected) `;
 
     const calculateCtdiPass = (measured: any, specified: any) => {

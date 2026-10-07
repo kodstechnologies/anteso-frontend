@@ -213,14 +213,18 @@ const RadiographyFixedContent: React.FC<RadiographyFixedProps> = ({ serviceId, q
         setLoading(true);
         const detailsRes = await getDetails(serviceId);
         
-        const data = detailsRes.data;
-        
-        // Get engineerId and machineType for the new API
-        const engineerId = data.engineerAssigned?._id || data.engineerAssigned;
-        const machineType = data.machineType;
-        
-        // Fetch tools using the new API
-        const toolsRes = await getAssignedToolsForEngineerByMachine(engineerId, machineType);
+        const data = detailsRes?.data?.data || detailsRes?.data || {};
+
+        const engineerId =
+          data.engineerAssigned?._id ||
+          data.engineerAssigned?.id ||
+          (typeof data.engineerAssigned === "string" ? data.engineerAssigned : "");
+        const machineType = String(data.machineType || "Radiography (Fixed)").trim();
+        console.log("engineerId----->", engineerId);
+        console.log("machineType----->", machineType);
+        const toolsRes = engineerId
+          ? await getAssignedToolsForEngineerByMachine(String(engineerId), machineType).catch(() => null)
+          : null;
 
         const firstTest = data.qaTests[0];
 
@@ -270,10 +274,9 @@ const RadiographyFixedContent: React.FC<RadiographyFixedProps> = ({ serviceId, q
           authorizedSignatory: "",
         });
 
-        // Map tools from new API response (toolsAssigned is directly in data)
-        const assignedTools = toolsRes?.data?.toolsAssigned || [];
-        console.log("--------------------------------------------------",assignedTools)
-
+        const assignedTools =
+          toolsRes?.data?.toolsAssigned || toolsRes?.toolsAssigned || data.toolsAssigned || [];
+        console.log("assignedTools----->", assignedTools);
         const mappedTools: Standard[] = assignedTools
           .map((t: any) => ({
             nomenclature: t.nomenclature,

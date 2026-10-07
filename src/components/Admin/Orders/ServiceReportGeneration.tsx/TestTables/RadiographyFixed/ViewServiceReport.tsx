@@ -3,6 +3,7 @@ import React, { useEffect, useState } from "react";
 import { displayNumeric } from "../shared/mainTestTableDisplay";
 import { useSearchParams } from "react-router-dom";
 import {
+  getAssignedToolsForEngineerByMachine,
   getDetails,
   getReportHeaderForRadiographyFixed,
   getTools,
@@ -161,8 +162,6 @@ const ViewServiceReportRadiographyFixed: React.FC<ViewServiceReportProps> = ({
           getDetails(serviceId),
           getTools(serviceId).catch(() => null),
         ]);
-
-        console.log("toolsRes----->", toolsRes);
         const normalizeTools = (raw: any): Tool[] => {
           if (!Array.isArray(raw)) return [];
           return raw.map((tool: any, index: number) => ({
@@ -237,6 +236,14 @@ const ViewServiceReportRadiographyFixed: React.FC<ViewServiceReportProps> = ({
           detailsLeadOwner?.name ||
           ""
         ).trim();
+        const engineerId =
+          detailsData?.engineerAssigned?._id ||
+          detailsData?.engineerAssigned?.id ||
+          (typeof detailsData?.engineerAssigned === "string" ? detailsData.engineerAssigned : "");
+        const machineType = String(detailsData?.machineType || "Radiography (Fixed)").trim();
+        const machineToolsRes = engineerId
+          ? await getAssignedToolsForEngineerByMachine(String(engineerId), machineType).catch(() => null)
+          : null;
 
         if (response?.exists && response?.data) {
           setNotFound(false);
@@ -245,9 +252,12 @@ const ViewServiceReportRadiographyFixed: React.FC<ViewServiceReportProps> = ({
             data.toolsUsed || data.tools || data.standards || data.toolsAssigned
           );
           const assignedTools = normalizeTools(
-            toolsRes?.data?.data?.toolsAssigned || toolsRes?.data?.toolsAssigned || []
+            toolsRes?.data?.toolsAssigned || toolsRes?.data?.data?.toolsAssigned || []
           );
-          const mergedTools = mergeTools(headerTools, assignedTools);
+          const machineTools = normalizeTools(
+            machineToolsRes?.data?.toolsAssigned || machineToolsRes?.toolsAssigned || []
+          );
+          const mergedTools = mergeTools(headerTools, mergeTools(machineTools, assignedTools));
           setReport({
             customerName: data.customerName || "N/A",
             address: data.address || "N/A",

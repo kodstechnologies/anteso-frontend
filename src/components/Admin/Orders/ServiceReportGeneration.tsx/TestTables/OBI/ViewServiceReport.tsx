@@ -1410,7 +1410,7 @@ const ViewServiceReportOBI: React.FC<ViewServiceReportOBIProps> = ({
                           wordBreak: "break-word",
                           overflowWrap: "anywhere",
                           padding: "3px 4px",
-                          width: ["6%", "18%", "12%", "12%", "10%", "10%", "16%", "16%"][i],
+                          width: ["6%", "18%", "12%", "12%", "12%", "24%", "16%"][i],
                         })}
                       >
                         {h}
@@ -1428,8 +1428,7 @@ const ViewServiceReportOBI: React.FC<ViewServiceReportOBIProps> = ({
                       <td style={cellStyle({ border: "0.1px solid #666" })}>{tool.make || "-"}</td>
                       <td style={cellStyle({ border: "0.1px solid #666" })}>{tool.model || "-"}</td>
                       <td style={cellStyle({ border: "0.1px solid #666" })}>{tool.SrNo}</td>
-                      <td style={cellStyle({ border: "0.1px solid #666" })}>{tool.range}</td>
-                      <td style={cellStyle({ border: "0.1px solid #666" })}>{tool.calibrationCertificateNo}</td>
+                      <td style={cellStyle({ border: "0.1px solid #666", whiteSpace: "normal", wordBreak: "break-all", overflowWrap: "anywhere" })}>{tool.calibrationCertificateNo}</td>
                       <td style={cellStyle({ border: "0.1px solid #666" })}>{formatDate(tool.calibrationValidTill)}</td>
                     </tr>
                   ))
