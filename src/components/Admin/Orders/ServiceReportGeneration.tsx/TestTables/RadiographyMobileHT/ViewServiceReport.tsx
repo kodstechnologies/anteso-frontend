@@ -445,7 +445,7 @@ const ViewServiceReportRadiographyMobileHT: React.FC<ViewServiceReportRadiograph
       <div id={reportContentId} className="fixed-report-pdf">
         <ReportPage>
           <h1 className="text-center font-bold underline mb-2" style={{ fontSize: "15px" }}>
-            QA TEST REPORT FOR RADIOGRAPHY (MOBILE) WITH HT X-RAY EQUIPMENT
+            QA TEST REPORT FOR RADIOGRAPHY (MOBILE)
           </h1>
           <p className="text-center italic mb-4" style={{ fontSize: "9px" }}>
             (Periodic Quality Assurance shall be carried out at least once in two years as per AERB guidelines)
