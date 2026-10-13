@@ -2335,7 +2335,7 @@ const ViewServiceReportCTScan: React.FC<ViewServiceReportCTScanProps> = ({
                           wordBreak: "break-word",
                           overflowWrap: "anywhere",
                           padding: "3px 4px",
-                          width: ["6%", "18%", "12%", "12%", "10%", "10%", "16%", "16%"][i],
+                          width: ["6%", "18%", "12%", "12%", "10%", "10%", "26%"][i],
                         })}
                       >
                         {h}
@@ -2360,7 +2360,7 @@ const ViewServiceReportCTScan: React.FC<ViewServiceReportCTScanProps> = ({
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={8} style={cellStyle({ border: "0.1px solid #666" })}>
+                    <td colSpan={7} style={cellStyle({ border: "0.1px solid #666" })}>
                       No tools recorded
                     </td>
                   </tr>

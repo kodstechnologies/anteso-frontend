@@ -648,6 +648,13 @@ const MainTestTableForCTScan: React.FC<MainTestTableProps> = ({ testData }) => {
       (item: any) => item.location || item.max || item.front || item.back || item.left || item.right || item.top
     );
     if (validRows.length > 0) {
+      // Determine dynamic label based on location
+      const hasTube = validRows.some((item: any) => {
+        const loc = (item.location || "").toLowerCase();
+        return loc === "tube housing" || loc === "tube" || (loc.includes("tube") && !loc.includes("collimator"));
+      });
+      const dynamicLabel = hasTube ? "X-ray tube housing" : "collimator";
+
       const testRows = validRows.map((item: any) => {
         // Prefer saved mGy result + remark
         if (item.mgy && item.remark) {
@@ -696,7 +703,7 @@ const MainTestTableForCTScan: React.FC<MainTestTableProps> = ({ testData }) => {
           remarks: (isPass ? "Pass" : "Fail") as "Pass" | "Fail",
         };
       });
-      addRowsForTest("Radiation Leakage Level", testRows);
+      addRowsForTest(`Radiation Leakage Level from ${dynamicLabel}`, testRows);
     }
   }
 
