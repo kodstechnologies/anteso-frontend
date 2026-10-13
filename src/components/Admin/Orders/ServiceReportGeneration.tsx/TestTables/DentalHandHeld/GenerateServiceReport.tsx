@@ -1374,12 +1374,8 @@ const GenerateReportForDentalHandHeldContent: React.FC<DentalProps> = ({ service
                         title: "Accuracy of Operating Potential & Time",
                         component: <AccuracyOfOperatingPotentialAndTime
                             serviceId={serviceId}
-                            testId={savedTestIds.AccuracyOfOperatingPotentialAndTimeDentalHandHeld || null}
+                            testId={savedTestIds.AccuracyOfOperatingPotentialAndTimeDentalHandHeld || undefined}
                             onTestSaved={(id: string) => setSavedTestIds(prev => ({ ...prev, AccuracyOfOperatingPotentialAndTimeDentalHandHeld: id }))}
-                            csvData={[
-                                ...(csvDataForComponents['accuracyOfOperatingPotentialAndTime'] || []),
-                                ...(csvDataForComponents['accuracyOfOperatingPotential'] || []),
-                            ]}
                         />
                     },
                     ...(hasTimer === true
